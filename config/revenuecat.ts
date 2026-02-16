@@ -52,7 +52,8 @@ export const REVENUECAT_CONFIG = {
   androidApiKey: config.androidApiKey,
   
   // Entitlement identifier (what the user gets access to)
-  entitlementID: 'SeaTime Tracker Pro',
+  // CRITICAL: This must match the entitlement ID in RevenueCat dashboard
+  entitlementID: 'pro',
   
   // Product identifiers (must match App Store Connect / Google Play Console)
   productIDs: {

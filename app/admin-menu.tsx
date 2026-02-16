@@ -16,24 +16,25 @@ function createStyles(isDark: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+      backgroundColor: isDark ? colors.background : colors.backgroundLight,
     },
     scrollContent: {
       padding: 20,
+      paddingBottom: 40,
     },
     title: {
       fontSize: 28,
       fontWeight: 'bold',
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 8,
     },
     subtitle: {
       fontSize: 16,
-      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       marginBottom: 32,
     },
     menuItem: {
-      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 20,
       marginBottom: 16,
@@ -44,6 +45,8 @@ function createStyles(isDark: boolean) {
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     menuItemIcon: {
       marginRight: 16,
@@ -54,12 +57,12 @@ function createStyles(isDark: boolean) {
     menuItemTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 4,
     },
     menuItemDescription: {
       fontSize: 14,
-      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     menuItemChevron: {
       marginLeft: 8,
@@ -74,6 +77,12 @@ export default function AdminMenuScreen() {
   const router = useRouter();
 
   const menuItems = [
+    {
+      title: 'RevenueCat Diagnostic',
+      description: 'Check RevenueCat configuration and offerings',
+      icon: 'info',
+      route: '/revenuecat-diagnostic',
+    },
     {
       title: 'Activate Subscriptions',
       description: 'Create sandbox users and manage subscription status',
@@ -112,9 +121,9 @@ export default function AdminMenuScreen() {
         options={{
           title: 'Admin Tools',
           headerStyle: {
-            backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+            backgroundColor: isDark ? colors.background : colors.backgroundLight,
           },
-          headerTintColor: isDark ? colors.textDark : colors.textLight,
+          headerTintColor: isDark ? colors.text : colors.textLight,
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -146,7 +155,7 @@ export default function AdminMenuScreen() {
                 ios_icon_name="chevron.right"
                 android_material_icon_name="arrow-forward"
                 size={20}
-                color={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
+                color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
             </View>
           </TouchableOpacity>

@@ -175,6 +175,16 @@ function RootLayoutNav() {
               }} 
             />
 
+            {/* Paywall Screen */}
+            <Stack.Screen 
+              name="paywall" 
+              options={{ 
+                headerShown: false,
+                presentation: 'card',
+                title: "Subscribe",
+              }} 
+            />
+
             {/* RevenueCat Paywall Screen */}
             <Stack.Screen 
               name="revenuecat-paywall" 
@@ -199,7 +209,7 @@ function RootLayoutNav() {
             <Stack.Screen 
               name="revenuecat-diagnostic" 
               options={{ 
-                headerShown: false,
+                headerShown: true,
                 presentation: 'card',
                 title: "RevenueCat Diagnostic",
               }} 

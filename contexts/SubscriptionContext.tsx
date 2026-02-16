@@ -41,7 +41,8 @@ const extra = Constants.expoConfig?.extra || {};
 const revenueCatConfig = extra.revenueCat || {};
 const IOS_API_KEY = revenueCatConfig.iosApiKey || "";
 const ANDROID_API_KEY = revenueCatConfig.androidApiKey || "";
-const ENTITLEMENT_ID = revenueCatConfig.entitlementId || "SeaTime Tracker Pro";
+// CRITICAL: Use "pro" as the entitlement ID to match RevenueCat dashboard
+const ENTITLEMENT_ID = revenueCatConfig.entitlementId || "pro";
 
 // Check if running on web
 const isWeb = Platform.OS === "web";
@@ -211,22 +212,62 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   }, []);
 
   const fetchOfferings = async () => {
-    if (isWeb || !isConfigured) return;
+    if (isWeb || !isConfigured) {
+      console.log("[RevenueCat] Skipping offerings fetch - isWeb:", isWeb, "isConfigured:", isConfigured);
+      return;
+    }
     try {
       console.log("[RevenueCat] Fetching offerings...");
       const fetchedOfferings = await Purchases.getOfferings();
+      console.log("[RevenueCat] Offerings response received");
+      console.log("[RevenueCat] All offerings:", Object.keys(fetchedOfferings.all));
+      console.log("[RevenueCat] Current offering ID:", fetchedOfferings.current?.identifier || "NONE");
+      
       setOfferings(fetchedOfferings);
 
       if (fetchedOfferings.current) {
         console.log("[RevenueCat] Current offering found:", fetchedOfferings.current.identifier);
         console.log("[RevenueCat] Available packages:", fetchedOfferings.current.availablePackages.length);
+        
+        // Log each package for debugging
+        fetchedOfferings.current.availablePackages.forEach((pkg, index) => {
+          console.log(`[RevenueCat] Package ${index + 1}:`, {
+            identifier: pkg.identifier,
+            productId: pkg.product.identifier,
+            title: pkg.product.title,
+            price: pkg.product.priceString,
+          });
+        });
+        
         setCurrentOffering(fetchedOfferings.current);
         setPackages(fetchedOfferings.current.availablePackages);
       } else {
-        console.warn("[RevenueCat] No current offering available");
+        console.warn("[RevenueCat] ⚠️ No current offering available");
+        console.warn("[RevenueCat] This usually means:");
+        console.warn("[RevenueCat] 1. No offering is marked as 'current' in RevenueCat dashboard");
+        console.warn("[RevenueCat] 2. The offering has no products attached");
+        console.warn("[RevenueCat] 3. Products are not configured in App Store Connect");
+        
+        // Check if there are any offerings at all
+        const allOfferingIds = Object.keys(fetchedOfferings.all);
+        if (allOfferingIds.length > 0) {
+          console.warn("[RevenueCat] Available offerings (not marked as current):", allOfferingIds);
+          // Try to use the first available offering
+          const firstOffering = fetchedOfferings.all[allOfferingIds[0]];
+          if (firstOffering) {
+            console.log("[RevenueCat] Using first available offering:", firstOffering.identifier);
+            setCurrentOffering(firstOffering);
+            setPackages(firstOffering.availablePackages);
+          }
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[RevenueCat] Failed to fetch offerings:", error);
+      console.error("[RevenueCat] Error details:", {
+        message: error.message,
+        code: error.code,
+        underlyingErrorMessage: error.underlyingErrorMessage,
+      });
     }
   };
 

@@ -62,15 +62,16 @@ const createStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.background : '#f5f5f5',
+      backgroundColor: isDark ? colors.background : colors.backgroundLight,
     },
     content: {
       padding: 20,
+      paddingBottom: 40,
     },
     title: {
       fontSize: 24,
       fontWeight: 'bold',
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 20,
     },
     inputGroup: {
@@ -79,17 +80,17 @@ const createStyles = (isDark: boolean) =>
     label: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 5,
     },
     input: {
-      backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 8,
       padding: 12,
       fontSize: 16,
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       borderWidth: 1,
-      borderColor: isDark ? '#444' : '#ddd',
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     button: {
       backgroundColor: colors.primary,
@@ -109,17 +110,17 @@ const createStyles = (isDark: boolean) =>
     sectionTitle: {
       fontSize: 18,
       fontWeight: 'bold',
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 10,
       marginTop: 20,
     },
     card: {
-      backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 15,
       marginBottom: 15,
       borderWidth: 1,
-      borderColor: isDark ? '#444' : '#e0e0e0',
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     row: {
       flexDirection: 'row',
@@ -128,12 +129,12 @@ const createStyles = (isDark: boolean) =>
     rowLabel: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       width: 120,
     },
     rowValue: {
       fontSize: 14,
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       flex: 1,
     },
     statusBadge: {
@@ -153,13 +154,13 @@ const createStyles = (isDark: boolean) =>
       gap: 10,
     },
     summaryCard: {
-      backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 15,
       flex: 1,
       minWidth: '45%',
       borderWidth: 1,
-      borderColor: isDark ? '#444' : '#e0e0e0',
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     summaryValue: {
       fontSize: 24,
@@ -169,11 +170,11 @@ const createStyles = (isDark: boolean) =>
     },
     summaryLabel: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     noDataText: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       fontStyle: 'italic',
       textAlign: 'center',
       marginTop: 20,
@@ -416,7 +417,6 @@ export default function AdminVerifyScreen() {
       const actionsText = data.actions_taken.join('\n');
       showModalMessage('Success', `Workflow fixed!\n\n${actionsText}`, 'success');
       
-      // Refresh diagnosis after fix
       setTimeout(() => {
         handleDiagnoseWorkflow();
       }, 1000);
@@ -467,9 +467,9 @@ export default function AdminVerifyScreen() {
         options={{
           title: 'Admin Verification',
           headerStyle: {
-            backgroundColor: isDark ? colors.background : '#ffffff',
+            backgroundColor: isDark ? colors.background : colors.backgroundLight,
           },
-          headerTintColor: colors.text,
+          headerTintColor: isDark ? colors.text : colors.textLight,
         }}
       />
 
@@ -527,7 +527,7 @@ export default function AdminVerifyScreen() {
               value={email}
               onChangeText={setEmail}
               placeholder="Enter user email"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -540,7 +540,7 @@ export default function AdminVerifyScreen() {
               value={mmsi}
               onChangeText={setMmsi}
               placeholder="Enter vessel MMSI"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
               keyboardType="numeric"
             />
           </View>
@@ -777,11 +777,11 @@ export default function AdminVerifyScreen() {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
-            <Text style={[styles.modalTitle, { color: isDark ? colors.text : colors.text }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? colors.cardBackground : colors.card }]}>
+            <Text style={[styles.modalTitle, { color: isDark ? colors.text : colors.textLight }]}>
               {modalTitle}
             </Text>
-            <Text style={[styles.modalMessage, { color: isDark ? colors.text : colors.text }]}>
+            <Text style={[styles.modalMessage, { color: isDark ? colors.text : colors.textLight }]}>
               {modalMessage}
             </Text>
             <TouchableOpacity

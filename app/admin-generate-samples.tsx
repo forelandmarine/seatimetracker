@@ -43,20 +43,21 @@ const createStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+      backgroundColor: isDark ? colors.background : colors.backgroundLight,
     },
     scrollContent: {
       padding: 20,
+      paddingBottom: 40,
     },
     title: {
       fontSize: 24,
       fontWeight: 'bold',
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 10,
     },
     subtitle: {
       fontSize: 14,
-      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       marginBottom: 30,
     },
     inputGroup: {
@@ -65,17 +66,17 @@ const createStyles = (isDark: boolean) =>
     label: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 8,
     },
     input: {
-      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 16,
       fontSize: 16,
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       borderWidth: 1,
-      borderColor: isDark ? colors.borderDark : colors.borderLight,
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     generateButton: {
       backgroundColor: colors.primary,
@@ -94,33 +95,35 @@ const createStyles = (isDark: boolean) =>
       fontWeight: '600',
     },
     resultCard: {
-      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 16,
       marginBottom: 20,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     resultTitle: {
       fontSize: 18,
       fontWeight: 'bold',
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 10,
     },
     resultText: {
       fontSize: 14,
-      color: isDark ? colors.textDark : colors.textLight,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 6,
     },
     entryCard: {
-      backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+      backgroundColor: isDark ? colors.background : colors.backgroundLight,
       borderRadius: 8,
       padding: 12,
       marginTop: 10,
       borderWidth: 1,
-      borderColor: isDark ? colors.borderDark : colors.borderLight,
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     entryText: {
       fontSize: 12,
-      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       marginBottom: 4,
     },
     statusBadge: {
@@ -266,7 +269,7 @@ export default function AdminGenerateSamplesScreen() {
       case 'rejected':
         return colors.error;
       default:
-        return colors.textSecondaryDark;
+        return colors.textSecondary;
     }
   };
 
@@ -279,9 +282,9 @@ export default function AdminGenerateSamplesScreen() {
         options={{
           title: 'Generate Sample Data',
           headerStyle: {
-            backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+            backgroundColor: isDark ? colors.background : colors.backgroundLight,
           },
-          headerTintColor: isDark ? colors.textDark : colors.textLight,
+          headerTintColor: isDark ? colors.text : colors.textLight,
           headerShadowVisible: false,
         }}
       />
@@ -299,7 +302,7 @@ export default function AdminGenerateSamplesScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="jack@forelandmarine.com"
-            placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
+            placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             keyboardType="email-address"
             autoCapitalize="none"
             editable={!loading}
@@ -313,7 +316,7 @@ export default function AdminGenerateSamplesScreen() {
             value={count}
             onChangeText={setCount}
             placeholder="43"
-            placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
+            placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             keyboardType="number-pad"
             editable={!loading}
           />
@@ -391,11 +394,11 @@ export default function AdminGenerateSamplesScreen() {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? colors.cardDark : colors.cardLight }]}>
-            <Text style={[styles.modalTitle, { color: isDark ? colors.textDark : colors.textLight }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? colors.cardBackground : colors.card }]}>
+            <Text style={[styles.modalTitle, { color: isDark ? colors.text : colors.textLight }]}>
               {modalTitle}
             </Text>
-            <Text style={[styles.modalMessage, { color: isDark ? colors.textDark : colors.textLight }]}>
+            <Text style={[styles.modalMessage, { color: isDark ? colors.text : colors.textLight }]}>
               {modalMessage}
             </Text>
             <TouchableOpacity
