@@ -23,7 +23,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import CartoMap from '@/components/CartoMap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { UpgradeButton } from "@/components/UpgradeButton";
 import { useSubscriptionEnforcement } from '@/hooks/useSubscriptionEnforcement';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -456,9 +455,7 @@ export default function SeaTimeScreen() {
               <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
                 {headerTitleText}
               </Text>
-                            <UpgradeButton variant="banner" />
-              
-<Text style={styles.headerSubtitle}>{headerSubtitleText}</Text>
+              <Text style={styles.headerSubtitle}>{headerSubtitleText}</Text>
             </View>
             <TouchableOpacity 
               style={styles.userAccountButton}

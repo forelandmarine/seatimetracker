@@ -47,8 +47,8 @@
       [
         "./plugins/with-revenuecat",
         {
-          "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-          "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd"
+          "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+          "androidApiKey": "YOUR_ANDROID_PRODUCTION_KEY_HERE"
         }
       ],
       "expo-apple-authentication"
@@ -62,18 +62,13 @@
       },
       "backendUrl": "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev",
       "revenueCat": {
-        "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-        "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-        "entitlementId": "SeaTime Tracker Pro"
+        "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+        "androidApiKey": "YOUR_ANDROID_PRODUCTION_KEY_HERE",
+        "entitlementId": "pro"
       },
       "eas": {
         "projectId": "d982d462-52e2-493e-a176-8f75b09d5ef9"
-      },
-      "revenueCatApiKeyIos": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-      "revenueCatApiKeyAndroid": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-      "revenueCatTestApiKeyIos": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-      "revenueCatTestApiKeyAndroid": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-      "revenueCatEntitlementId": "SeaTime Tracker Pro"
+      }
     },
     "runtimeVersion": "1.0.4",
     "updates": {
