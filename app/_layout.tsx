@@ -132,8 +132,7 @@ function RootLayoutNav() {
   };
 
   return (
-    <SubscriptionProvider>
-      <>
+    <>
       <StatusBar style="auto" animated />
       <ThemeProvider
         value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
@@ -422,7 +421,6 @@ function RootLayoutNav() {
         </GestureHandlerRootView>
       </ThemeProvider>
     </>
-    </SubscriptionProvider>
   );
 }
 
@@ -432,11 +430,13 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <RevenueCatProvider>
-          <WidgetProvider>
-            <RootLayoutNav />
-          </WidgetProvider>
-        </RevenueCatProvider>
+        <SubscriptionProvider>
+          <RevenueCatProvider>
+            <WidgetProvider>
+              <RootLayoutNav />
+            </WidgetProvider>
+          </RevenueCatProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

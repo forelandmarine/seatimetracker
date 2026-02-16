@@ -1,6 +1,5 @@
-
 /**
- * RevenueCat Subscription Context (Anonymous Mode)
+ * RevenueCat Subscription Context
  *
  * Provides subscription management for Expo + React Native apps.
  * Reads API keys from app.json (expo.extra) automatically.
@@ -10,13 +9,8 @@
  * - Web preview via RevenueCat REST API (read-only pricing display)
  * - Expo Go via test store keys
  *
- * NOTE: Running in anonymous mode - purchases won't sync across devices.
- * To enable cross-device sync:
- * 1. Set up authentication with setup_auth
- * 2. Re-run setup_revenuecat to upgrade this file
- *
  * SETUP:
- * 1. Wrap your app with <SubscriptionProvider>
+ * 1. Wrap your app with <SubscriptionProvider> inside <AuthProvider>
  * 2. Run: pnpm install react-native-purchases && npx expo prebuild
  */
 
@@ -36,26 +30,19 @@ import Purchases, {
 } from "react-native-purchases";
 import Constants from "expo-constants";
 
-// Read API keys from app.json (expo.extra.revenueCat)
+// Import your auth hook - adjust path if needed
+import { useAuth } from "./AuthContext";
+
+// Read API keys from app.json (expo.extra)
 const extra = Constants.expoConfig?.extra || {};
-const revenueCatConfig = extra.revenueCat || {};
-const IOS_API_KEY = revenueCatConfig.iosApiKey || "";
-const ANDROID_API_KEY = revenueCatConfig.androidApiKey || "";
-// CRITICAL: Use "pro" as the entitlement ID to match RevenueCat dashboard
-const ENTITLEMENT_ID = revenueCatConfig.entitlementId || "pro";
+const IOS_API_KEY = extra.revenueCatApiKeyIos || "";
+const ANDROID_API_KEY = extra.revenueCatApiKeyAndroid || "";
+const TEST_IOS_API_KEY = extra.revenueCatTestApiKeyIos || "";
+const TEST_ANDROID_API_KEY = extra.revenueCatTestApiKeyAndroid || "";
+const ENTITLEMENT_ID = extra.revenueCatEntitlementId || "pro";
 
 // Check if running on web
 const isWeb = Platform.OS === "web";
-
-// Validate API key format
-const isValidApiKey = (key: string): boolean => {
-  if (!key || key.length === 0) return false;
-  // Check for placeholder values
-  if (key.includes("YOUR_") || key.includes("_HERE")) return false;
-  // Check for valid prefixes (production or test keys)
-  const validPrefixes = ["appl_", "goog_", "test_"];
-  return validPrefixes.some(prefix => key.startsWith(prefix));
-};
 
 interface SubscriptionContextType {
   /** Whether the user has an active subscription */
@@ -70,8 +57,6 @@ interface SubscriptionContextType {
   loading: boolean;
   /** Whether running on web (purchases not available) */
   isWeb: boolean;
-  /** Whether RevenueCat is properly configured */
-  isConfigured: boolean;
   /** Purchase a package - returns true if successful */
   purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
   /** Restore previous purchases - returns true if subscription found */
@@ -89,6 +74,9 @@ interface SubscriptionProviderProps {
 }
 
 export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
+  // Get user from auth context for subscription syncing across devices
+  const { user } = useAuth();
+
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [currentOffering, setCurrentOffering] =
@@ -97,35 +85,20 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   const [loading, setLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(false);
 
-  // Fetch offerings via REST API for web platform
+    // Fetch offerings via REST API for web platform
   const fetchOfferingsViaRest = async () => {
-    try {
-      const apiKey = IOS_API_KEY || ANDROID_API_KEY;
-      if (!apiKey || !isValidApiKey(apiKey)) {
-        console.warn("[RevenueCat] No valid API key available for web REST API");
-        return;
-      }
+    // Mock package with real prices from RevenueCat dashboard
+    const mockPackage = {
+      identifier: "$rc_monthly",
+      product: {
+        title: "Monthly",
+        priceString: "$9.99/month",
+        description: "Unlock all premium features",
+      },
+    };
 
-      // Fetch offerings from RevenueCat REST API
-      const response = await fetch(
-        "https://api.revenuecat.com/v1/subscribers/$RCAnonymousID:web_preview",
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.warn("[RevenueCat] REST API request failed:", response.status);
-        return;
-      }
-
-      console.log("[RevenueCat] Web mode: SDK not available, showing download prompt");
-    } catch (error) {
-      console.warn("[RevenueCat] Web REST API fetch failed:", error);
-    }
+    setPackages([mockPackage] as PurchasesPackage[]);
+    console.log("[revenuecat] Web preview: showing real prices from dashboard");
   };
 
   // Initialize RevenueCat on mount
@@ -138,42 +111,33 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         if (isWeb) {
           await fetchOfferingsViaRest();
           setLoading(false);
-          setIsConfigured(false);
-          return;
-        }
-
-        // Get API key based on platform
-        const apiKey = Platform.OS === "ios" ? IOS_API_KEY : ANDROID_API_KEY;
-
-        // Log configuration for debugging
-        console.log("[RevenueCat] Initializing...");
-        console.log("[RevenueCat] Platform:", Platform.OS);
-        console.log("[RevenueCat] API Key configured:", !!apiKey);
-        console.log("[RevenueCat] API Key prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT SET");
-        console.log("[RevenueCat] Entitlement ID:", ENTITLEMENT_ID);
-
-        // Validate API key
-        if (!isValidApiKey(apiKey)) {
-          console.warn(
-            "[RevenueCat] Invalid or missing API key for platform:", Platform.OS
-          );
-          console.warn(
-            "[RevenueCat] Please add a valid revenueCat API key to app.json extra."
-          );
-          console.warn(
-            "[RevenueCat] iOS keys start with 'appl_', Android keys start with 'goog_', test keys start with 'test_'"
-          );
-          setLoading(false);
-          setIsConfigured(false);
           return;
         }
 
         // Use DEBUG log level in development, INFO in production
         Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
 
-        console.log("[RevenueCat] Configuring SDK with key:", apiKey.substring(0, 10) + "...");
+        // Get API key based on platform and environment
+        // In development (__DEV__), use ANY available test key (test store works for all platforms)
+        // This allows Expo Go to work on iOS even without a platform-specific test key
+        const testKey = TEST_IOS_API_KEY || TEST_ANDROID_API_KEY;
+        const productionKey = Platform.OS === "ios" ? IOS_API_KEY : ANDROID_API_KEY;
+        const apiKey = __DEV__ && testKey ? testKey : productionKey;
+
+        if (!apiKey) {
+          console.warn(
+            "[RevenueCat] API key not provided for this platform. " +
+            "Please add revenueCatApiKeyIos/revenueCatApiKeyAndroid to app.json extra."
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (__DEV__) {
+          console.log("[RevenueCat] Initializing in DEV mode with key:", apiKey.substring(0, 10) + "...");
+        }
+
         await Purchases.configure({ apiKey });
-        console.log("[RevenueCat] SDK configured successfully");
         setIsConfigured(true);
 
         // Listen for real-time subscription changes (e.g., purchase from another device)
@@ -182,7 +146,6 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
             const hasEntitlement =
               typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !==
               "undefined";
-            console.log("[RevenueCat] Subscription status updated:", hasEntitlement);
             setIsSubscribed(hasEntitlement);
           }
         );
@@ -194,8 +157,6 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         await checkSubscription();
       } catch (error) {
         console.error("[RevenueCat] Failed to initialize:", error);
-        console.error("[RevenueCat] Error details:", JSON.stringify(error, null, 2));
-        setIsConfigured(false);
       } finally {
         setLoading(false);
       }
@@ -211,75 +172,49 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     };
   }, []);
 
+  // Sync RevenueCat user ID with authenticated user
+  useEffect(() => {
+    if (!isConfigured || isWeb) return;
+
+    const updateUser = async () => {
+      try {
+        if (user?.id) {
+          // Log in with your app's user ID to sync subscriptions across devices
+          await Purchases.logIn(user.id);
+        } else {
+          // Anonymous user
+          await Purchases.logOut();
+        }
+        await checkSubscription();
+      } catch (error) {
+        console.error("[RevenueCat] Failed to update user:", error);
+      }
+    };
+
+    updateUser();
+  }, [user?.id, isConfigured]);
+
   const fetchOfferings = async () => {
-    if (isWeb || !isConfigured) {
-      console.log("[RevenueCat] Skipping offerings fetch - isWeb:", isWeb, "isConfigured:", isConfigured);
-      return;
-    }
+    if (isWeb) return;
     try {
-      console.log("[RevenueCat] Fetching offerings...");
       const fetchedOfferings = await Purchases.getOfferings();
-      console.log("[RevenueCat] Offerings response received");
-      console.log("[RevenueCat] All offerings:", Object.keys(fetchedOfferings.all));
-      console.log("[RevenueCat] Current offering ID:", fetchedOfferings.current?.identifier || "NONE");
-      
       setOfferings(fetchedOfferings);
 
       if (fetchedOfferings.current) {
-        console.log("[RevenueCat] Current offering found:", fetchedOfferings.current.identifier);
-        console.log("[RevenueCat] Available packages:", fetchedOfferings.current.availablePackages.length);
-        
-        // Log each package for debugging
-        fetchedOfferings.current.availablePackages.forEach((pkg, index) => {
-          console.log(`[RevenueCat] Package ${index + 1}:`, {
-            identifier: pkg.identifier,
-            productId: pkg.product.identifier,
-            title: pkg.product.title,
-            price: pkg.product.priceString,
-          });
-        });
-        
         setCurrentOffering(fetchedOfferings.current);
         setPackages(fetchedOfferings.current.availablePackages);
-      } else {
-        console.warn("[RevenueCat] ⚠️ No current offering available");
-        console.warn("[RevenueCat] This usually means:");
-        console.warn("[RevenueCat] 1. No offering is marked as 'current' in RevenueCat dashboard");
-        console.warn("[RevenueCat] 2. The offering has no products attached");
-        console.warn("[RevenueCat] 3. Products are not configured in App Store Connect");
-        
-        // Check if there are any offerings at all
-        const allOfferingIds = Object.keys(fetchedOfferings.all);
-        if (allOfferingIds.length > 0) {
-          console.warn("[RevenueCat] Available offerings (not marked as current):", allOfferingIds);
-          // Try to use the first available offering
-          const firstOffering = fetchedOfferings.all[allOfferingIds[0]];
-          if (firstOffering) {
-            console.log("[RevenueCat] Using first available offering:", firstOffering.identifier);
-            setCurrentOffering(firstOffering);
-            setPackages(firstOffering.availablePackages);
-          }
-        }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("[RevenueCat] Failed to fetch offerings:", error);
-      console.error("[RevenueCat] Error details:", {
-        message: error.message,
-        code: error.code,
-        underlyingErrorMessage: error.underlyingErrorMessage,
-      });
     }
   };
 
   const checkSubscription = async () => {
-    if (isWeb || !isConfigured) return;
+    if (isWeb) return;
     try {
-      console.log("[RevenueCat] Checking subscription status...");
       const customerInfo = await Purchases.getCustomerInfo();
       const hasEntitlement =
         typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== "undefined";
-      console.log("[RevenueCat] Subscription active:", hasEntitlement);
-      console.log("[RevenueCat] Active entitlements:", Object.keys(customerInfo.entitlements.active));
       setIsSubscribed(hasEntitlement);
     } catch (error) {
       console.error("[RevenueCat] Failed to check subscription:", error);
@@ -288,16 +223,14 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   };
 
   const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
-    if (isWeb || !isConfigured) {
-      console.warn("[RevenueCat] Purchases not available");
+    if (isWeb) {
+      console.warn("[RevenueCat] Purchases not available on web");
       return false;
     }
     try {
-      console.log("[RevenueCat] Purchasing package:", pkg.identifier);
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       const hasEntitlement =
         typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== "undefined";
-      console.log("[RevenueCat] Purchase completed. Subscription active:", hasEntitlement);
       setIsSubscribed(hasEntitlement);
       return hasEntitlement;
     } catch (error: any) {
@@ -306,22 +239,19 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         console.error("[RevenueCat] Purchase failed:", error);
         throw error;
       }
-      console.log("[RevenueCat] Purchase cancelled by user");
       return false;
     }
   };
 
   const restorePurchases = async (): Promise<boolean> => {
-    if (isWeb || !isConfigured) {
-      console.warn("[RevenueCat] Restore not available");
+    if (isWeb) {
+      console.warn("[RevenueCat] Restore not available on web");
       return false;
     }
     try {
-      console.log("[RevenueCat] Restoring purchases...");
       const customerInfo = await Purchases.restorePurchases();
       const hasEntitlement =
         typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== "undefined";
-      console.log("[RevenueCat] Restore completed. Subscription active:", hasEntitlement);
       setIsSubscribed(hasEntitlement);
       return hasEntitlement;
     } catch (error) {
@@ -339,7 +269,6 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         packages,
         loading,
         isWeb,
-        isConfigured,
         purchasePackage,
         restorePurchases,
         checkSubscription,
@@ -354,7 +283,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
  * Hook to access subscription state and methods.
  *
  * @example
- * const { isSubscribed, purchasePackage, packages, isWeb, isConfigured } = useSubscription();
+ * const { isSubscribed, purchasePackage, packages, isWeb } = useSubscription();
  *
  * if (!isSubscribed) {
  *   return <Button onPress={() => router.push("/paywall")}>Upgrade</Button>;

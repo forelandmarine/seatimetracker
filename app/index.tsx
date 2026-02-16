@@ -5,6 +5,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
+import { UpgradeButton } from "@/components/UpgradeButton";
 
 export default function Index() {
   // CRITICAL: Call useAuth at the top level - NEVER conditionally
@@ -37,7 +38,9 @@ export default function Index() {
     console.error('[Index] CRITICAL: Auth context is undefined');
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Authentication Error</Text>
+                <UpgradeButton variant="banner" />
+        
+<Text style={styles.errorText}>Authentication Error</Text>
         <Text style={styles.loadingText}>Please restart the app</Text>
       </View>
     );

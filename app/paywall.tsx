@@ -1,15 +1,8 @@
-
 /**
- * SeaTime Tracker Paywall Screen
- * iOS App Store Guideline 3.1.1 Compliant
+ * Paywall Screen
  *
- * Compliance features:
- * - Always dismissible (close button + "Maybe Later")
- * - Clear pricing before purchase
- * - Restore purchases easily accessible
- * - Terms and privacy links
- * - No external payment methods
- * - Subscription terms clearly stated
+ * Shows subscription options and handles purchases.
+ * On web, displays features and prompts user to download the app.
  */
 
 import React, { useState } from "react";
@@ -20,76 +13,68 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   Platform,
   Linking,
-  Modal,
+  Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { PurchasesPackage } from "react-native-purchases";
-import { IconSymbol } from "@/components/IconSymbol";
-import { useSubscription } from "@/contexts/SubscriptionContext";
-import { colors } from "@/styles/commonStyles";
 
-// SeaTime Tracker Premium Features
+import { useSubscription } from "@/contexts/SubscriptionContext";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Premium features for the paywall
 const FEATURES = [
   {
-    icon: "directions-boat",
-    title: "Unlimited Vessel Tracking",
-    description: "Track as many vessels as you need with real-time AIS data",
+    icon: "⚓",
+    title: "Unlimited Vessels",
+    description: "Track as many vessels as you need",
   },
   {
-    icon: "schedule",
-    title: "Automatic Sea Time Recording",
-    description: "Automatically detect and log your days at sea",
+    icon: "📊",
+    title: "Advanced Reports",
+    description: "Generate MCA-compliant PDF and CSV reports",
   },
   {
-    icon: "description",
-    title: "MCA-Compliant Reports",
-    description: "Generate professional PDF and CSV reports",
+    icon: "🌊",
+    title: "Real-time AIS Tracking",
+    description: "Automatic sea time detection via AIS data",
   },
   {
-    icon: "cloud-sync",
-    title: "Cloud Sync & Backup",
-    description: "Your data is securely backed up across devices",
-  },
-  {
-    icon: "notifications",
-    title: "Smart Notifications",
-    description: "Get notified when vessel movement is detected",
-  },
-  {
-    icon: "verified",
-    title: "MCA Compliance Checks",
-    description: "Automatic validation against MCA requirements",
+    icon: "☁️",
+    title: "Cloud Sync",
+    description: "Access your logbook across all devices",
   },
 ];
 
+// Customize: Your app's colors
+const colors = {
+  primary: "#007AFF",
+  success: "#34C759",
+  warning: "#FF9500",
+};
+
 export default function PaywallScreen() {
   const router = useRouter();
+
+  // Get subscription state and methods from context
   const {
     packages,
     loading,
     isSubscribed,
     isWeb,
-    isConfigured,
     purchasePackage,
     restorePurchases,
   } = useSubscription();
 
-  const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(packages[0] || null);
+  const [selectedPackage, setSelectedPackage] =
+    useState<PurchasesPackage | null>(packages[0] || null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
-  
-  // Custom modal state for success messages
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [successTitle, setSuccessTitle] = useState("");
-
-  // Custom modal state for error messages
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [errorTitle, setErrorTitle] = useState("");
 
   // Update selected package when packages load
   React.useEffect(() => {
@@ -103,20 +88,15 @@ export default function PaywallScreen() {
     if (!selectedPackage) return;
 
     try {
-      console.log('[Paywall] Starting purchase flow');
       setPurchasing(true);
       const success = await purchasePackage(selectedPackage);
       if (success) {
-        console.log('[Paywall] Purchase successful, navigating to main app');
-        setSuccessTitle("Welcome Aboard! ⚓");
-        setSuccessMessage("Thank you for upgrading to SeaTime Tracker Pro.");
-        setShowSuccessModal(true);
+        Alert.alert("Welcome!", "Thank you for your purchase.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
       }
     } catch (error: any) {
-      console.error('[Paywall] Purchase failed:', error);
-      setErrorTitle("Purchase Failed");
-      setErrorMessage(error.message || "Please try again.");
-      setShowErrorModal(true);
+      Alert.alert("Purchase Failed", error.message || "Please try again.");
     } finally {
       setPurchasing(false);
     }
@@ -125,561 +105,337 @@ export default function PaywallScreen() {
   // Handle restore
   const handleRestore = async () => {
     try {
-      console.log('[Paywall] Starting restore flow');
       setRestoring(true);
       const restored = await restorePurchases();
       if (restored) {
-        console.log('[Paywall] Restore successful, navigating to main app');
-        setSuccessTitle("Subscription Restored! ⚓");
-        setSuccessMessage("Your SeaTime Tracker Pro subscription has been restored.");
-        setShowSuccessModal(true);
+        Alert.alert("Restored!", "Your subscription has been restored.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
       } else {
-        console.log('[Paywall] No purchases found to restore');
-        setErrorTitle("No Purchases Found");
-        setErrorMessage("We couldn't find any previous purchases for this account.");
-        setShowErrorModal(true);
+        Alert.alert(
+          "No Purchases Found",
+          "We couldn't find any previous purchases."
+        );
       }
     } catch (error: any) {
-      console.error('[Paywall] Restore failed:', error);
-      setErrorTitle("Restore Failed");
-      setErrorMessage(error.message || "Please try again.");
-      setShowErrorModal(true);
+      Alert.alert("Restore Failed", error.message || "Please try again.");
     } finally {
       setRestoring(false);
     }
   };
 
   const handleClose = () => {
-    console.log('[Paywall] User dismissed paywall - navigating to main app');
-    router.replace('/(tabs)');
-  };
-
-  const handleSuccessModalClose = () => {
-    console.log('[Paywall] Success modal closed, navigating to main app');
-    setShowSuccessModal(false);
-    router.replace('/(tabs)');
-  };
-
-  const handleErrorModalClose = () => {
-    console.log('[Paywall] Error modal closed');
-    setShowErrorModal(false);
-  };
-
-  const handleAdminMenu = () => {
-    console.log('[Paywall] User tapped Admin button - navigating to admin menu');
-    router.push('/admin-menu');
-  };
-
-  // Handle legal links
-  const handleTermsPress = () => {
-    const termsUrl = "https://www.forelandmarine.com/terms";
-    Linking.openURL(termsUrl).catch(() => {
-      setErrorTitle("Error");
-      setErrorMessage("Could not open Terms of Service");
-      setShowErrorModal(true);
-    });
-  };
-
-  const handlePrivacyPress = () => {
-    const privacyUrl = "https://www.forelandmarine.com/privacy";
-    Linking.openURL(privacyUrl).catch(() => {
-      setErrorTitle("Error");
-      setErrorMessage("Could not open Privacy Policy");
-      setShowErrorModal(true);
-    });
+    router.back();
   };
 
   // Handle app store links for web
   const handleDownloadApp = () => {
-    const iosUrl = "https://apps.apple.com/app/seatime-tracker";
-    const androidUrl = "https://play.google.com/store/apps/details?id=com.forelandmarine.seatimetracker";
+    // TODO: Replace with your actual app store URLs
+    const iosUrl = "https://apps.apple.com/app/your-app-id";
+    const androidUrl = "https://play.google.com/store/apps/details?id=your.app.id";
 
-    // For web, we can use a simple approach
-    if (Platform.OS === 'ios') {
-      Linking.openURL(iosUrl);
-    } else {
-      Linking.openURL(androidUrl);
-    }
+    // On web, we can't detect which device the user has, so show both options
+    Alert.alert(
+      "Download the App",
+      "To subscribe, please download our app from your device's app store.",
+      [
+        { text: "App Store (iOS)", onPress: () => Linking.openURL(iosUrl) },
+        { text: "Google Play", onPress: () => Linking.openURL(androidUrl) },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
   };
 
-  // Already subscribed
+  // Already subscribed - show celebration confirmation
   if (isSubscribed) {
     return (
-      <SafeAreaView style={styles.container}>
-        {/* Admin Button - Top Left */}
-        <TouchableOpacity style={styles.adminButton} onPress={handleAdminMenu}>
-          <IconSymbol
-            ios_icon_name="wrench.fill"
-            android_material_icon_name="settings"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+      <View style={styles.subscribedContainer}>
+        <LinearGradient
+          colors={["#667EEA", "#764BA2", "#f093fb"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.subscribedGradient}
+        >
+          {/* Decorative floating orbs */}
+          <View style={[styles.floatingOrb, styles.orb1]} />
+          <View style={[styles.floatingOrb, styles.orb2]} />
+          <View style={[styles.floatingOrb, styles.orb3]} />
 
-        {/* Close Button - Always visible */}
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <IconSymbol
-            ios_icon_name="xmark"
-            android_material_icon_name="close"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+          <SafeAreaView style={styles.subscribedSafeArea}>
+            {/* Close button */}
+            <TouchableOpacity style={styles.subscribedCloseButton} onPress={handleClose}>
+              <Text style={styles.subscribedCloseText}>✕</Text>
+            </TouchableOpacity>
 
-        <View style={styles.centeredContainer}>
-          <IconSymbol
-            ios_icon_name="checkmark.seal.fill"
-            android_material_icon_name="verified"
-            size={80}
-            color={colors.success}
-          />
-          <Text style={styles.subscribedTitle}>You&apos;re a Pro Member! ⚓</Text>
-          <Text style={styles.subscribedSubtitle}>
-            You have full access to all SeaTime Tracker Pro features.
-          </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleClose}>
-            <Text style={styles.primaryButtonText}>Continue Tracking</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+            <View style={styles.subscribedContent}>
+              {/* Celebration icon with glow */}
+              <View style={styles.celebrationIconContainer}>
+                <View style={styles.celebrationGlow} />
+                <Text style={styles.celebrationIcon}>🎉</Text>
+              </View>
+
+              {/* PRO MEMBER badge */}
+              <View style={styles.proMemberBadge}>
+                <Text style={styles.proMemberText}>PRO MEMBER</Text>
+              </View>
+
+              {/* Title */}
+              <Text style={styles.subscribedTitle}>You're All Set!</Text>
+              <Text style={styles.subscribedSubtitle}>
+                Welcome to the premium experience
+              </Text>
+
+              {/* Features card */}
+              <View style={styles.featuresCard}>
+                <Text style={styles.featuresCardTitle}>Unlocked Features</Text>
+                {FEATURES.slice(0, 3).map((feature, index) => (
+                  <View key={index} style={styles.featureCheckRow}>
+                    <View style={styles.checkCircle}>
+                      <Text style={styles.checkMark}>✓</Text>
+                    </View>
+                    <Text style={styles.featureCheckText}>{feature.title}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Start Exploring button */}
+              <TouchableOpacity style={styles.exploreButton} onPress={handleClose}>
+                <View style={styles.exploreButtonInner}>
+                  <Text style={styles.exploreButtonText}>Start Exploring</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
     );
   }
+
+  // Feature icon background colors (rotating by index)
+  const featureIconColors = [
+    "rgba(255, 215, 0, 0.25)",   // Gold
+    "rgba(76, 217, 100, 0.25)",  // Green
+    "rgba(255, 149, 0, 0.25)",   // Orange
+    "rgba(90, 200, 250, 0.25)",  // Blue
+  ];
 
   // Loading state
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        {/* Admin Button - Top Left */}
-        <TouchableOpacity style={styles.adminButton} onPress={handleAdminMenu}>
-          <IconSymbol
-            ios_icon_name="wrench.fill"
-            android_material_icon_name="settings"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={["#667EEA", "#764BA2", "#f093fb"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        >
+          {/* Decorative floating orbs */}
+          <View style={[styles.floatingOrb, styles.orb1]} />
+          <View style={[styles.floatingOrb, styles.orb2]} />
+          <View style={[styles.floatingOrb, styles.orb3]} />
 
-        {/* Close Button - Always visible */}
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <IconSymbol
-            ios_icon_name="xmark"
-            android_material_icon_name="close"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        <View style={styles.centeredContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading subscription options...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Not configured - show helpful message
-  if (!isWeb && !isConfigured) {
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Admin Button - Top Left */}
-        <TouchableOpacity style={styles.adminButton} onPress={handleAdminMenu}>
-          <IconSymbol
-            ios_icon_name="wrench.fill"
-            android_material_icon_name="settings"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        {/* Close Button - Always visible */}
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <IconSymbol
-            ios_icon_name="xmark"
-            android_material_icon_name="close"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        <View style={styles.centeredContainer}>
-          <IconSymbol
-            ios_icon_name="exclamationmark.triangle"
-            android_material_icon_name="warning"
-            size={80}
-            color={colors.warning}
-          />
-          <Text style={styles.errorTitle}>RevenueCat Not Configured</Text>
-          <Text style={styles.errorSubtitle}>
-            The RevenueCat SDK is not properly configured. This usually means the API key is missing or invalid.
-          </Text>
-          <View style={styles.troubleshootingContainer}>
-            <Text style={styles.troubleshootingTitle}>Quick Fix:</Text>
-            <Text style={styles.troubleshootingStep}>
-              1. Check that app.json has a valid API key
-            </Text>
-            <Text style={styles.troubleshootingStep}>
-              2. iOS keys start with &quot;appl_&quot;
-            </Text>
-            <Text style={styles.troubleshootingStep}>
-              3. Use admin menu to activate a test subscription
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleAdminMenu}>
-            <Text style={styles.primaryButtonText}>Open Admin Menu</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tertiaryButton} onPress={handleClose}>
-            <Text style={styles.tertiaryButtonText}>Maybe Later</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.centeredContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Admin Button - Top Left */}
-      <TouchableOpacity style={styles.adminButton} onPress={handleAdminMenu}>
-        <IconSymbol
-          ios_icon_name="wrench.fill"
-          android_material_icon_name="settings"
-          size={20}
-          color={colors.textSecondary}
-        />
-      </TouchableOpacity>
-
-      {/* Close Button - Always visible and prominent */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-        <IconSymbol
-          ios_icon_name="xmark"
-          android_material_icon_name="close"
-          size={20}
-          color={colors.textSecondary}
-        />
-      </TouchableOpacity>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["#667EEA", "#764BA2", "#f093fb"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <IconSymbol
-            ios_icon_name="anchor.fill"
-            android_material_icon_name="anchor"
-            size={60}
-            color={colors.primary}
-          />
-          <Text style={styles.title}>SeaTime Tracker Pro</Text>
-          <Text style={styles.subtitle}>
-            Professional sea time tracking for maritime professionals
-          </Text>
-        </View>
+        {/* Decorative floating orbs */}
+        <View style={[styles.floatingOrb, styles.orb1]} />
+        <View style={[styles.floatingOrb, styles.orb2]} />
+        <View style={[styles.floatingOrb, styles.orb3]} />
 
-        {/* Features List */}
-        <View style={styles.featuresContainer}>
-          {FEATURES.map((feature, index) => (
-            <View key={index} style={styles.featureRow}>
-              <View style={styles.featureIcon}>
-                <IconSymbol
-                  ios_icon_name="checkmark.circle.fill"
-                  android_material_icon_name={feature.icon}
-                  size={24}
-                  color={colors.primary}
-                />
+        <SafeAreaView style={styles.safeArea}>
+          {/* Close Button */}
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              {/* Premium badge */}
+              <View style={styles.premiumBadge}>
+                <Text style={styles.premiumBadgeText}>PREMIUM</Text>
               </View>
-              <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>
-                  {feature.description}
+              <Text style={styles.title}>Upgrade to Premium</Text>
+              <Text style={styles.subtitle}>
+                Unlock all features and get the most out of the app
+              </Text>
+            </View>
+
+            {/* Features List - Glass Card */}
+            <View style={styles.featuresCard}>
+              <Text style={styles.featuresCardTitle}>What You'll Get</Text>
+              {FEATURES.map((feature, index) => (
+                <View key={index} style={styles.featureRow}>
+                  <View style={[styles.featureIcon, { backgroundColor: featureIconColors[index % featureIconColors.length] }]}>
+                    <Text style={styles.featureIconText}>{feature.icon}</Text>
+                  </View>
+                  <View style={styles.featureText}>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureDescription}>
+                      {feature.description}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Web platform message */}
+            {isWeb && (
+              <View style={styles.webMessageContainer}>
+                <Text style={styles.webMessageTitle}>Preview Mode</Text>
+                <Text style={styles.webMessageText}>
+                  This is a preview of your paywall. Actual prices will be loaded
+                  from RevenueCat when running on iOS or Android.
                 </Text>
               </View>
-            </View>
-          ))}
-        </View>
+            )}
 
-        {/* Web platform message */}
-        {isWeb && (
-          <View style={styles.webMessageContainer}>
-            <IconSymbol
-              ios_icon_name="iphone"
-              android_material_icon_name="phone-iphone"
-              size={40}
-              color={colors.primary}
-            />
-            <Text style={styles.webMessageTitle}>Download the App</Text>
-            <Text style={styles.webMessageText}>
-              In-app purchases are only available in our mobile app.
-              Download SeaTime Tracker to subscribe and start tracking your sea time.
-            </Text>
-          </View>
-        )}
-
-        {/* Package Selection - only show on native */}
-        {!isWeb && packages.length > 0 && (
-          <View style={styles.packagesContainer}>
-            <Text style={styles.packagesTitle}>Choose Your Plan</Text>
-            {packages.map((pkg) => {
-              const isSelected = selectedPackage?.identifier === pkg.identifier;
-              const priceString = pkg.product.priceString;
-              const productTitle = pkg.product.title;
-              const hasIntroPrice = pkg.product.introPrice !== null;
-              
-              return (
-                <TouchableOpacity
-                  key={pkg.identifier}
-                  style={[
-                    styles.packageCard,
-                    isSelected && styles.packageCardSelected,
-                  ]}
-                  onPress={() => setSelectedPackage(pkg)}
-                >
-                  <View style={styles.packageHeader}>
-                    <View style={styles.packageTitleContainer}>
-                      <Text style={styles.packageTitle}>{productTitle}</Text>
-                      {hasIntroPrice && (
-                        <View style={styles.trialBadge}>
-                          <Text style={styles.trialBadgeText}>FREE TRIAL</Text>
-                        </View>
+            {/* Package Selection */}
+            {packages.length > 0 && (
+              <View style={styles.packagesContainer}>
+                {packages.map((pkg) => {
+                  const isSelected = selectedPackage?.identifier === pkg.identifier;
+                  return (
+                    <TouchableOpacity
+                      key={pkg.identifier}
+                      style={[
+                        styles.packageCard,
+                        isSelected && styles.packageCardSelected,
+                      ]}
+                      onPress={() => setSelectedPackage(pkg)}
+                    >
+                      {isSelected && <View style={styles.selectedIndicator} />}
+                      <View style={styles.packageHeader}>
+                        <Text style={styles.packageTitle}>{pkg.product.title}</Text>
+                        {isSelected && (
+                          <View style={styles.checkmarkCircle}>
+                            <Text style={styles.checkmark}>✓</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.packagePrice}>
+                        {pkg.product.priceString}
+                      </Text>
+                      {pkg.product.description && (
+                        <Text style={styles.packageDescription}>
+                          {pkg.product.description}
+                        </Text>
                       )}
-                    </View>
-                    {isSelected && (
-                      <IconSymbol
-                        ios_icon_name="checkmark.circle.fill"
-                        android_material_icon_name="check-circle"
-                        size={24}
-                        color={colors.primary}
-                      />
-                    )}
-                  </View>
-                  <Text style={styles.packagePrice}>
-                    {priceString}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* No packages available - only show on native */}
+            {!isWeb && packages.length === 0 && !loading && (
+              <View style={styles.noPackagesContainer}>
+                <Text style={styles.noPackagesText}>
+                  No subscription options available at this time.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Bottom Actions */}
+          <View style={styles.bottomActions}>
+            {/* Web: Show disabled subscribe button with mock price */}
+            {isWeb ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.primaryButton, styles.buttonDisabled]}
+                  disabled={true}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {selectedPackage
+                      ? `Subscribe for ${selectedPackage.product.priceString}`
+                      : "Select a plan"}
                   </Text>
-                  {pkg.product.description && (
-                    <Text style={styles.packageDescription}>
-                      {pkg.product.description}
+                </TouchableOpacity>
+                <Text style={styles.legalText}>
+                  Preview mode - purchases available in the mobile app
+                </Text>
+              </>
+            ) : (
+              <>
+                {/* Native: Subscribe Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    (!selectedPackage || purchasing) && styles.buttonDisabled,
+                  ]}
+                  onPress={handlePurchase}
+                  disabled={!selectedPackage || purchasing}
+                >
+                  {purchasing ? (
+                    <ActivityIndicator color="#764BA2" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>
+                      {selectedPackage
+                        ? `Subscribe for ${selectedPackage.product.priceString}`
+                        : "Select a plan"}
                     </Text>
                   )}
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
 
-        {/* No packages available - Enhanced error message */}
-        {!isWeb && packages.length === 0 && !loading && isConfigured && (
-          <View style={styles.noPackagesContainer}>
-            <IconSymbol
-              ios_icon_name="exclamationmark.triangle"
-              android_material_icon_name="warning"
-              size={64}
-              color={colors.warning}
-            />
-            <Text style={styles.errorTitle}>
-              No subscription options available
-            </Text>
-            <Text style={styles.errorSubtitle}>
-              RevenueCat is configured but no subscription packages were found. This usually means the offering needs to be set up in the RevenueCat dashboard.
-            </Text>
-            
-            {/* Troubleshooting steps */}
-            <View style={styles.troubleshootingContainer}>
-              <Text style={styles.troubleshootingTitle}>Possible causes:</Text>
-              <Text style={styles.troubleshootingStep}>
-                1. No offering is marked as &quot;Current&quot; in RevenueCat dashboard
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                2. The offering has no products attached
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                3. Products are not configured in App Store Connect
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                4. The entitlement ID doesn&apos;t match (currently using: &quot;pro&quot;)
-              </Text>
-            </View>
-            
-            {/* Quick actions */}
-            <View style={styles.troubleshootingContainer}>
-              <Text style={styles.troubleshootingTitle}>What you can do:</Text>
-              <Text style={styles.troubleshootingStep}>
-                • Check your internet connection
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                • Try the &quot;Restore Purchases&quot; button below
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                • Use the admin menu (wrench icon) to activate a test subscription
-              </Text>
-              <Text style={styles.troubleshootingStep}>
-                • Check the console logs for detailed error messages
-              </Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
+                {/* Restore Button */}
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={handleRestore}
+                  disabled={restoring}
+                >
+                  {restoring ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.secondaryButtonText}>Restore Purchases</Text>
+                  )}
+                </TouchableOpacity>
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        {/* Web: Show download button */}
-        {isWeb ? (
-          <>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleDownloadApp}
-            >
-              <Text style={styles.primaryButtonText}>Download App to Subscribe</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleClose}
-            >
-              <Text style={styles.secondaryButtonText}>Maybe Later</Text>
-            </TouchableOpacity>
-            <Text style={styles.legalText}>
-              Subscriptions are managed through the App Store or Google Play.
-            </Text>
-          </>
-        ) : (
-          <>
-            {/* Native: Subscribe Button - only show if packages available */}
-            {packages.length > 0 && (
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  (!selectedPackage || purchasing) && styles.buttonDisabled,
-                ]}
-                onPress={handlePurchase}
-                disabled={!selectedPackage || purchasing}
-              >
-                {purchasing ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    {selectedPackage && (
-                      <Text style={styles.primaryButtonText}>
-                        Subscribe for {selectedPackage.product.priceString}
-                      </Text>
-                    )}
-                    {!selectedPackage && (
-                      <Text style={styles.primaryButtonText}>
-                        Select a plan
-                      </Text>
-                    )}
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-
-            {/* Restore Button - Always show, more prominent when no packages */}
-            <TouchableOpacity
-              style={packages.length === 0 ? styles.primaryButton : styles.secondaryButton}
-              onPress={handleRestore}
-              disabled={restoring}
-            >
-              {restoring ? (
-                <ActivityIndicator size="small" color={packages.length === 0 ? "#fff" : colors.primary} />
-              ) : (
-                <Text style={packages.length === 0 ? styles.primaryButtonText : styles.secondaryButtonText}>
-                  Restore Purchases
+                {/* Legal Text - Required by App Store */}
+                <Text style={styles.legalText}>
+                  Payment will be charged to your{" "}
+                  {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account.
+                  Subscription automatically renews unless canceled at least 24 hours
+                  before the end of the current period.
                 </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Maybe Later Button - Required for App Store compliance */}
-            <TouchableOpacity
-              style={styles.tertiaryButton}
-              onPress={handleClose}
-            >
-              <Text style={styles.tertiaryButtonText}>Maybe Later</Text>
-            </TouchableOpacity>
-
-            {/* Subscription Terms - Required for App Store compliance */}
-            {packages.length > 0 && (
-              <Text style={styles.legalText}>
-                Payment will be charged to your{" "}
-                {Platform.OS === "ios" ? "Apple ID" : "Google Play"} account at confirmation of purchase.
-                Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period.
-                Your account will be charged for renewal within 24 hours prior to the end of the current period.
-                You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase.
-              </Text>
+              </>
             )}
-
-            {/* Legal Links - Required for App Store compliance */}
-            <View style={styles.legalLinks}>
-              <TouchableOpacity onPress={handleTermsPress}>
-                <Text style={styles.legalLinkText}>Terms of Service</Text>
-              </TouchableOpacity>
-              <Text style={styles.legalLinkSeparator}>•</Text>
-              <TouchableOpacity onPress={handlePrivacyPress}>
-                <Text style={styles.legalLinkText}>Privacy Policy</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </View>
-
-      {/* Success Modal - Custom modal for cross-platform compatibility */}
-      <Modal
-        visible={showSuccessModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleSuccessModalClose}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <IconSymbol
-              ios_icon_name="checkmark.circle.fill"
-              android_material_icon_name="check-circle"
-              size={64}
-              color={colors.success}
-            />
-            <Text style={styles.modalTitle}>{successTitle}</Text>
-            <Text style={styles.modalMessage}>{successMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleSuccessModalClose}
-            >
-              <Text style={styles.modalButtonText}>Start Tracking</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-
-      {/* Error Modal - Custom modal for cross-platform compatibility */}
-      <Modal
-        visible={showErrorModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleErrorModalClose}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <IconSymbol
-              ios_icon_name="exclamationmark.triangle"
-              android_material_icon_name="error"
-              size={64}
-              color={colors.error}
-            />
-            <Text style={styles.modalTitle}>{errorTitle}</Text>
-            <Text style={styles.modalMessage}>{errorMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleErrorModalClose}
-            >
-              <Text style={styles.modalButtonText}>OK</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  gradientBackground: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
   },
   centeredContainer: {
     flex: 1,
@@ -688,107 +444,94 @@ const styles = StyleSheet.create({
     padding: 32,
     gap: 16,
   },
-  subscribedTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center",
-    marginTop: 16,
-  },
-  subscribedSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
   loadingText: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: "rgba(255, 255, 255, 0.85)",
     marginTop: 16,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center",
-    marginTop: 16,
-  },
-  errorSubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-    marginTop: 8,
-  },
-  adminButton: {
-    position: "absolute",
-    top: 60,
-    left: 20,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.cardBackground,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   closeButton: {
     position: "absolute",
-    top: 60,
+    top: 16,
     right: 20,
     zIndex: 10,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.cardBackground,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: "#fff",
+    fontWeight: "600",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 24,
-    paddingTop: 80,
+    paddingTop: 60,
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  premiumBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  premiumBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 1.5,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
-    color: colors.text,
+    color: "#fff",
     textAlign: "center",
-    marginTop: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: "rgba(255, 255, 255, 0.85)",
     textAlign: "center",
     marginTop: 8,
   },
-  featuresContainer: {
-    gap: 20,
-    marginBottom: 32,
+  featuresCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+  },
+  featuresCardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.7)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 16,
+    textAlign: "center",
   },
   featureRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 16,
+    marginBottom: 12,
   },
   featureIcon: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.cardBackground,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  featureIconText: {
+    fontSize: 20,
   },
   featureText: {
     flex: 1,
@@ -796,121 +539,98 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.text,
+    color: "#fff",
   },
   featureDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
-    lineHeight: 20,
+    color: "rgba(255, 255, 255, 0.75)",
+    marginTop: 2,
   },
   packagesContainer: {
     gap: 12,
-    marginBottom: 16,
-  },
-  packagesTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 8,
   },
   packageCard: {
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    overflow: "hidden",
   },
   packageCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.cardBackground,
+    borderColor: "#fff",
+    borderWidth: 2,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
+  selectedIndicator: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "#fff",
   },
   packageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
-  },
-  packageTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
   },
   packageTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.text,
-  },
-  trialBadge: {
-    backgroundColor: colors.success,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  trialBadgeText: {
-    fontSize: 10,
-    fontWeight: "bold",
     color: "#fff",
+  },
+  checkmarkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkmark: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "bold",
   },
   packagePrice: {
     fontSize: 24,
     fontWeight: "bold",
-    color: colors.primary,
-    marginBottom: 4,
+    color: "#fff",
+    marginTop: 8,
   },
   packageDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
+    color: "rgba(255, 255, 255, 0.75)",
+    marginTop: 4,
   },
   noPackagesContainer: {
     padding: 24,
     alignItems: "center",
-    gap: 16,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  troubleshootingContainer: {
-    width: "100%",
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    gap: 8,
-  },
-  troubleshootingTitle: {
+  noPackagesText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  troubleshootingStep: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
+    color: "rgba(255, 255, 255, 0.85)",
+    textAlign: "center",
   },
   webMessageContainer: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    gap: 12,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   webMessageTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
-    color: colors.text,
+    color: "#fff",
+    marginBottom: 8,
     textAlign: "center",
   },
   webMessageText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: "rgba(255, 255, 255, 0.85)",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -918,18 +638,20 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 32,
     gap: 12,
-    backgroundColor: colors.cardBackground,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: "#fff",
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   primaryButtonText: {
-    color: "#fff",
+    color: "#764BA2",
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -942,84 +664,169 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  tertiaryButton: {
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  tertiaryButtonText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.9)",
   },
   legalText: {
     fontSize: 11,
-    color: colors.textSecondary,
+    color: "rgba(255, 255, 255, 0.6)",
     textAlign: "center",
     lineHeight: 16,
-    marginTop: 8,
   },
-  legalLinks: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  legalLinkText: {
-    fontSize: 12,
-    color: colors.primary,
-    textDecorationLine: "underline",
-  },
-  legalLinkSeparator: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  // Custom Modal Styles
-  modalOverlay: {
+
+  // Subscribed celebration styles
+  subscribedContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  subscribedGradient: {
+    flex: 1,
+  },
+  subscribedSafeArea: {
+    flex: 1,
+  },
+  floatingOrb: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  orb1: {
+    width: 200,
+    height: 200,
+    top: -50,
+    right: -50,
+  },
+  orb2: {
+    width: 150,
+    height: 150,
+    bottom: 100,
+    left: -40,
+  },
+  orb3: {
+    width: 100,
+    height: 100,
+    top: SCREEN_HEIGHT * 0.3,
+    right: 20,
+  },
+  subscribedCloseButton: {
+    position: "absolute",
+    top: 16,
+    right: 20,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
   },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: "center",
-    gap: 16,
-    maxWidth: 400,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: colors.text,
-    textAlign: "center",
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  modalButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    marginTop: 8,
-    minWidth: 120,
-  },
-  modalButtonText: {
+  subscribedCloseText: {
+    fontSize: 18,
     color: "#fff",
-    fontSize: 16,
+    fontWeight: "600",
+  },
+  subscribedContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  celebrationIconContainer: {
+    position: "relative",
+    marginBottom: 20,
+  },
+  celebrationGlow: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    top: -20,
+    left: -20,
+  },
+  celebrationIcon: {
+    fontSize: 80,
+  },
+  proMemberBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  proMemberText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 1.5,
+  },
+  subscribedTitle: {
+    fontSize: 32,
     fontWeight: "bold",
+    color: "#fff",
     textAlign: "center",
+    marginBottom: 8,
+  },
+  subscribedSubtitle: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.85)",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  featuresCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    marginBottom: 32,
+  },
+  featuresCardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.7)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  featureCheckRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  checkMark: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  featureCheckText: {
+    fontSize: 16,
+    color: "#fff",
+    fontWeight: "500",
+  },
+  exploreButton: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  exploreButtonInner: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 18,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderRadius: 16,
+  },
+  exploreButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
