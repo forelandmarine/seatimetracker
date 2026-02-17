@@ -244,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[Auth] Could not read error response body:', textError);
         }
         
-        // Check if response is HTML (500 error page)
+        // Check if response is HTML (500 error page) - this should no longer happen after backend fix
         if (contentType?.includes('text/html') || errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
           console.error('[Auth] Received HTML error page instead of JSON - Backend returned 500 error');
           console.error('[Auth] This indicates a server-side crash or unhandled exception');
@@ -252,11 +252,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Server error: The authentication service encountered an internal error. This has been logged. Please try again in a few moments, or contact support if the issue persists.');
         }
         
-        // Try to parse JSON error
+        // Try to parse JSON error (backend now returns proper JSON errors)
         let errorData;
         try {
           errorData = JSON.parse(errorText);
           console.error('[Auth] Parsed error data:', errorData);
+          
+          // Backend now returns structured JSON errors with detailed messages
+          const errorMessage = errorData.error || errorData.message;
+          
+          if (errorMessage) {
+            // Use the backend's error message directly - it's now properly formatted
+            throw new Error(errorMessage);
+          }
+          
+          // Fallback to status-based messages if no error message in response
+          throw new Error(`Login failed (${response.status})`);
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
           console.error('[Auth] Raw error text:', errorText);
@@ -274,8 +285,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(`Login failed (${response.status}): ${errorText.substring(0, 100) || response.statusText}`);
           }
         }
-        
-        throw new Error(errorData.error || errorData.message || `Login failed (${response.status})`);
       }
 
       const data = await response.json();
@@ -374,10 +383,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-        } catch {
-          throw new Error(`Registration failed: ${errorText}`);
+          // Backend now returns structured JSON errors with detailed messages
+          const errorMessage = errorData.error || errorData.message;
+          throw new Error(errorMessage || `Registration failed (${response.status})`);
+        } catch (parseError) {
+          // If JSON parsing fails, provide a user-friendly message
+          if (response.status === 400) {
+            throw new Error('Invalid registration data. Please check your email and password.');
+          } else if (response.status === 409) {
+            throw new Error('This email is already registered. Please sign in instead.');
+          } else if (response.status === 500) {
+            throw new Error('Server error during registration. Please try again later.');
+          }
+          throw new Error(`Registration failed: ${errorText.substring(0, 100)}`);
         }
-        throw new Error(errorData.error || 'Registration failed');
       }
 
       const data = await response.json();
@@ -460,10 +479,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-        } catch {
-          throw new Error(`Apple sign in failed: ${errorText}`);
+          // Backend now returns structured JSON errors with detailed messages
+          const errorMessage = errorData.error || errorData.message;
+          throw new Error(errorMessage || `Apple sign in failed (${response.status})`);
+        } catch (parseError) {
+          // If JSON parsing fails, provide a user-friendly message
+          if (response.status === 400) {
+            throw new Error('Invalid Apple authentication token. Please try again.');
+          } else if (response.status === 401) {
+            throw new Error('Apple authentication failed. Please try again.');
+          } else if (response.status === 500) {
+            throw new Error('Server error during Apple sign in. Please try again later.');
+          }
+          throw new Error(`Apple sign in failed: ${errorText.substring(0, 100)}`);
         }
-        throw new Error(errorData.error || 'Apple sign in failed');
       }
 
       const data = await response.json();

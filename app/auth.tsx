@@ -39,6 +39,7 @@ export default function AuthScreen() {
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   const { signIn, signUp, signInWithApple } = useAuth();
   const { checkSubscription } = useSubscription();
   const router = useRouter();
@@ -132,11 +133,13 @@ export default function AuthScreen() {
       return;
     }
 
-    console.log('[AuthScreen] User tapped', isSignUp ? 'Sign Up' : 'Sign In', 'button');
+    const actionText = isSignUp ? 'Sign Up' : 'Sign In';
+    console.log('[AuthScreen] User tapped', actionText, 'button');
     console.log('[AuthScreen] Email:', email);
     console.log('[AuthScreen] Backend URL:', BACKEND_URL);
     console.log('[AuthScreen] Platform:', Platform.OS);
     console.log('[AuthScreen] Timestamp:', new Date().toISOString());
+    console.log('[AuthScreen] Retry count:', retryCount);
     
     setLoading(true);
     
@@ -161,6 +164,8 @@ export default function AuthScreen() {
         }
       }
 
+      // Reset retry count on success
+      setRetryCount(0);
       await handlePostAuthNavigation();
     } catch (error: any) {
       console.error('[AuthScreen] Auth failed:', error);
@@ -168,19 +173,26 @@ export default function AuthScreen() {
       console.error('[AuthScreen] Error message:', error.message);
       console.error('[AuthScreen] Error stack:', error.stack);
       
+      // Increment retry count
+      setRetryCount(prev => prev + 1);
+      
       let errorMsg = error.message || 'Authentication failed';
       
-      // Parse common error messages
+      // Parse common error messages with more helpful context
       if (errorMsg.includes('<!DOCTYPE') || errorMsg.includes('<html')) {
-        errorMsg = 'Server error (500). The backend may be experiencing issues. Please try again later.';
+        errorMsg = `Server error (500). The authentication service is experiencing issues.\n\nThis has been logged. Please try again in a few moments.\n\nIf the issue persists, please contact support.`;
+      } else if (errorMsg.includes('Server error') || errorMsg.includes('internal error')) {
+        errorMsg = `The authentication service encountered an error.\n\nPlease try again. If the problem continues, contact support.\n\nError details: ${errorMsg}`;
       } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
-        errorMsg = 'Cannot connect to server. Please check your internet connection.';
+        errorMsg = 'Cannot connect to server.\n\nPlease check your internet connection and try again.';
       } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-        errorMsg = 'Request timed out. The server may be slow or unreachable. Please try again.';
-      } else if (errorMsg.includes('401')) {
-        errorMsg = 'Invalid email or password. Please check your credentials.';
+        errorMsg = 'Request timed out.\n\nThe server may be slow or unreachable. Please try again.';
+      } else if (errorMsg.includes('401') || errorMsg.includes('Invalid email or password')) {
+        errorMsg = 'Invalid email or password.\n\nPlease check your credentials and try again.';
       } else if (errorMsg.includes('400')) {
-        errorMsg = 'Invalid request. Please check your email and password format.';
+        errorMsg = 'Invalid request.\n\nPlease check your email and password format.';
+      } else if (errorMsg.includes('Email already registered')) {
+        errorMsg = 'This email is already registered.\n\nPlease sign in instead, or use a different email.';
       }
       
       showError(errorMsg);
@@ -198,6 +210,7 @@ export default function AuthScreen() {
         return;
       }
 
+      console.log('[AuthScreen] User tapped Sign in with Apple button');
       setLoading(true);
       
       const credential = await AppleAuthentication.signInAsync({
@@ -221,22 +234,29 @@ export default function AuthScreen() {
         } : undefined,
       };
       
+      console.log('[AuthScreen] Apple credential received, signing in...');
       await signInWithApple(credential.identityToken, appleUserData);
+      
+      // Reset retry count on success
+      setRetryCount(0);
       await handlePostAuthNavigation();
     } catch (error: any) {
       console.error('[AuthScreen] Apple sign in failed:', error);
       
       // Don't show error for user cancellation
       if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
+        console.log('[AuthScreen] User cancelled Apple sign in');
         return;
       }
       
       let errorMsg = 'Unable to sign in with Apple';
       
       if (error.code === 'ERR_INVALID_RESPONSE') {
-        errorMsg = 'Invalid response from Apple. Please try again.';
+        errorMsg = 'Invalid response from Apple.\n\nPlease try again.';
       } else if (error.message?.includes('Network') || error.message?.includes('timed out')) {
-        errorMsg = 'Cannot connect to server. Check your connection.';
+        errorMsg = 'Cannot connect to server.\n\nCheck your connection and try again.';
+      } else if (error.message?.includes('Server error') || error.message?.includes('internal error')) {
+        errorMsg = `The authentication service encountered an error.\n\nPlease try again. If the problem continues, contact support.`;
       } else if (error.message) {
         errorMsg = error.message;
       }
@@ -244,6 +264,15 @@ export default function AuthScreen() {
       showError(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    console.log('[AuthScreen] User tapped retry button');
+    setErrorModalVisible(false);
+    // Automatically retry the last action
+    if (email && password) {
+      handleEmailAuth();
     }
   };
 
@@ -362,7 +391,11 @@ export default function AuthScreen() {
 
         <TouchableOpacity
           style={styles.switchButton}
-          onPress={() => setIsSignUp(!isSignUp)}
+          onPress={() => {
+            console.log('[AuthScreen] User toggled between Sign In and Sign Up');
+            setIsSignUp(!isSignUp);
+            setRetryCount(0); // Reset retry count when switching modes
+          }}
         >
           <Text style={styles.switchText}>
             {isSignUp
@@ -415,7 +448,7 @@ export default function AuthScreen() {
         </Text>
       </View>
 
-      {/* Error Modal */}
+      {/* Enhanced Error Modal with Retry */}
       <Modal
         visible={errorModalVisible}
         transparent
@@ -426,12 +459,33 @@ export default function AuthScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Sign In Error</Text>
             <Text style={styles.modalMessage}>{errorMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => setErrorModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>OK</Text>
-            </TouchableOpacity>
+            
+            {retryCount > 0 && (
+              <Text style={styles.retryText}>
+                Attempt {retryCount} failed
+              </Text>
+            )}
+            
+            <View style={styles.modalButtons}>
+              {email && password && (
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.retryButton]}
+                  onPress={handleRetry}
+                >
+                  <Text style={styles.modalButtonText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.dismissButton]}
+                onPress={() => {
+                  console.log('[AuthScreen] User dismissed error modal');
+                  setErrorModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -638,15 +692,32 @@ function createStyles(isDark: boolean) {
     modalMessage: {
       fontSize: 16,
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 24,
+      marginBottom: 16,
       textAlign: 'center',
       lineHeight: 24,
     },
+    retryText: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginBottom: 16,
+      textAlign: 'center',
+      fontStyle: 'italic',
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
     modalButton: {
-      backgroundColor: colors.primary,
+      flex: 1,
       borderRadius: 12,
       padding: 16,
       alignItems: 'center',
+    },
+    retryButton: {
+      backgroundColor: colors.primary,
+    },
+    dismissButton: {
+      backgroundColor: isDark ? colors.border : colors.borderLight,
     },
     modalButtonText: {
       color: '#FFFFFF',

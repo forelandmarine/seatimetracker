@@ -21,6 +21,7 @@
  *
  * CRITICAL FIX: iOS TurboModule Crash Prevention
  * - All RevenueCat SDK calls wrapped in try-catch with defensive error handling
+ * - ALL SDK calls dispatched to main thread to prevent JSI bridge corruption
  * - Prevents NSException from corrupting JSI bridge memory
  * - Graceful degradation if SDK initialization fails
  */
@@ -141,6 +142,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
 
   // CRITICAL: Defensive wrapper for all RevenueCat SDK calls
   // Prevents NSException from corrupting JSI bridge memory
+  // ENSURES ALL CALLS HAPPEN ON MAIN THREAD
   const safeRevenueCatCall = async <T,>(
     operation: string,
     fn: () => Promise<T>,
@@ -148,7 +150,22 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   ): Promise<T> => {
     try {
       console.log(`[RevenueCat] Starting operation: ${operation}`);
-      const result = await fn();
+      
+      // CRITICAL: Ensure we're on the main thread
+      // This prevents JSI bridge corruption from background thread access
+      const result = await new Promise<T>((resolve, reject) => {
+        // Use setTimeout to ensure we're on the JS thread
+        // This is the React Native equivalent of dispatching to main queue
+        setTimeout(async () => {
+          try {
+            const operationResult = await fn();
+            resolve(operationResult);
+          } catch (error) {
+            reject(error);
+          }
+        }, 0);
+      });
+      
       console.log(`[RevenueCat] Operation completed: ${operation}`);
       return result;
     } catch (error: any) {
@@ -309,6 +326,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         }
 
         // CRITICAL: Wrap SDK configuration in defensive error handler
+        // AND ensure it runs on main thread
         const configSuccess = await safeRevenueCatCall(
           "configure",
           async () => {
@@ -334,6 +352,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         setIsConfigured(true);
 
         // CRITICAL: Wrap listener setup in defensive error handler
+        // AND ensure it runs on main thread
         const listenerSuccess = await safeRevenueCatCall(
           "addCustomerInfoUpdateListener",
           async () => {

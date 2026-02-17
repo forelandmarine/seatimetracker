@@ -85,28 +85,77 @@ app.fastify.addHook('onRequest', async (request) => {
   }, 'API request');
 });
 
+// Ensure JSON responses for authentication errors
+app.fastify.addHook('onSend', async (request, reply, payload) => {
+  // If the response is an error (4xx or 5xx), ensure it's JSON
+  if (reply.statusCode >= 400) {
+    const contentType = reply.getHeader('content-type');
+
+    // If response is HTML or undefined, convert to JSON
+    if (!contentType || contentType.toString().includes('text/html')) {
+      app.logger.debug(
+        { statusCode: reply.statusCode, path: request.url, contentType },
+        'Converting error response to JSON'
+      );
+
+      reply.type('application/json');
+
+      // If payload is HTML string, extract error or use default message
+      if (typeof payload === 'string' && payload.includes('<')) {
+        const statusMessage = reply.statusCode === 404
+          ? 'Not found'
+          : reply.statusCode === 400
+          ? 'Bad request'
+          : reply.statusCode === 401
+          ? 'Unauthorized'
+          : reply.statusCode === 403
+          ? 'Forbidden'
+          : 'Internal server error';
+
+        return JSON.stringify({ error: statusMessage });
+      }
+    }
+  }
+
+  return payload;
+});
+
 // Global error handler to ensure JSON responses for all endpoints
 app.fastify.setErrorHandler(async (error, request, reply) => {
+  const statusCode = (error as any).statusCode || 500;
+  const errorName = (error as any).name || 'Error';
+  const errorMessage = (error as any).message || 'Unknown error';
+  const errorStack = (error as any).stack;
+
   app.logger.error(
     {
       err: error,
+      errorName,
+      errorMessage,
+      statusCode,
       method: request.method,
       path: request.url,
-      statusCode: (error as any).statusCode || 500,
+      url: request.url,
+      headers: request.headers,
     },
-    'Unhandled error in request'
+    `Request error: ${errorName} - ${errorMessage}`
   );
 
-  // Always return JSON for API errors
-  const statusCode = (error as any).statusCode || 500;
-  const errorMessage = statusCode === 404
+  // Always return JSON for API errors - never HTML
+  const responseMessage = statusCode === 404
     ? 'Not found'
     : statusCode === 400
-    ? (error as any).message || 'Bad request'
+    ? errorMessage || 'Bad request'
+    : statusCode === 401
+    ? 'Unauthorized'
+    : statusCode === 403
+    ? 'Forbidden'
     : 'Internal server error';
 
-  return reply.code(statusCode).type('application/json').send({
-    error: errorMessage,
+  // Ensure we always send JSON, never HTML
+  reply.type('application/json');
+  return reply.code(statusCode).send({
+    error: responseMessage,
   });
 });
 
