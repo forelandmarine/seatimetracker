@@ -149,15 +149,34 @@ export default function PaywallScreen() {
     }
   };
 
+  // Safe navigation handler - handles all edge cases
   const handleClose = () => {
     console.log('[Paywall] User dismissed paywall - navigating to main app');
-    router.replace('/(tabs)');
+    try {
+      // Try to navigate to tabs - this is the safest approach
+      // Using replace ensures we don't add to the navigation stack
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('[Paywall] Navigation error:', error);
+      // Fallback: try to go back if replace fails
+      try {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          // Last resort: push to tabs
+          router.push('/(tabs)');
+        }
+      } catch (fallbackError) {
+        console.error('[Paywall] Fallback navigation also failed:', fallbackError);
+      }
+    }
   };
 
   const handleSuccessModalClose = () => {
     console.log('[Paywall] Success modal closed, navigating to main app');
     setShowSuccessModal(false);
-    router.replace('/(tabs)');
+    // Use the same safe navigation handler
+    handleClose();
   };
 
   const handleErrorModalClose = () => {
@@ -167,7 +186,11 @@ export default function PaywallScreen() {
 
   const handleAdminMenu = () => {
     console.log('[Paywall] User tapped Admin button - navigating to admin menu');
-    router.push('/admin-menu');
+    try {
+      router.push('/admin-menu');
+    } catch (error) {
+      console.error('[Paywall] Failed to navigate to admin menu:', error);
+    }
   };
 
   // Handle legal links
