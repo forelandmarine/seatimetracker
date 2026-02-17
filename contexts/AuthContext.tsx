@@ -253,38 +253,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         // Try to parse JSON error (backend now returns proper JSON errors)
-        let errorData;
+        let errorData: any = null;
         try {
           errorData = JSON.parse(errorText);
           console.error('[Auth] Parsed error data:', errorData);
-          
-          // Backend now returns structured JSON errors with detailed messages
-          const errorMessage = errorData.error || errorData.message;
-          
-          if (errorMessage) {
-            // Use the backend's error message directly - it's now properly formatted
-            throw new Error(errorMessage);
-          }
-          
-          // Fallback to status-based messages if no error message in response
-          throw new Error(`Login failed (${response.status})`);
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
           console.error('[Auth] Raw error text:', errorText);
-          
-          // Provide more specific error messages based on status code
-          if (response.status === 500) {
-            throw new Error('Server error: The authentication service is experiencing issues. Please try again later.');
-          } else if (response.status === 401) {
-            throw new Error('Invalid email or password. Please check your credentials and try again.');
-          } else if (response.status === 400) {
-            throw new Error('Invalid request. Please check your email and password format.');
-          } else if (response.status === 503) {
-            throw new Error('Service temporarily unavailable. Please try again in a few moments.');
-          } else {
-            throw new Error(`Login failed (${response.status}): ${errorText.substring(0, 100) || response.statusText}`);
-          }
         }
+
+        const errorMessage = errorData?.error || errorData?.message;
+        if (errorMessage) {
+          throw new Error(errorMessage);
+        }
+
+        // Provide more specific error messages based on status code
+        if (response.status === 500) {
+          throw new Error('Server error: The authentication service is experiencing issues. Please try again later.');
+        } else if (response.status === 401) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (response.status === 400) {
+          throw new Error('Invalid request. Please check your email and password format.');
+        } else if (response.status === 503) {
+          throw new Error('Service temporarily unavailable. Please try again in a few moments.');
+        }
+
+        throw new Error(`Login failed (${response.status}): ${errorText.substring(0, 100) || response.statusText}`);
       }
 
       const data = await response.json();
