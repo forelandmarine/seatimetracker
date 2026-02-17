@@ -47,8 +47,8 @@
       [
         "./plugins/with-revenuecat",
         {
-          "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-          "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd"
+          "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+          "androidApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ"
         }
       ],
       "expo-apple-authentication"
@@ -62,7 +62,7 @@
       },
       "backendUrl": "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev",
       "revenueCat": {
-        "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+        "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
         "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd"
       },
       "eas": {
