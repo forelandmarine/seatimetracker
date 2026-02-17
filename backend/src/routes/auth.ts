@@ -77,6 +77,7 @@ export function register(app: App, fastify: FastifyInstance) {
             },
           },
           400: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -87,6 +88,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       try {
         // Check if user already exists
+        app.logger.debug({ email }, 'Checking if user already exists');
         const existingUser = await app.db
           .select()
           .from(authSchema.user)
@@ -100,6 +102,7 @@ export function register(app: App, fastify: FastifyInstance) {
         }
 
         // Create user
+        app.logger.debug({ email, name }, 'Creating new user');
         const userId = crypto.randomUUID();
         const [user] = await app.db
           .insert(authSchema.user)
@@ -114,9 +117,11 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.info({ userId, email }, 'User created');
 
         // Create default notification schedule for the user
+        app.logger.debug({ userId }, 'Creating notification schedule');
         await ensureUserNotificationSchedule(app, userId);
 
         // Create account with password
+        app.logger.debug({ userId, email }, 'Creating password account');
         const accountId = crypto.randomUUID();
         const passwordHash = hashPassword(password);
         await app.db
@@ -132,6 +137,7 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.info({ userId, email }, 'Account created with password');
 
         // Create session
+        app.logger.debug({ userId }, 'Creating session');
         const sessionId = crypto.randomUUID();
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -146,7 +152,7 @@ export function register(app: App, fastify: FastifyInstance) {
           })
           .returning();
 
-        app.logger.info({ userId, sessionId }, 'Session created');
+        app.logger.info({ userId, sessionId }, 'Session created successfully');
 
         return reply.code(200).send({
           user: {
@@ -165,9 +171,9 @@ export function register(app: App, fastify: FastifyInstance) {
           },
         });
       } catch (error) {
-        app.logger.error({ err: error, email }, 'Registration error');
-        return reply.code(400).send({
-          error: 'Failed to register user',
+        app.logger.error({ err: error, email, name }, 'Registration error: database or processing error');
+        return reply.code(500).send({
+          error: 'Internal server error',
         });
       }
     }
@@ -214,7 +220,9 @@ export function register(app: App, fastify: FastifyInstance) {
               },
             },
           },
+          400: { type: 'object', properties: { error: { type: 'string' } } },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -316,8 +324,8 @@ export function register(app: App, fastify: FastifyInstance) {
         });
       } catch (error) {
         app.logger.error({ err: error, email }, 'Sign-in error: database or processing error');
-        return reply.code(401).send({
-          error: 'Authentication failed',
+        return reply.code(500).send({
+          error: 'Internal server error',
         });
       }
     }

@@ -239,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorText = '';
         try {
           errorText = await response.text();
-          console.error('[Auth] Sign in error response body:', errorText.substring(0, 500));
+          console.error('[Auth] Sign in error response body (first 1000 chars):', errorText.substring(0, 1000));
         } catch (textError) {
           console.error('[Auth] Could not read error response body:', textError);
         }
@@ -247,7 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check if response is HTML (500 error page)
         if (contentType?.includes('text/html') || errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
           console.error('[Auth] Received HTML error page instead of JSON - Backend returned 500 error');
-          throw new Error('Server error (500). The backend encountered an internal error. Please try again or contact support if the issue persists.');
+          console.error('[Auth] This indicates a server-side crash or unhandled exception');
+          console.error('[Auth] Full error page:', errorText);
+          throw new Error('Server error: The authentication service encountered an internal error. This has been logged. Please try again in a few moments, or contact support if the issue persists.');
         }
         
         // Try to parse JSON error
@@ -257,7 +259,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[Auth] Parsed error data:', errorData);
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
-          throw new Error(`Login failed (${response.status}): ${errorText || response.statusText}`);
+          console.error('[Auth] Raw error text:', errorText);
+          
+          // Provide more specific error messages based on status code
+          if (response.status === 500) {
+            throw new Error('Server error: The authentication service is experiencing issues. Please try again later.');
+          } else if (response.status === 401) {
+            throw new Error('Invalid email or password. Please check your credentials and try again.');
+          } else if (response.status === 400) {
+            throw new Error('Invalid request. Please check your email and password format.');
+          } else if (response.status === 503) {
+            throw new Error('Service temporarily unavailable. Please try again in a few moments.');
+          } else {
+            throw new Error(`Login failed (${response.status}): ${errorText.substring(0, 100) || response.statusText}`);
+          }
         }
         
         throw new Error(errorData.error || errorData.message || `Login failed (${response.status})`);

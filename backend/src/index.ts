@@ -85,6 +85,31 @@ app.fastify.addHook('onRequest', async (request) => {
   }, 'API request');
 });
 
+// Global error handler to ensure JSON responses for all endpoints
+app.fastify.setErrorHandler(async (error, request, reply) => {
+  app.logger.error(
+    {
+      err: error,
+      method: request.method,
+      path: request.url,
+      statusCode: (error as any).statusCode || 500,
+    },
+    'Unhandled error in request'
+  );
+
+  // Always return JSON for API errors
+  const statusCode = (error as any).statusCode || 500;
+  const errorMessage = statusCode === 404
+    ? 'Not found'
+    : statusCode === 400
+    ? (error as any).message || 'Bad request'
+    : 'Internal server error';
+
+  return reply.code(statusCode).type('application/json').send({
+    error: errorMessage,
+  });
+});
+
 // Verify database connection on startup
 app.fastify.addHook('onReady', async () => {
   app.logger.info('Application ready - verifying database connection');

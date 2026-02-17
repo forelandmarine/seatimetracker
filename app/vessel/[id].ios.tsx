@@ -21,6 +21,8 @@ import {
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { useSubscriptionEnforcement } from '@/hooks/useSubscriptionEnforcement';
+import { SubscriptionPromptModal } from '@/components/SubscriptionPromptModal';
 
 interface Vessel {
   id: string;
@@ -80,6 +82,7 @@ export default function VesselDetailScreen() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const styles = createStyles(isDark, insets.top);
+  const { requireSubscription, subscriptionPromptProps } = useSubscriptionEnforcement();
 
   const [vessel, setVessel] = useState<Vessel | null>(null);
   const [seaTimeEntries, setSeaTimeEntries] = useState<SeaTimeEntry[]>([]);
@@ -214,9 +217,16 @@ export default function VesselDetailScreen() {
   const handleActivateVessel = () => {
     if (!vessel) return;
 
+    // Check subscription before showing confirmation
+    if (!requireSubscription('vessel activation')) {
+      return;
+    }
+
+    const message = `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`;
+
     Alert.alert(
       'Activate Vessel',
-      `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -840,6 +850,9 @@ export default function VesselDetailScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Subscription Prompt Modal */}
+      <SubscriptionPromptModal {...subscriptionPromptProps} />
 
       {/* Edit Particulars Modal */}
       <Modal visible={editModalVisible} animationType="slide" transparent={true}>

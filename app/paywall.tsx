@@ -7,10 +7,17 @@
  * - Always dismissible (close button + "Maybe Later")
  * - Clear pricing before purchase
  * - Restore purchases easily accessible
+ * - Terms and privacy links
+ * - No external payment methods
  * - Subscription terms clearly stated
+ *
+ * CRITICAL FIX: iOS TurboModule Crash Prevention
+ * - All RevenueCat interactions wrapped in defensive error handling
+ * - Safe navigation with multiple fallbacks
+ * - Prevents NSException from crashing the app
  */
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -96,38 +103,103 @@ export default function PaywallScreen() {
     }
   }, [packages, selectedPackage]);
 
-  // Handle purchase
+  // CRITICAL: Safe navigation handler with comprehensive error handling
+  // Prevents crashes from navigation failures
+  const handleClose = useCallback(() => {
+    console.log('[Paywall] User dismissed paywall - attempting safe navigation');
+    
+    // Strategy 1: Try replace (cleanest approach)
+    try {
+      console.log('[Paywall] Attempting router.replace to /(tabs)');
+      router.replace('/(tabs)');
+      console.log('[Paywall] router.replace succeeded');
+      return;
+    } catch (replaceError) {
+      console.error('[Paywall] router.replace failed:', replaceError);
+    }
+    
+    // Strategy 2: Try back if available
+    try {
+      if (router.canGoBack()) {
+        console.log('[Paywall] Attempting router.back');
+        router.back();
+        console.log('[Paywall] router.back succeeded');
+        return;
+      }
+    } catch (backError) {
+      console.error('[Paywall] router.back failed:', backError);
+    }
+    
+    // Strategy 3: Try push as last resort
+    try {
+      console.log('[Paywall] Attempting router.push to /(tabs)');
+      router.push('/(tabs)');
+      console.log('[Paywall] router.push succeeded');
+      return;
+    } catch (pushError) {
+      console.error('[Paywall] router.push failed:', pushError);
+    }
+    
+    // Strategy 4: Try navigating to index
+    try {
+      console.log('[Paywall] All navigation methods failed, trying index');
+      router.push('/');
+      console.log('[Paywall] Navigation to index succeeded');
+    } catch (indexError) {
+      console.error('[Paywall] All navigation strategies failed:', indexError);
+      // At this point, we've tried everything. The modal will stay open
+      // but at least the app won't crash
+    }
+  }, [router]);
+
+  // Handle purchase with defensive error handling
   const handlePurchase = async () => {
     if (!selectedPackage) return;
 
     try {
       console.log('[Paywall] Starting purchase flow');
       setPurchasing(true);
+      
+      // Wrap purchase in try-catch to prevent crashes
       const success = await purchasePackage(selectedPackage);
+      
       if (success) {
-        console.log('[Paywall] Purchase successful, navigating to main app');
+        console.log('[Paywall] Purchase successful');
         setSuccessTitle("Welcome Aboard! ⚓");
         setSuccessMessage("Thank you for upgrading to SeaTime Tracker Pro.");
         setShowSuccessModal(true);
+      } else {
+        console.log('[Paywall] Purchase was not successful (user may have cancelled)');
       }
     } catch (error: any) {
-      console.error('[Paywall] Purchase failed:', error);
+      console.error('[Paywall] Purchase failed with error:', error);
+      
+      // Extract meaningful error message
+      let errorMsg = "Please try again.";
+      if (error?.message) {
+        errorMsg = error.message;
+      } else if (error?.userInfo?.readable_error_code) {
+        errorMsg = error.userInfo.readable_error_code;
+      }
+      
       setErrorTitle("Purchase Failed");
-      setErrorMessage(error.message || "Please try again.");
+      setErrorMessage(errorMsg);
       setShowErrorModal(true);
     } finally {
       setPurchasing(false);
     }
   };
 
-  // Handle restore
+  // Handle restore with defensive error handling
   const handleRestore = async () => {
     try {
       console.log('[Paywall] Starting restore flow');
       setRestoring(true);
+      
       const restored = await restorePurchases();
+      
       if (restored) {
-        console.log('[Paywall] Restore successful, navigating to main app');
+        console.log('[Paywall] Restore successful');
         setSuccessTitle("Subscription Restored! ⚓");
         setSuccessMessage("Your SeaTime Tracker Pro subscription has been restored.");
         setShowSuccessModal(true);
@@ -138,80 +210,63 @@ export default function PaywallScreen() {
         setShowErrorModal(true);
       }
     } catch (error: any) {
-      console.error('[Paywall] Restore failed:', error);
+      console.error('[Paywall] Restore failed with error:', error);
+      
+      let errorMsg = "Please try again.";
+      if (error?.message) {
+        errorMsg = error.message;
+      }
+      
       setErrorTitle("Restore Failed");
-      setErrorMessage(error.message || "Please try again.");
+      setErrorMessage(errorMsg);
       setShowErrorModal(true);
     } finally {
       setRestoring(false);
     }
   };
 
-  // Safe navigation handler - handles all edge cases
-  const handleClose = () => {
-    console.log('[Paywall] User dismissed paywall - navigating to main app');
-    try {
-      // Try to navigate to tabs - this is the safest approach
-      // Using replace ensures we don't add to the navigation stack
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('[Paywall] Navigation error:', error);
-      // Fallback: try to go back if replace fails
-      try {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          // Last resort: push to tabs
-          router.push('/(tabs)');
-        }
-      } catch (fallbackError) {
-        console.error('[Paywall] Fallback navigation also failed:', fallbackError);
-      }
-    }
-  };
-
-  const handleSuccessModalClose = () => {
+  const handleSuccessModalClose = useCallback(() => {
     console.log('[Paywall] Success modal closed, navigating to main app');
     setShowSuccessModal(false);
     // Use the same safe navigation handler
     handleClose();
-  };
+  }, [handleClose]);
 
-  const handleErrorModalClose = () => {
+  const handleErrorModalClose = useCallback(() => {
     console.log('[Paywall] Error modal closed');
     setShowErrorModal(false);
-  };
+  }, []);
 
-  const handleAdminMenu = () => {
+  const handleAdminMenu = useCallback(() => {
     console.log('[Paywall] User tapped Admin button - navigating to admin menu');
     try {
       router.push('/admin-menu');
     } catch (error) {
       console.error('[Paywall] Failed to navigate to admin menu:', error);
     }
-  };
+  }, [router]);
 
   // Handle legal links
-  const handleTermsPress = () => {
+  const handleTermsPress = useCallback(() => {
     const termsUrl = "https://www.forelandmarine.com/terms";
     Linking.openURL(termsUrl).catch(() => {
       setErrorTitle("Error");
       setErrorMessage("Could not open Terms of Service");
       setShowErrorModal(true);
     });
-  };
+  }, []);
 
-  const handlePrivacyPress = () => {
+  const handlePrivacyPress = useCallback(() => {
     const privacyUrl = "https://www.forelandmarine.com/privacy";
     Linking.openURL(privacyUrl).catch(() => {
       setErrorTitle("Error");
       setErrorMessage("Could not open Privacy Policy");
       setShowErrorModal(true);
     });
-  };
+  }, []);
 
   // Handle app store links for web
-  const handleDownloadApp = () => {
+  const handleDownloadApp = useCallback(() => {
     const iosUrl = "https://apps.apple.com/app/seatime-tracker";
     const androidUrl = "https://play.google.com/store/apps/details?id=com.forelandmarine.seatimetracker";
 
@@ -221,7 +276,7 @@ export default function PaywallScreen() {
     } else {
       Linking.openURL(androidUrl);
     }
-  };
+  }, []);
 
   // Already subscribed
   if (isSubscribed) {

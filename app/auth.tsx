@@ -135,6 +135,8 @@ export default function AuthScreen() {
     console.log('[AuthScreen] User tapped', isSignUp ? 'Sign Up' : 'Sign In', 'button');
     console.log('[AuthScreen] Email:', email);
     console.log('[AuthScreen] Backend URL:', BACKEND_URL);
+    console.log('[AuthScreen] Platform:', Platform.OS);
+    console.log('[AuthScreen] Timestamp:', new Date().toISOString());
     
     setLoading(true);
     
@@ -142,9 +144,11 @@ export default function AuthScreen() {
       if (isSignUp) {
         console.log('[AuthScreen] Calling signUp...');
         await signUp(email, password, name || 'User');
+        console.log('[AuthScreen] signUp completed successfully');
       } else {
         console.log('[AuthScreen] Calling signIn...');
         await signIn(email, password);
+        console.log('[AuthScreen] signIn completed successfully');
       }
 
       // Save credentials if remember me is checked

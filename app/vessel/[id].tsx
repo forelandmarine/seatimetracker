@@ -225,9 +225,11 @@ export default function VesselDetailScreen() {
       return;
     }
 
+    const message = `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`;
+
     Alert.alert(
       'Activate Vessel',
-      `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
