@@ -1,5 +1,6 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
+import { UpgradeButton } from "@/components/UpgradeButton";
 import React, { useState, useEffect, useCallback } from 'react';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -517,6 +518,8 @@ export default function ProfileScreen() {
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [showVesselModal, setShowVesselModal] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -818,37 +821,36 @@ export default function ProfileScreen() {
     }
   };
 
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-
   const handleSignOut = () => {
-    console.log('User tapped Sign Out button');
+    console.log('User tapped Sign Out button - showing modal');
     setShowSignOutModal(true);
   };
 
   const confirmSignOut = async () => {
-    console.log('User confirmed sign out in modal');
+    console.log('User confirmed sign out in modal - starting sign out process');
+    
+    // Prevent multiple clicks
+    if (signingOut) {
+      console.log('Sign out already in progress, ignoring duplicate click');
+      return;
+    }
+    
     setSigningOut(true);
     
     try {
-      // Call signOut (which clears local state immediately)
+      console.log('Calling signOut from AuthContext...');
       await signOut();
-      console.log('Sign out successful, closing modal and navigating to auth screen');
+      console.log('Sign out successful - user should be logged out');
       
-      // Close modal
+      // Close modal after successful sign out
       setShowSignOutModal(false);
-      setSigningOut(false);
-      
-      // Navigate to auth screen - use setTimeout to ensure modal closes first
-      setTimeout(() => {
-        console.log('Navigating to /auth after sign out');
-        router.replace('/auth');
-      }, 100);
     } catch (error) {
       console.error('Sign out error:', error);
       setShowSignOutModal(false);
-      setSigningOut(false);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
+    } finally {
+      setSigningOut(false);
+      console.log('Sign out process complete');
     }
   };
 
@@ -1181,6 +1183,7 @@ export default function ProfileScreen() {
                   style={styles.menuItemIcon}
                 />
                 <Text style={styles.menuItemText}>Notification Settings</Text>
+                <UpgradeButton variant="banner" />
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
@@ -1210,8 +1213,16 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          <TouchableOpacity 
+            style={styles.signOutButton} 
+            onPress={handleSignOut}
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>

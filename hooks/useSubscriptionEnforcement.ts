@@ -1,5 +1,6 @@
 
 import { useCallback, useState, useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authenticatedGet, authenticatedPatch } from '@/utils/api';
 
@@ -14,14 +15,19 @@ interface SubscriptionStatus {
  * Hook to enforce subscription requirements for premium features
  * 
  * Usage:
- * const { requireSubscription, showSubscriptionPrompt, subscriptionPromptProps } = useSubscriptionEnforcement();
+ * const { requireSubscription, handleSubscriptionError } = useSubscriptionEnforcement();
  * 
  * // Before performing a premium action:
- * if (!requireSubscription('vessel activation')) return;
+ * if (!requireSubscription()) return;
  * // ... perform action
  * 
- * // In your component JSX:
- * <SubscriptionPromptModal {...subscriptionPromptProps} />
+ * // Or handle API errors:
+ * try {
+ *   await apiCall();
+ * } catch (error) {
+ *   if (handleSubscriptionError(error)) return;
+ *   // Handle other errors
+ * }
  */
 export function useSubscriptionEnforcement() {
   const router = useRouter();
@@ -32,9 +38,6 @@ export function useSubscriptionEnforcement() {
     isTrialActive: false,
   });
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [promptVisible, setPromptVisible] = useState(false);
-  const [promptFeatureName, setPromptFeatureName] = useState<string>('this feature');
-  const [promptMessage, setPromptMessage] = useState<string | undefined>(undefined);
 
   // Check subscription status on mount
   useEffect(() => {
@@ -53,30 +56,11 @@ export function useSubscriptionEnforcement() {
   }, []);
 
   /**
-   * Show the subscription prompt modal
-   */
-  const showSubscriptionPrompt = useCallback((featureName?: string, customMessage?: string) => {
-    console.log('[SubscriptionEnforcement] Showing subscription prompt for:', featureName || 'feature');
-    setPromptFeatureName(featureName || 'this feature');
-    setPromptMessage(customMessage);
-    setPromptVisible(true);
-  }, []);
-
-  /**
-   * Hide the subscription prompt modal
-   */
-  const hideSubscriptionPrompt = useCallback(() => {
-    console.log('[SubscriptionEnforcement] Hiding subscription prompt');
-    setPromptVisible(false);
-    setPromptMessage(undefined);
-  }, []);
-
-  /**
    * Check if user has an active subscription
-   * If not, show modal and return false
-   * Returns true if subscription is active
+   * If not, show alert and redirect to subscription management
+   * Returns true if subscription is active, false otherwise
    */
-  const requireSubscription = useCallback((featureName?: string, customMessage?: string): boolean => {
+  const requireSubscription = useCallback((featureName?: string): boolean => {
     if (hasActiveSubscription) {
       return true;
     }
@@ -84,9 +68,28 @@ export function useSubscriptionEnforcement() {
     console.log('[SubscriptionEnforcement] Subscription required for:', featureName || 'this feature');
     console.log('[SubscriptionEnforcement] Current status:', subscriptionStatus.status);
 
-    showSubscriptionPrompt(featureName, customMessage);
+    const featureText = featureName ? ` ${featureName}` : ' this feature';
+    
+    Alert.alert(
+      'Subscription Required',
+      `An active subscription is required to use${featureText}. Please subscribe to continue tracking your sea time.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Learn More',
+          onPress: () => {
+            console.log('[SubscriptionEnforcement] User wants to learn more about subscriptions');
+            // User can contact support or check subscription status
+          },
+        },
+      ]
+    );
+
     return false;
-  }, [hasActiveSubscription, subscriptionStatus, showSubscriptionPrompt]);
+  }, [hasActiveSubscription, subscriptionStatus]);
 
   /**
    * Handle subscription-related API errors (403 SUBSCRIPTION_REQUIRED)
@@ -112,17 +115,23 @@ export function useSubscriptionEnforcement() {
       console.error('[SubscriptionEnforcement] Failed to refresh subscription:', err);
     });
 
-    // Show subscription prompt
-    showSubscriptionPrompt(
-      undefined,
-      'Your subscription has expired or is inactive. Please renew your subscription to continue using this feature.'
+    // Show subscription required alert
+    Alert.alert(
+      'Subscription Required',
+      'Your subscription has expired or is inactive. Please renew your subscription to continue using this feature.',
+      [
+        {
+          text: 'OK',
+          style: 'cancel',
+        },
+      ]
     );
 
     return true;
-  }, [checkSubscription, showSubscriptionPrompt]);
+  }, [checkSubscription]);
 
   /**
-   * Check if user has an active subscription without showing prompt
+   * Check if user has an active subscription without showing alert
    * Returns true if subscription is active, false otherwise
    */
   const hasSubscription = useCallback((): boolean => {
@@ -156,13 +165,5 @@ export function useSubscriptionEnforcement() {
     pauseTracking,
     subscriptionStatus,
     checkSubscription,
-    showSubscriptionPrompt,
-    hideSubscriptionPrompt,
-    subscriptionPromptProps: {
-      visible: promptVisible,
-      onClose: hideSubscriptionPrompt,
-      featureName: promptFeatureName,
-      message: promptMessage,
-    },
   };
 }

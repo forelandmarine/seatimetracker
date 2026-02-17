@@ -60,11 +60,10 @@ function createStyles(isDark: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.background : colors.backgroundLight,
+      backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
     },
     scrollContent: {
       padding: 20,
-      paddingBottom: 40,
     },
     section: {
       marginBottom: 24,
@@ -72,24 +71,22 @@ function createStyles(isDark: boolean) {
     sectionTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginBottom: 12,
     },
     inputLabel: {
       fontSize: 14,
       fontWeight: '500',
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginBottom: 6,
     },
     input: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
       borderRadius: 10,
       padding: 12,
       fontSize: 16,
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginBottom: 12,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
     },
     button: {
       backgroundColor: colors.primary,
@@ -104,17 +101,15 @@ function createStyles(isDark: boolean) {
       fontWeight: '600',
     },
     resultCard: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
     },
     resultTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginBottom: 8,
     },
     resultRow: {
@@ -124,12 +119,12 @@ function createStyles(isDark: boolean) {
     resultLabel: {
       fontSize: 14,
       fontWeight: '500',
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      color: isDark ? '#8E8E93' : '#6C6C70',
       width: 140,
     },
     resultValue: {
       fontSize: 14,
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       flex: 1,
     },
     sourceTag: {
@@ -146,7 +141,7 @@ function createStyles(isDark: boolean) {
     },
     evidenceText: {
       fontSize: 14,
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginTop: 8,
       fontStyle: 'italic',
     },
@@ -158,21 +153,19 @@ function createStyles(isDark: boolean) {
     },
     emptyText: {
       fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      color: isDark ? '#8E8E93' : '#6C6C70',
       textAlign: 'center',
       marginTop: 20,
     },
     aisCheckCard: {
-      backgroundColor: isDark ? colors.background : colors.backgroundLight,
+      backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
       borderRadius: 8,
       padding: 12,
       marginBottom: 8,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
     },
     aisCheckText: {
       fontSize: 13,
-      color: isDark ? colors.text : colors.textLight,
+      color: isDark ? colors.textDark : colors.textLight,
       marginBottom: 4,
     },
     modalBackdrop: {
@@ -250,6 +243,7 @@ export default function AdminInvestigateEntryScreen() {
       const url = `${API_BASE_URL}/api/admin/investigate-entry?${queryParams}`;
       console.log('[AdminInvestigate] Calling investigation endpoint:', url);
 
+      // Use authenticated API call with proper headers
       const headers = await getApiHeaders();
       const response = await fetch(url, {
         method: 'GET',
@@ -320,10 +314,6 @@ export default function AdminInvestigateEntryScreen() {
           title: 'Investigate Sea Time Entry',
           headerShown: true,
           headerBackTitle: 'Back',
-          headerStyle: {
-            backgroundColor: isDark ? colors.background : colors.backgroundLight,
-          },
-          headerTintColor: isDark ? colors.text : colors.textLight,
         }}
       />
       <View style={styles.container}>
@@ -337,7 +327,7 @@ export default function AdminInvestigateEntryScreen() {
               value={email}
               onChangeText={setEmail}
               placeholder="user@example.com"
-              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              placeholderTextColor={isDark ? '#8E8E93' : '#6C6C70'}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -348,7 +338,7 @@ export default function AdminInvestigateEntryScreen() {
               value={vesselName}
               onChangeText={setVesselName}
               placeholder="Vessel Name"
-              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              placeholderTextColor={isDark ? '#8E8E93' : '#6C6C70'}
             />
 
             <Text style={styles.inputLabel}>Timestamp</Text>
@@ -357,7 +347,7 @@ export default function AdminInvestigateEntryScreen() {
               value={timestamp}
               onChangeText={setTimestamp}
               placeholder="DD/MM/YYYY, HH:MM:SS"
-              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              placeholderTextColor={isDark ? '#8E8E93' : '#6C6C70'}
             />
 
             <TouchableOpacity
@@ -578,11 +568,11 @@ export default function AdminInvestigateEntryScreen() {
           onRequestClose={() => setShowErrorModal(false)}
         >
           <View style={styles.modalBackdrop}>
-            <View style={[styles.modalContent, { backgroundColor: isDark ? colors.cardBackground : colors.card }]}>
-              <Text style={[styles.modalTitle, { color: isDark ? colors.text : colors.textLight }]}>
+            <View style={[styles.modalContent, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
+              <Text style={[styles.modalTitle, { color: isDark ? colors.textDark : colors.textLight }]}>
                 Error
               </Text>
-              <Text style={[styles.modalMessage, { color: isDark ? colors.text : colors.textLight }]}>
+              <Text style={[styles.modalMessage, { color: isDark ? colors.textDark : colors.textLight }]}>
                 {errorMessage}
               </Text>
               <TouchableOpacity

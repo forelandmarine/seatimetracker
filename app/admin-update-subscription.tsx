@@ -10,206 +10,10 @@ import {
   useColorScheme,
   Modal,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
-import { IconSymbol } from '@/components/IconSymbol';
 import { apiPut } from '@/utils/api';
-
-function createStyles(isDark: boolean) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? colors.background : colors.backgroundLight,
-    },
-    scrollContent: {
-      padding: 20,
-      paddingBottom: 40,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 24,
-      lineHeight: 22,
-    },
-    section: {
-      marginBottom: 32,
-    },
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 16,
-    },
-    quickActionsContainer: {
-      backgroundColor: isDark ? '#1A2F3F' : '#E3F2FD',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    quickActionsTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 12,
-    },
-    quickActionButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      padding: 18,
-      alignItems: 'center',
-    },
-    quickActionButtonText: {
-      color: '#FFFFFF',
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    label: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 8,
-      marginTop: 4,
-    },
-    input: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 16,
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    statusButtonsContainer: {
-      marginBottom: 12,
-    },
-    statusButtons: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    statusButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 8,
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    statusButtonSelected: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    statusButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: isDark ? colors.text : colors.textLight,
-    },
-    statusButtonTextSelected: {
-      color: '#FFFFFF',
-    },
-    errorContainer: {
-      backgroundColor: colors.error,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-    },
-    errorText: {
-      color: '#FFFFFF',
-      fontSize: 15,
-      fontWeight: '500',
-    },
-    updateButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      padding: 18,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    updateButtonDisabled: {
-      opacity: 0.5,
-    },
-    updateButtonText: {
-      color: '#FFFFFF',
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    instructionsContainer: {
-      backgroundColor: isDark ? '#1A2F3F' : '#E3F2FD',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    instructionsTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 8,
-    },
-    instructionsText: {
-      fontSize: 15,
-      color: isDark ? colors.text : colors.textLight,
-      lineHeight: 22,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalContent: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 12,
-      padding: 24,
-      width: '80%',
-      maxWidth: 400,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 12,
-    },
-    modalMessage: {
-      fontSize: 16,
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 12,
-      lineHeight: 22,
-    },
-    modalSubMessage: {
-      fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 20,
-      lineHeight: 20,
-    },
-    modalButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-    },
-    modalButtonText: {
-      color: '#FFFFFF',
-      fontSize: 17,
-      fontWeight: '700',
-    },
-  });
-}
 
 export default function AdminUpdateSubscriptionScreen() {
   const colorScheme = useColorScheme();
@@ -224,6 +28,7 @@ export default function AdminUpdateSubscriptionScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [autoExecute, setAutoExecute] = useState(false);
 
+  // Auto-execute on mount if needed
   useEffect(() => {
     if (autoExecute) {
       handleUpdateSubscription();
@@ -272,17 +77,11 @@ export default function AdminUpdateSubscriptionScreen() {
     console.log(`Quick update: ${targetEmail} -> ${targetStatus}`);
     setEmail(targetEmail);
     setSubscriptionStatus(targetStatus);
+    // Trigger update after state is set
     setTimeout(() => {
       handleUpdateSubscription();
     }, 100);
   };
-
-  const statusOptions = [
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'trialing', label: 'Trialing' },
-    { value: 'expired', label: 'Expired' },
-  ];
 
   return (
     <>
@@ -290,56 +89,40 @@ export default function AdminUpdateSubscriptionScreen() {
         options={{
           title: 'Update Subscription',
           headerShown: true,
-          headerStyle: { 
-            backgroundColor: isDark ? colors.background : colors.backgroundLight 
-          },
-          headerTintColor: isDark ? colors.text : colors.textLight,
+          headerStyle: { backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight },
+          headerTintColor: isDark ? colors.textDark : colors.textLight,
         }}
       />
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView 
-          style={styles.container} 
-          contentContainerStyle={styles.scrollContent}
-        >
-          <Text style={styles.title}>Update Subscription</Text>
+      <ScrollView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Admin: Update Subscription</Text>
           <Text style={styles.subtitle}>
             Update subscription status for a user by email
           </Text>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActionsContainer}>
-              <Text style={styles.quickActionsTitle}>Test Account Activation</Text>
-              <TouchableOpacity
-                style={styles.quickActionButton}
-                onPress={() => handleQuickUpdate('test@seatime.com', 'active')}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.quickActionButtonText}>
-                    ✅ Activate test@seatime.com
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
+          {/* Quick Actions */}
+          <View style={styles.quickActionsContainer}>
+            <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => handleQuickUpdate('test@seatime.com', 'active')}
+              disabled={loading}
+            >
+              <Text style={styles.quickActionButtonText}>
+                ✅ Activate test@seatime.com
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Custom Update</Text>
-
-            <Text style={styles.label}>User Email</Text>
+          <View style={styles.form}>
+            <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
               value={email}
               onChangeText={setEmail}
               placeholder="user@example.com"
-              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -347,32 +130,31 @@ export default function AdminUpdateSubscriptionScreen() {
             />
 
             <Text style={styles.label}>Subscription Status</Text>
-            <View style={styles.statusButtonsContainer}>
-              <View style={styles.statusButtons}>
-                {statusOptions.map((option) => {
-                  const isSelected = subscriptionStatus === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
+            <View style={styles.statusButtons}>
+              {['active', 'inactive', 'trialing', 'expired'].map((status) => {
+                const isSelected = subscriptionStatus === status;
+                const statusText = status;
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.statusButton,
+                      isSelected && styles.statusButtonSelected,
+                    ]}
+                    onPress={() => setSubscriptionStatus(status)}
+                    disabled={loading}
+                  >
+                    <Text
                       style={[
-                        styles.statusButton,
-                        isSelected && styles.statusButtonSelected,
+                        styles.statusButtonText,
+                        isSelected && styles.statusButtonTextSelected,
                       ]}
-                      onPress={() => setSubscriptionStatus(option.value)}
-                      disabled={loading}
                     >
-                      <Text
-                        style={[
-                          styles.statusButtonText,
-                          isSelected && styles.statusButtonTextSelected,
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      {statusText}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {errorMessage ? (
@@ -387,13 +169,14 @@ export default function AdminUpdateSubscriptionScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.updateButtonText}>Update Subscription</Text>
               )}
             </TouchableOpacity>
           </View>
 
+          {/* Instructions */}
           <View style={styles.instructionsContainer}>
             <Text style={styles.instructionsTitle}>Instructions</Text>
             <Text style={styles.instructionsText}>
@@ -404,8 +187,8 @@ export default function AdminUpdateSubscriptionScreen() {
               Or use the Quick Action button above to instantly activate test@seatime.com
             </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </ScrollView>
 
       <Modal
         visible={successModalVisible}
@@ -433,4 +216,177 @@ export default function AdminUpdateSubscriptionScreen() {
       </Modal>
     </>
   );
+}
+
+function createStyles(isDark: boolean) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.backgroundDark : colors.backgroundLight,
+    },
+    content: {
+      padding: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      marginBottom: 24,
+    },
+    quickActionsContainer: {
+      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    quickActionsTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 12,
+    },
+    quickActionButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 14,
+      alignItems: 'center',
+    },
+    quickActionButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    form: {
+      gap: 16,
+      marginBottom: 24,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: isDark ? colors.textDark : colors.textLight,
+      borderWidth: 1,
+      borderColor: isDark ? colors.borderDark : colors.borderLight,
+    },
+    statusButtons: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    statusButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 8,
+      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      borderWidth: 1,
+      borderColor: isDark ? colors.borderDark : colors.borderLight,
+    },
+    statusButtonSelected: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    statusButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? colors.textDark : colors.textLight,
+    },
+    statusButtonTextSelected: {
+      color: '#fff',
+    },
+    errorContainer: {
+      backgroundColor: '#ff4444',
+      borderRadius: 8,
+      padding: 12,
+    },
+    errorText: {
+      color: '#fff',
+      fontSize: 14,
+    },
+    updateButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    updateButtonDisabled: {
+      opacity: 0.6,
+    },
+    updateButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    instructionsContainer: {
+      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+    },
+    instructionsTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 8,
+    },
+    instructionsText: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      lineHeight: 20,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: isDark ? colors.cardDark : colors.cardLight,
+      borderRadius: 12,
+      padding: 24,
+      width: '80%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 12,
+    },
+    modalMessage: {
+      fontSize: 16,
+      color: isDark ? colors.textDark : colors.textLight,
+      marginBottom: 12,
+    },
+    modalSubMessage: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+      marginBottom: 20,
+    },
+    modalButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: 'center',
+    },
+    modalButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
 }

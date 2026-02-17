@@ -239,52 +239,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorText = '';
         try {
           errorText = await response.text();
-          console.error('[Auth] Sign in error response body (first 1000 chars):', errorText.substring(0, 1000));
+          console.error('[Auth] Sign in error response body:', errorText.substring(0, 500));
         } catch (textError) {
           console.error('[Auth] Could not read error response body:', textError);
         }
         
-        // Check if response is HTML (500 error page) - this should no longer happen after backend fix
+        // Check if response is HTML (500 error page)
         if (contentType?.includes('text/html') || errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
           console.error('[Auth] Received HTML error page instead of JSON - Backend returned 500 error');
-          console.error('[Auth] This indicates a server-side crash or unhandled exception');
-          console.error('[Auth] Full error page:', errorText);
-          throw new Error('Server error: The authentication service encountered an internal error. This has been logged. Please try again in a few moments, or contact support if the issue persists.');
+          throw new Error('Server error (500). The backend encountered an internal error. Please try again or contact support if the issue persists.');
         }
         
-        // Try to parse JSON error (backend now returns proper JSON errors)
+        // Try to parse JSON error
         let errorData;
         try {
           errorData = JSON.parse(errorText);
           console.error('[Auth] Parsed error data:', errorData);
-          
-          // Backend now returns structured JSON errors with detailed messages
-          const errorMessage = errorData.error || errorData.message;
-          
-          if (errorMessage) {
-            // Use the backend's error message directly - it's now properly formatted
-            throw new Error(errorMessage);
-          }
-          
-          // Fallback to status-based messages if no error message in response
-          throw new Error(`Login failed (${response.status})`);
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
-          console.error('[Auth] Raw error text:', errorText);
-          
-          // Provide more specific error messages based on status code
-          if (response.status === 500) {
-            throw new Error('Server error: The authentication service is experiencing issues. Please try again later.');
-          } else if (response.status === 401) {
-            throw new Error('Invalid email or password. Please check your credentials and try again.');
-          } else if (response.status === 400) {
-            throw new Error('Invalid request. Please check your email and password format.');
-          } else if (response.status === 503) {
-            throw new Error('Service temporarily unavailable. Please try again in a few moments.');
-          } else {
-            throw new Error(`Login failed (${response.status}): ${errorText.substring(0, 100) || response.statusText}`);
-          }
+          throw new Error(`Login failed (${response.status}): ${errorText || response.statusText}`);
         }
+        
+        throw new Error(errorData.error || errorData.message || `Login failed (${response.status})`);
       }
 
       const data = await response.json();
@@ -383,20 +359,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-          // Backend now returns structured JSON errors with detailed messages
-          const errorMessage = errorData.error || errorData.message;
-          throw new Error(errorMessage || `Registration failed (${response.status})`);
-        } catch (parseError) {
-          // If JSON parsing fails, provide a user-friendly message
-          if (response.status === 400) {
-            throw new Error('Invalid registration data. Please check your email and password.');
-          } else if (response.status === 409) {
-            throw new Error('This email is already registered. Please sign in instead.');
-          } else if (response.status === 500) {
-            throw new Error('Server error during registration. Please try again later.');
-          }
-          throw new Error(`Registration failed: ${errorText.substring(0, 100)}`);
+        } catch {
+          throw new Error(`Registration failed: ${errorText}`);
         }
+        throw new Error(errorData.error || 'Registration failed');
       }
 
       const data = await response.json();
@@ -479,20 +445,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-          // Backend now returns structured JSON errors with detailed messages
-          const errorMessage = errorData.error || errorData.message;
-          throw new Error(errorMessage || `Apple sign in failed (${response.status})`);
-        } catch (parseError) {
-          // If JSON parsing fails, provide a user-friendly message
-          if (response.status === 400) {
-            throw new Error('Invalid Apple authentication token. Please try again.');
-          } else if (response.status === 401) {
-            throw new Error('Apple authentication failed. Please try again.');
-          } else if (response.status === 500) {
-            throw new Error('Server error during Apple sign in. Please try again later.');
-          }
-          throw new Error(`Apple sign in failed: ${errorText.substring(0, 100)}`);
+        } catch {
+          throw new Error(`Apple sign in failed: ${errorText}`);
         }
+        throw new Error(errorData.error || 'Apple sign in failed');
       }
 
       const data = await response.json();
@@ -554,17 +510,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loading]);
 
   const signOut = useCallback(async () => {
-    console.log('[Auth] Sign out started');
-    
-    // Clear local state immediately - don't wait for backend
-    setUser(null);
-    setLoading(false);
+    console.log('[Auth] ========== SIGN OUT STARTED ==========');
+    console.log('[Auth] User before sign out:', user?.email);
     
     try {
-      const token = await tokenStorage.getToken();
+      // CRITICAL: Clear local state FIRST in a finally block to ensure it always happens
+      // This guarantees the user is logged out locally even if backend/storage fails
       
-      // Fire-and-forget backend call
+      const token = await tokenStorage.getToken();
+      console.log('[Auth] Retrieved token for sign out:', token ? 'exists' : 'null');
+      
+      // Fire-and-forget backend call - don't wait for it
       if (token && BACKEND_URL) {
+        console.log('[Auth] Sending sign out request to backend (fire-and-forget)');
         fetch(`${BACKEND_URL}/api/auth/sign-out`, {
           method: 'POST',
           headers: {
@@ -572,21 +530,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
-        }).catch(() => {
-          // Ignore backend errors
-          console.log('[Auth] Backend sign out call failed (ignored)');
+        }).then(() => {
+          console.log('[Auth] Backend sign out successful');
+        }).catch((error) => {
+          console.log('[Auth] Backend sign out failed (ignored):', error.message);
         });
+      } else {
+        console.log('[Auth] Skipping backend sign out (no token or backend URL)');
       }
       
       // Clean up local storage
+      console.log('[Auth] Removing token from storage...');
       await tokenStorage.removeToken();
-      await clearBiometricCredentials();
+      console.log('[Auth] Token removed successfully');
       
-      console.log('[Auth] Sign out complete');
+      console.log('[Auth] Clearing biometric credentials...');
+      await clearBiometricCredentials();
+      console.log('[Auth] Biometric credentials cleared');
+      
     } catch (error) {
-      console.error('[Auth] Sign out cleanup error (ignored):', error);
+      console.error('[Auth] Sign out cleanup error (will still clear local state):', error);
+    } finally {
+      // CRITICAL: Always clear local state, even if storage operations fail
+      console.log('[Auth] Clearing local user state...');
+      setUser(null);
+      setLoading(false);
+      console.log('[Auth] ========== SIGN OUT COMPLETE ==========');
+      
+      // CRITICAL: Force navigation to auth screen after sign out
+      // Use a small delay to ensure state updates have propagated
+      setTimeout(() => {
+        console.log('[Auth] Navigating to /auth after sign out');
+        try {
+          // Dynamic import to avoid circular dependencies
+          import('expo-router').then((router) => {
+            router.router.replace('/auth');
+            console.log('[Auth] Navigation to /auth successful');
+          }).catch((navError) => {
+            console.error('[Auth] Failed to navigate to /auth:', navError);
+          });
+        } catch (navError) {
+          console.error('[Auth] Failed to import expo-router:', navError);
+        }
+      }, 100);
     }
-  }, []);
+  }, [user]);
 
   return (
     <AuthContext.Provider

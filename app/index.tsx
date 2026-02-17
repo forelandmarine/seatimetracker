@@ -1,7 +1,6 @@
 
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
@@ -10,8 +9,8 @@ export default function Index() {
   // CRITICAL: Call useAuth at the top level - NEVER conditionally
   // This must be called before any early returns or conditions
   const authContext = useAuth();
-  const subscriptionContext = useSubscription();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [redirectKey, setRedirectKey] = useState(0);
 
   // CRITICAL: Move useEffect to top level - BEFORE any conditional returns
   // React Hooks MUST be called in the same order every render
@@ -19,10 +18,12 @@ export default function Index() {
     // CRITICAL: Wrap in try-catch to prevent crashes
     try {
       // Only proceed if authContext exists and is not loading
-      if (authContext && !authContext.loading && subscriptionContext && !subscriptionContext.loading) {
+      if (authContext && !authContext.loading) {
         // Add a small delay to prevent flicker
         const timer = setTimeout(() => {
           setInitialCheckDone(true);
+          // Force re-render to trigger redirect
+          setRedirectKey(prev => prev + 1);
         }, 100);
         return () => clearTimeout(timer);
       }
@@ -30,7 +31,7 @@ export default function Index() {
       console.error('[Index] Error in auth check effect:', error);
       setInitialCheckDone(true); // Continue anyway
     }
-  }, [authContext, subscriptionContext]);
+  }, [authContext, authContext?.loading, authContext?.user]);
 
   // CRITICAL: Defensive check - if auth context is somehow undefined, show error
   if (!authContext) {
@@ -43,21 +44,10 @@ export default function Index() {
     );
   }
 
-  if (!subscriptionContext) {
-    console.error('[Index] CRITICAL: Subscription context is undefined');
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Subscription Error</Text>
-        <Text style={styles.loadingText}>Please restart the app</Text>
-      </View>
-    );
-  }
-
   const { user, loading: authLoading } = authContext;
-  const { isSubscribed, loading: subscriptionLoading } = subscriptionContext;
 
-  // Show loading while checking auth or subscription
-  if (authLoading || subscriptionLoading || !initialCheckDone) {
+  // Show loading while checking auth
+  if (authLoading || !initialCheckDone) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -71,15 +61,8 @@ export default function Index() {
   
   // Redirect based on auth state
   if (!isAuthenticated) {
-    console.log('[Index] Not authenticated, redirecting to /auth');
-    return <Redirect href="/auth" />;
-  }
-
-  // CRITICAL: Check subscription status immediately after authentication
-  // If user is authenticated but doesn't have an active subscription, show paywall
-  if (!isSubscribed) {
-    console.log('[Index] User authenticated but no active subscription, redirecting to /paywall');
-    return <Redirect href="/paywall" />;
+    console.log('[Index] Not authenticated, redirecting to /auth (key:', redirectKey, ')');
+    return <Redirect href="/auth" key={`auth-${redirectKey}`} />;
   }
 
   // CRITICAL: Safe department check to prevent crashes
@@ -93,12 +76,12 @@ export default function Index() {
   }
   
   if (!hasDepartment) {
-    console.log('[Index] No department set, redirecting to /select-pathway');
-    return <Redirect href="/select-pathway" />;
+    console.log('[Index] No department set, redirecting to /select-pathway (key:', redirectKey, ')');
+    return <Redirect href="/select-pathway" key={`pathway-${redirectKey}`} />;
   }
 
-  console.log('[Index] Authenticated with active subscription and department, redirecting to /(tabs)');
-  return <Redirect href="/(tabs)" />;
+  console.log('[Index] Authenticated with department, redirecting to /(tabs) (key:', redirectKey, ')');
+  return <Redirect href="/(tabs)" key={`tabs-${redirectKey}`} />;
 }
 
 const styles = StyleSheet.create({
