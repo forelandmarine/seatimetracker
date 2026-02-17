@@ -10,7 +10,6 @@ export default function Index() {
   // This must be called before any early returns or conditions
   const authContext = useAuth();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
-  const [redirectKey, setRedirectKey] = useState(0);
 
   // CRITICAL: Move useEffect to top level - BEFORE any conditional returns
   // React Hooks MUST be called in the same order every render
@@ -22,8 +21,6 @@ export default function Index() {
         // Add a small delay to prevent flicker
         const timer = setTimeout(() => {
           setInitialCheckDone(true);
-          // Force re-render to trigger redirect
-          setRedirectKey(prev => prev + 1);
         }, 100);
         return () => clearTimeout(timer);
       }
@@ -31,7 +28,7 @@ export default function Index() {
       console.error('[Index] Error in auth check effect:', error);
       setInitialCheckDone(true); // Continue anyway
     }
-  }, [authContext, authContext?.loading, authContext?.user]);
+  }, [authContext]);
 
   // CRITICAL: Defensive check - if auth context is somehow undefined, show error
   if (!authContext) {
@@ -61,8 +58,8 @@ export default function Index() {
   
   // Redirect based on auth state
   if (!isAuthenticated) {
-    console.log('[Index] Not authenticated, redirecting to /auth (key:', redirectKey, ')');
-    return <Redirect href="/auth" key={`auth-${redirectKey}`} />;
+    console.log('[Index] Not authenticated, redirecting to /auth');
+    return <Redirect href="/auth" />;
   }
 
   // CRITICAL: Safe department check to prevent crashes
@@ -76,12 +73,12 @@ export default function Index() {
   }
   
   if (!hasDepartment) {
-    console.log('[Index] No department set, redirecting to /select-pathway (key:', redirectKey, ')');
-    return <Redirect href="/select-pathway" key={`pathway-${redirectKey}`} />;
+    console.log('[Index] No department set, redirecting to /select-pathway');
+    return <Redirect href="/select-pathway" />;
   }
 
-  console.log('[Index] Authenticated with department, redirecting to /(tabs) (key:', redirectKey, ')');
-  return <Redirect href="/(tabs)" key={`tabs-${redirectKey}`} />;
+  console.log('[Index] Authenticated with department, redirecting to /(tabs)');
+  return <Redirect href="/(tabs)" />;
 }
 
 const styles = StyleSheet.create({

@@ -518,8 +518,6 @@ export default function ProfileScreen() {
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [showVesselModal, setShowVesselModal] = useState(false);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -530,7 +528,7 @@ export default function ProfileScreen() {
   console.log('ProfileScreen rendered (iOS)');
 
   const loadProfile = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1;
+    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
     console.log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -542,6 +540,7 @@ export default function ProfileScreen() {
       console.error(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
+        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying profile load in ${waitTime}ms...`);
         setTimeout(() => loadProfile(retryCount + 1), waitTime);
@@ -560,7 +559,7 @@ export default function ProfileScreen() {
   }, []);
 
   const loadSummary = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1;
+    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
     console.log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -572,6 +571,7 @@ export default function ProfileScreen() {
       console.error(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
+        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying summary load in ${waitTime}ms...`);
         setTimeout(() => loadSummary(retryCount + 1), waitTime);
@@ -583,7 +583,7 @@ export default function ProfileScreen() {
   }, []);
 
   const loadVessels = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1;
+    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
     console.log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -594,6 +594,7 @@ export default function ProfileScreen() {
       console.error(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
+        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying vessels load in ${waitTime}ms...`);
         setTimeout(() => loadVessels(retryCount + 1), waitTime);
@@ -605,6 +606,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     console.log('ProfileScreen (iOS): Initial mount, loading data in parallel');
+    // Load all data in parallel for instant access
     Promise.all([
       loadProfile(),
       loadSummary(),
@@ -617,6 +619,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (refreshTrigger > 0) {
       console.log('ProfileScreen (iOS): Global refresh triggered, reloading profile data in parallel');
+      // Load all data in parallel for instant access
       Promise.all([
         loadProfile(),
         loadSummary(),
@@ -821,28 +824,20 @@ export default function ProfileScreen() {
     }
   };
 
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleSignOut = () => {
-    console.log('User tapped Sign Out button - showing modal');
+    console.log('User tapped Sign Out button');
     setShowSignOutModal(true);
   };
 
   const confirmSignOut = async () => {
-    console.log('User confirmed sign out in modal - starting sign out process');
-    
-    // Prevent multiple clicks
-    if (signingOut) {
-      console.log('Sign out already in progress, ignoring duplicate click');
-      return;
-    }
-    
+    console.log('User confirmed sign out in modal');
     setSigningOut(true);
-    
     try {
-      console.log('Calling signOut from AuthContext...');
       await signOut();
-      console.log('Sign out successful - user should be logged out');
-      
-      // Close modal after successful sign out
+      console.log('Sign out successful');
       setShowSignOutModal(false);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -850,7 +845,6 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     } finally {
       setSigningOut(false);
-      console.log('Sign out process complete');
     }
   };
 
@@ -1183,8 +1177,9 @@ export default function ProfileScreen() {
                   style={styles.menuItemIcon}
                 />
                 <Text style={styles.menuItemText}>Notification Settings</Text>
-                <UpgradeButton variant="banner" />
-                <IconSymbol
+                                <UpgradeButton variant="banner" />
+                
+<IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
                   size={20}
@@ -1206,23 +1201,15 @@ export default function ProfileScreen() {
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
                   size={20}
-                  color={colors.textSecondary}
+                  color={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
                   style={styles.menuItemChevron}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.signOutButton} 
-            onPress={handleSignOut}
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <Text style={styles.signOutButtonText}>Sign Out</Text>
-            )}
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>

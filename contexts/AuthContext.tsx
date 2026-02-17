@@ -556,23 +556,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setLoading(false);
       console.log('[Auth] ========== SIGN OUT COMPLETE ==========');
-      
-      // CRITICAL: Force navigation to auth screen after sign out
-      // Use a small delay to ensure state updates have propagated
-      setTimeout(() => {
-        console.log('[Auth] Navigating to /auth after sign out');
-        try {
-          // Dynamic import to avoid circular dependencies
-          import('expo-router').then((router) => {
-            router.router.replace('/auth');
-            console.log('[Auth] Navigation to /auth successful');
-          }).catch((navError) => {
-            console.error('[Auth] Failed to navigate to /auth:', navError);
-          });
-        } catch (navError) {
-          console.error('[Auth] Failed to import expo-router:', navError);
-        }
-      }, 100);
     }
   }, [user]);
 

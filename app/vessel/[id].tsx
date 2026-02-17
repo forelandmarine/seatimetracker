@@ -21,7 +21,6 @@ import {
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
-import { SubscriptionPromptModal } from '@/components/SubscriptionPromptModal';
 
 interface Vessel {
   id: string;
@@ -87,7 +86,6 @@ export default function VesselDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
   const [editedVesselName, setEditedVesselName] = useState('');
   const [editedFlag, setEditedFlag] = useState('');
   const [editedOfficialNumber, setEditedOfficialNumber] = useState('');
@@ -219,27 +217,17 @@ export default function VesselDetailScreen() {
   const handleActivateVessel = () => {
     if (!vessel) return;
 
-    // CRITICAL: On web, Alert.alert doesn't work properly - use window.confirm instead
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`
-      );
-      if (confirmed) {
-        confirmActivateVessel();
-      }
-    } else {
-      Alert.alert(
-        'Activate Vessel',
-        `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Activate',
-            onPress: confirmActivateVessel,
-          },
-        ]
-      );
-    }
+    Alert.alert(
+      'Activate Vessel',
+      `Start tracking ${vessel.vessel_name}? This will deactivate any other active vessel.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Activate',
+          onPress: confirmActivateVessel,
+        },
+      ]
+    );
   };
 
   const confirmActivateVessel = async () => {
@@ -250,45 +238,10 @@ export default function VesselDetailScreen() {
       await seaTimeApi.activateVessel(vessel.id);
       await loadData();
       triggerRefresh(); // Trigger app-wide refresh
-      
-      // CRITICAL: On web, use window.alert instead of Alert.alert
-      if (Platform.OS === 'web') {
-        window.alert(`Success: ${vessel.vessel_name} is now being tracked`);
-      } else {
-        Alert.alert('Success', `${vessel.vessel_name} is now being tracked`);
-      }
+      Alert.alert('Success', `${vessel.vessel_name} is now being tracked`);
     } catch (error: any) {
       console.error('[VesselDetail] Failed to activate vessel:', error);
-      
-      // Check if error is subscription-related
-      const errorMessage = error?.message || '';
-      const isSubscriptionError = 
-        errorMessage.includes('403') || 
-        errorMessage.includes('SUBSCRIPTION_REQUIRED') ||
-        errorMessage.includes('PAYMENT_REQUIRED') ||
-        errorMessage.includes('Active subscription required');
-      
-      if (isSubscriptionError) {
-        console.log('[VesselDetail] Subscription required - showing subscription modal');
-        setSubscriptionModalVisible(true);
-        return;
-      }
-      
-      // Handle other errors
-      let userMessage = 'Failed to activate vessel. Please try again.';
-      
-      if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
-        userMessage = 'Authentication error. Please sign in again.';
-      } else if (errorMessage) {
-        userMessage = errorMessage;
-      }
-      
-      // CRITICAL: On web, use window.alert instead of Alert.alert
-      if (Platform.OS === 'web') {
-        window.alert(`Error: ${userMessage}`);
-      } else {
-        Alert.alert('Error', userMessage);
-      }
+      Alert.alert('Error', 'Failed to activate vessel: ' + error.message);
     }
   };
 
@@ -331,13 +284,7 @@ export default function VesselDetailScreen() {
       };
       
       setAisData(transformedAisData);
-      
-      // CRITICAL: On web, use window.alert instead of Alert.alert
-      if (Platform.OS === 'web') {
-        window.alert('Success: AIS data updated');
-      } else {
-        Alert.alert('Success', 'AIS data updated');
-      }
+      Alert.alert('Success', 'AIS data updated');
     } catch (error: any) {
       console.error('[VesselDetail] Failed to check AIS:', error);
       
@@ -357,12 +304,7 @@ export default function VesselDetailScreen() {
         }
       }
       
-      // CRITICAL: On web, use window.alert instead of Alert.alert
-      if (Platform.OS === 'web') {
-        window.alert(`Error: ${userMessage}`);
-      } else {
-        Alert.alert('Error', userMessage);
-      }
+      Alert.alert('Error', userMessage);
     } finally {
       setCheckingAIS(false);
     }
@@ -610,7 +552,6 @@ export default function VesselDetailScreen() {
 
   const groupedEntries = groupEntriesByDate();
   const totalDays = calculateTotalDays();
-  const vesselNameForModal = vessel.vessel_name;
 
   return (
     <View style={styles.container}>
@@ -1132,14 +1073,6 @@ export default function VesselDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* Subscription Prompt Modal */}
-      <SubscriptionPromptModal
-        visible={subscriptionModalVisible}
-        onClose={() => setSubscriptionModalVisible(false)}
-        featureName={`vessel activation (${vesselNameForModal})`}
-        message={`An active subscription is required to activate ${vesselNameForModal}. Subscribe to SeaTime Tracker Pro to unlock unlimited vessel tracking and automatic sea time logging.`}
-      />
     </View>
   );
 }
