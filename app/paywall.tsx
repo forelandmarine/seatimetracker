@@ -7,8 +7,6 @@
  * - Always dismissible (close button + "Maybe Later")
  * - Clear pricing before purchase
  * - Restore purchases easily accessible
- * - Terms and privacy links
- * - No external payment methods
  * - Subscription terms clearly stated
  */
 
