@@ -30,7 +30,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { PurchasesPackage } from "react-native-purchases";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -103,54 +103,13 @@ export default function PaywallScreen() {
     }
   }, [packages, selectedPackage]);
 
-  // CRITICAL: Safe navigation handler with comprehensive error handling
-  // Prevents crashes from navigation failures
+  const [shouldExitPaywall, setShouldExitPaywall] = useState(false);
+
+  // Use state-driven redirect to avoid crashes from imperative navigation edge-cases
   const handleClose = useCallback(() => {
-    console.log('[Paywall] User dismissed paywall - attempting safe navigation');
-    
-    // Strategy 1: Try replace (cleanest approach)
-    try {
-      console.log('[Paywall] Attempting router.replace to /(tabs)');
-      router.replace('/(tabs)');
-      console.log('[Paywall] router.replace succeeded');
-      return;
-    } catch (replaceError) {
-      console.error('[Paywall] router.replace failed:', replaceError);
-    }
-    
-    // Strategy 2: Try back if available
-    try {
-      if (router.canGoBack()) {
-        console.log('[Paywall] Attempting router.back');
-        router.back();
-        console.log('[Paywall] router.back succeeded');
-        return;
-      }
-    } catch (backError) {
-      console.error('[Paywall] router.back failed:', backError);
-    }
-    
-    // Strategy 3: Try push as last resort
-    try {
-      console.log('[Paywall] Attempting router.push to /(tabs)');
-      router.push('/(tabs)');
-      console.log('[Paywall] router.push succeeded');
-      return;
-    } catch (pushError) {
-      console.error('[Paywall] router.push failed:', pushError);
-    }
-    
-    // Strategy 4: Try navigating to index
-    try {
-      console.log('[Paywall] All navigation methods failed, trying index');
-      router.push('/');
-      console.log('[Paywall] Navigation to index succeeded');
-    } catch (indexError) {
-      console.error('[Paywall] All navigation strategies failed:', indexError);
-      // At this point, we've tried everything. The modal will stay open
-      // but at least the app won't crash
-    }
-  }, [router]);
+    console.log('[Paywall] User dismissed paywall - returning to main app');
+    setShouldExitPaywall(true);
+  }, []);
 
   // Handle purchase with defensive error handling
   const handlePurchase = async () => {
@@ -277,6 +236,10 @@ export default function PaywallScreen() {
       Linking.openURL(androidUrl);
     }
   }, []);
+
+  if (shouldExitPaywall) {
+    return <Redirect href="/(tabs)" />;
+  }
 
   // Already subscribed
   if (isSubscribed) {

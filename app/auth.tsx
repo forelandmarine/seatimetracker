@@ -133,9 +133,16 @@ export default function AuthScreen() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail.includes('@')) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
     const actionText = isSignUp ? 'Sign Up' : 'Sign In';
     console.log('[AuthScreen] User tapped', actionText, 'button');
-    console.log('[AuthScreen] Email:', email);
+    console.log('[AuthScreen] Email:', normalizedEmail);
     console.log('[AuthScreen] Backend URL:', BACKEND_URL);
     console.log('[AuthScreen] Platform:', Platform.OS);
     console.log('[AuthScreen] Timestamp:', new Date().toISOString());
@@ -146,18 +153,18 @@ export default function AuthScreen() {
     try {
       if (isSignUp) {
         console.log('[AuthScreen] Calling signUp...');
-        await signUp(email, password, name || 'User');
+        await signUp(normalizedEmail, password, name || 'User');
         console.log('[AuthScreen] signUp completed successfully');
       } else {
         console.log('[AuthScreen] Calling signIn...');
-        await signIn(email, password);
+        await signIn(normalizedEmail, password);
         console.log('[AuthScreen] signIn completed successfully');
       }
 
       // Save credentials if remember me is checked
       if (rememberMe && !isSignUp) {
         try {
-          await saveBiometricCredentials(email, password);
+          await saveBiometricCredentials(normalizedEmail, password);
           setHasSavedCredentials(true);
         } catch (bioError) {
           console.error('[AuthScreen] Failed to save biometric credentials:', bioError);
