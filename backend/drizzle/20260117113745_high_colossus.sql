@@ -1,1 +1,0 @@
-ALTER TABLE "vessels" ADD COLUMN "callsign" text;
