@@ -10,6 +10,9 @@ import { Platform } from 'react-native';
  * - Entitlement identifiers
  * - Product identifiers
  * - Configuration validation
+ * 
+ * CRITICAL: Production builds MUST use production API keys (appl_* or goog_*)
+ * Test keys (test_*) will cause crashes in TestFlight and production builds.
  */
 
 // Get API keys from app.json extra.revenueCat config
@@ -17,10 +20,29 @@ const getRevenueCatConfig = () => {
   const extra = Constants.expoConfig?.extra;
   const revenueCatConfig = extra?.revenueCat || {};
   
-  const iosApiKey = revenueCatConfig.iosApiKey || '';
-  const androidApiKey = revenueCatConfig.androidApiKey || '';
+  let iosApiKey = revenueCatConfig.iosApiKey || '';
+  let androidApiKey = revenueCatConfig.androidApiKey || '';
+  
+  // CRITICAL: Prevent test keys in production builds
+  // Test keys cause native module crashes in TestFlight/production
+  if (!__DEV__) {
+    // In production, reject test keys
+    if (iosApiKey.startsWith('test_')) {
+      console.error('[RevenueCat Config] CRITICAL: Test API key detected in production build!');
+      console.error('[RevenueCat Config] Test keys cause crashes in TestFlight/App Store builds.');
+      console.error('[RevenueCat Config] Please update app.json with production iOS key (starts with appl_)');
+      iosApiKey = ''; // Clear invalid key to prevent crash
+    }
+    if (androidApiKey.startsWith('test_')) {
+      console.error('[RevenueCat Config] CRITICAL: Test API key detected in production build!');
+      console.error('[RevenueCat Config] Test keys cause crashes in production builds.');
+      console.error('[RevenueCat Config] Please update app.json with production Android key (starts with goog_)');
+      androidApiKey = ''; // Clear invalid key to prevent crash
+    }
+  }
   
   console.log('[RevenueCat Config] Loading configuration');
+  console.log('[RevenueCat Config] Environment:', __DEV__ ? 'Development' : 'Production');
   console.log('[RevenueCat Config] iOS API Key configured:', !!iosApiKey);
   console.log('[RevenueCat Config] Android API Key configured:', !!androidApiKey);
   console.log('[RevenueCat Config] iOS Key prefix:', iosApiKey ? iosApiKey.substring(0, 10) + '...' : 'NOT SET');
@@ -63,12 +85,27 @@ export const REVENUECAT_CONFIG = {
     return key || '';
   },
   
-  // Validate API key format (accepts both production and test keys)
+  // Validate API key format
   isValidApiKey: (key: string): boolean => {
     if (!key || key.length === 0) return false;
+    
     // Check for placeholder values
-    if (key.includes('YOUR_') || key.includes('_HERE')) return false;
-    // Check for valid prefixes (production or test)
+    if (key.includes('YOUR_') || key.includes('_HERE')) {
+      console.warn('[RevenueCat Config] Placeholder API key detected. Please add real keys to app.json');
+      return false;
+    }
+    
+    // In production, ONLY accept production keys
+    if (!__DEV__) {
+      const isProductionKey = key.startsWith('appl_') || key.startsWith('goog_');
+      if (!isProductionKey) {
+        console.error('[RevenueCat Config] Production build requires production API keys (appl_* or goog_*)');
+        return false;
+      }
+      return true;
+    }
+    
+    // In development, accept both production and test keys
     const validPrefixes = ['appl_', 'goog_', 'test_'];
     return validPrefixes.some(prefix => key.startsWith(prefix));
   },
@@ -96,23 +133,26 @@ export const REVENUECAT_CONFIG = {
     
     return {
       platform: Platform.OS,
+      environment: __DEV__ ? 'development' : 'production',
       iosKey: {
         configured: !!iosKey,
         validFormat: iosKey ? iosKey.startsWith('appl_') || iosKey.startsWith('test_') : false,
-        isPlaceholder: iosKey === 'YOUR_IOS_API_KEY_HERE',
+        isPlaceholder: iosKey.includes('YOUR_') || iosKey.includes('_HERE'),
         isTestKey: iosKey ? iosKey.startsWith('test_') : false,
         isProductionKey: iosKey ? iosKey.startsWith('appl_') : false,
         prefix: iosKey ? iosKey.substring(0, 10) : 'NOT SET',
         length: iosKey ? iosKey.length : 0,
+        validForEnvironment: __DEV__ ? true : (iosKey ? iosKey.startsWith('appl_') : false),
       },
       androidKey: {
         configured: !!androidKey,
         validFormat: androidKey ? androidKey.startsWith('goog_') || androidKey.startsWith('test_') : false,
-        isPlaceholder: androidKey === 'YOUR_ANDROID_API_KEY_HERE',
+        isPlaceholder: androidKey.includes('YOUR_') || androidKey.includes('_HERE'),
         isTestKey: androidKey ? androidKey.startsWith('test_') : false,
         isProductionKey: androidKey ? androidKey.startsWith('goog_') : false,
         prefix: androidKey ? androidKey.substring(0, 10) : 'NOT SET',
         length: androidKey ? androidKey.length : 0,
+        validForEnvironment: __DEV__ ? true : (androidKey ? androidKey.startsWith('goog_') : false),
       },
     };
   },
@@ -120,6 +160,14 @@ export const REVENUECAT_CONFIG = {
 
 // Log configuration status on import
 console.log('[RevenueCat Config] Configuration loaded');
+console.log('[RevenueCat Config] Environment:', __DEV__ ? 'Development' : 'Production');
 console.log('[RevenueCat Config] Valid:', REVENUECAT_CONFIG.isValid());
 console.log('[RevenueCat Config] Entitlement ID:', REVENUECAT_CONFIG.entitlementID);
 console.log('[RevenueCat Config] Product IDs:', REVENUECAT_CONFIG.productIDs);
+
+// Warn if using placeholders
+if (config.iosApiKey.includes('YOUR_') || config.androidApiKey.includes('YOUR_')) {
+  console.warn('[RevenueCat Config] ⚠️ Placeholder API keys detected!');
+  console.warn('[RevenueCat Config] Please update app.json with your actual RevenueCat API keys');
+  console.warn('[RevenueCat Config] Get your keys from: https://app.revenuecat.com/');
+}

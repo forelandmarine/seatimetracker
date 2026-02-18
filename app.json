@@ -1,12 +1,13 @@
+
 {
   "expo": {
     "name": "SeaTime Tracker",
-    "slug": "seatimetracker",
+    "slug": "SeaTime-Tracker",
     "owner": "forelandmarine",
     "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/brandmark-design-2.png",
-    "scheme": "seatimetracker",
+    "scheme": "SeaTime-Tracker",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/brandmark-design-2.png",
@@ -47,8 +48,8 @@
       [
         "./plugins/with-revenuecat",
         {
-          "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-          "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd"
+          "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+          "androidApiKey": "goog_YOUR_PRODUCTION_ANDROID_KEY_HERE"
         }
       ],
       "expo-apple-authentication"
@@ -62,8 +63,8 @@
       },
       "backendUrl": "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev",
       "revenueCat": {
-        "iosApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd",
-        "androidApiKey": "test_gKMHKEpYSkTiLUtgKWHRbAXGcGd"
+        "iosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+        "androidApiKey": "goog_YOUR_PRODUCTION_ANDROID_KEY_HERE"
       },
       "eas": {
         "projectId": "d982d462-52e2-493e-a176-8f75b09d5ef9"
