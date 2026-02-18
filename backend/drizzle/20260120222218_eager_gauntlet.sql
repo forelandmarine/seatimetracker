@@ -1,2 +1,0 @@
-ALTER TABLE "sea_time_entries" ADD COLUMN "service_type" text DEFAULT 'actual_sea_service';--> statement-breakpoint
-CREATE INDEX "sea_time_entries_service_type_idx" ON "sea_time_entries" USING btree ("service_type");
