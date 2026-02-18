@@ -247,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check if response is HTML (500 error page)
         if (contentType?.includes('text/html') || errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
           console.error('[Auth] Received HTML error page instead of JSON - Backend returned 500 error');
-          throw new Error('Server error (500). The backend encountered an internal error. Please try again or contact support if the issue persists.');
+          throw new Error('Server error. The backend may be restarting. Please wait a moment and try again.');
         }
         
         // Try to parse JSON error
@@ -257,7 +257,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[Auth] Parsed error data:', errorData);
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
-          throw new Error(`Login failed (${response.status}): ${errorText || response.statusText}`);
+          
+          // Provide user-friendly error messages
+          if (response.status === 401) {
+            throw new Error('Invalid email or password. Please check your credentials and try again.');
+          } else if (response.status === 500) {
+            throw new Error('Server error. Please try again in a moment.');
+          } else if (response.status === 503) {
+            throw new Error('Service temporarily unavailable. Please try again shortly.');
+          }
+          
+          throw new Error(`Login failed (${response.status}). Please try again.`);
         }
         
         throw new Error(errorData.error || errorData.message || `Login failed (${response.status})`);
@@ -276,7 +286,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await tokenStorage.setToken(data.session.token);
       console.log('[Auth] Token stored successfully');
       
-      // Fetch user profile to get department info
+      // Set user immediately to prevent crash
+      setUser(data.user);
+      console.log('[Auth] User state set, email:', data.user.email);
+      
+      // Fetch user profile to get department info (non-blocking)
       try {
         const profileController = new AbortController();
         const profileTimeoutId = setTimeout(() => profileController.abort(), API_TIMEOUT);
@@ -297,12 +311,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             hasDepartment: !!profileData.department,
           });
         } else {
-          console.warn('[Auth] Profile fetch failed after sign in, using basic user data');
-          setUser(data.user);
+          console.warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
         }
       } catch (profileError) {
-        console.warn('[Auth] Failed to fetch profile after sign in:', profileError);
-        setUser(data.user);
+        console.warn('[Auth] Failed to fetch profile after sign in (non-critical):', profileError);
       }
       
       console.log('[Auth] Sign in successful:', data.user.email);
@@ -424,6 +436,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } : undefined,
       };
 
+      console.log('[Auth] Sending Apple sign-in request to backend...');
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
@@ -446,24 +460,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           errorData = JSON.parse(errorText);
         } catch {
-          throw new Error(`Apple sign in failed: ${errorText}`);
+          if (response.status === 500) {
+            throw new Error('Server error. Please try again in a moment.');
+          }
+          throw new Error(`Apple sign in failed (${response.status}). Please try again.`);
         }
         throw new Error(errorData.error || 'Apple sign in failed');
       }
 
       const data = await response.json();
-      console.log('[Auth] Apple sign in response data received');
+      console.log('[Auth] Apple sign in response data received, has session:', !!data.session);
 
       if (!data.session?.token) {
         console.error('[Auth] No session token in response:', data);
         throw new Error('No session token received');
       }
 
+      console.log('[Auth] Storing Apple sign-in token...');
       await tokenStorage.setToken(data.session.token);
       console.log('[Auth] Token stored successfully');
       
-      // Fetch user profile to get department info
+      // Set user immediately to prevent crash
+      setUser(data.user);
+      console.log('[Auth] User state set after Apple sign-in, email:', data.user.email);
+      
+      // Fetch user profile to get department info (non-blocking)
       try {
+        console.log('[Auth] Fetching user profile after Apple sign-in...');
         const profileController = new AbortController();
         const profileTimeoutId = setTimeout(() => profileController.abort(), API_TIMEOUT);
         
@@ -483,17 +506,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             hasDepartment: !!profileData.department,
           });
         } else {
-          console.warn('[Auth] Profile fetch failed after Apple sign in, using basic user data');
-          setUser(data.user);
+          console.warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
         }
       } catch (profileError) {
-        console.warn('[Auth] Failed to fetch profile after Apple sign in:', profileError);
-        setUser(data.user);
+        console.warn('[Auth] Failed to fetch profile after Apple sign in (non-critical):', profileError);
       }
       
       console.log('[Auth] Apple sign in successful:', data.user.email);
     } catch (error: any) {
-      console.error('[Auth] Apple sign in failed:', error);
+      console.error('[Auth] Apple sign in failed - Error name:', error.name);
+      console.error('[Auth] Apple sign in failed - Error message:', error.message);
+      console.error('[Auth] Apple sign in failed - Error stack:', error.stack);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');

@@ -53,23 +53,33 @@ export default function Index() {
     );
   }
 
-  // CRITICAL: Safe authentication check
-  const isAuthenticated = Boolean(user);
+  // CRITICAL: Safe authentication check with defensive programming
+  let isAuthenticated = false;
+  let hasDepartment = false;
+  
+  try {
+    isAuthenticated = Boolean(user);
+    
+    if (isAuthenticated) {
+      console.log('[Index] User authenticated:', user?.email);
+      
+      // CRITICAL: Safe department check to prevent crashes
+      hasDepartment = Boolean(user?.hasDepartment || (user as any)?.department);
+      console.log('[Index] Has department:', hasDepartment, 'Department:', (user as any)?.department);
+    } else {
+      console.log('[Index] User not authenticated');
+    }
+  } catch (error: any) {
+    console.error('[Index] Error during auth/department check:', error);
+    // On error, assume not authenticated
+    isAuthenticated = false;
+    hasDepartment = false;
+  }
   
   // Redirect based on auth state
   if (!isAuthenticated) {
     console.log('[Index] Not authenticated, redirecting to /auth');
     return <Redirect href="/auth" />;
-  }
-
-  // CRITICAL: Safe department check to prevent crashes
-  let hasDepartment = false;
-  try {
-    hasDepartment = Boolean(user?.hasDepartment || (user as any)?.department);
-  } catch (error: any) {
-    console.error('[Index] Error checking department:', error);
-    // Assume no department on error
-    hasDepartment = false;
   }
   
   if (!hasDepartment) {

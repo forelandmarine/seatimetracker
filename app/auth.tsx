@@ -126,23 +126,32 @@ export default function AuthScreen() {
       if (isSignUp) {
         console.log('[AuthScreen] Calling signUp...');
         await signUp(email, password, name || 'User');
+        console.log('[AuthScreen] Sign up successful');
       } else {
         console.log('[AuthScreen] Calling signIn...');
         await signIn(email, password);
+        console.log('[AuthScreen] Sign in successful');
       }
 
       // Save credentials if remember me is checked
       if (rememberMe && !isSignUp) {
         try {
+          console.log('[AuthScreen] Saving biometric credentials...');
           await saveBiometricCredentials(email, password);
           setHasSavedCredentials(true);
+          console.log('[AuthScreen] Biometric credentials saved');
         } catch (bioError) {
           console.error('[AuthScreen] Failed to save biometric credentials:', bioError);
         }
       }
 
-      console.log('[AuthScreen] Auth successful, navigating to index for subscription check');
-      router.replace('/');
+      console.log('[AuthScreen] Auth successful, navigating to index');
+      
+      // Use setTimeout to ensure state updates complete before navigation
+      setTimeout(() => {
+        console.log('[AuthScreen] Executing navigation to index');
+        router.replace('/');
+      }, 100);
     } catch (error: any) {
       console.error('[AuthScreen] Auth failed:', error);
       console.error('[AuthScreen] Error type:', typeof error);
@@ -153,32 +162,38 @@ export default function AuthScreen() {
       
       // Parse common error messages
       if (errorMsg.includes('<!DOCTYPE') || errorMsg.includes('<html')) {
-        errorMsg = 'Server error (500). The backend may be experiencing issues. Please try again later.';
+        errorMsg = 'Server error. The backend may be restarting. Please wait a moment and try again.';
       } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
         errorMsg = 'Cannot connect to server. Please check your internet connection.';
       } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-        errorMsg = 'Request timed out. The server may be slow or unreachable. Please try again.';
-      } else if (errorMsg.includes('401')) {
+        errorMsg = 'Request timed out. Please try again.';
+      } else if (errorMsg.includes('401') || errorMsg.includes('Invalid email or password')) {
         errorMsg = 'Invalid email or password. Please check your credentials.';
       } else if (errorMsg.includes('400')) {
         errorMsg = 'Invalid request. Please check your email and password format.';
+      } else if (errorMsg.includes('500') || errorMsg.includes('Server error')) {
+        errorMsg = 'Server error. Please try again in a moment.';
       }
       
       showError(errorMsg);
-    } finally {
       setLoading(false);
     }
   };
 
   const handleAppleSignIn = async () => {
+    console.log('[AuthScreen] User tapped Apple Sign In button');
+    
     try {
+      console.log('[AuthScreen] Checking if Apple Sign In is available...');
       const isAvailable = await AppleAuthentication.isAvailableAsync();
       
       if (!isAvailable) {
+        console.warn('[AuthScreen] Apple Sign In not available on this device');
         showError('Sign in with Apple is not available on this device');
         return;
       }
 
+      console.log('[AuthScreen] Apple Sign In is available, showing Apple prompt...');
       setLoading(true);
       
       const credential = await AppleAuthentication.signInAsync({
@@ -188,7 +203,10 @@ export default function AuthScreen() {
         ],
       });
 
+      console.log('[AuthScreen] Apple credential received, has token:', !!credential?.identityToken);
+
       if (!credential?.identityToken) {
+        console.error('[AuthScreen] No identity token in Apple credential');
         showError('Failed to get Apple authentication token');
         setLoading(false);
         return;
@@ -202,15 +220,25 @@ export default function AuthScreen() {
         } : undefined,
       };
       
+      console.log('[AuthScreen] Calling signInWithApple with token...');
       await signInWithApple(credential.identityToken, appleUserData);
       
-      console.log('[AuthScreen] Apple sign in successful, navigating to index for subscription check');
-      router.replace('/');
+      console.log('[AuthScreen] Apple sign in successful, navigating to index');
+      
+      // Use setTimeout to ensure state updates complete before navigation
+      setTimeout(() => {
+        console.log('[AuthScreen] Executing navigation to index');
+        router.replace('/');
+      }, 100);
     } catch (error: any) {
-      console.error('[AuthScreen] Apple sign in failed:', error);
+      console.error('[AuthScreen] Apple sign in error:', error);
+      console.error('[AuthScreen] Error code:', error.code);
+      console.error('[AuthScreen] Error message:', error.message);
       
       // Don't show error for user cancellation
       if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
+        console.log('[AuthScreen] User cancelled Apple Sign In');
+        setLoading(false);
         return;
       }
       
@@ -220,12 +248,13 @@ export default function AuthScreen() {
         errorMsg = 'Invalid response from Apple. Please try again.';
       } else if (error.message?.includes('Network') || error.message?.includes('timed out')) {
         errorMsg = 'Cannot connect to server. Check your connection.';
+      } else if (error.message?.includes('Server error')) {
+        errorMsg = 'Server is temporarily unavailable. Please try again in a moment.';
       } else if (error.message) {
         errorMsg = error.message;
       }
       
       showError(errorMsg);
-    } finally {
       setLoading(false);
     }
   };
