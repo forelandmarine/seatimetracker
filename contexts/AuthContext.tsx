@@ -222,26 +222,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Backend not configured');
     }
 
-    console.log('[Auth] Sign in attempt for:', email);
+    console.log('[Auth] ========== SIGN IN STARTED ==========');
+    console.log('[Auth] Platform:', Platform.OS);
+    console.log('[Auth] Email:', email);
     console.log('[Auth] Backend URL:', BACKEND_URL);
+    console.log('[Auth] Request URL:', `${BACKEND_URL}/api/auth/sign-in/email`);
+    
     setLoading(true);
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+      const timeoutId = setTimeout(() => {
+        console.error('[Auth] Request timeout after 15 seconds');
+        controller.abort();
+      }, API_TIMEOUT);
       
-      console.log('[Auth] Sending sign-in request to:', `${BACKEND_URL}/api/auth/sign-in/email`);
+      const requestBody = { email, password };
+      console.log('[Auth] Request body:', JSON.stringify(requestBody));
+      
+      console.log('[Auth] Sending fetch request...');
+      const fetchStartTime = Date.now();
       
       const response = await fetch(`${BACKEND_URL}/api/auth/sign-in/email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
-
-      console.log('[Auth] Sign in response status:', response.status);
+      const fetchDuration = Date.now() - fetchStartTime;
+      
+      console.log('[Auth] Fetch completed in', fetchDuration, 'ms');
+      console.log('[Auth] Response status:', response.status);
+      console.log('[Auth] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
       if (!response.ok) {
         const contentType = response.headers.get('content-type');
@@ -250,7 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorText = '';
         try {
           errorText = await response.text();
-          console.error('[Auth] Sign in error response body:', errorText.substring(0, 500));
+          console.error('[Auth] Error response body:', errorText.substring(0, 500));
         } catch (textError) {
           console.error('[Auth] Could not read error response body:', textError);
         }
@@ -283,15 +300,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.error || errorData.message || `Login failed (${response.status})`);
       }
 
+      console.log('[Auth] Response OK, parsing JSON...');
       const data = await response.json();
-      console.log('[Auth] Sign in response data received, has session:', !!data.session);
+      console.log('[Auth] Response data keys:', Object.keys(data));
+      console.log('[Auth] Has session:', !!data.session);
+      console.log('[Auth] Has user:', !!data.user);
 
       if (!data.session?.token) {
         console.error('[Auth] No session token in response:', JSON.stringify(data, null, 2));
         throw new Error('No session token received from server');
       }
 
+      console.log('[Auth] Session token received, length:', data.session.token.length);
+      
       // Store token
+      console.log('[Auth] Storing token...');
       await tokenStorage.setToken(data.session.token);
       console.log('[Auth] Token stored successfully');
       
@@ -324,9 +347,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('[Auth] Failed to fetch profile after sign in (non-critical):', profileError);
       }
       
-      console.log('[Auth] Sign in successful:', data.user.email);
+      console.log('[Auth] ========== SIGN IN SUCCESSFUL ==========');
     } catch (error: any) {
-      console.error('[Auth] Sign in failed:', error);
+      console.error('[Auth] ========== SIGN IN FAILED ==========');
+      console.error('[Auth] Error type:', error.constructor.name);
+      console.error('[Auth] Error message:', error.message);
+      console.error('[Auth] Error stack:', error.stack);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -351,7 +377,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Backend not configured');
     }
 
-    console.log('[Auth] Sign up attempt for:', email);
+    console.log('[Auth] ========== SIGN UP STARTED ==========');
+    console.log('[Auth] Platform:', Platform.OS);
+    console.log('[Auth] Email:', email);
+    console.log('[Auth] Backend URL:', BACKEND_URL);
+    
     setLoading(true);
     
     try {
@@ -360,15 +390,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const response = await fetch(`${BACKEND_URL}/api/auth/sign-up/email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({ email, password, name: name || 'User' }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
+      console.log('[Auth] Sign up response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('[Auth] Sign up error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -387,9 +422,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await tokenStorage.setToken(data.session.token);
       setUser(data.user);
       
-      console.log('[Auth] Sign up successful:', data.user.email);
+      console.log('[Auth] ========== SIGN UP SUCCESSFUL ==========');
     } catch (error: any) {
-      console.error('[Auth] Sign up failed:', error);
+      console.error('[Auth] ========== SIGN UP FAILED ==========');
+      console.error('[Auth] Error:', error);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -418,7 +454,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Backend not configured');
     }
 
-    console.log('[Auth] Apple sign in attempt');
+    console.log('[Auth] ========== APPLE SIGN IN STARTED ==========');
+    console.log('[Auth] Platform:', Platform.OS);
+    console.log('[Auth] Backend URL:', BACKEND_URL);
+    console.log('[Auth] Identity token length:', identityToken.length);
+    console.log('[Auth] Has user data:', !!appleUser);
+    
     setLoading(true);
     
     try {
@@ -433,20 +474,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } : undefined,
       };
 
+      console.log('[Auth] Request body:', JSON.stringify(requestBody, null, 2));
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+      const timeoutId = setTimeout(() => {
+        console.error('[Auth] Apple sign in timeout after 15 seconds');
+        controller.abort();
+      }, API_TIMEOUT);
+
+      console.log('[Auth] Sending Apple sign in request...');
+      const fetchStartTime = Date.now();
 
       const response = await fetch(`${BACKEND_URL}/api/auth/sign-in/apple`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      
+      console.log('[Auth] Apple sign in fetch completed in', fetchDuration, 'ms');
+      console.log('[Auth] Response status:', response.status);
+      console.log('[Auth] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('[Auth] Apple sign in error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -460,6 +518,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
+      console.log('[Auth] Apple sign in response data keys:', Object.keys(data));
 
       if (!data.session?.token) {
         throw new Error('No session token received');
@@ -492,9 +551,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('[Auth] Failed to fetch profile after Apple sign in (non-critical):', profileError);
       }
       
-      console.log('[Auth] Apple sign in successful:', data.user.email);
+      console.log('[Auth] ========== APPLE SIGN IN SUCCESSFUL ==========');
     } catch (error: any) {
-      console.error('[Auth] Apple sign in failed:', error);
+      console.error('[Auth] ========== APPLE SIGN IN FAILED ==========');
+      console.error('[Auth] Error type:', error.constructor.name);
+      console.error('[Auth] Error message:', error.message);
+      console.error('[Auth] Error stack:', error.stack);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');

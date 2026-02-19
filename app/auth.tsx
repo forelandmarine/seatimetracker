@@ -44,9 +44,10 @@ export default function AuthScreen() {
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    console.log('[AuthScreen] Mounted');
-    console.log('[AuthScreen] Backend URL:', BACKEND_URL || 'NOT CONFIGURED');
+    console.log('[AuthScreen] ========== AUTH SCREEN MOUNTED ==========');
     console.log('[AuthScreen] Platform:', Platform.OS);
+    console.log('[AuthScreen] Backend URL:', BACKEND_URL || 'NOT CONFIGURED');
+    console.log('[AuthScreen] Color scheme:', colorScheme);
     checkBiometricAvailability();
     checkSavedCredentials();
   }, []);
@@ -66,13 +67,14 @@ export default function AuthScreen() {
   };
 
   const showError = (message: string) => {
-    console.error('[AuthScreen] Showing error:', message);
+    console.error('[AuthScreen] Showing error modal:', message);
     setErrorMessage(message);
     setErrorModalVisible(true);
   };
 
   const handleBiometricSignIn = async () => {
     try {
+      console.log('[AuthScreen] ========== BIOMETRIC SIGN IN STARTED ==========');
       console.log('[AuthScreen] User tapped biometric sign in button');
       setLoading(true);
 
@@ -82,15 +84,16 @@ export default function AuthScreen() {
         return;
       }
 
+      console.log('[AuthScreen] Credentials found, requesting biometric authentication...');
       const authenticated = await authenticateWithBiometrics();
       if (!authenticated) {
         console.log('[AuthScreen] Biometric authentication cancelled or failed');
         return;
       }
 
-      console.log('[AuthScreen] Biometric authentication successful, signing in...');
+      console.log('[AuthScreen] Biometric authentication successful, calling signIn...');
       await signIn(credentials.email, credentials.password);
-      console.log('[AuthScreen] Sign in successful, navigating to index for subscription check');
+      console.log('[AuthScreen] Sign in successful, navigating to index');
       router.replace('/');
     } catch (error: any) {
       console.error('[AuthScreen] Biometric sign in failed:', error);
@@ -101,6 +104,12 @@ export default function AuthScreen() {
   };
 
   const handleEmailAuth = async () => {
+    console.log('[AuthScreen] ========== EMAIL AUTH STARTED ==========');
+    console.log('[AuthScreen] Mode:', isSignUp ? 'Sign Up' : 'Sign In');
+    console.log('[AuthScreen] Email:', email);
+    console.log('[AuthScreen] Has password:', !!password);
+    console.log('[AuthScreen] Backend URL:', BACKEND_URL);
+    
     if (!BACKEND_URL) {
       showError('Backend not configured. Please contact support.');
       return;
@@ -116,10 +125,7 @@ export default function AuthScreen() {
       return;
     }
 
-    console.log('[AuthScreen] User tapped', isSignUp ? 'Sign Up' : 'Sign In', 'button');
-    console.log('[AuthScreen] Email:', email);
-    console.log('[AuthScreen] Backend URL:', BACKEND_URL);
-    
+    console.log('[AuthScreen] Validation passed, calling auth function...');
     setLoading(true);
     
     try {
@@ -153,8 +159,8 @@ export default function AuthScreen() {
         router.replace('/');
       }, 100);
     } catch (error: any) {
-      console.error('[AuthScreen] Auth failed:', error);
-      console.error('[AuthScreen] Error type:', typeof error);
+      console.error('[AuthScreen] ========== EMAIL AUTH FAILED ==========');
+      console.error('[AuthScreen] Error type:', error.constructor.name);
       console.error('[AuthScreen] Error message:', error.message);
       console.error('[AuthScreen] Error stack:', error.stack);
       
@@ -181,7 +187,8 @@ export default function AuthScreen() {
   };
 
   const handleAppleSignIn = async () => {
-    console.log('[AuthScreen] User tapped Apple Sign In button');
+    console.log('[AuthScreen] ========== APPLE SIGN IN BUTTON TAPPED ==========');
+    console.log('[AuthScreen] Platform:', Platform.OS);
     
     try {
       console.log('[AuthScreen] Checking if Apple Sign In is available...');
@@ -196,6 +203,7 @@ export default function AuthScreen() {
       console.log('[AuthScreen] Apple Sign In is available, showing Apple prompt...');
       setLoading(true);
       
+      console.log('[AuthScreen] Calling AppleAuthentication.signInAsync...');
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -203,7 +211,10 @@ export default function AuthScreen() {
         ],
       });
 
-      console.log('[AuthScreen] Apple credential received, has token:', !!credential?.identityToken);
+      console.log('[AuthScreen] Apple credential received');
+      console.log('[AuthScreen] Has identity token:', !!credential?.identityToken);
+      console.log('[AuthScreen] Has email:', !!credential?.email);
+      console.log('[AuthScreen] Has full name:', !!credential?.fullName);
 
       if (!credential?.identityToken) {
         console.error('[AuthScreen] No identity token in Apple credential');
@@ -220,7 +231,9 @@ export default function AuthScreen() {
         } : undefined,
       };
       
-      console.log('[AuthScreen] Calling signInWithApple with token...');
+      console.log('[AuthScreen] Apple user data:', JSON.stringify(appleUserData, null, 2));
+      console.log('[AuthScreen] Calling signInWithApple...');
+      
       await signInWithApple(credential.identityToken, appleUserData);
       
       console.log('[AuthScreen] Apple sign in successful, navigating to index');
@@ -231,9 +244,11 @@ export default function AuthScreen() {
         router.replace('/');
       }, 100);
     } catch (error: any) {
-      console.error('[AuthScreen] Apple sign in error:', error);
+      console.error('[AuthScreen] ========== APPLE SIGN IN FAILED ==========');
+      console.error('[AuthScreen] Error type:', error.constructor.name);
       console.error('[AuthScreen] Error code:', error.code);
       console.error('[AuthScreen] Error message:', error.message);
+      console.error('[AuthScreen] Error stack:', error.stack);
       
       // Don't show error for user cancellation
       if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
