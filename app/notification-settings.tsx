@@ -160,9 +160,17 @@ export default function NotificationSettingsScreen() {
       // Update local notifications
       if (value) {
         const scheduledTime = updated.scheduled_time || '18:00';
-        await scheduleDailySeaTimeReviewNotification(scheduledTime);
-        Alert.alert('Success', 'Daily notifications enabled at ' + scheduledTime);
+        console.log('[NotificationSettings] Scheduling local notification at', scheduledTime);
+        const notificationId = await scheduleDailySeaTimeReviewNotification(scheduledTime);
+        if (notificationId) {
+          console.log('[NotificationSettings] Local notification scheduled:', notificationId);
+          Alert.alert('Success', `Daily notifications enabled at ${scheduledTime} local time`);
+        } else {
+          console.warn('[NotificationSettings] Failed to schedule local notification');
+          Alert.alert('Warning', 'Notifications enabled but local scheduling failed. Please check notification permissions.');
+        }
       } else {
+        console.log('[NotificationSettings] Canceling all local notifications');
         await cancelAllNotifications();
         Alert.alert('Success', 'Daily notifications disabled');
       }
@@ -206,7 +214,14 @@ export default function NotificationSettingsScreen() {
 
           // Update local notifications if active
           if (updated.is_active) {
-            await scheduleDailySeaTimeReviewNotification(option.value);
+            console.log('[NotificationSettings] Rescheduling local notification at', option.value);
+            await cancelAllNotifications();
+            const notificationId = await scheduleDailySeaTimeReviewNotification(option.value);
+            if (notificationId) {
+              console.log('[NotificationSettings] Local notification rescheduled:', notificationId);
+            } else {
+              console.warn('[NotificationSettings] Failed to reschedule local notification');
+            }
           }
 
           Alert.alert('Success', `Notification time updated to ${option.label}`);
@@ -272,69 +287,68 @@ export default function NotificationSettingsScreen() {
         }}
       />
       <View style={styles.container}>
-
         <ScrollView style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Daily Sea Time Review</Text>
-          <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Enable Daily Notifications</Text>
-                <Text style={styles.settingDescription}>
-                  Get reminded to review your sea time entries
-                </Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Daily Sea Time Review</Text>
+            <View style={styles.card}>
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Enable Daily Notifications</Text>
+                  <Text style={styles.settingDescription}>
+                    Get reminded to review your sea time entries
+                  </Text>
+                </View>
+                <Switch
+                  value={schedule?.is_active || false}
+                  onValueChange={handleToggleNotifications}
+                  disabled={updating}
+                  trackColor={{ false: '#767577', true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#ffffff' : schedule?.is_active ? '#ffffff' : '#f4f3f4'}
+                />
               </View>
-              <Switch
-                value={schedule?.is_active || false}
-                onValueChange={handleToggleNotifications}
-                disabled={updating}
-                trackColor={{ false: '#767577', true: colors.primary }}
-                thumbColor={Platform.OS === 'ios' ? '#ffffff' : schedule?.is_active ? '#ffffff' : '#f4f3f4'}
-              />
+
+              <View style={[styles.settingRow, styles.settingRowLast]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Notification Time</Text>
+                  <Text style={styles.settingDescription}>
+                    {schedule?.scheduled_time || '18:00'} (Local Time)
+                  </Text>
+                  {schedule?.timezone && (
+                    <Text style={styles.timezoneText}>Timezone: {schedule.timezone}</Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={handleChangeTime}
+                  disabled={updating || !schedule?.is_active}
+                >
+                  <Text style={styles.timeButtonText}>Change</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={[styles.settingRow, styles.settingRowLast]}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>Notification Time</Text>
-                <Text style={styles.settingDescription}>
-                  {schedule?.scheduled_time || '18:00'} (Local Time)
-                </Text>
-                {schedule?.timezone && (
-                  <Text style={styles.timezoneText}>Timezone: {schedule.timezone}</Text>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={handleChangeTime}
-                disabled={updating || !schedule?.is_active}
-              >
-                <Text style={styles.timeButtonText}>Change</Text>
-              </TouchableOpacity>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                💡 You'll receive a daily notification at {schedule?.scheduled_time || '18:00'} to review any pending sea time entries.
+                {'\n\n'}
+                The notification will only be sent if you have pending entries that need confirmation.
+                {'\n\n'}
+                {schedule?.last_sent && `Last notification sent: ${new Date(schedule.last_sent).toLocaleString()}`}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              💡 You'll receive a daily notification at {schedule?.scheduled_time || '18:00'} to review any pending sea time entries.
-              {'\n\n'}
-              The notification will only be sent if you have pending entries that need confirmation.
-              {'\n\n'}
-              {schedule?.last_sent && `Last notification sent: ${new Date(schedule.last_sent).toLocaleString()}`}
-            </Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About Notifications</Text>
+            <View style={styles.card}>
+              <Text style={styles.settingDescription}>
+                • Notifications are sent locally on your device{'\n'}
+                • No personal data is sent to external servers{'\n'}
+                • You can disable notifications at any time{'\n'}
+                • Notifications require permission from your device settings
+              </Text>
+            </View>
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About Notifications</Text>
-          <View style={styles.card}>
-            <Text style={styles.settingDescription}>
-              • Notifications are sent locally on your device{'\n'}
-              • No personal data is sent to external servers{'\n'}
-              • You can disable notifications at any time{'\n'}
-              • Notifications require permission from your device settings
-            </Text>
-          </View>
-        </View>
         </ScrollView>
       </View>
     </>

@@ -551,7 +551,7 @@ export default function ProfileScreen() {
   }, []);
 
   const loadProfile = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
+    const maxRetries = 1;
     console.log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -563,7 +563,6 @@ export default function ProfileScreen() {
       console.error(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
-        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying profile load in ${waitTime}ms...`);
         setTimeout(() => loadProfile(retryCount + 1), waitTime);
@@ -582,7 +581,7 @@ export default function ProfileScreen() {
   }, []);
 
   const loadSummary = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
+    const maxRetries = 1;
     console.log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -594,7 +593,6 @@ export default function ProfileScreen() {
       console.error(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
-        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying summary load in ${waitTime}ms...`);
         setTimeout(() => loadSummary(retryCount + 1), waitTime);
@@ -606,7 +604,7 @@ export default function ProfileScreen() {
   }, []);
 
   const loadVessels = useCallback(async (retryCount = 0) => {
-    const maxRetries = 1; // Reduced from 2 for faster failure on good connections
+    const maxRetries = 1;
     console.log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
@@ -617,7 +615,6 @@ export default function ProfileScreen() {
       console.error(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
-        // Reduced wait time from exponential backoff to fixed 500ms for instant retry on good connections
         const waitTime = 500;
         console.log(`Retrying vessels load in ${waitTime}ms...`);
         setTimeout(() => loadVessels(retryCount + 1), waitTime);
@@ -629,7 +626,6 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     console.log('ProfileScreen: Initial mount, loading data in parallel');
-    // Load all data in parallel for instant access
     Promise.all([
       loadProfile(),
       loadSummary(),
@@ -643,7 +639,6 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (refreshTrigger > 0) {
       console.log('ProfileScreen: Global refresh triggered, reloading profile data in parallel');
-      // Load all data in parallel for instant access
       Promise.all([
         loadProfile(),
         loadSummary(),
@@ -1204,7 +1199,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.menuItem} 
+                style={biometricAvailable ? styles.menuItem : [styles.menuItem, styles.menuItemLast]} 
                 onPress={() => router.push('/notification-settings')}
               >
                 <IconSymbol
@@ -1215,27 +1210,6 @@ export default function ProfileScreen() {
                   style={styles.menuItemIcon}
                 />
                 <Text style={styles.menuItemText}>Notification Settings</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={biometricAvailable ? styles.menuItem : [styles.menuItem, styles.menuItemLast]} 
-                onPress={() => router.push('/test-notifications')}
-              >
-                <IconSymbol
-                  ios_icon_name="bell.badge"
-                  android_material_icon_name="notifications-active"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Test Notifications</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

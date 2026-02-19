@@ -1,48 +1,78 @@
 
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import * as seaTimeApi from '@/utils/seaTimeApi';
+import { scheduleDailySeaTimeReviewNotification, registerForPushNotificationsAsync } from '@/utils/notifications';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * CRITICAL FIX: Completely non-blocking notification hook
- * This hook sets up notification polling and daily reminders
- * but NEVER blocks app startup or causes crashes
+ * Hook to manage notification scheduling and permissions
+ * Automatically schedules daily notifications based on user's backend schedule
  */
 export function useNotifications() {
-  const setupAttempted = useRef(false);
+  const { user } = useAuth();
+  const hasScheduledRef = useRef(false);
 
   useEffect(() => {
-    // Only run on native platforms
+    // Skip on web (notifications not supported)
     if (Platform.OS === 'web') {
       return;
     }
 
-    // Only attempt setup once
-    if (setupAttempted.current) {
+    // Skip if no user
+    if (!user) {
       return;
     }
 
-    setupAttempted.current = true;
+    // Skip if already scheduled in this session
+    if (hasScheduledRef.current) {
+      return;
+    }
 
-    // CRITICAL: Delay notification setup to ensure app is stable
-    const setupTimer = setTimeout(async () => {
+    const setupNotifications = async () => {
       try {
-        console.log('[useNotifications] Starting delayed notification setup...');
-        
-        // Dynamically import notification utilities
-        const { scheduleDailySeaTimeReviewNotification } = await import('@/utils/notifications');
-        
-        // Schedule daily notification at 18:00 (6 PM) local time
-        await scheduleDailySeaTimeReviewNotification('18:00');
-        
-        console.log('[useNotifications] ✅ Notification setup complete');
-      } catch (error) {
-        console.error('[useNotifications] ❌ Notification setup failed (non-critical):', error);
-        // Don't throw - this is non-critical
-      }
-    }, 5000); // 5 second delay to ensure app is fully stable
+        console.log('[useNotifications] Setting up notifications for user:', user.id);
 
-    return () => {
-      clearTimeout(setupTimer);
+        // Request notification permissions
+        const hasPermission = await registerForPushNotificationsAsync();
+        if (!hasPermission) {
+          console.warn('[useNotifications] Notification permissions not granted');
+          return;
+        }
+
+        console.log('[useNotifications] Notification permissions granted');
+
+        // Fetch user's notification schedule from backend
+        const schedule = await seaTimeApi.getNotificationSchedule();
+        console.log('[useNotifications] Notification schedule:', schedule);
+
+        // If notifications are active, schedule them locally
+        if (schedule.is_active) {
+          const scheduledTime = schedule.scheduled_time || '18:00';
+          console.log('[useNotifications] Scheduling daily notification at', scheduledTime);
+
+          const notificationId = await scheduleDailySeaTimeReviewNotification(scheduledTime);
+          if (notificationId) {
+            console.log('[useNotifications] Daily notification scheduled successfully:', notificationId);
+            hasScheduledRef.current = true;
+          } else {
+            console.warn('[useNotifications] Failed to schedule daily notification');
+          }
+        } else {
+          console.log('[useNotifications] Notifications are disabled in user settings');
+        }
+      } catch (error) {
+        console.error('[useNotifications] Error setting up notifications:', error);
+      }
     };
-  }, []);
+
+    // Set up notifications after a short delay to ensure app is fully loaded
+    const timer = setTimeout(() => {
+      setupNotifications();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [user]);
+
+  return null;
 }
