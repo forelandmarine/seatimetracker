@@ -23,7 +23,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import CartoMap from '@/components/CartoMap';
 import { useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { useSubscriptionEnforcement } from '@/hooks/useSubscriptionEnforcement';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -57,7 +56,6 @@ export default function SeaTimeScreen() {
   // CRITICAL: Call useAuth at the top level - NEVER conditionally
   // This must be called before any early returns or conditions
   const { refreshTrigger } = useAuth();
-  const { handleSubscriptionError, requireSubscription, hasSubscription } = useSubscriptionEnforcement();
   
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,9 +80,6 @@ export default function SeaTimeScreen() {
   // Separate vessels into active and historic
   const activeVessel = vessels.find(v => v.is_active);
   const historicVessels = vessels.filter(v => !v.is_active);
-
-  // Check if user has active subscription
-  const hasActiveSubscription = hasSubscription();
 
   const isLocationStale = useCallback((timestamp: string | null | undefined): boolean => {
     if (!timestamp) return false;
@@ -237,11 +232,6 @@ export default function SeaTimeScreen() {
       return;
     }
 
-    // Check subscription before creating vessel
-    if (!requireSubscription('vessel creation')) {
-      return;
-    }
-
     try {
       const vesselNameTrimmed = newVesselName.trim();
       console.log('[Home] User action: Creating new vessel:', { 
@@ -286,10 +276,6 @@ export default function SeaTimeScreen() {
         console.log('[Home] Initial position captured successfully');
       } catch (aisError: any) {
         console.error('[Home] Failed to capture initial position:', aisError);
-        // Check if it's a subscription error
-        if (handleSubscriptionError(aisError)) {
-          return;
-        }
         // Don't fail the whole operation if AIS check fails
         // The scheduled task will pick it up on the next run
       }
@@ -311,22 +297,12 @@ export default function SeaTimeScreen() {
     } catch (error: any) {
       console.error('[Home] Failed to add vessel:', error);
       
-      // Check if it's a subscription error
-      if (handleSubscriptionError(error)) {
-        return;
-      }
-      
       // Display the error message from the API (which now includes user-friendly messages)
       Alert.alert('Error', error.message || 'Failed to add vessel. Please try again.');
     }
   };
 
   const handleActivateVessel = async (vesselId: string, vesselName: string) => {
-    // Check subscription before activating vessel
-    if (!requireSubscription('vessel activation')) {
-      return;
-    }
-
     const message = activeVessel 
       ? `Start tracking ${vesselName}? This will deactivate ${activeVessel.vessel_name}.`
       : `Start tracking ${vesselName}? The app will monitor this vessel's AIS data.`;
@@ -346,12 +322,6 @@ export default function SeaTimeScreen() {
               Alert.alert('Success', `${vesselName} is now being tracked`);
             } catch (error: any) {
               console.error('[Home] Failed to activate vessel:', error);
-              
-              // Check if it's a subscription error
-              if (handleSubscriptionError(error)) {
-                return;
-              }
-              
               Alert.alert('Error', 'Failed to activate vessel: ' + error.message);
             }
           },
@@ -393,11 +363,6 @@ export default function SeaTimeScreen() {
   const handleUserAccountPress = () => {
     console.log('[Home] User tapped account button, navigating to user profile');
     router.push('/user-profile');
-  };
-
-  const handleSubscribePress = () => {
-    console.log('[Home] User tapped subscribe button, navigating to paywall');
-    router.push('/paywall');
   };
 
   const convertToDMS = (decimal: number, isLatitude: boolean): string => {
@@ -488,38 +453,6 @@ export default function SeaTimeScreen() {
           </View>
         </View>
 
-        {/* Subscription Required Banner - Show when no active subscription */}
-        {!hasActiveSubscription && (
-          <View style={styles.subscriptionBanner}>
-            <View style={styles.subscriptionBannerContent}>
-              <IconSymbol
-                ios_icon_name="exclamationmark.triangle.fill"
-                android_material_icon_name="warning"
-                size={32}
-                color={colors.warning}
-              />
-              <View style={styles.subscriptionBannerTextContainer}>
-                <Text style={styles.subscriptionBannerTitle}>Vessel Tracking Paused</Text>
-                <Text style={styles.subscriptionBannerMessage}>
-                  Your subscription is inactive. Vessel tracking has been paused. Subscribe to resume automatic sea time tracking.
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity 
-              style={styles.subscriptionBannerButton}
-              onPress={handleSubscribePress}
-            >
-              <Text style={styles.subscriptionBannerButtonText}>Subscribe Now</Text>
-              <IconSymbol
-                ios_icon_name="arrow.right"
-                android_material_icon_name="arrow-forward"
-                size={18}
-                color="#fff"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Active Vessel Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -557,9 +490,7 @@ export default function SeaTimeScreen() {
               >
                 <View style={styles.activeVesselBadge}>
                   <View style={styles.activeIndicatorPulse} />
-                  <Text style={styles.activeVesselBadgeText}>
-                    {hasActiveSubscription ? 'TRACKING' : 'PAUSED'}
-                  </Text>
+                  <Text style={styles.activeVesselBadgeText}>TRACKING</Text>
                 </View>
                 
                 <Text style={styles.vesselName}>{activeVessel.vessel_name}</Text>
@@ -1013,51 +944,6 @@ function createStyles(isDark: boolean) {
     },
     userAccountButton: {
       padding: 4,
-    },
-    subscriptionBanner: {
-      backgroundColor: colors.warning + '20',
-      borderLeftWidth: 4,
-      borderLeftColor: colors.warning,
-      padding: 16,
-      marginHorizontal: 16,
-      marginTop: 16,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.warning + '40',
-    },
-    subscriptionBannerContent: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-      marginBottom: 12,
-    },
-    subscriptionBannerTextContainer: {
-      flex: 1,
-    },
-    subscriptionBannerTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 6,
-    },
-    subscriptionBannerMessage: {
-      fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      lineHeight: 20,
-    },
-    subscriptionBannerButton: {
-      backgroundColor: colors.primary,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 14,
-      borderRadius: 8,
-      gap: 8,
-    },
-    subscriptionBannerButtonText: {
-      color: '#fff',
-      fontSize: 16,
-      fontWeight: 'bold',
     },
     section: {
       padding: 16,

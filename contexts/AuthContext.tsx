@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode, use
 import { Platform } from 'react-native';
 import { BACKEND_URL } from '@/utils/api';
 import { clearBiometricCredentials } from '@/utils/biometricAuth';
+import { useBridgeReady } from './BridgeReadyContext';
 
 const TOKEN_KEY = 'seatime_auth_token';
 
@@ -32,7 +33,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Token storage with deferred SecureStore loading to prevent early TurboModule initialization
+// CRITICAL: Deferred token storage to prevent early TurboModule initialization
+// SecureStore is ONLY loaded when actually needed, not at module scope
 const tokenStorage = {
   async getToken(): Promise<string | null> {
     try {
@@ -98,8 +100,9 @@ const tokenStorage = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { isBridgeReady, isInitializing } = useBridgeReady();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Start with loading true
+  const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const triggerRefresh = useCallback(() => {
@@ -108,6 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAuth = useCallback(async () => {
+    // CRITICAL: Wait for bridge to be ready before accessing native modules
+    if (!isBridgeReady) {
+      console.log('[Auth] Bridge not ready, deferring auth check');
+      return;
+    }
+
     console.log('[Auth] Checking authentication...');
     
     try {
@@ -163,7 +172,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 hasDepartment: !!profileData.department,
               });
             } else {
-              // Profile fetch failed, but user is authenticated
               console.warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
               setUser(data.user);
             }
@@ -193,13 +201,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isBridgeReady]);
 
-  // Check auth on mount
+  // CRITICAL: Only check auth after bridge is ready
   useEffect(() => {
-    console.log('[Auth] AuthProvider mounted, checking auth...');
-    checkAuth();
-  }, [checkAuth]);
+    if (isBridgeReady && !isInitializing) {
+      console.log('[Auth] Bridge ready, checking authentication...');
+      checkAuth();
+    } else {
+      console.log('[Auth] Waiting for bridge to be ready...');
+    }
+  }, [isBridgeReady, isInitializing, checkAuth]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (loading) {
@@ -230,7 +242,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
 
       console.log('[Auth] Sign in response status:', response.status);
-      console.log('[Auth] Sign in response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const contentType = response.headers.get('content-type');
@@ -258,7 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (parseError) {
           console.error('[Auth] Could not parse error as JSON:', parseError);
           
-          // Provide user-friendly error messages
           if (response.status === 401) {
             throw new Error('Invalid email or password. Please check your credentials and try again.');
           } else if (response.status === 500) {
@@ -275,7 +285,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       console.log('[Auth] Sign in response data received, has session:', !!data.session);
-      console.log('[Auth] Sign in response data has token:', !!data.session?.token);
 
       if (!data.session?.token) {
         console.error('[Auth] No session token in response:', JSON.stringify(data, null, 2));
@@ -286,11 +295,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await tokenStorage.setToken(data.session.token);
       console.log('[Auth] Token stored successfully');
       
-      // Set user immediately to prevent crash
+      // Set user immediately
       setUser(data.user);
       console.log('[Auth] User state set, email:', data.user.email);
       
-      // Fetch user profile to get department info (non-blocking)
+      // Fetch user profile (non-blocking)
       try {
         const profileController = new AbortController();
         const profileTimeoutId = setTimeout(() => profileController.abort(), API_TIMEOUT);
@@ -310,8 +319,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             department: profileData.department,
             hasDepartment: !!profileData.department,
           });
-        } else {
-          console.warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
         }
       } catch (profileError) {
         console.warn('[Auth] Failed to fetch profile after sign in (non-critical):', profileError);
@@ -319,9 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('[Auth] Sign in successful:', data.user.email);
     } catch (error: any) {
-      console.error('[Auth] Sign in failed - Error name:', error.name);
-      console.error('[Auth] Sign in failed - Error message:', error.message);
-      console.error('[Auth] Sign in failed - Error stack:', error.stack);
+      console.error('[Auth] Sign in failed:', error);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -362,12 +367,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       clearTimeout(timeoutId);
 
-      console.log('[Auth] Sign up response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Auth] Sign up failed with status:', response.status, 'body:', errorText);
-        
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -378,16 +379,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      console.log('[Auth] Sign up response data received');
 
       if (!data.session?.token) {
-        console.error('[Auth] No session token in response:', data);
         throw new Error('No session token received');
       }
 
       await tokenStorage.setToken(data.session.token);
-      console.log('[Auth] Token stored successfully');
-      
       setUser(data.user);
       
       console.log('[Auth] Sign up successful:', data.user.email);
@@ -436,8 +433,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } : undefined,
       };
 
-      console.log('[Auth] Sending Apple sign-in request to backend...');
-      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
@@ -450,12 +445,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       clearTimeout(timeoutId);
 
-      console.log('[Auth] Apple sign in response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Auth] Apple sign in failed with status:', response.status, 'body:', errorText);
-        
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -469,24 +460,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      console.log('[Auth] Apple sign in response data received, has session:', !!data.session);
 
       if (!data.session?.token) {
-        console.error('[Auth] No session token in response:', data);
         throw new Error('No session token received');
       }
 
-      console.log('[Auth] Storing Apple sign-in token...');
       await tokenStorage.setToken(data.session.token);
-      console.log('[Auth] Token stored successfully');
-      
-      // Set user immediately to prevent crash
       setUser(data.user);
-      console.log('[Auth] User state set after Apple sign-in, email:', data.user.email);
       
-      // Fetch user profile to get department info (non-blocking)
+      // Fetch profile (non-blocking)
       try {
-        console.log('[Auth] Fetching user profile after Apple sign-in...');
         const profileController = new AbortController();
         const profileTimeoutId = setTimeout(() => profileController.abort(), API_TIMEOUT);
         
@@ -499,14 +482,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          console.log('[Auth] Profile fetched after Apple sign in, department:', profileData.department);
           setUser({
             ...data.user,
             department: profileData.department,
             hasDepartment: !!profileData.department,
           });
-        } else {
-          console.warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
         }
       } catch (profileError) {
         console.warn('[Auth] Failed to fetch profile after Apple sign in (non-critical):', profileError);
@@ -514,9 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('[Auth] Apple sign in successful:', data.user.email);
     } catch (error: any) {
-      console.error('[Auth] Apple sign in failed - Error name:', error.name);
-      console.error('[Auth] Apple sign in failed - Error message:', error.message);
-      console.error('[Auth] Apple sign in failed - Error stack:', error.stack);
+      console.error('[Auth] Apple sign in failed:', error);
       
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -534,18 +512,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     console.log('[Auth] ========== SIGN OUT STARTED ==========');
-    console.log('[Auth] User before sign out:', user?.email);
     
     try {
-      // CRITICAL: Clear local state FIRST in a finally block to ensure it always happens
-      // This guarantees the user is logged out locally even if backend/storage fails
-      
       const token = await tokenStorage.getToken();
-      console.log('[Auth] Retrieved token for sign out:', token ? 'exists' : 'null');
       
-      // Fire-and-forget backend call - don't wait for it
+      // Fire-and-forget backend call
       if (token && BACKEND_URL) {
-        console.log('[Auth] Sending sign out request to backend (fire-and-forget)');
         fetch(`${BACKEND_URL}/api/auth/sign-out`, {
           method: 'POST',
           headers: {
@@ -553,34 +525,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
-        }).then(() => {
-          console.log('[Auth] Backend sign out successful');
-        }).catch((error) => {
-          console.log('[Auth] Backend sign out failed (ignored):', error.message);
-        });
-      } else {
-        console.log('[Auth] Skipping backend sign out (no token or backend URL)');
+        }).catch(() => {});
       }
       
-      // Clean up local storage
-      console.log('[Auth] Removing token from storage...');
       await tokenStorage.removeToken();
-      console.log('[Auth] Token removed successfully');
-      
-      console.log('[Auth] Clearing biometric credentials...');
       await clearBiometricCredentials();
-      console.log('[Auth] Biometric credentials cleared');
       
     } catch (error) {
       console.error('[Auth] Sign out cleanup error (will still clear local state):', error);
     } finally {
-      // CRITICAL: Always clear local state, even if storage operations fail
-      console.log('[Auth] Clearing local user state...');
       setUser(null);
       setLoading(false);
       console.log('[Auth] ========== SIGN OUT COMPLETE ==========');
     }
-  }, [user]);
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -605,20 +563,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // CRITICAL: Log error but don't crash the app
-    console.error('[Auth] CRITICAL: useAuth called outside AuthProvider. This is a developer error.');
-    // Return a safe default context to prevent crashes
+    console.error('[Auth] CRITICAL: useAuth called outside AuthProvider');
     return {
       user: null,
       loading: false,
       signIn: async () => { throw new Error('Auth not initialized'); },
       signUp: async () => { throw new Error('Auth not initialized'); },
       signInWithApple: async () => { throw new Error('Auth not initialized'); },
-      signOut: async () => { console.log('[Auth] Sign out called but auth not initialized'); },
+      signOut: async () => {},
       isAuthenticated: false,
       refreshTrigger: 0,
-      triggerRefresh: () => { console.log('[Auth] Refresh triggered but auth not initialized'); },
-      checkAuth: async () => { console.log('[Auth] Check auth called but auth not initialized'); },
+      triggerRefresh: () => {},
+      checkAuth: async () => {},
     };
   }
   return context;

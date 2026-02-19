@@ -18,7 +18,6 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useSubscriptionEnforcement } from '@/hooks/useSubscriptionEnforcement';
 
 interface UserProfile {
   id: string;
@@ -335,7 +334,6 @@ export default function ReportsScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
-  const { handleSubscriptionError, requireSubscription } = useSubscriptionEnforcement();
 
   console.log('ReportsScreen rendered');
 
@@ -397,11 +395,6 @@ export default function ReportsScreen() {
   const handleDownloadPDF = async () => {
     console.log('User tapped Download PDF Report');
     
-    // Check subscription before downloading report
-    if (!requireSubscription('PDF report generation')) {
-      return;
-    }
-    
     setDownloadingPDF(true);
     try {
       const pdfBlob = await seaTimeApi.downloadPDFReport();
@@ -441,12 +434,6 @@ export default function ReportsScreen() {
       }
     } catch (error: any) {
       console.error('Failed to download PDF report:', error);
-      
-      // Check if it's a subscription error
-      if (handleSubscriptionError(error)) {
-        return;
-      }
-      
       Alert.alert('Error', 'Failed to download PDF report. Please try again.');
     } finally {
       setDownloadingPDF(false);
@@ -455,11 +442,6 @@ export default function ReportsScreen() {
 
   const handleDownloadCSV = async () => {
     console.log('User tapped Download CSV Report');
-    
-    // Check subscription before downloading report
-    if (!requireSubscription('CSV report generation')) {
-      return;
-    }
     
     setDownloadingCSV(true);
     try {
@@ -494,12 +476,6 @@ export default function ReportsScreen() {
       }
     } catch (error: any) {
       console.error('Failed to download CSV report:', error);
-      
-      // Check if it's a subscription error
-      if (handleSubscriptionError(error)) {
-        return;
-      }
-      
       Alert.alert('Error', 'Failed to download CSV report. Please try again.');
     } finally {
       setDownloadingCSV(false);

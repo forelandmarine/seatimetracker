@@ -1,6 +1,5 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
-import { UpgradeButton } from "@/components/UpgradeButton";
 import React, { useState, useEffect, useCallback } from 'react';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1216,29 +1215,6 @@ export default function ProfileScreen() {
                   style={styles.menuItemIcon}
                 />
                 <Text style={styles.menuItemText}>Notification Settings</Text>
-                                <UpgradeButton variant="banner" />
-                
-<IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => router.push('/revenuecat-customer-center')}
-              >
-                <IconSymbol
-                  ios_icon_name="star.circle"
-                  android_material_icon_name="star"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Subscription</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

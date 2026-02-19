@@ -14,9 +14,8 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import { BridgeReadyProvider } from "@/contexts/BridgeReadyContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { RevenueCatProvider } from "@/contexts/RevenueCatContext";
-import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { BACKEND_URL } from "@/utils/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -132,287 +131,42 @@ function RootLayoutNav() {
   };
 
   return (
-    <SubscriptionProvider>
-      <>
+    <>
       <StatusBar style="auto" animated />
       <ThemeProvider
         value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
       >
         <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
-            {/* Index/Root Route */}
-            <Stack.Screen 
-              name="index" 
-              options={{ 
-                headerShown: false,
-              }} 
-            />
-
-            {/* Authentication Screen */}
-            <Stack.Screen 
-              name="auth" 
-              options={{ 
-                headerShown: false,
-                title: "Sign In",
-              }} 
-            />
-
-            {/* Forgot Password Screen */}
-            <Stack.Screen 
-              name="forgot-password" 
-              options={{ 
-                headerShown: false,
-                title: "Reset Password",
-              }} 
-            />
-
-            {/* Subscription Diagnostic Screen */}
-            <Stack.Screen 
-              name="subscription-diagnostic" 
-              options={{ 
-                headerShown: false,
-                title: "Subscription Diagnostic",
-              }} 
-            />
-
-            {/* RevenueCat Paywall Screen */}
-            <Stack.Screen 
-              name="revenuecat-paywall" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                title: "Subscribe",
-              }} 
-            />
-
-            {/* RevenueCat Customer Center Screen */}
-            <Stack.Screen 
-              name="revenuecat-customer-center" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                title: "Subscription",
-              }} 
-            />
-
-            {/* RevenueCat Diagnostic Screen */}
-            <Stack.Screen 
-              name="revenuecat-diagnostic" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                title: "RevenueCat Diagnostic",
-              }} 
-            />
-
-            {/* Main app with tabs */}
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false, title: "Sign In" }} />
+            <Stack.Screen name="forgot-password" options={{ headerShown: false, title: "Reset Password" }} />
+            <Stack.Screen name="paywall" options={{ headerShown: false, presentation: 'card', title: "Subscription" }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-            {/* Vessel detail screens */}
-            <Stack.Screen 
-              name="vessel/[id]" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Add Sea Time Entry screen */}
-            <Stack.Screen 
-              name="add-sea-time" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Edit Sea Time Entry screen */}
-            <Stack.Screen 
-              name="edit-sea-time" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* User profile screen */}
-            <Stack.Screen 
-              name="user-profile" 
-              options={{ 
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* MCA Requirements screen */}
-            <Stack.Screen 
-              name="mca-requirements" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Scheduled tasks screen */}
-            <Stack.Screen 
-              name="scheduled-tasks" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Notification settings screen */}
-            <Stack.Screen 
-              name="notification-settings" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Debug logs screen */}
-            <Stack.Screen 
-              name="debug/[vesselId]" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Reports screen */}
-            <Stack.Screen 
-              name="reports" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Admin verify screen */}
-            <Stack.Screen 
-              name="admin-verify" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-              }} 
-            />
-
-            {/* Admin investigate entry screen */}
-            <Stack.Screen 
-              name="admin-investigate-entry" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Test login screen */}
-            <Stack.Screen 
-              name="test-login" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-              }} 
-            />
-
-            {/* Vessel diagnostic screen */}
-            <Stack.Screen 
-              name="vessel-diagnostic" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Select pathway screen */}
-            <Stack.Screen 
-              name="select-pathway" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Admin generate samples screen */}
-            <Stack.Screen 
-              name="admin-generate-samples" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Admin update subscription screen */}
-            <Stack.Screen 
-              name="admin-update-subscription" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Admin activate subscriptions screen */}
-            <Stack.Screen 
-              name="admin-activate-subscriptions" 
-              options={{ 
-                headerShown: false,
-                presentation: 'card',
-                headerBackTitle: 'Back',
-              }} 
-            />
-
-            {/* Modal Demo Screens */}
-            <Stack.Screen
-              name="modal"
-              options={{
-                presentation: "modal",
-                title: "Standard Modal",
-              }}
-            />
-            <Stack.Screen
-              name="formsheet"
-              options={{
-                presentation: "formSheet",
-                title: "Form Sheet Modal",
-                sheetGrabberVisible: true,
-                sheetAllowedDetents: [0.5, 0.8, 1.0],
-                sheetCornerRadius: 20,
-              }}
-            />
-            <Stack.Screen
-              name="transparent-modal"
-              options={{
-                presentation: "transparentModal",
-                headerShown: false,
-              }}
-            />
-
-            {/* 404 Not Found */}
-            <Stack.Screen 
-              name="+not-found" 
-              options={{ 
-                headerShown: false,
-              }} 
-            />
+            <Stack.Screen name="vessel/[id]" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="add-sea-time" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="edit-sea-time" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="user-profile" options={{ presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="mca-requirements" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="scheduled-tasks" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="notification-settings" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="debug/[vesselId]" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="reports" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="admin-verify" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="admin-investigate-entry" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="test-login" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="vessel-diagnostic" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="select-pathway" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="admin-generate-samples" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="admin-menu" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
+            <Stack.Screen name="modal" options={{ presentation: "modal", title: "Standard Modal" }} />
+            <Stack.Screen name="formsheet" options={{ presentation: "formSheet", title: "Form Sheet Modal", sheetGrabberVisible: true, sheetAllowedDetents: [0.5, 0.8, 1.0], sheetCornerRadius: 20 }} />
+            <Stack.Screen name="transparent-modal" options={{ presentation: "transparentModal", headerShown: false }} />
+            <Stack.Screen name="+not-found" options={{ headerShown: false }} />
           </Stack>
         </GestureHandlerRootView>
       </ThemeProvider>
     </>
-    </SubscriptionProvider>
   );
 }
 
@@ -421,13 +175,15 @@ export default function RootLayout() {
   
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <RevenueCatProvider>
+      {/* CRITICAL: BridgeReadyProvider MUST be the outermost provider */}
+      {/* This ensures all native module initialization is deferred until the bridge is ready */}
+      <BridgeReadyProvider>
+        <AuthProvider>
           <WidgetProvider>
             <RootLayoutNav />
           </WidgetProvider>
-        </RevenueCatProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </BridgeReadyProvider>
     </ErrorBoundary>
   );
 }
