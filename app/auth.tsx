@@ -164,22 +164,7 @@ export default function AuthScreen() {
       console.error('[AuthScreen] Error message:', error.message);
       console.error('[AuthScreen] Error stack:', error.stack);
       
-      let errorMsg = error.message || 'Authentication failed';
-      
-      // Parse common error messages
-      if (errorMsg.includes('<!DOCTYPE') || errorMsg.includes('<html')) {
-        errorMsg = 'Server error. The backend may be restarting. Please wait a moment and try again.';
-      } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
-        errorMsg = 'Cannot connect to server. Please check your internet connection.';
-      } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-        errorMsg = 'Request timed out. Please try again.';
-      } else if (errorMsg.includes('401') || errorMsg.includes('Invalid email or password')) {
-        errorMsg = 'Invalid email or password. Please check your credentials.';
-      } else if (errorMsg.includes('400')) {
-        errorMsg = 'Invalid request. Please check your email and password format.';
-      } else if (errorMsg.includes('500') || errorMsg.includes('Server error')) {
-        errorMsg = 'Server error. Please try again in a moment.';
-      }
+      const errorMsg = error.message || 'Authentication failed';
       
       showError(errorMsg);
       setLoading(false);

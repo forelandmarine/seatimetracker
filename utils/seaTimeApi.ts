@@ -969,62 +969,20 @@ export const checkNotificationDue = async () => {
   return data;
 };
 
-// Verify vessel tasks - ensures all active vessels have scheduled tasks
-export const verifyVesselTasks = async () => {
-  console.log('[seaTimeApi] Verifying vessel tasks');
-  const headers = await getApiHeaders();
-  const response = await fetch(`${API_BASE_URL}/api/admin/verify-vessel-tasks`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[seaTimeApi] Failed to verify vessel tasks:', response.status, errorText);
-    throw new Error(`Failed to verify vessel tasks: ${response.status}`);
-  }
-
-  const data = await response.json();
-  console.log('[seaTimeApi] Vessel tasks verification completed:', data);
-  return data;
-};
-
-// Get vessel diagnostic status - detailed sea time detection analysis
-export const getVesselDiagnosticStatus = async (mmsi: string) => {
-  console.log('[seaTimeApi] Fetching vessel diagnostic status for MMSI:', mmsi);
+// Get vessel AIS status with recent checks - replaces admin vessel-status endpoint
+export const getVesselDiagnosticStatus = async (vesselId: string) => {
+  console.log('[seaTimeApi] Fetching vessel AIS status for vessel ID:', vesselId);
   const options = await getFetchOptions('GET');
-  const response = await fetch(`${API_BASE_URL}/api/admin/vessel-status/${mmsi}`, options);
+  const response = await fetch(`${API_BASE_URL}/api/ais/status/${vesselId}`, options);
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[seaTimeApi] Failed to fetch vessel diagnostic status:', response.status, errorText);
-    throw new Error(`Failed to fetch vessel diagnostic status: ${response.status}`);
+    console.error('[seaTimeApi] Failed to fetch vessel AIS status:', response.status, errorText);
+    throw new Error(`Failed to fetch vessel AIS status: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[seaTimeApi] Vessel diagnostic status fetched successfully');
-  return data;
-};
-
-// Generate demo sea time entries for a user (admin endpoint)
-export const generateDemoEntries = async (email: string, count: number = 43) => {
-  console.log('[seaTimeApi] Generating demo entries for user:', email, 'count:', count);
-  const headers = await getApiHeaders();
-  const response = await fetch(`${API_BASE_URL}/api/admin/generate-demo-entries`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ email, count }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[seaTimeApi] Failed to generate demo entries:', response.status, errorText);
-    throw new Error(`Failed to generate demo entries: ${response.status}`);
-  }
-
-  const data = await response.json();
-  console.log('[seaTimeApi] Demo entries generated successfully:', data.entriesCreated);
+  console.log('[seaTimeApi] Vessel AIS status fetched successfully');
   return data;
 };
 

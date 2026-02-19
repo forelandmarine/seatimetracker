@@ -22,7 +22,6 @@ interface DiagnosticData {
     mmsi: string;
     vessel_name: string;
     is_active: boolean;
-    user_id: string | null;
   };
   scheduled_task: {
     id: string;
@@ -68,7 +67,6 @@ export default function VesselDiagnosticScreen() {
   const [data, setData] = useState<DiagnosticData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [forcingCheck, setForcingCheck] = useState(false);
-  const [amalgamating, setAmalgamating] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
@@ -86,19 +84,84 @@ export default function VesselDiagnosticScreen() {
     
     try {
       const headers = await getApiHeaders();
-      const response = await fetch(`${API_BASE_URL}/api/admin/vessel-status/${mmsi}`, {
-        headers,
-      });
 
-      console.log('[VesselDiagnostic] Response status:', response.status);
+      // Step 1: Get all vessels to find the one matching this MMSI
+      console.log('[VesselDiagnostic] Fetching vessels list...');
+      const vesselsResponse = await fetch(`${API_BASE_URL}/api/vessels`, { headers });
+      if (!vesselsResponse.ok) {
+        const errorData = await vesselsResponse.json();
+        throw new Error(errorData.error || `Failed to fetch vessels: HTTP ${vesselsResponse.status}`);
+      }
+      const vessels = await vesselsResponse.json();
+      const vessel = vessels.find((v: any) => v.mmsi === mmsi);
+      if (!vessel) {
+        throw new Error(`No vessel found with MMSI ${mmsi}`);
+      }
+      console.log('[VesselDiagnostic] Found vessel:', vessel.id, vessel.vessel_name);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+      // Step 2: Get AIS status (includes recent checks and scheduled task info)
+      console.log('[VesselDiagnostic] Fetching AIS status...');
+      const aisStatusResponse = await fetch(`${API_BASE_URL}/api/ais/status/${vessel.id}`, { headers });
+      let aisStatus: any = { is_moving: false, current_check: null, recent_checks: [] };
+      if (aisStatusResponse.ok) {
+        aisStatus = await aisStatusResponse.json();
+      } else {
+        console.warn('[VesselDiagnostic] AIS status fetch failed:', aisStatusResponse.status);
       }
 
-      const diagnosticData = await response.json();
-      console.log('[VesselDiagnostic] Diagnostic data:', JSON.stringify(diagnosticData, null, 2));
+      // Step 3: Get scheduled tasks to find the task for this vessel
+      console.log('[VesselDiagnostic] Fetching scheduled tasks...');
+      const tasksResponse = await fetch(`${API_BASE_URL}/api/ais/scheduled-tasks`, { headers });
+      let scheduledTask = null;
+      if (tasksResponse.ok) {
+        const tasks = await tasksResponse.json();
+        scheduledTask = tasks.find((t: any) => t.vessel_id === vessel.id) || null;
+      } else {
+        console.warn('[VesselDiagnostic] Scheduled tasks fetch failed:', tasksResponse.status);
+      }
+
+      // Step 4: Get sea time entries for this vessel
+      console.log('[VesselDiagnostic] Fetching sea time entries...');
+      const seaTimeResponse = await fetch(`${API_BASE_URL}/api/vessels/${vessel.id}/sea-time`, { headers });
+      let seaTimeEntries: any[] = [];
+      if (seaTimeResponse.ok) {
+        seaTimeEntries = await seaTimeResponse.json();
+      } else {
+        console.warn('[VesselDiagnostic] Sea time fetch failed:', seaTimeResponse.status);
+      }
+
+      // Build diagnostic data from available non-admin endpoints
+      const diagnosticData: DiagnosticData = {
+        vessel: {
+          id: vessel.id,
+          mmsi: vessel.mmsi,
+          vessel_name: vessel.vessel_name,
+          is_active: vessel.is_active,
+        },
+        scheduled_task: scheduledTask ? {
+          id: scheduledTask.id,
+          is_active: scheduledTask.is_active,
+          last_run: scheduledTask.last_run || null,
+          next_run: scheduledTask.next_run,
+          interval_hours: String(scheduledTask.interval_hours),
+        } : null,
+        ais_checks_last_24h: (aisStatus.recent_checks || []).map((check: any) => ({
+          check_time: check.created_at || check.check_time || new Date().toISOString(),
+          is_moving: check.is_moving || false,
+          speed_knots: check.speed_knots ?? null,
+          latitude: check.latitude ?? null,
+          longitude: check.longitude ?? null,
+        })),
+        sea_time_entries: seaTimeEntries.slice(0, 10).map((entry: any) => ({
+          id: entry.id,
+          start_time: entry.start_time,
+          end_time: entry.end_time || null,
+          status: entry.status,
+          duration_hours: entry.duration_hours ?? null,
+        })),
+      };
+
+      console.log('[VesselDiagnostic] Diagnostic data assembled successfully');
       setData(diagnosticData);
       setError(null);
     } catch (err) {
@@ -153,47 +216,6 @@ export default function VesselDiagnosticScreen() {
       showModalMessage('Error', err instanceof Error ? err.message : 'Failed to force AIS check', 'error');
     } finally {
       setForcingCheck(false);
-    }
-  };
-
-  const handleAmalgamate = async () => {
-    if (!data?.vessel?.mmsi || !data?.vessel?.user_id) return;
-
-    console.log('[VesselDiagnostic] Amalgamating sea time for MMSI:', data.vessel.mmsi);
-    setAmalgamating(true);
-
-    try {
-      const headers = await getApiHeaders();
-      const response = await fetch(`${API_BASE_URL}/api/admin/amalgamate-sea-time`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          mmsi: data.vessel.mmsi,
-          date: '26 Jan 2026',
-        }),
-      });
-
-      console.log('[VesselDiagnostic] Amalgamate response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('[VesselDiagnostic] Amalgamate result:', result);
-
-      const durationText = result.duration_hours ? `${result.duration_hours.toFixed(1)} hours` : 'N/A';
-      const message = `Sea time entry amalgamated successfully!\n\nStart: ${formatDateTime(result.start_time)}\nEnd: ${formatDateTime(result.end_time)}\nDuration: ${durationText}\n\nThe entry is now ready for review in the Confirmations tab.`;
-      showModalMessage('Amalgamation Complete', message, 'success');
-      
-      // Reload diagnostics after modal is closed
-      setTimeout(() => loadDiagnostics(), 500);
-    } catch (err) {
-      console.error('[VesselDiagnostic] Error amalgamating:', err);
-      showModalMessage('Error', err instanceof Error ? err.message : 'Failed to amalgamate sea time', 'error');
-    } finally {
-      setAmalgamating(false);
     }
   };
 
@@ -394,27 +416,6 @@ export default function VesselDiagnosticScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Amalgamate Button */}
-        <TouchableOpacity
-          style={[styles.amalgamateButton, amalgamating && styles.forceButtonDisabled]}
-          onPress={handleAmalgamate}
-          disabled={amalgamating}
-        >
-          {amalgamating ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <IconSymbol
-                ios_icon_name="arrow.merge"
-                android_material_icon_name="merge"
-                size={20}
-                color="#fff"
-              />
-              <Text style={styles.forceButtonText}>Amalgamate Sea Time (26 Jan 2026)</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -597,17 +598,6 @@ function createStyles(isDark: boolean) {
     forceButton: {
       backgroundColor: colors.primary,
       margin: 16,
-      padding: 16,
-      borderRadius: 12,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 8,
-    },
-    amalgamateButton: {
-      backgroundColor: colors.success,
-      marginHorizontal: 16,
-      marginBottom: 16,
       padding: 16,
       borderRadius: 12,
       flexDirection: 'row',

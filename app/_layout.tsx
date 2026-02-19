@@ -152,13 +152,9 @@ function RootLayoutNav() {
             <Stack.Screen name="notification-settings" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
             <Stack.Screen name="debug/[vesselId]" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
             <Stack.Screen name="reports" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
-            <Stack.Screen name="admin-verify" options={{ headerShown: false, presentation: 'card' }} />
-            <Stack.Screen name="admin-investigate-entry" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
             <Stack.Screen name="test-login" options={{ headerShown: false, presentation: 'card' }} />
             <Stack.Screen name="vessel-diagnostic" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
             <Stack.Screen name="select-pathway" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
-            <Stack.Screen name="admin-generate-samples" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
-            <Stack.Screen name="admin-menu" options={{ headerShown: false, presentation: 'card', headerBackTitle: 'Back' }} />
             <Stack.Screen name="modal" options={{ presentation: "modal", title: "Standard Modal" }} />
             <Stack.Screen name="formsheet" options={{ presentation: "formSheet", title: "Form Sheet Modal", sheetGrabberVisible: true, sheetAllowedDetents: [0.5, 0.8, 1.0], sheetCornerRadius: 20 }} />
             <Stack.Screen name="transparent-modal" options={{ presentation: "transparentModal", headerShown: false }} />

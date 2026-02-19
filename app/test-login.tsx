@@ -1,54 +1,91 @@
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useColorScheme } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/styles/commonStyles';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  useColorScheme,
+  Platform,
+} from 'react-native';
 import { Stack } from 'expo-router';
+import { colors } from '@/styles/commonStyles';
+import { BACKEND_URL } from '@/utils/api';
 
 export default function TestLoginScreen() {
-  const { user, signIn, signOut, isAuthenticated } = useAuth();
-  const [testResult, setTestResult] = useState<string>('');
+  const [email, setEmail] = useState('test@seatime.com');
+  const [password, setPassword] = useState('testpassword123');
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState('');
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const runLoginTest = async () => {
+  const testBackendConnection = async () => {
     setLoading(true);
-    setTestResult('Testing login...\n');
+    setResult('Testing backend connection...\n');
     
     try {
-      // Test 1: Sign in with test credentials
-      setTestResult(prev => prev + '\n✓ Step 1: Attempting sign in with test@seatime.com...');
-      await signIn('test@seatime.com', 'testpassword123');
+      // Test 1: Check if backend URL is configured
+      setResult(prev => prev + `\n✓ Backend URL: ${BACKEND_URL || 'NOT CONFIGURED'}\n`);
       
-      setTestResult(prev => prev + '\n✓ Step 2: Sign in successful!');
-      setTestResult(prev => prev + `\n✓ Step 3: User authenticated: ${user?.email || 'checking...'}`);
-      setTestResult(prev => prev + `\n✓ Step 4: Auth status: ${isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`);
-      
-      setTestResult(prev => prev + '\n\n🎉 LOGIN TEST PASSED! Authentication is working correctly.');
-    } catch (error: any) {
-      setTestResult(prev => prev + `\n\n❌ LOGIN TEST FAILED: ${error.message || 'Unknown error'}`);
-      console.error('[TestLogin] Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!BACKEND_URL) {
+        setResult(prev => prev + '\n❌ Backend URL is not configured!\n');
+        setLoading(false);
+        return;
+      }
 
-  const runSignOutTest = async () => {
-    setLoading(true);
-    setTestResult('Testing sign out...\n');
-    
-    try {
-      setTestResult(prev => prev + '\n✓ Step 1: Signing out...');
-      await signOut();
+      // Test 2: Try to reach the health endpoint
+      setResult(prev => prev + '\nTesting health endpoint...\n');
+      const healthResponse = await fetch(`${BACKEND_URL}/health`, {
+        method: 'GET',
+      });
       
-      setTestResult(prev => prev + '\n✓ Step 2: Sign out successful!');
-      setTestResult(prev => prev + `\n✓ Step 3: Auth status: ${isAuthenticated ? 'STILL AUTHENTICATED (ERROR)' : 'NOT AUTHENTICATED'}`);
+      setResult(prev => prev + `✓ Health check status: ${healthResponse.status}\n`);
       
-      setTestResult(prev => prev + '\n\n🎉 SIGN OUT TEST PASSED!');
+      if (healthResponse.ok) {
+        const healthData = await healthResponse.text();
+        setResult(prev => prev + `✓ Health response: ${healthData}\n`);
+      }
+
+      // Test 3: Try to sign in
+      setResult(prev => prev + '\nAttempting sign in...\n');
+      setResult(prev => prev + `Email: ${email}\n`);
+      setResult(prev => prev + `Password: ${password.replace(/./g, '*')}\n`);
+      setResult(prev => prev + `URL: ${BACKEND_URL}/api/auth/sign-in/email\n`);
+      
+      const signInResponse = await fetch(`${BACKEND_URL}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      setResult(prev => prev + `\n✓ Sign in response status: ${signInResponse.status}\n`);
+      setResult(prev => prev + `✓ Response headers: ${JSON.stringify(Object.fromEntries(signInResponse.headers.entries()), null, 2)}\n`);
+
+      const responseText = await signInResponse.text();
+      setResult(prev => prev + `\n✓ Response body (first 500 chars):\n${responseText.substring(0, 500)}\n`);
+
+      if (signInResponse.ok) {
+        try {
+          const data = JSON.parse(responseText);
+          setResult(prev => prev + `\n✅ SUCCESS! Received session token: ${data.session?.token?.substring(0, 20)}...\n`);
+        } catch (parseError) {
+          setResult(prev => prev + `\n⚠️ Response OK but couldn't parse JSON\n`);
+        }
+      } else {
+        setResult(prev => prev + `\n❌ Sign in failed with status ${signInResponse.status}\n`);
+      }
+
     } catch (error: any) {
-      setTestResult(prev => prev + `\n\n❌ SIGN OUT TEST FAILED: ${error.message || 'Unknown error'}`);
-      console.error('[TestLogin] Error:', error);
+      setResult(prev => prev + `\n❌ ERROR: ${error.message}\n`);
+      setResult(prev => prev + `Error type: ${error.constructor.name}\n`);
+      setResult(prev => prev + `Error stack: ${error.stack}\n`);
     } finally {
       setLoading(false);
     }
@@ -58,63 +95,65 @@ export default function TestLoginScreen() {
 
   return (
     <>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
-          title: 'Login Test',
+          title: 'Test Login',
           headerShown: true,
-        }} 
+        }}
       />
-      <ScrollView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Login Test Screen</Text>
-          
-          <View style={styles.statusCard}>
-            <Text style={styles.statusLabel}>Current Status:</Text>
-            <Text style={styles.statusValue}>
-              {isAuthenticated ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'}
-            </Text>
-            {user && (
-              <>
-                <Text style={styles.statusLabel}>User Email:</Text>
-                <Text style={styles.statusValue}>{user.email}</Text>
-                <Text style={styles.statusLabel}>User Name:</Text>
-                <Text style={styles.statusValue}>{user.name || 'N/A'}</Text>
-              </>
-            )}
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Backend Connection Test</Text>
+        <Text style={styles.subtitle}>
+          This screen tests the connection to the backend and attempts a sign-in.
+        </Text>
+
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="test@seatime.com"
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="testpassword123"
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
           </View>
 
           <TouchableOpacity
             style={[styles.button, styles.primaryButton]}
-            onPress={runLoginTest}
-            disabled={loading || isAuthenticated}
+            onPress={testBackendConnection}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Testing...' : 'Test Login'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Test Connection & Sign In</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={runSignOutTest}
-            disabled={loading || !isAuthenticated}
-          >
-            <Text style={styles.buttonTextSecondary}>
-              {loading ? 'Testing...' : 'Test Sign Out'}
-            </Text>
-          </TouchableOpacity>
-
-          {testResult && (
-            <View style={styles.resultCard}>
+          {result ? (
+            <View style={styles.resultContainer}>
               <Text style={styles.resultTitle}>Test Results:</Text>
-              <Text style={styles.resultText}>{testResult}</Text>
+              <ScrollView style={styles.resultScroll}>
+                <Text style={styles.resultText}>{result}</Text>
+              </ScrollView>
             </View>
-          )}
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Test Credentials:</Text>
-            <Text style={styles.infoText}>Email: test@seatime.com</Text>
-            <Text style={styles.infoText}>Password: testpassword123</Text>
-          </View>
+          ) : null}
         </View>
       </ScrollView>
     </>
@@ -128,62 +167,62 @@ function createStyles(isDark: boolean) {
       backgroundColor: isDark ? colors.background : colors.backgroundLight,
     },
     content: {
-      padding: 20,
+      padding: 24,
     },
     title: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: 'bold',
       color: isDark ? colors.text : colors.textLight,
-      marginBottom: 24,
-      textAlign: 'center',
+      marginBottom: 8,
     },
-    statusCard: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 12,
-      padding: 20,
+    subtitle: {
+      fontSize: 16,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginBottom: 24,
+      lineHeight: 24,
+    },
+    form: {
+      width: '100%',
+    },
+    inputContainer: {
       marginBottom: 20,
     },
-    statusLabel: {
-      fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginTop: 12,
-      marginBottom: 4,
-    },
-    statusValue: {
-      fontSize: 18,
+    label: {
+      fontSize: 16,
       fontWeight: '600',
+      color: isDark ? colors.text : colors.textLight,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
       color: isDark ? colors.text : colors.textLight,
     },
     button: {
       borderRadius: 12,
       padding: 16,
       alignItems: 'center',
-      marginBottom: 12,
+      marginTop: 8,
     },
     primaryButton: {
       backgroundColor: colors.primary,
-    },
-    secondaryButton: {
-      backgroundColor: 'transparent',
-      borderWidth: 2,
-      borderColor: colors.primary,
     },
     buttonText: {
       color: '#FFFFFF',
       fontSize: 18,
       fontWeight: '600',
     },
-    buttonTextSecondary: {
-      color: colors.primary,
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    resultCard: {
+    resultContainer: {
+      marginTop: 24,
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
-      padding: 20,
-      marginTop: 20,
-      marginBottom: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
     },
     resultTitle: {
       fontSize: 18,
@@ -191,28 +230,14 @@ function createStyles(isDark: boolean) {
       color: isDark ? colors.text : colors.textLight,
       marginBottom: 12,
     },
+    resultScroll: {
+      maxHeight: 400,
+    },
     resultText: {
       fontSize: 14,
       color: isDark ? colors.text : colors.textLight,
       fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
       lineHeight: 20,
-    },
-    infoCard: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 12,
-      padding: 20,
-      marginTop: 20,
-    },
-    infoTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 8,
-    },
-    infoText: {
-      fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 4,
     },
   });
 }

@@ -36,7 +36,6 @@ import * as reportsRoutes from './routes/reports.js';
 import * as trackingRoutes from './routes/tracking.js';
 import * as authRoutes from './routes/auth.js';
 import * as profileRoutes from './routes/profile.js';
-import * as adminRoutes from './routes/admin.js';
 import * as notificationsRoutes from './routes/notifications.js';
 import * as subscriptionRoutes from './routes/subscription.js';
 
@@ -115,7 +114,6 @@ reportsRoutes.register(app, app.fastify);
 trackingRoutes.register(app, app.fastify);
 authRoutes.register(app, app.fastify);
 profileRoutes.register(app, app.fastify);
-adminRoutes.register(app, app.fastify);
 notificationsRoutes.register(app, app.fastify);
 subscriptionRoutes.register(app, app.fastify);
 

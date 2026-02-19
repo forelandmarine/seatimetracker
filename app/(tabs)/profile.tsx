@@ -1226,16 +1226,16 @@ export default function ProfileScreen() {
 
               <TouchableOpacity 
                 style={biometricAvailable ? styles.menuItem : [styles.menuItem, styles.menuItemLast]} 
-                onPress={() => router.push('/admin-menu')}
+                onPress={() => router.push('/test-notifications')}
               >
                 <IconSymbol
-                  ios_icon_name="wrench"
-                  android_material_icon_name="settings"
+                  ios_icon_name="bell.badge"
+                  android_material_icon_name="notifications-active"
                   size={24}
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>Admin Tools</Text>
+                <Text style={styles.menuItemText}>Test Notifications</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
