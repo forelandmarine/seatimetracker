@@ -44,6 +44,7 @@ interface SeaTimeEntry {
   start_time: string;
   end_time: string | null;
   duration_hours: number | null;
+  sea_days: number | null;
   status: 'pending' | 'confirmed' | 'rejected';
   notes: string | null;
   created_at: string;
@@ -390,10 +391,9 @@ export default function VesselDetailScreen() {
   };
 
   const calculateTotalDays = (): number => {
-    const totalHours = seaTimeEntries
+    return seaTimeEntries
       .filter(entry => entry.status === 'confirmed')
-      .reduce((total, entry) => total + (entry.duration_hours || 0), 0);
-    return Math.floor(totalHours / 24);
+      .reduce((total, entry) => total + (entry.sea_days || 0), 0);
   };
 
   const groupEntriesByDate = () => {

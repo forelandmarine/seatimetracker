@@ -87,6 +87,47 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId, startDate, endDate }, 'Generating CSV report for user');
 
+    // Helper function to calculate distance in nautical miles using Haversine formula
+    const calculateDistanceNauticalMiles = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const EARTH_RADIUS_NM = 3440.065; // Nautical miles
+
+      // Convert degrees to radians
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const lat1Rad = lat1 * (Math.PI / 180);
+      const lat2Rad = lat2 * (Math.PI / 180);
+
+      // Haversine formula
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.asin(Math.sqrt(a));
+      const distance = EARTH_RADIUS_NM * c;
+
+      return Math.round(distance * 100) / 100;
+    };
+
+    // Helper function to format service type with proper labels
+    const formatServiceType = (serviceType: string | null | undefined): string => {
+      const serviceTypeMap: { [key: string]: string } = {
+        'actual_sea_service': 'Actual Sea Service',
+        'watchkeeping_service': 'Watchkeeping Service',
+        'standby_service': 'Stand-by Service',
+        'yard_service': 'Yard Service',
+        'service_in_port': 'Service in Port',
+      };
+      return serviceTypeMap[serviceType || 'actual_sea_service'] || 'Actual Sea Service';
+    };
+
+    // Helper function to format date as DD/MM/YYYY
+    const formatDate = (date: Date | string) => {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
+
     let entries = await app.db.query.sea_time_entries.findMany({
       with: {
         vessel: true,
@@ -110,9 +151,12 @@ export function register(app: App, fastify: FastifyInstance) {
     // Only include confirmed entries
     entries = entries.filter((entry) => entry.status === 'confirmed');
 
+    // Sort entries by start_time ascending (oldest first)
+    entries.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
     app.logger.info({ count: entries.length }, 'Filtered entries for CSV report');
 
-    // Build CSV with vessel particulars
+    // SECTION 1: Build CSV with vessel particulars (existing summary section)
     const headers = [
       'Date',
       'Vessel Name',
@@ -124,7 +168,7 @@ export function register(app: App, fastify: FastifyInstance) {
       'Gross Tonnes',
       'Start Time',
       'End Time',
-      'Duration Hours',
+      'Sea Days',
       'Service Type',
       'Status',
       'Notes',
@@ -140,20 +184,114 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.vessel?.gross_tonnes || '',
       new Date(entry.start_time).toISOString(),
       entry.end_time ? new Date(entry.end_time).toISOString() : '',
-      entry.duration_hours || '',
+      entry.sea_days || 0,
       entry.service_type || 'actual_sea_service',
       entry.status,
       entry.notes || '',
     ]);
 
-    const csv = [
+    const summarySection = [
       headers.map((h) => `"${h}"`).join(','),
       ...rows.map((row) =>
         row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
       ),
+    ];
+
+    // SECTION 2: Build detailed voyage records table
+    const voyageHeaders = [
+      'Voyage Number',
+      'Start Date',
+      'End Date',
+      'Vessel Name',
+      'MMSI',
+      'Flag',
+      'Official Number',
+      'Vessel Type',
+      'Length (metres)',
+      'Gross Tonnes',
+      'Start Position',
+      'End Position',
+      'Distance (nm)',
+      'Sea Days',
+      'Service Type',
+      'Notes',
+    ];
+
+    const voyageRows = entries.map((entry, index) => {
+      // Format positions
+      let startPosition = 'Not recorded';
+      if (entry.start_latitude !== null && entry.start_longitude !== null) {
+        const lat = typeof entry.start_latitude === 'string' ? parseFloat(entry.start_latitude) : entry.start_latitude;
+        const lon = typeof entry.start_longitude === 'string' ? parseFloat(entry.start_longitude) : entry.start_longitude;
+        startPosition = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+      }
+
+      let endPosition = 'Not recorded';
+      if (entry.end_latitude !== null && entry.end_longitude !== null) {
+        const lat = typeof entry.end_latitude === 'string' ? parseFloat(entry.end_latitude) : entry.end_latitude;
+        const lon = typeof entry.end_longitude === 'string' ? parseFloat(entry.end_longitude) : entry.end_longitude;
+        endPosition = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+      }
+
+      // Calculate distance
+      let distance = 'N/A';
+      if (
+        entry.start_latitude !== null &&
+        entry.start_longitude !== null &&
+        entry.end_latitude !== null &&
+        entry.end_longitude !== null
+      ) {
+        const startLat = typeof entry.start_latitude === 'string' ? parseFloat(entry.start_latitude) : entry.start_latitude;
+        const startLon = typeof entry.start_longitude === 'string' ? parseFloat(entry.start_longitude) : entry.start_longitude;
+        const endLat = typeof entry.end_latitude === 'string' ? parseFloat(entry.end_latitude) : entry.end_latitude;
+        const endLon = typeof entry.end_longitude === 'string' ? parseFloat(entry.end_longitude) : entry.end_longitude;
+        distance = String(calculateDistanceNauticalMiles(startLat, startLon, endLat, endLon));
+      }
+
+      return [
+        String(index + 1), // Voyage number
+        formatDate(entry.start_time), // Start date
+        entry.end_time ? formatDate(entry.end_time) : '', // End date
+        entry.vessel?.vessel_name || '',
+        entry.vessel?.mmsi || '',
+        entry.vessel?.flag || '',
+        entry.vessel?.official_number || '',
+        entry.vessel?.type || '',
+        entry.vessel?.length_metres || '',
+        entry.vessel?.gross_tonnes || '',
+        startPosition,
+        endPosition,
+        distance,
+        entry.sea_days || 0,
+        formatServiceType(entry.service_type),
+        entry.notes || '',
+      ];
+    });
+
+    const voyageSection = [
+      voyageHeaders.map((h) => `"${h}"`).join(','),
+      ...voyageRows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ),
+    ];
+
+    // Combine both sections with header and blank rows between them
+    const csv = [
+      'SeaTime Tracker',
+      'Digital Sea Time Logbook',
+      '',
+      ...summarySection,
+      '', // Blank rows for separation
+      '',
+      `"DETAILED VOYAGE RECORDS"`,
+      '',
+      ...voyageSection,
     ].join('\n');
 
-    app.logger.info({ headerCount: headers.length, rowCount: rows.length }, 'CSV report generated');
+    app.logger.info(
+      { summaryRows: rows.length, voyageRows: voyageRows.length, totalRows: rows.length + voyageRows.length },
+      'CSV report with voyage records generated'
+    );
 
     reply.header('Content-Type', 'text/csv');
     reply.header('Content-Disposition', 'attachment; filename="sea-time-entries.csv"');
@@ -176,7 +314,6 @@ export function register(app: App, fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            total_hours: { type: 'number' },
             total_days: { type: 'number' },
             entries_by_vessel: {
               type: 'array',
@@ -184,7 +321,7 @@ export function register(app: App, fastify: FastifyInstance) {
                 type: 'object',
                 properties: {
                   vessel_name: { type: 'string' },
-                  total_hours: { type: 'number' },
+                  total_days: { type: 'number' },
                 },
               },
             },
@@ -194,7 +331,7 @@ export function register(app: App, fastify: FastifyInstance) {
                 type: 'object',
                 properties: {
                   month: { type: 'string' },
-                  total_hours: { type: 'number' },
+                  total_days: { type: 'number' },
                 },
               },
             },
@@ -204,7 +341,7 @@ export function register(app: App, fastify: FastifyInstance) {
                 type: 'object',
                 properties: {
                   service_type: { type: 'string' },
-                  total_hours: { type: 'number' },
+                  total_days: { type: 'number' },
                 },
               },
             },
@@ -286,16 +423,13 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Calculate total hours
-    let total_hours = 0;
+    // Calculate total days (sum of sea_days column - each entry is 0 or 1)
+    let total_days = 0;
     entries.forEach((entry) => {
-      if (entry.duration_hours) {
-        total_hours += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        total_days += entry.sea_days;
       }
     });
-
-    // Calculate total days (24-hour periods)
-    const total_days = Math.round((total_hours / 24) * 100) / 100;
 
     // Group by vessel - return as array
     const vesselMap: { [key: string]: number } = {};
@@ -304,17 +438,17 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!vesselMap[vessel_name]) {
         vesselMap[vessel_name] = 0;
       }
-      if (entry.duration_hours) {
-        vesselMap[vessel_name] += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        vesselMap[vessel_name] += entry.sea_days;
       }
     });
 
     const entries_by_vessel = Object.entries(vesselMap)
-      .map(([vessel_name, total_hours]) => ({
+      .map(([vessel_name, total_days]) => ({
         vessel_name,
-        total_hours: Math.round(total_hours * 100) / 100,
+        total_days,
       }))
-      .sort((a, b) => b.total_hours - a.total_hours); // Sort by hours descending
+      .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
     // Group by month - return as array
     const monthMap: { [key: string]: number } = {};
@@ -323,15 +457,15 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!monthMap[month]) {
         monthMap[month] = 0;
       }
-      if (entry.duration_hours) {
-        monthMap[month] += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        monthMap[month] += entry.sea_days;
       }
     });
 
     const entries_by_month = Object.entries(monthMap)
-      .map(([month, total_hours]) => ({
+      .map(([month, total_days]) => ({
         month,
-        total_hours: Math.round(total_hours * 100) / 100,
+        total_days,
       }))
       .sort((a, b) => a.month.localeCompare(b.month)); // Sort by month ascending
 
@@ -342,21 +476,20 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!serviceTypeMap[service_type]) {
         serviceTypeMap[service_type] = 0;
       }
-      if (entry.duration_hours) {
-        serviceTypeMap[service_type] += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        serviceTypeMap[service_type] += entry.sea_days;
       }
     });
 
     const entries_by_service_type = Object.entries(serviceTypeMap)
-      .map(([service_type, total_hours]) => ({
+      .map(([service_type, total_days]) => ({
         service_type,
-        total_hours: Math.round(total_hours * 100) / 100,
+        total_days,
       }))
-      .sort((a, b) => b.total_hours - a.total_hours); // Sort by hours descending
+      .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
     app.logger.info(
       {
-        total_hours: Math.round(total_hours * 100) / 100,
         total_days,
         vesselCount: entries_by_vessel.length,
         monthCount: entries_by_month.length,
@@ -366,7 +499,6 @@ export function register(app: App, fastify: FastifyInstance) {
     );
 
     return reply.code(200).send({
-      total_hours: Math.round(total_hours * 100) / 100,
       total_days,
       entries_by_vessel,
       entries_by_month,
@@ -513,13 +645,12 @@ export function register(app: App, fastify: FastifyInstance) {
     };
 
     // Calculate summary statistics
-    let totalHours = 0;
+    let totalDays = 0;
     confirmedEntries.forEach((entry) => {
-      if (entry.duration_hours) {
-        totalHours += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        totalDays += entry.sea_days;
       }
     });
-    const totalDays = Math.round((totalHours / 24) * 100) / 100;
 
     // Group entries by vessel
     const entriesByVessel: { [vesselId: string]: typeof confirmedEntries } = {};
@@ -537,8 +668,8 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!serviceTypeTotals[serviceType]) {
         serviceTypeTotals[serviceType] = 0;
       }
-      if (entry.duration_hours) {
-        serviceTypeTotals[serviceType] += parseFloat(String(entry.duration_hours));
+      if (entry.sea_days) {
+        serviceTypeTotals[serviceType] += entry.sea_days;
       }
     });
 
@@ -602,29 +733,28 @@ export function register(app: App, fastify: FastifyInstance) {
       width: 360,
       align: 'left'
     });
-    doc.fillColor(TEXT_SECONDARY).fontSize(11).font('Helvetica').text('Sea Time Report', {
+    doc.fillColor(TEXT_SECONDARY).fontSize(11).font('Helvetica').text('Digital Sea Time Logbook', {
       x: 200,
       y: doc.y,
       width: 360,
       align: 'left'
     });
 
-    // Move down after logo area with more breathing room
-    doc.y = Math.max(doc.y + 12, 30 + logoHeight + 8);
-    doc.moveDown(0.5);
+    // Move down after logo area with minimal spacing
+    doc.y = Math.max(doc.y + 8, 30 + logoHeight + 4);
 
     // USER INFORMATION HEADER BOX
-    const headerBoxY = doc.y;
-    const headerBoxHeight = 125;
+    const headerBoxY = Math.round(doc.y);
+    const headerBoxHeight = 100;
     doc.fillColor(LIGHT_BG).rect(40, headerBoxY, 520, headerBoxHeight).fill();
     doc.strokeColor(BORDER_COLOR).lineWidth(2).rect(40, headerBoxY, 520, headerBoxHeight).stroke();
 
-    doc.fillColor(TEXT_PRIMARY).fontSize(18).font('Helvetica-Bold');
-    doc.text(userProfile.name, 55, headerBoxY + 12, { width: 480 });
+    doc.fillColor(TEXT_PRIMARY).fontSize(16).font('Helvetica-Bold');
+    doc.text(userProfile.name, 55, headerBoxY + 8, { width: 480 });
 
-    doc.fontSize(11).font('Helvetica').fillColor(TEXT_SECONDARY);
-    let headerY = headerBoxY + 35;
-    const lineHeight = 16;
+    doc.fontSize(10).font('Helvetica').fillColor(TEXT_SECONDARY);
+    let headerY = headerBoxY + 28;
+    const lineHeight = 13;
 
     // Email
     doc.text(`Email: ${userProfile.email}`, 50, headerY);
@@ -645,30 +775,29 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.text(`Address: ${userProfile.address}`, leftX, currentY, { width: 230 });
     }
     if (userProfile.tel_no) {
-      doc.text(`Tel: ${userProfile.tel_no}`, rightX, Math.max(currentY, doc.y - 12), { width: 230 });
+      doc.text(`Tel: ${userProfile.tel_no}`, rightX, Math.max(currentY, doc.y - 10), { width: 230 });
     }
-    currentY = Math.max(doc.y, currentY + 24);
+    currentY = Math.max(doc.y, currentY + 16);
 
     if (userProfile.date_of_birth) {
       doc.text(`DOB: ${formatDateOfBirth(userProfile.date_of_birth)}`, leftX, currentY, { width: 230 });
     }
     if (userProfile.nationality) {
-      doc.text(`Nationality: ${userProfile.nationality}`, rightX, Math.max(currentY, doc.y - 12), { width: 230 });
+      doc.text(`Nationality: ${userProfile.nationality}`, rightX, Math.max(currentY, doc.y - 10), { width: 230 });
     }
-    currentY = Math.max(doc.y, currentY + 24);
+    currentY = Math.max(doc.y, currentY + 16);
 
     if (userProfile.srb_no) {
       doc.text(`SRB No: ${userProfile.srb_no}`, leftX, currentY, { width: 230 });
     }
     if (userProfile.pya_membership_no) {
-      doc.text(`PYA Membership: ${userProfile.pya_membership_no}`, rightX, Math.max(currentY, doc.y - 12), { width: 230 });
+      doc.text(`PYA Membership: ${userProfile.pya_membership_no}`, rightX, Math.max(currentY, doc.y - 10), { width: 230 });
     }
 
-    doc.y = headerBoxY + headerBoxHeight;
-    doc.moveDown(0.5);
+    doc.y = Math.round(headerBoxY + headerBoxHeight + 4);
 
     // REPORT METADATA
-    doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
+    doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica');
     doc.text(`Generated: ${formatDate(new Date())}`, { align: 'left' });
 
     if (startDate || endDate) {
@@ -678,41 +807,22 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.text(`Report Period: ${dateRange}`, { align: 'left' });
     }
 
-    // Horizontal separator line with improved styling
-    doc.moveDown(0.6);
-    doc.strokeColor(BORDER_COLOR).lineWidth(1.5).moveTo(40, doc.y).lineTo(560, doc.y).stroke();
-    doc.moveDown(0.8);
+    // Horizontal separator line with reduced spacing
+    doc.moveDown(0.2);
+    doc.strokeColor(BORDER_COLOR).lineWidth(1.5).moveTo(40, Math.round(doc.y)).lineTo(560, Math.round(doc.y)).stroke();
+    doc.moveDown(0.3);
 
     // VESSEL-BY-VESSEL BREAKDOWN SECTION
     if (Object.keys(entriesByVessel).length > 0) {
-      doc.fontSize(18).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Vessel-by-Vessel Breakdown');
-      doc.moveDown(0.6);
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Vessel-by-Vessel Breakdown');
+      doc.moveDown(0.3);
 
       Object.entries(entriesByVessel).forEach(([vesselId, vesselEntries], vesselIndex) => {
         const vessel = allVessels.find((v) => v.id === vesselId);
         if (!vessel) return;
 
-        // Check if we need a new page (estimate space needed for vessel section)
-        const spaceNeeded = 150; // Approximate space for vessel section
-        if (doc.y > doc.page.height - spaceNeeded) {
-          doc.addPage();
-          // Reprint section header on new page
-          doc.fontSize(16).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Vessel-by-Vessel Breakdown (continued)');
-          doc.moveDown(0.5);
-        }
-
-        // Vessel header with accent background
-        const vesselHeaderY = doc.y;
-        doc.fillColor(ACCENT_COLOR).rect(40, vesselHeaderY, 520, 30).fill();
-        doc.strokeColor(ACCENT_COLOR).lineWidth(2).rect(40, vesselHeaderY, 520, 30).stroke();
-        doc.fillColor(PRIMARY_COLOR).fontSize(15).font('Helvetica-Bold');
-        doc.text(vessel.vessel_name, 50, vesselHeaderY + 6, { width: 500 });
-        doc.moveDown(1.6);
-
-        // Vessel particulars - two column layout with better spacing
-        doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica');
+        // Calculate space needed for this vessel section
         const particulars: Array<[string, string]> = [];
-
         if (vessel.mmsi) particulars.push(['MMSI', vessel.mmsi]);
         if (vessel.callsign) particulars.push(['Callsign', vessel.callsign]);
         if (vessel.flag) particulars.push(['Flag', vessel.flag]);
@@ -721,143 +831,157 @@ export function register(app: App, fastify: FastifyInstance) {
         if (vessel.length_metres) particulars.push(['Length', `${vessel.length_metres}m`]);
         if (vessel.gross_tonnes) particulars.push(['Gross Tonnes', String(vessel.gross_tonnes)]);
 
-        // Output in two-column format with increased spacing
-        const leftX = 50;
-        const rightX = 300;
-        let currentY = doc.y;
-
-        for (let i = 0; i < particulars.length; i += 2) {
-          const [label1, value1] = particulars[i];
-          const [label2, value2] = particulars[i + 1] || [null, null];
-
-          doc.fillColor(SECONDARY_COLOR).fontSize(11).font('Helvetica-Bold');
-          doc.text(`${label1}:`, leftX, currentY);
-          doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica');
-          doc.text(value1, leftX + 80, currentY, { width: 150 });
-
-          if (label2) {
-            doc.fillColor(SECONDARY_COLOR).fontSize(11).font('Helvetica-Bold');
-            doc.text(`${label2}:`, rightX, currentY);
-            doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica');
-            doc.text(value2, rightX + 80, currentY, { width: 150 });
-          }
-
-          currentY += 18;
-        }
-
-        doc.y = currentY;
-        doc.moveDown(0.5);
-
-        // Service type breakdown for this vessel
-        doc.fontSize(13).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Sea Service Definition Breakdown:');
-        doc.moveDown(0.3);
-
-        // Group entries by service type for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};
         vesselEntries.forEach((entry) => {
           const serviceType = entry.service_type || 'actual_sea_service';
           if (!vesselServiceTypes[serviceType]) {
             vesselServiceTypes[serviceType] = 0;
           }
-          if (entry.duration_hours) {
-            vesselServiceTypes[serviceType] += parseFloat(String(entry.duration_hours));
+          if (entry.sea_days) {
+            vesselServiceTypes[serviceType] += entry.sea_days;
           }
         });
 
+        const particularsRows = Math.ceil(particulars.length / 2);
+        const serviceTypeRows = Object.keys(vesselServiceTypes).length;
+        const spaceNeeded = 28 + (particularsRows * 14) + 16 + (serviceTypeRows * 12) + 23 + 8; // Header + particulars + service title + service items + subtotal + spacing
+
+        // Check if we need a new page BEFORE vessel header
+        if (doc.y > Math.round(doc.page.height - spaceNeeded - 60)) {
+          doc.addPage();
+        }
+
+        // Vessel header with accent background
+        const vesselHeaderY = Math.round(doc.y);
+        doc.fillColor(ACCENT_COLOR).rect(40, vesselHeaderY, 520, 28).fill();
+        doc.strokeColor(ACCENT_COLOR).lineWidth(2).rect(40, vesselHeaderY, 520, 28).stroke();
+        doc.fillColor(PRIMARY_COLOR).fontSize(13).font('Helvetica-Bold');
+        doc.text(vessel.vessel_name, 50, vesselHeaderY + 5, { width: 500 });
+        doc.y = Math.round(vesselHeaderY + 30);
+
+        // Vessel particulars - two column layout with reduced spacing
         doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
-        Object.entries(vesselServiceTypes).forEach(([serviceType, hours]) => {
-          const days = Math.round((hours / 24) * 100) / 100;
+        const leftX = 50;
+        const rightX = 300;
+        let currentY = Math.round(doc.y);
+
+        for (let i = 0; i < particulars.length; i += 2) {
+          const [label1, value1] = particulars[i];
+          const [label2, value2] = particulars[i + 1] || [null, null];
+
+          doc.fillColor(SECONDARY_COLOR).fontSize(10).font('Helvetica-Bold');
+          doc.text(`${label1}:`, leftX, currentY);
+          doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
+          doc.text(value1, leftX + 75, currentY, { width: 150 });
+
+          if (label2) {
+            doc.fillColor(SECONDARY_COLOR).fontSize(10).font('Helvetica-Bold');
+            doc.text(`${label2}:`, rightX, currentY);
+            doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
+            doc.text(value2, rightX + 75, currentY, { width: 150 });
+          }
+
+          currentY += 14;
+        }
+
+        doc.y = Math.round(currentY + 4);
+
+        // Service type breakdown for this vessel
+        doc.fontSize(11).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Sea Service Definition Breakdown:');
+        doc.moveDown(0.2);
+
+        doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica');
+        Object.entries(vesselServiceTypes).forEach(([serviceType, days]) => {
           const label = formatServiceType(serviceType);
-          const hoursFormatted = Math.round(hours * 100) / 100;
-          doc.text(`  • ${label}`, 50, doc.y);
-          doc.text(`${hoursFormatted}h (${days}d)`, 450, doc.y - 13, { align: 'right', width: 80 });
+          doc.text(`  • ${label}`, 50, Math.round(doc.y));
+          doc.text(`${days}d`, 450, Math.round(doc.y), { align: 'right', width: 80 });
+          doc.moveDown(0.25);
         });
 
         // Vessel totals in highlighted box
-        let vesselHours = 0;
+        let vesselDays = 0;
         vesselEntries.forEach((entry) => {
-          if (entry.duration_hours) {
-            vesselHours += parseFloat(String(entry.duration_hours));
+          if (entry.sea_days) {
+            vesselDays += entry.sea_days;
           }
         });
-        const vesselDays = Math.round((vesselHours / 24) * 100) / 100;
 
-        doc.moveDown(0.5);
-        const vesselSubtotalY = doc.y;
-        doc.fillColor(LIGHT_BG).rect(40, vesselSubtotalY, 520, 25).fill();
-        doc.strokeColor(ACCENT_COLOR).lineWidth(2).rect(40, vesselSubtotalY, 520, 25).stroke();
-        doc.fillColor(PRIMARY_COLOR).fontSize(12).font('Helvetica-Bold');
-        doc.text(`Vessel Subtotal: ${Math.round(vesselHours * 100) / 100} hours (${vesselDays} days)`, 55, vesselSubtotalY + 5);
-        doc.moveDown(1.3);
+        doc.moveDown(0.2);
+        const vesselSubtotalY = Math.round(doc.y);
+        doc.fillColor(LIGHT_BG).rect(40, vesselSubtotalY, 520, 23).fill();
+        doc.strokeColor(ACCENT_COLOR).lineWidth(2).rect(40, vesselSubtotalY, 520, 23).stroke();
+        doc.fillColor(PRIMARY_COLOR).fontSize(11).font('Helvetica-Bold');
+        doc.text(`Vessel Subtotal: ${vesselDays} days`, 55, vesselSubtotalY + 4);
+        doc.y = Math.round(vesselSubtotalY + 26);
 
         // Add minimal spacing between vessels
         if (vesselIndex < Object.keys(entriesByVessel).length - 1) {
-          doc.moveDown(0.2);
+          doc.moveDown(0.15);
         }
       });
 
-      doc.moveDown(0.5);
+      doc.moveDown(0.2);
     }
 
     // GRAND TOTAL SUMMARY SECTION
-    // Separator line
-    doc.strokeColor(BORDER_COLOR).lineWidth(1).moveTo(40, doc.y).lineTo(560, doc.y).stroke();
-    doc.moveDown(0.5);
-
-    doc.fontSize(18).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Summary Totals');
-    doc.moveDown(0.5);
-
-    // Main summary box with large text and professional styling
-    const summaryBoxY = doc.y;
-    doc.fillColor(LIGHT_BG).rect(40, summaryBoxY, 520, 75).fill();
-    doc.strokeColor(PRIMARY_COLOR).lineWidth(2).rect(40, summaryBoxY, 520, 75).stroke();
-
-    doc.fillColor(PRIMARY_COLOR).fontSize(16).font('Helvetica-Bold');
-    doc.text(`⚓ Total Hours: ${Math.round(totalHours * 100) / 100}`, 55, summaryBoxY + 12, { width: 220 });
-    doc.text(`📊 Total Days: ${totalDays}`, 330, summaryBoxY + 12, { width: 210 });
-
-    doc.fontSize(11).font('Helvetica');
-    doc.fillColor(TEXT_SECONDARY).text('Across all vessels', 55, summaryBoxY + 38);
-    doc.text('24-hour periods', 330, summaryBoxY + 38);
-
-    doc.y = summaryBoxY + 80;
-    doc.moveDown(0.5);
-
-    // Service type breakdown with improved styling
-    doc.fontSize(14).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Breakdown by Service Type:');
-    doc.moveDown(0.4);
-
-    doc.fillColor(TEXT_PRIMARY).fontSize(11).font('Helvetica');
-    const sortedServiceTypes = Object.entries(serviceTypeTotals)
-      .sort((a, b) => b[1] - a[1]);
-
-    sortedServiceTypes.forEach(([serviceType, hours], index) => {
-      const days = Math.round((hours / 24) * 100) / 100;
-      const label = formatServiceType(serviceType);
-      const hoursFormatted = Math.round(hours * 100) / 100;
-
-      // Alternate row background for better readability
-      if (index % 2 === 1) {
-        doc.fillColor(LIGHT_BG).rect(40, doc.y - 2, 520, 20).fill();
-      }
-
-      doc.fillColor(TEXT_PRIMARY).text(`  • ${label}`, 55, doc.y);
-      doc.text(`${hoursFormatted}h (${days}d)`, 450, doc.y, { align: 'right', width: 80 });
-      doc.moveDown(0.3);
-    });
-
-    doc.moveDown(0.8);
-
-    // SERVICE TYPE LEGEND - check if we need a new page
-    if (doc.y > doc.page.height - 180) {
+    // Check if we need a new page for summary section
+    if (doc.y > Math.round(doc.page.height - 140)) {
       doc.addPage();
     }
 
-    doc.strokeColor(BORDER_COLOR).lineWidth(1.5).moveTo(40, doc.y).lineTo(560, doc.y).stroke();
-    doc.moveDown(0.5);
+    // Separator line
+    doc.strokeColor(BORDER_COLOR).lineWidth(1).moveTo(40, Math.round(doc.y)).lineTo(560, Math.round(doc.y)).stroke();
+    doc.moveDown(0.2);
 
-    doc.fontSize(16).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Service Type Definitions');
-    doc.moveDown(0.4);
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Summary Totals');
+    doc.moveDown(0.2);
+
+    // Main summary box with large text and professional styling
+    const summaryBoxY = Math.round(doc.y);
+    doc.fillColor(LIGHT_BG).rect(40, summaryBoxY, 520, 55).fill();
+    doc.strokeColor(PRIMARY_COLOR).lineWidth(2).rect(40, summaryBoxY, 520, 55).stroke();
+
+    doc.fillColor(PRIMARY_COLOR).fontSize(14).font('Helvetica-Bold');
+    doc.text(`📊 Total Sea Days: ${totalDays}`, 55, summaryBoxY + 8, { width: 450 });
+
+    doc.fontSize(10).font('Helvetica');
+    doc.fillColor(TEXT_SECONDARY).text('Across all vessels and service types', 55, summaryBoxY + 30);
+
+    doc.y = Math.round(summaryBoxY + 60);
+
+    // Service type breakdown with improved styling
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Breakdown by Service Type:');
+    doc.moveDown(0.2);
+
+    doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
+    const sortedServiceTypes = Object.entries(serviceTypeTotals)
+      .sort((a, b) => b[1] - a[1]);
+
+    sortedServiceTypes.forEach(([serviceType, days], index) => {
+      const label = formatServiceType(serviceType);
+
+      // Alternate row background for better readability
+      if (index % 2 === 1) {
+        doc.fillColor(LIGHT_BG).rect(40, Math.round(doc.y) - 1, 520, 16).fill();
+      }
+
+      doc.fillColor(TEXT_PRIMARY).text(`  • ${label}`, 55, Math.round(doc.y));
+      doc.text(`${days}d`, 450, Math.round(doc.y), { align: 'right', width: 80 });
+      doc.moveDown(0.25);
+    });
+
+    doc.moveDown(0.3);
+
+    // SERVICE TYPE LEGEND - check if we need a new page
+    if (doc.y > Math.round(doc.page.height - 160)) {
+      doc.addPage();
+    }
+
+    doc.strokeColor(BORDER_COLOR).lineWidth(1.5).moveTo(40, Math.round(doc.y)).lineTo(560, Math.round(doc.y)).stroke();
+    doc.moveDown(0.2);
+
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(PRIMARY_COLOR).text('Service Type Definitions');
+    doc.moveDown(0.2);
 
     const serviceTypeDefinitions = [
       {
@@ -882,21 +1006,22 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     ];
 
-    doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica');
+    doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica');
     serviceTypeDefinitions.forEach((def, index) => {
-      const rowHeight = 24;
+      const rowHeight = 20;
       // Alternate row backgrounds
       if (index % 2 === 0) {
-        doc.fillColor(LIGHT_BG).rect(40, doc.y - 1, 520, rowHeight).fill();
+        doc.fillColor(LIGHT_BG).rect(40, Math.round(doc.y) - 1, 520, rowHeight).fill();
       }
 
       // Left accent border
-      doc.fillColor(ACCENT_COLOR).rect(40, doc.y - 1, 4, rowHeight).fill();
+      doc.fillColor(ACCENT_COLOR).rect(40, Math.round(doc.y) - 1, 4, rowHeight).fill();
 
-      doc.fillColor(SECONDARY_COLOR).fontSize(11).font('Helvetica-Bold');
-      doc.text(def.type, 55, doc.y);
-      doc.fillColor(TEXT_SECONDARY).fontSize(10).font('Helvetica');
-      doc.text(def.desc, 55, doc.y, { width: 485 });
+      doc.fillColor(SECONDARY_COLOR).fontSize(10).font('Helvetica-Bold');
+      doc.text(def.type, 55, Math.round(doc.y));
+      doc.fillColor(TEXT_SECONDARY).fontSize(9).font('Helvetica');
+      doc.text(def.desc, 55, Math.round(doc.y), { width: 485 });
+      doc.moveDown(0.05);
     });
 
     // FOOTER with page numbers and company details
@@ -905,24 +1030,24 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.switchToPage(i);
 
       // Separator line above footer
-      doc.strokeColor(BORDER_COLOR).lineWidth(1.5);
-      doc.moveTo(40, doc.page.height - 50).lineTo(560, doc.page.height - 50).stroke();
+      doc.strokeColor(BORDER_COLOR).lineWidth(1);
+      doc.moveTo(40, Math.round(doc.page.height - 45)).lineTo(560, Math.round(doc.page.height - 45)).stroke();
 
       // Company footer information
-      doc.fontSize(9).fillColor(TEXT_PRIMARY).font('Helvetica');
+      doc.fontSize(8).fillColor(TEXT_PRIMARY).font('Helvetica');
       doc.text(
         'Foreland Marine Consultancy Ltd, 7 Bell Yard, London WC2A 2JR United Kingdom',
         50,
-        doc.page.height - 44,
+        Math.round(doc.page.height - 40),
         { align: 'left' }
       );
 
       // Page number and generation info centered
-      doc.fontSize(8).fillColor(TEXT_SECONDARY).font('Helvetica');
+      doc.fontSize(7).fillColor(TEXT_SECONDARY).font('Helvetica');
       doc.text(
         `Page ${i + 1} of ${pageCount} | Generated by SeaTime Tracker`,
         50,
-        doc.page.height - 24,
+        Math.round(doc.page.height - 22),
         { align: 'center' }
       );
     }

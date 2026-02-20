@@ -876,6 +876,15 @@ async function handleSeaTimeEntries(
       const totalDurationMs = currentCheck.check_time.getTime() - existingEntryForDay.start_time.getTime();
       const totalDurationHours = Math.round((totalDurationMs / (1000 * 60 * 60)) * 100) / 100;
 
+      // VALIDATION: Check if total duration is 0 hours
+      if (totalDurationHours === 0) {
+        app.logger.debug(
+          { vesselId, mmsi, userId, entryId: existingEntryForDay.id, totalDurationHours },
+          `Skipping entry extension: total duration is 0 hours`
+        );
+        return;
+      }
+
       // Calculate total distance from entry's original start position to current end position
       let totalDistance = 0;
       if (existingEntryForDay.start_latitude && existingEntryForDay.start_longitude) {
@@ -937,6 +946,15 @@ async function handleSeaTimeEntries(
       );
     }
   } else {
+    // VALIDATION: Check if duration is 0 hours
+    if (durationHours === 0) {
+      app.logger.debug(
+        { vesselId, mmsi, userId, durationHours },
+        `Skipping entry creation: duration is 0 hours`
+      );
+      return;
+    }
+
     // CREATE a new pending sea time entry
     const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${durationHours} hours`;
 

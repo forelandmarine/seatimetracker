@@ -27,19 +27,18 @@ interface UserProfile {
 }
 
 interface SeaTimeSummary {
-  total_hours: number;
   total_days: number;
   entries_by_vessel: {
     vessel_name: string;
-    total_hours: number;
+    total_days: number;
   }[];
   entries_by_month: {
     month: string;
-    total_hours: number;
+    total_days: number;
   }[];
   entries_by_service_type?: {
     service_type: string;
-    total_hours: number;
+    total_days: number;
   }[];
 }
 
@@ -492,7 +491,7 @@ export default function ReportsScreen() {
     (def) => def.department === 'both' || def.department === userDepartment
   );
 
-  const totalDays = summary ? Math.floor(summary.total_hours / 24) : 0;
+  const totalDays = summary ? summary.total_days : 0;
 
   return (
     <View style={styles.container}>
@@ -529,7 +528,7 @@ export default function ReportsScreen() {
               <Text style={styles.sectionTitle}>Sea Time by Vessel</Text>
               <View style={styles.card}>
                 {summary.entries_by_vessel.map((vessel, index) => {
-                  const vesselDays = Math.floor(vessel.total_hours / 24);
+                  const vesselDays = vessel.total_days;
                   const isLast = index === summary.entries_by_vessel.length - 1;
                   
                   return (
@@ -562,7 +561,7 @@ export default function ReportsScreen() {
               <Text style={styles.sectionTitle}>Sea Time by Service Type</Text>
               <View style={styles.card}>
                 {summary.entries_by_service_type.map((serviceEntry, index) => {
-                  const serviceDays = Math.floor(serviceEntry.total_hours / 24);
+                  const serviceDays = serviceEntry.total_days;
                   const isLast = index === summary.entries_by_service_type!.length - 1;
                   const formattedType = formatServiceType(serviceEntry.service_type);
                   

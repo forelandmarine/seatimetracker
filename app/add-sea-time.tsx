@@ -387,6 +387,19 @@ export default function AddSeaTimeScreen() {
       return;
     }
 
+    // Validate that duration is not 0 hours if end date is provided
+    if (endDate) {
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      
+      if (durationHours === 0) {
+        Alert.alert('Error', 'Sea time duration cannot be 0 hours. Please ensure start and end times are different.');
+        return;
+      }
+      
+      console.log('[AddSeaTimeScreen] Duration validation passed:', durationHours, 'hours');
+    }
+
     try {
       setSaving(true);
       const fromCoords = parseLatLong(voyageFrom);

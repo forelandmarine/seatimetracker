@@ -558,6 +558,16 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Calculate duration and sea_days
     const duration_hours = calculateDurationHours(current_entry.start_time, end_time);
+
+    // Validate that duration is not 0 hours
+    if (duration_hours === 0) {
+      app.logger.warn(
+        { userId, entryId: id, startTime: current_entry.start_time.toISOString(), endTime: end_time.toISOString() },
+        'Attempted to confirm 0 hour sea time entry'
+      );
+      return reply.code(400).send({ error: 'Sea time duration cannot be 0 hours. Cannot confirm entry with 0 hours.' });
+    }
+
     const calculated_sea_days = calculateSeaDays(duration_hours);
 
     // Note: Calendar day restriction has been removed to allow multiple entries per day as vessels move throughout the day
@@ -1580,6 +1590,13 @@ export function register(app: App, fastify: FastifyInstance) {
 
         // Calculate duration_hours and sea_days from the actual times
         const duration_hours = calculateDurationHours(startDate, endDate);
+
+        // Validate that duration is not 0 hours
+        if (duration_hours === 0) {
+          app.logger.warn({ userId: session.userId, vessel_id, start_time, end_time }, 'Attempted to create 0 hour sea time entry');
+          return reply.code(400).send({ error: 'Sea time duration cannot be 0 hours. Please ensure start and end times are different.' });
+        }
+
         calculated_duration_hours = String(duration_hours);
         calculated_sea_days = calculateSeaDays(duration_hours);
 

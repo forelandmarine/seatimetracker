@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   Modal,
   Linking,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -27,6 +28,8 @@ import {
   clearBiometricCredentials,
   getBiometricType 
 } from '@/utils/biometricAuth';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface UserProfile {
   id: string;
@@ -43,19 +46,18 @@ interface UserProfile {
 }
 
 interface SeaTimeSummary {
-  total_hours: number;
   total_days: number;
   entries_by_vessel: {
     vessel_name: string;
-    total_hours: number;
+    total_days: number;
   }[];
   entries_by_month: {
     month: string;
-    total_hours: number;
+    total_days: number;
   }[];
   entries_by_service_type?: {
     service_type: string;
-    total_hours: number;
+    total_days: number;
   }[];
 }
 
@@ -395,14 +397,12 @@ const createStyles = (isDark: boolean) =>
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 20,
     },
     modalContent: {
       backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
       borderRadius: 16,
       padding: 20,
-      width: '100%',
-      maxWidth: 400,
+      width: SCREEN_WIDTH - 40,
       maxHeight: '80%',
     },
     modalHeader: {
@@ -720,7 +720,7 @@ export default function ProfileScreen() {
     return typeMap[serviceType] || serviceType;
   };
 
-  const getAllServiceTypesWithHours = () => {
+  const getAllServiceTypesWithDays = () => {
     const serviceTypeMap: { [key: string]: number } = {};
     
     ALL_SERVICE_TYPES.forEach((type) => {
@@ -729,13 +729,13 @@ export default function ProfileScreen() {
     
     if (summary?.entries_by_service_type) {
       summary.entries_by_service_type.forEach((entry) => {
-        serviceTypeMap[entry.service_type] = entry.total_hours;
+        serviceTypeMap[entry.service_type] = entry.total_days;
       });
     }
     
     return ALL_SERVICE_TYPES.map((type) => ({
       service_type: type,
-      total_hours: serviceTypeMap[type],
+      total_days: serviceTypeMap[type],
     }));
   };
 
@@ -958,14 +958,14 @@ export default function ProfileScreen() {
   const imageUrl = profile.imageUrl || (profile.image ? `${seaTimeApi.API_BASE_URL}/${profile.image}` : null);
   const displayName = profile.name || 'User';
   const initials = getInitials(profile.name);
-  const totalDays = summary ? Math.floor(summary.total_hours / 24) : 0;
+  const totalDays = summary ? summary.total_days : 0;
 
   const userDepartment = profile?.department?.toLowerCase();
   const filteredDefinitions = SEA_DAY_DEFINITIONS.filter(
     (def) => (def.department === 'both' || def.department === userDepartment) && def.title !== 'Administrative Rules'
   );
 
-  const allServiceTypes = getAllServiceTypesWithHours();
+  const allServiceTypes = getAllServiceTypesWithDays();
 
   console.log('Profile image URL:', imageUrl);
   console.log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
@@ -1087,7 +1087,7 @@ export default function ProfileScreen() {
               <Text style={styles.sectionTitle}>Sea Time by Vessel</Text>
               <View style={styles.card}>
                 {summary.entries_by_vessel.map((vessel, index) => {
-                  const vesselDays = Math.floor(vessel.total_hours / 24);
+                  const vesselDays = vessel.total_days;
                   const isLast = index === summary.entries_by_vessel.length - 1;
                   
                   return (
@@ -1120,7 +1120,7 @@ export default function ProfileScreen() {
               <Text style={styles.sectionTitle}>Sea Time by Service Type</Text>
               <View style={styles.card}>
                 {allServiceTypes.map((serviceEntry, index) => {
-                  const serviceDays = Math.floor(serviceEntry.total_hours / 24);
+                  const serviceDays = serviceEntry.total_days;
                   const isLast = index === allServiceTypes.length - 1;
                   const formattedType = formatServiceType(serviceEntry.service_type);
                   
