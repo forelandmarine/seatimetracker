@@ -19,6 +19,9 @@
       "appleTeamId": "43GZCFFPR9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.in-app-payments": []
       }
     },
     "android": {
