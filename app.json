@@ -19,9 +19,6 @@
       "appleTeamId": "43GZCFFPR9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "entitlements": {
-        "com.apple.developer.in-app-payments": []
       }
     },
     "android": {
@@ -47,8 +44,7 @@
           "color": "#ffffff"
         }
       ],
-      "expo-apple-authentication",
-      "react-native-purchases"
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

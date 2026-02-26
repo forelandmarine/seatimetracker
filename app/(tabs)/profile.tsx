@@ -28,6 +28,7 @@ import {
   clearBiometricCredentials,
   getBiometricType 
 } from '@/utils/biometricAuth';
+import { authenticatedDelete } from '@/utils/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -321,6 +322,21 @@ const createStyles = (isDark: boolean) =>
       fontSize: 16,
       fontWeight: '600',
     },
+    deleteAccountButton: {
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      borderRadius: 12,
+      padding: 15,
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: '#ff4444',
+    },
+    deleteAccountButtonText: {
+      color: '#ff4444',
+      fontSize: 16,
+      fontWeight: '600',
+    },
     supportButton: {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
@@ -508,6 +524,20 @@ const createStyles = (isDark: boolean) =>
     confirmModalConfirmText: {
       color: '#ffffff',
     },
+    warningBox: {
+      backgroundColor: '#ff4444' + '15',
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: '#ff4444',
+    },
+    warningText: {
+      fontSize: 13,
+      color: isDark ? colors.text : colors.textLight,
+      lineHeight: 20,
+      fontWeight: '600',
+    },
   });
 
 export default function ProfileScreen() {
@@ -521,7 +551,9 @@ export default function ProfileScreen() {
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [showVesselModal, setShowVesselModal] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [biometricType, setBiometricType] = useState('Biometric');
@@ -743,10 +775,12 @@ export default function ProfileScreen() {
     console.log('User tapped Download PDF Report');
     setDownloadingPDF(true);
     try {
+      console.log('Calling downloadPDFReport API...');
       const pdfBlob = await seaTimeApi.downloadPDFReport();
       console.log('PDF report downloaded, blob size:', pdfBlob.size);
 
       if (Platform.OS === 'web') {
+        console.log('Web platform: Creating download link');
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
@@ -755,32 +789,68 @@ export default function ProfileScreen() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        console.log('PDF download triggered successfully on web');
         Alert.alert('Success', 'PDF report downloaded successfully');
       } else {
-        const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+        console.log('Mobile platform: Saving PDF to file system');
+        const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         
+        console.log('Converting blob to base64...');
         const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
+        
+        reader.onerror = (error) => {
+          console.error('FileReader error:', error);
+          throw new Error('Failed to read PDF data');
+        };
+        
         reader.onloadend = async () => {
-          const base64data = reader.result as string;
-          const base64 = base64data.split(',')[1];
-          
-          await FileSystem.writeAsStringAsync(fileUri, base64, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          console.log('PDF saved to:', fileUri);
-          
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(fileUri);
-          } else {
-            Alert.alert('Success', 'PDF report saved to device');
+          try {
+            console.log('Blob converted to base64, writing to file system...');
+            const base64data = reader.result as string;
+            const base64 = base64data.split(',')[1];
+            
+            await FileSystem.writeAsStringAsync(fileUri, base64, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            
+            console.log('PDF saved to:', fileUri);
+            
+            const fileInfo = await FileSystem.getInfoAsync(fileUri);
+            console.log('File info:', fileInfo);
+            
+            if (await Sharing.isAvailableAsync()) {
+              console.log('Sharing is available, opening share dialog...');
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Save or Share PDF Report',
+                UTI: 'com.adobe.pdf',
+              });
+              console.log('Share dialog opened successfully');
+            } else {
+              console.log('Sharing not available, showing success alert');
+              Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
+            }
+          } catch (error) {
+            console.error('Error in FileReader onloadend:', error);
+            throw error;
           }
         };
+        
+        console.log('Starting FileReader...');
+        reader.readAsDataURL(pdfBlob);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to download PDF report:', error);
-      Alert.alert('Error', 'Failed to download PDF report. Please try again.');
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      });
+      Alert.alert(
+        'Download Failed', 
+        `Unable to download PDF report. ${error?.message || 'Please try again or contact support if the issue persists.'}`
+      );
     } finally {
       setDownloadingPDF(false);
     }
@@ -891,6 +961,45 @@ export default function ProfileScreen() {
   const cancelSignOut = () => {
     console.log('User cancelled sign out');
     setShowSignOutModal(false);
+  };
+
+  const handleDeleteAccount = () => {
+    console.log('User tapped Delete Account button');
+    setShowDeleteAccountModal(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    console.log('User confirmed account deletion in modal');
+    setDeletingAccount(true);
+    try {
+      console.log('[API] Requesting DELETE /api/users/me...');
+      await authenticatedDelete('/api/users/me');
+      console.log('Account deleted successfully (204 No Content)');
+      setShowDeleteAccountModal(false);
+      
+      // Sign out locally - session is already invalidated on server
+      try {
+        await signOut();
+        console.log('User signed out after account deletion');
+      } catch (signOutError) {
+        // Ignore sign out errors - account is already deleted
+        console.warn('Sign out after deletion failed (expected):', signOutError);
+      }
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+      setShowDeleteAccountModal(false);
+      Alert.alert(
+        'Deletion Failed',
+        `Failed to delete account. ${error?.message || 'Please try again or contact support if the issue persists.'}`
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const cancelDeleteAccount = () => {
+    console.log('User cancelled account deletion');
+    setShowDeleteAccountModal(false);
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -1247,6 +1356,10 @@ export default function ProfileScreen() {
             <Text style={styles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+            <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>
             <Text style={styles.supportButtonText}>Contact Support</Text>
           </TouchableOpacity>
@@ -1371,6 +1484,56 @@ export default function ProfileScreen() {
                 ) : (
                   <Text style={[styles.confirmModalButtonText, styles.confirmModalConfirmText]}>
                     Sign Out
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showDeleteAccountModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDeleteAccount}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <Text style={styles.confirmModalTitle}>Delete Account</Text>
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                ⚠️ This action cannot be undone!
+              </Text>
+            </View>
+            <Text style={styles.confirmModalMessage}>
+              Are you absolutely sure you want to delete your account? This will permanently delete:
+              {'\n\n'}• All your vessels
+              {'\n'}• All sea time entries
+              {'\n'}• All reports and data
+              {'\n'}• Your profile information
+              {'\n\n'}This action is irreversible.
+            </Text>
+            <View style={styles.confirmModalButtons}>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalCancelButton]}
+                onPress={cancelDeleteAccount}
+                disabled={deletingAccount}
+              >
+                <Text style={[styles.confirmModalButtonText, styles.confirmModalCancelText]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalConfirmButton]}
+                onPress={confirmDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Text style={[styles.confirmModalButtonText, styles.confirmModalConfirmText]}>
+                    Delete
                   </Text>
                 )}
               </TouchableOpacity>

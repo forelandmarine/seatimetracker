@@ -241,9 +241,23 @@ export const authenticatedApiCall = async <T = any>(
       throw new Error(`API error: ${response.status} - ${text}`);
     }
 
-    const data = await response.json();
-    console.log("[API] Success:", data);
-    return data;
+    // Handle 204 No Content responses (e.g., DELETE /api/users/me)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      console.log("[API] Success: 204 No Content");
+      return null as T;
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log("[API] Success:", data);
+      return data;
+    }
+
+    // For non-JSON responses, return text
+    const text = await response.text();
+    console.log("[API] Success (text):", text?.substring(0, 100));
+    return text as unknown as T;
   } catch (error: any) {
     clearTimeout(timeoutId);
     

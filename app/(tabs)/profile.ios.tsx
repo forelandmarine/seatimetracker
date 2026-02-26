@@ -1,11 +1,5 @@
 
-import { IconSymbol } from '@/components/IconSymbol';
-import React, { useState, useEffect, useCallback } from 'react';
-import * as seaTimeApi from '@/utils/seaTimeApi';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import {
   View,
   Text,
@@ -22,8 +16,15 @@ import {
   Linking,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { IconSymbol } from '@/components/IconSymbol';
+import * as Sharing from 'expo-sharing';
 import { colors } from '@/styles/commonStyles';
+import { useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as seaTimeApi from '@/utils/seaTimeApi';
+import { authenticatedDelete } from '@/utils/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -133,13 +134,13 @@ const createStyles = (isDark: boolean, topInset: number) =>
     container: {
       flex: 1,
       backgroundColor: isDark ? colors.background : colors.backgroundLight,
+      paddingTop: topInset,
     },
     scrollView: {
       flex: 1,
     },
     pageHeader: {
       padding: 20,
-      paddingTop: topInset + 12,
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? colors.border : colors.borderLight,
@@ -314,6 +315,21 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     signOutButtonText: {
       color: '#ffffff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    deleteAccountButton: {
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      borderRadius: 12,
+      padding: 15,
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: '#ff4444',
+    },
+    deleteAccountButtonText: {
+      color: '#ff4444',
       fontSize: 16,
       fontWeight: '600',
     },
@@ -504,6 +520,20 @@ const createStyles = (isDark: boolean, topInset: number) =>
     confirmModalConfirmText: {
       color: '#ffffff',
     },
+    warningBox: {
+      backgroundColor: '#ff4444' + '15',
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: '#ff4444',
+    },
+    warningText: {
+      fontSize: 13,
+      color: isDark ? colors.text : colors.textLight,
+      lineHeight: 20,
+      fontWeight: '600',
+    },
   });
 
 export default function ProfileScreen() {
@@ -512,11 +542,15 @@ export default function ProfileScreen() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [showVesselModal, setShowVesselModal] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -524,7 +558,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { signOut, refreshTrigger } = useAuth();
 
-  console.log('ProfileScreen rendered (iOS)');
+  console.log('ProfileScreen (iOS) rendered');
 
   const loadProfile = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
@@ -624,6 +658,22 @@ export default function ProfileScreen() {
     }
   }, [refreshTrigger, loadProfile, loadSummary, loadVessels]);
 
+  const handleRefresh = useCallback(async () => {
+    console.log('User pulled to refresh profile screen');
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadProfile(),
+        loadSummary(),
+        loadVessels(),
+      ]);
+    } catch (error) {
+      console.error('Failed to refresh profile data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadProfile, loadSummary, loadVessels]);
+
   const handleEditProfile = () => {
     console.log('User tapped Edit Profile');
     router.push('/user-profile');
@@ -648,12 +698,12 @@ export default function ProfileScreen() {
         await Linking.openURL(mailtoUrl);
         console.log('Support email opened successfully');
       } else {
-        console.log('Cannot open email client, showing fallback alert');
+        console.log('Cannot open email client, showing alert with email address');
         Alert.alert(
           'Contact Support',
           `Please email us at:\n${supportEmail}`,
           [
-            { text: 'OK' }
+            { text: 'OK', style: 'default' }
           ]
         );
       }
@@ -663,7 +713,7 @@ export default function ProfileScreen() {
         'Contact Support',
         `Please email us at:\n${supportEmail}`,
         [
-          { text: 'OK' }
+          { text: 'OK', style: 'default' }
         ]
       );
     }
@@ -682,22 +732,6 @@ export default function ProfileScreen() {
     console.log('User closed vessel modal');
     setShowVesselModal(false);
     setSelectedVessel(null);
-  };
-
-  const handleRefresh = async () => {
-    console.log('User pulled to refresh profile');
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        loadProfile(0),
-        loadSummary(0),
-        loadVessels(0),
-      ]);
-    } catch (error) {
-      console.error('Refresh failed:', error);
-    } finally {
-      setRefreshing(false);
-    }
   };
 
   const formatServiceType = (serviceType: string): string => {
@@ -734,25 +768,25 @@ export default function ProfileScreen() {
     console.log('User tapped Download PDF Report');
     setDownloadingPDF(true);
     try {
+      console.log('Calling downloadPDFReport API...');
       const pdfBlob = await seaTimeApi.downloadPDFReport();
       console.log('PDF report downloaded, blob size:', pdfBlob.size);
 
-      if (Platform.OS === 'web') {
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        Alert.alert('Success', 'PDF report downloaded successfully');
-      } else {
-        const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-        
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = async () => {
+      console.log('iOS platform: Saving PDF to file system');
+      const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      console.log('Converting blob to base64...');
+      const reader = new FileReader();
+      
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        throw new Error('Failed to read PDF data');
+      };
+      
+      reader.onloadend = async () => {
+        try {
+          console.log('Blob converted to base64, writing to file system...');
           const base64data = reader.result as string;
           const base64 = base64data.split(',')[1];
           
@@ -762,16 +796,40 @@ export default function ProfileScreen() {
           
           console.log('PDF saved to:', fileUri);
           
+          const fileInfo = await FileSystem.getInfoAsync(fileUri);
+          console.log('File info:', fileInfo);
+          
           if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(fileUri);
+            console.log('Sharing is available, opening share dialog...');
+            await Sharing.shareAsync(fileUri, {
+              mimeType: 'application/pdf',
+              dialogTitle: 'Save or Share PDF Report',
+              UTI: 'com.adobe.pdf',
+            });
+            console.log('Share dialog opened successfully');
           } else {
-            Alert.alert('Success', 'PDF report saved to device');
+            console.log('Sharing not available, showing success alert');
+            Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
           }
-        };
-      }
-    } catch (error) {
+        } catch (error) {
+          console.error('Error in FileReader onloadend:', error);
+          throw error;
+        }
+      };
+      
+      console.log('Starting FileReader...');
+      reader.readAsDataURL(pdfBlob);
+    } catch (error: any) {
       console.error('Failed to download PDF report:', error);
-      Alert.alert('Error', 'Failed to download PDF report. Please try again.');
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      });
+      Alert.alert(
+        'Download Failed', 
+        `Unable to download PDF report. ${error?.message || 'Please try again or contact support if the issue persists.'}`
+      );
     } finally {
       setDownloadingPDF(false);
     }
@@ -784,31 +842,18 @@ export default function ProfileScreen() {
       const csvData = await seaTimeApi.downloadCSVReport();
       console.log('CSV report downloaded, size:', csvData.length);
 
-      if (Platform.OS === 'web') {
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        Alert.alert('Success', 'CSV report downloaded successfully');
+      const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, csvData, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      
+      console.log('CSV saved to:', fileUri);
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
       } else {
-        const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.csv`;
-        
-        await FileSystem.writeAsStringAsync(fileUri, csvData, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-        
-        console.log('CSV saved to:', fileUri);
-        
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri);
-        } else {
-          Alert.alert('Success', 'CSV report saved to device');
-        }
+        Alert.alert('Success', 'CSV report saved to device');
       }
     } catch (error) {
       console.error('Failed to download CSV report:', error);
@@ -817,9 +862,6 @@ export default function ProfileScreen() {
       setDownloadingCSV(false);
     }
   };
-
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = () => {
     console.log('User tapped Sign Out button');
@@ -845,6 +887,45 @@ export default function ProfileScreen() {
   const cancelSignOut = () => {
     console.log('User cancelled sign out');
     setShowSignOutModal(false);
+  };
+
+  const handleDeleteAccount = () => {
+    console.log('User tapped Delete Account button');
+    setShowDeleteAccountModal(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    console.log('User confirmed account deletion in modal');
+    setDeletingAccount(true);
+    try {
+      console.log('[API] Requesting DELETE /api/users/me...');
+      await authenticatedDelete('/api/users/me');
+      console.log('Account deleted successfully (204 No Content)');
+      setShowDeleteAccountModal(false);
+      
+      // Sign out locally - session is already invalidated on server
+      try {
+        await signOut();
+        console.log('User signed out after account deletion');
+      } catch (signOutError) {
+        // Ignore sign out errors - account is already deleted
+        console.warn('Sign out after deletion failed (expected):', signOutError);
+      }
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+      setShowDeleteAccountModal(false);
+      Alert.alert(
+        'Deletion Failed',
+        `Failed to delete account. ${error?.message || 'Please try again or contact support if the issue persists.'}`
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const cancelDeleteAccount = () => {
+    console.log('User cancelled account deletion');
+    setShowDeleteAccountModal(false);
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -916,7 +997,7 @@ export default function ProfileScreen() {
 
   const userDepartment = profile?.department?.toLowerCase();
   const filteredDefinitions = SEA_DAY_DEFINITIONS.filter(
-    (def) => def.department === 'both' || def.department === userDepartment
+    (def) => (def.department === 'both' || def.department === userDepartment) && def.title !== 'Administrative Rules'
   );
 
   const allServiceTypes = getAllServiceTypesWithDays();
@@ -949,7 +1030,6 @@ export default function ProfileScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
-            colors={[colors.primary]}
           />
         }
       >
@@ -1162,7 +1242,10 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={() => router.push('/notification-settings')}>
+              <TouchableOpacity 
+                style={[styles.menuItem, styles.menuItemLast]} 
+                onPress={() => router.push('/notification-settings')}
+              >
                 <IconSymbol
                   ios_icon_name="bell"
                   android_material_icon_name="notifications"
@@ -1184,6 +1267,10 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
             <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+            <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>
@@ -1310,6 +1397,56 @@ export default function ProfileScreen() {
                 ) : (
                   <Text style={[styles.confirmModalButtonText, styles.confirmModalConfirmText]}>
                     Sign Out
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showDeleteAccountModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDeleteAccount}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <Text style={styles.confirmModalTitle}>Delete Account</Text>
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                ⚠️ This action cannot be undone!
+              </Text>
+            </View>
+            <Text style={styles.confirmModalMessage}>
+              Are you absolutely sure you want to delete your account? This will permanently delete:
+              {'\n\n'}• All your vessels
+              {'\n'}• All sea time entries
+              {'\n'}• All reports and data
+              {'\n'}• Your profile information
+              {'\n\n'}This action is irreversible.
+            </Text>
+            <View style={styles.confirmModalButtons}>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalCancelButton]}
+                onPress={cancelDeleteAccount}
+                disabled={deletingAccount}
+              >
+                <Text style={[styles.confirmModalButtonText, styles.confirmModalCancelText]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalConfirmButton]}
+                onPress={confirmDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Text style={[styles.confirmModalButtonText, styles.confirmModalConfirmText]}>
+                    Delete
                   </Text>
                 )}
               </TouchableOpacity>

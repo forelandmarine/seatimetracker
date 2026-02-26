@@ -267,15 +267,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let errorText = '';
         try {
           errorText = await response.text();
-          console.error('[Auth] Error response body:', errorText.substring(0, 500));
+          console.error('[Auth] Error response body (first 500 chars):', errorText.substring(0, 500));
         } catch (textError) {
           console.error('[Auth] Could not read error response body:', textError);
         }
         
         // Check if response is HTML (500 error page)
         if (contentType?.includes('text/html') || errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
-          console.error('[Auth] Received HTML error page instead of JSON - Backend returned 500 error');
-          throw new Error('Server error. The backend may be restarting. Please wait a moment and try again.');
+          console.error('[Auth] ⚠️ RECEIVED HTML ERROR PAGE INSTEAD OF JSON - Backend returned 500 error');
+          console.error('[Auth] This indicates a server-side crash or unhandled exception');
+          console.error('[Auth] HTML preview:', errorText.substring(0, 200));
+          throw new Error('Server error (500). The backend encountered an unexpected error. Please try again in a moment.');
         }
         
         // Try to parse JSON error
@@ -289,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (response.status === 401) {
             throw new Error('Invalid email or password. Please check your credentials and try again.');
           } else if (response.status === 500) {
-            throw new Error('Server error. Please try again in a moment.');
+            throw new Error('Server error (500). Please try again in a moment.');
           } else if (response.status === 503) {
             throw new Error('Service temporarily unavailable. Please try again shortly.');
           }
