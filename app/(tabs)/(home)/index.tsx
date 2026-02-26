@@ -22,6 +22,7 @@ import { colors } from '@/styles/commonStyles';
 import React, { useState, useEffect, useCallback } from 'react';
 import CartoMap from '@/components/CartoMap';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -56,6 +57,7 @@ export default function SeaTimeScreen() {
   // CRITICAL: Call useAuth at the top level - NEVER conditionally
   // This must be called before any early returns or conditions
   const { refreshTrigger } = useAuth();
+  const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
   
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,6 +178,14 @@ export default function SeaTimeScreen() {
       setLoading(false);
     }
   }, [loadActiveVesselLocation]);
+
+  // Check subscription status and redirect to paywall if needed
+  useEffect(() => {
+    if (!subscriptionLoading && !isSubscribed) {
+      console.log('[Home] User not subscribed, redirecting to paywall');
+      router.push('/paywall');
+    }
+  }, [isSubscribed, subscriptionLoading]);
 
   // Initial data load
   useEffect(() => {
@@ -403,10 +413,40 @@ export default function SeaTimeScreen() {
     }
   };
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>
+          {subscriptionLoading ? 'Checking subscription...' : 'Loading...'}
+        </Text>
+      </View>
+    );
+  }
+
+  // Show subscription notice if not subscribed
+  if (!isSubscribed) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.subscriptionNotice}>
+          <IconSymbol
+            ios_icon_name="lock.fill"
+            android_material_icon_name="lock"
+            size={64}
+            color={colors.primary}
+          />
+          <Text style={[styles.subscriptionNoticeTitle, { color: isDark ? colors.text : colors.textLight }]}>
+            Subscription Required
+          </Text>
+          <Text style={[styles.subscriptionNoticeText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+            An active subscription is required to track vessels and record sea time.
+          </Text>
+          <TouchableOpacity
+            style={[styles.subscribeButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/paywall')}
+          >
+            <Text style={styles.subscribeButtonText}>View Subscription Options</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -1326,6 +1366,35 @@ function createStyles(isDark: boolean) {
       fontSize: 13,
       color: isDark ? colors.text : colors.textLight,
       fontWeight: '500',
+    },
+    subscriptionNotice: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 40,
+    },
+    subscriptionNoticeTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginTop: 24,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    subscriptionNoticeText: {
+      fontSize: 16,
+      textAlign: 'center',
+      lineHeight: 24,
+      marginBottom: 32,
+    },
+    subscribeButton: {
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      borderRadius: 12,
+    },
+    subscribeButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: 'bold',
     },
   });
 }

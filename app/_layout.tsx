@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from 'react-native';
 import { BridgeReadyProvider } from '@/contexts/BridgeReadyContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -182,7 +183,9 @@ export default function RootLayout() {
   return (
     <BridgeReadyProvider>
       <AuthProvider>
-        <RootLayoutContent />
+        <SubscriptionProvider>
+          <RootLayoutContent />
+        </SubscriptionProvider>
       </AuthProvider>
     </BridgeReadyProvider>
   );

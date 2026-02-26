@@ -601,6 +601,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setLoading(false);
       console.log('[Auth] ========== SIGN OUT COMPLETE ==========');
+      
+      // CRITICAL: Immediately redirect to auth screen after sign out
+      // This ensures the user is taken to the Home Screen (auth screen) right away
+      try {
+        const { router } = await import('expo-router');
+        console.log('[Auth] Redirecting to /auth after sign out');
+        router.replace('/auth');
+      } catch (navError) {
+        console.error('[Auth] Navigation error after sign out (non-critical):', navError);
+      }
     }
   }, []);
 
