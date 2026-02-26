@@ -1,7 +1,8 @@
+
 {
   "expo": {
     "name": "SeaTime Tracker",
-    "slug": "seatimetracker",
+    "slug": "SeaTime-Tracker",
     "owner": "forelandmarine",
     "version": "1.0.4",
     "orientation": "portrait",
