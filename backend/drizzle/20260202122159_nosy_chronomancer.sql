@@ -1,1 +1,0 @@
-ALTER TABLE "sea_time_entries" ADD COLUMN "distance_nm" numeric(10, 2);
