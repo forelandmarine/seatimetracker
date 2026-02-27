@@ -46,9 +46,11 @@ function withRevenueCatTestFlightFix(config) {
         return config;
       }
 
-      // Add post_install hook to patch RevenueCat
+      // Add an isolated post_install hook to patch RevenueCat.
+      // CocoaPods supports multiple post_install hooks, so we avoid
+      // rewriting/removing Expo's existing hook (which can break Podfile syntax).
       const postInstallHook = `
-# RevenueCat TestFlight Fix
+# BEGIN RevenueCat TestFlight Fix
 # This fixes the crash in TestFlight caused by StoreKit validation
 # The fix allows sandbox StoreKit environments in release builds (TestFlight)
 # while still preventing simulated StoreKit configuration files in debug builds
@@ -78,10 +80,8 @@ post_install do |installer|
     end
   end
 end
+# END RevenueCat TestFlight Fix
 `;
-
-      // Remove existing post_install if present
-      podfileContent = podfileContent.replace(/post_install do \|installer\|[\s\S]*?^end$/m, '');
 
       // Add our post_install hook at the end
       podfileContent = podfileContent.trim() + '\n\n' + postInstallHook.trim() + '\n';
