@@ -45,19 +45,15 @@ function withRevenueCatTestFlightFix(config) {
         return config;
       }
 
-      // CocoaPods supports only one post_install hook. Inject our RevenueCat
-      // patch into the existing Expo-generated post_install block.
-      const postInstallLine = 'post_install do |installer|';
-      if (!podfileContent.includes(postInstallLine)) {
-        console.log('[RevenueCat Fix] post_install hook not found, skipping patch');
-        return config;
-      }
-
-      const postInstallInjection = `
-  # BEGIN RevenueCat TestFlight Fix
-  # This fixes the crash in TestFlight caused by StoreKit validation
-  # The fix allows sandbox StoreKit environments in release builds (TestFlight)
-  # while still preventing simulated StoreKit configuration files in debug builds
+      // Add an isolated post_install hook to patch RevenueCat.
+      // CocoaPods supports multiple post_install hooks, so we avoid
+      // rewriting/removing Expo's existing hook (which can break Podfile syntax).
+      const postInstallHook = `
+# BEGIN RevenueCat TestFlight Fix
+# This fixes the crash in TestFlight caused by StoreKit validation
+# The fix allows sandbox StoreKit environments in release builds (TestFlight)
+# while still preventing simulated StoreKit configuration files in debug builds
+post_install do |installer|
   installer.pods_project.targets.each do |target|
     if target.name == 'RevenueCat' || target.name.start_with?('Purchases')
       target.build_configurations.each do |config|
@@ -77,10 +73,12 @@ function withRevenueCatTestFlightFix(config) {
       end
     end
   end
-  # END RevenueCat TestFlight Fix
+end
+# END RevenueCat TestFlight Fix
 `;
 
-      podfileContent = podfileContent.replace(postInstallLine, `${postInstallLine}${postInstallInjection}`);
+      // Add our post_install hook at the end
+      podfileContent = podfileContent.trim() + '\n\n' + postInstallHook.trim() + '\n';
 
       // Write back
       fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
