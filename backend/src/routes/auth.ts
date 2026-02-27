@@ -221,15 +221,42 @@ export function register(app: App, fastify: FastifyInstance) {
     async (request, reply) => {
       const { email, password } = request.body;
 
-      app.logger.info({ email }, 'Sign-in attempt received');
+      app.logger.info({ email }, 'Sign-in attempt received at /api/auth/sign-in/email');
 
       try {
+        // Validate inputs
+        if (!email || typeof email !== 'string') {
+          app.logger.warn({ email }, 'Sign-in failed: invalid email provided');
+          return reply.code(401).send({
+            error: 'Invalid email or password',
+          });
+        }
+
+        if (!password || typeof password !== 'string') {
+          app.logger.warn({ email }, 'Sign-in failed: invalid password provided');
+          return reply.code(401).send({
+            error: 'Invalid email or password',
+          });
+        }
+
         // Find user
-        app.logger.debug({ email }, 'Querying database for user');
-        const users = await app.db
-          .select()
-          .from(authSchema.user)
-          .where(eq(authSchema.user.email, email));
+        app.logger.debug({ email }, 'Step 1: Querying database for user');
+        let users: any[];
+        try {
+          users = await app.db
+            .select()
+            .from(authSchema.user)
+            .where(eq(authSchema.user.email, email));
+          app.logger.debug({ email, userCount: users.length }, 'Step 1 complete: database query successful');
+        } catch (dbError) {
+          app.logger.error(
+            { email, err: dbError },
+            'Step 1 failed: database query error when fetching user'
+          );
+          return reply.code(401).send({
+            error: 'Authentication failed',
+          });
+        }
 
         if (users.length === 0) {
           app.logger.warn({ email }, 'Sign-in failed: user not found in database');
@@ -242,11 +269,23 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.debug({ email, userId: user.id }, 'User found in database');
 
         // Find account with password
-        app.logger.debug({ userId: user.id }, 'Querying for password account');
-        const accounts = await app.db
-          .select()
-          .from(authSchema.account)
-          .where(eq(authSchema.account.userId, user.id));
+        app.logger.debug({ userId: user.id }, 'Step 2: Querying for password account');
+        let accounts: any[];
+        try {
+          accounts = await app.db
+            .select()
+            .from(authSchema.account)
+            .where(eq(authSchema.account.userId, user.id));
+          app.logger.debug({ userId: user.id, accountCount: accounts.length }, 'Step 2 complete: account query successful');
+        } catch (dbError) {
+          app.logger.error(
+            { userId: user.id, err: dbError },
+            'Step 2 failed: database query error when fetching account'
+          );
+          return reply.code(401).send({
+            error: 'Authentication failed',
+          });
+        }
 
         if (accounts.length === 0) {
           app.logger.warn({ email, userId: user.id }, 'Sign-in failed: no account found for user');
@@ -255,19 +294,35 @@ export function register(app: App, fastify: FastifyInstance) {
           });
         }
 
-        if (!accounts[0].password) {
+        const account = accounts[0];
+
+        // Validate password field exists
+        if (!account.password) {
           app.logger.warn({ email, userId: user.id }, 'Sign-in failed: no password configured on account');
           return reply.code(401).send({
             error: 'Invalid email or password',
           });
         }
 
-        const account = accounts[0];
-        app.logger.debug({ email, userId: user.id }, 'Password account found');
+        app.logger.debug({ email, userId: user.id }, 'Password account found, attempting verification');
 
         // Verify password
-        app.logger.debug({ email }, 'Verifying password');
-        if (!verifyPassword(password, account.password)) {
+        app.logger.debug({ email }, 'Step 3: Verifying password');
+        let passwordValid = false;
+        try {
+          passwordValid = verifyPassword(password, account.password);
+          app.logger.debug({ email, valid: passwordValid }, 'Step 3 complete: password verification successful');
+        } catch (verifyError) {
+          app.logger.error(
+            { email, err: verifyError },
+            'Step 3 failed: password verification error'
+          );
+          return reply.code(401).send({
+            error: 'Authentication failed',
+          });
+        }
+
+        if (!passwordValid) {
           app.logger.warn({ email, userId: user.id }, 'Sign-in failed: password verification failed');
           return reply.code(401).send({
             error: 'Invalid email or password',
@@ -277,26 +332,70 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.info({ email, userId: user.id }, 'Password verification successful');
 
         // Ensure user has notification schedule
-        app.logger.debug({ userId: user.id }, 'Ensuring user notification schedule');
-        await ensureUserNotificationSchedule(app, user.id);
+        app.logger.debug({ userId: user.id }, 'Step 4: Ensuring user notification schedule');
+        try {
+          await ensureUserNotificationSchedule(app, user.id);
+          app.logger.debug({ userId: user.id }, 'Step 4 complete: notification schedule ensured');
+        } catch (notificationError) {
+          app.logger.warn(
+            { userId: user.id, err: notificationError },
+            'Step 4: notification schedule creation failed (non-critical, continuing)'
+          );
+          // Don't fail authentication if notification schedule fails
+        }
 
         // Create session
-        app.logger.debug({ userId: user.id }, 'Creating session');
+        app.logger.debug({ userId: user.id }, 'Step 5: Creating session');
         const sessionId = crypto.randomUUID();
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-        const [session] = await app.db
-          .insert(authSchema.session)
-          .values({
-            id: sessionId,
-            userId: user.id,
-            token,
-            expiresAt,
-          })
-          .returning();
+        let session: any;
+        try {
+          const result = await app.db
+            .insert(authSchema.session)
+            .values({
+              id: sessionId,
+              userId: user.id,
+              token,
+              expiresAt,
+            })
+            .returning();
 
-        app.logger.info({ email, userId: user.id, sessionId }, 'Session created successfully');
+          if (!result || result.length === 0) {
+            app.logger.error(
+              { userId: user.id, sessionId },
+              'Step 5 failed: session insert returned empty result'
+            );
+            return reply.code(401).send({
+              error: 'Failed to create session',
+            });
+          }
+
+          session = result[0];
+          app.logger.info({ userId: user.id, sessionId }, 'Step 5 complete: session created successfully');
+        } catch (sessionError) {
+          app.logger.error(
+            { userId: user.id, err: sessionError },
+            'Step 5 failed: error creating session'
+          );
+          return reply.code(401).send({
+            error: 'Failed to create session',
+          });
+        }
+
+        app.logger.info({ email, userId: user.id, sessionId }, 'Sign-in completed successfully');
+
+        // Ensure we have a valid response object
+        if (!user || !session) {
+          app.logger.error(
+            { userId: user.id, hasUser: !!user, hasSession: !!session },
+            'Fatal: missing user or session in sign-in response'
+          );
+          return reply.code(401).send({
+            error: 'Authentication failed',
+          });
+        }
 
         return reply.code(200).send({
           user: {
@@ -315,9 +414,22 @@ export function register(app: App, fastify: FastifyInstance) {
           },
         });
       } catch (error) {
-        app.logger.error({ err: error, email }, 'Sign-in error: database or processing error');
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : '';
+        app.logger.error(
+          {
+            err: error,
+            email: request.body.email,
+            errorMessage,
+            errorStack,
+            errorType: error instanceof Error ? error.constructor.name : typeof error,
+          },
+          'Unhandled sign-in error: authentication flow crashed'
+        );
+
+        // Ensure we always return JSON
         return reply.code(401).send({
-          error: 'Authentication failed',
+          error: 'Authentication failed - internal error',
         });
       }
     }

@@ -8,9 +8,27 @@ import Purchases, {
 } from 'react-native-purchases';
 import { useAuth } from './AuthContext';
 import { BACKEND_URL } from '@/utils/api';
+import Constants from 'expo-constants';
+
+// Environment detection
+const isTestFlight = Constants.appOwnership === 'expo' || 
+                     (Platform.OS === 'ios' && Constants.isDevice && !__DEV__);
+const isDevelopment = __DEV__;
+const isProduction = !isDevelopment && !isTestFlight;
+
+console.log('[Subscription] Environment detection:', {
+  isDevelopment,
+  isTestFlight,
+  isProduction,
+  appOwnership: Constants.appOwnership,
+  isDevice: Constants.isDevice,
+  __DEV__
+});
 
 // RevenueCat API Keys
-const REVENUECAT_API_KEY_IOS = 'test_gKMHKEpYSkTiLUtgKWHRbAXGcGd'; // Sandbox test key
+// For TestFlight and sandbox testing, we use the test key
+// For production App Store builds, you should replace with production key
+const REVENUECAT_API_KEY_IOS = 'test_gKMHKEpYSkTiLUtgKWHRbAXGcGd'; // Sandbox test key (works for TestFlight)
 const REVENUECAT_API_KEY_ANDROID = 'test_gKMHKEpYSkTiLUtgKWHRbAXGcGd'; // Same for Android
 
 // Product identifier
@@ -49,23 +67,35 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       try {
         console.log('[Subscription] Initializing RevenueCat SDK...');
         console.log('[Subscription] Platform:', Platform.OS);
+        console.log('[Subscription] Environment:', { isDevelopment, isTestFlight, isProduction });
         console.log('[Subscription] User authenticated:', isAuthenticated);
         console.log('[Subscription] User ID:', user?.id);
 
-        // Configure SDK
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        // Configure SDK with appropriate logging level
+        // Use WARN for TestFlight/Production to avoid blocking dialogs
+        // Use DEBUG only in development
+        const logLevel = isDevelopment ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN;
+        Purchases.setLogLevel(logLevel);
+        console.log('[Subscription] Log level set to:', logLevel === LOG_LEVEL.DEBUG ? 'DEBUG' : 'WARN');
 
         // Use the appropriate API key for the platform
         const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
         
-        console.log('[Subscription] Configuring with API key:', apiKey.substring(0, 10) + '...');
+        console.log('[Subscription] Configuring RevenueCat...');
+        console.log('[Subscription] Using sandbox key for TestFlight/Development');
         
+        // Configure RevenueCat
+        // CRITICAL: usesStoreKit2IfAvailable MUST be false to prevent crashes
+        // The test API key works with TestFlight's sandbox environment
         await Purchases.configure({
           apiKey,
-          appUserID: user?.id || undefined, // Use user ID if authenticated
+          appUserID: user?.id || undefined,
+          usesStoreKit2IfAvailable: false, // CRITICAL: Prevents StoreKit 2 validation crashes
+          observerMode: false, // We want RevenueCat to handle purchases
         });
 
         console.log('[Subscription] RevenueCat SDK configured successfully');
+        console.log('[Subscription] Sandbox mode active (compatible with TestFlight)');
         setIsInitialized(true);
 
         // Fetch available packages
@@ -82,7 +112,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           }
         } catch (offeringsError: any) {
           console.error('[Subscription] Failed to fetch offerings:', offeringsError);
-          setError('Failed to load subscription options');
+          // Don't set error - allow app to continue
+          console.warn('[Subscription] Continuing without offerings (test mode)');
         }
 
         // Check initial subscription status
@@ -91,7 +122,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       } catch (initError: any) {
         console.error('[Subscription] Failed to initialize RevenueCat:', initError);
         console.error('[Subscription] Error details:', initError.message, initError.code);
-        setError('Failed to initialize subscription system');
+        
+        // Don't block the app - allow user to continue
+        console.warn('[Subscription] Continuing without RevenueCat (test mode)');
+        setIsInitialized(true); // Mark as initialized to prevent retry loops
         setIsLoading(false);
       }
     };
@@ -138,7 +172,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           const token = await getAuthToken();
           
           if (token) {
-            await fetch(`${BACKEND_URL}/api/subscription/sync`, {
+            const syncResponse = await fetch(`${BACKEND_URL}/api/subscription/sync`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -148,7 +182,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 customerId: info.originalAppUserId,
               }),
             });
-            console.log('[Subscription] Backend sync completed');
+
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json();
+              console.log('[Subscription] Backend sync completed:', syncData);
+              
+              // If sync failed (RevenueCat unavailable), log but don't fail
+              if (syncData.synced === false) {
+                console.warn('[Subscription] RevenueCat sync failed (non-critical):', syncData.error);
+              }
+            } else {
+              console.warn('[Subscription] Backend sync returned error status:', syncResponse.status);
+            }
           }
         } catch (syncError: any) {
           console.error('[Subscription] Failed to sync with backend (non-critical):', syncError);
@@ -217,7 +262,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           const token = await getAuthToken();
           
           if (token) {
-            await fetch(`${BACKEND_URL}/api/subscription/sync`, {
+            const syncResponse = await fetch(`${BACKEND_URL}/api/subscription/sync`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -227,6 +272,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 customerId: info.originalAppUserId,
               }),
             });
+
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json();
+              console.log('[Subscription] Purchase synced with backend:', syncData);
+              
+              if (syncData.synced === false) {
+                console.warn('[Subscription] RevenueCat sync failed (non-critical):', syncData.error);
+              }
+            }
           }
         } catch (syncError: any) {
           console.error('[Subscription] Failed to sync purchase with backend (non-critical):', syncError);
@@ -277,7 +331,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           const token = await getAuthToken();
           
           if (token) {
-            await fetch(`${BACKEND_URL}/api/subscription/sync`, {
+            const syncResponse = await fetch(`${BACKEND_URL}/api/subscription/sync`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -287,6 +341,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 customerId: info.originalAppUserId,
               }),
             });
+
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json();
+              console.log('[Subscription] Restore synced with backend:', syncData);
+              
+              if (syncData.synced === false) {
+                console.warn('[Subscription] RevenueCat sync failed (non-critical):', syncData.error);
+              }
+            }
           }
         } catch (syncError: any) {
           console.error('[Subscription] Failed to sync restore with backend (non-critical):', syncError);

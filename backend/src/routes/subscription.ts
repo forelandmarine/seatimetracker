@@ -799,11 +799,12 @@ export function register(app: App, fastify: FastifyInstance): void {
               status: { type: "string", enum: ["active", "inactive", "trial", "expired"] },
               expiresAt: { type: ["string", "null"], format: "date-time" },
               trialEndsAt: { type: ["string", "null"], format: "date-time" },
+              synced: { type: "boolean", description: "Whether RevenueCat was successfully contacted" },
+              error: { type: ["string", "null"], description: "Error message if sync failed" },
             },
           },
           400: { type: "object", properties: { error: { type: "string" } } },
           401: { type: "object", properties: { error: { type: "string" } } },
-          500: { type: "object", properties: { error: { type: "string" } } },
         },
       },
     },
@@ -842,12 +843,37 @@ export function register(app: App, fastify: FastifyInstance): void {
 
       app.logger.info({ customerId, userId }, "Syncing subscription with RevenueCat");
 
+      // Check if RevenueCat API is configured
+      if (!REVENUECAT_API_KEY) {
+        app.logger.warn({ customerId, userId }, "RevenueCat API key not configured - returning inactive status");
+
+        // Return graceful response indicating sync failed but without 500 error
+        return reply.code(200).send({
+          success: true,
+          status: "inactive",
+          expiresAt: null,
+          trialEndsAt: null,
+          synced: false,
+          error: "RevenueCat API key not configured",
+        });
+      }
+
       try {
+        app.logger.debug({ customerId }, "Attempting to fetch subscription from RevenueCat API");
         const subscriptionData = await fetchRevenueCatSubscription(customerId);
 
         if (!subscriptionData) {
-          app.logger.warn({ customerId }, "Failed to fetch RevenueCat subscription data");
-          return reply.code(500).send({ error: "Failed to fetch subscription data" });
+          app.logger.warn({ customerId }, "RevenueCat API returned null - customer may not exist");
+
+          // Return graceful response indicating sync failed but without 500 error
+          return reply.code(200).send({
+            success: true,
+            status: "inactive",
+            expiresAt: null,
+            trialEndsAt: null,
+            synced: false,
+            error: "Customer not found in RevenueCat",
+          });
         }
 
         // Determine subscription status
@@ -872,22 +898,30 @@ export function register(app: App, fastify: FastifyInstance): void {
 
         // Update user subscription if authenticated
         if (userId && user) {
-          await app.db
-            .update(authSchema.user)
-            .set({
-              subscription_status: subscriptionStatus,
-              subscription_expires_at: subscriptionData.expiresAt,
-              subscription_product_id: subscriptionData.productId,
-              subscription_platform: subscriptionData.platform,
-              trial_ends_at: subscriptionData.trialEndsAt,
-              updatedAt: new Date(),
-            })
-            .where(eq(authSchema.user.id, userId));
+          try {
+            await app.db
+              .update(authSchema.user)
+              .set({
+                subscription_status: subscriptionStatus,
+                subscription_expires_at: subscriptionData.expiresAt,
+                subscription_product_id: subscriptionData.productId,
+                subscription_platform: subscriptionData.platform,
+                trial_ends_at: subscriptionData.trialEndsAt,
+                updatedAt: new Date(),
+              })
+              .where(eq(authSchema.user.id, userId));
 
-          app.logger.info(
-            { userId, subscriptionStatus, expiresAt: subscriptionData.expiresAt?.toISOString() },
-            "Subscription synced successfully"
-          );
+            app.logger.info(
+              { userId, subscriptionStatus, expiresAt: subscriptionData.expiresAt?.toISOString() },
+              "Subscription synced successfully from RevenueCat"
+            );
+          } catch (dbError) {
+            app.logger.error(
+              { userId, err: dbError },
+              "Failed to update user subscription in database"
+            );
+            // Don't fail the response - subscription was fetched successfully, just DB update failed
+          }
         }
 
         return reply.code(200).send({
@@ -895,13 +929,26 @@ export function register(app: App, fastify: FastifyInstance): void {
           status: subscriptionStatus,
           expiresAt: subscriptionData.expiresAt?.toISOString() || null,
           trialEndsAt: subscriptionData.trialEndsAt?.toISOString() || null,
+          synced: true,
+          error: null,
         });
       } catch (error) {
-        app.logger.error(
-          { err: error, customerId },
-          "Error syncing subscription with RevenueCat"
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        app.logger.warn(
+          { customerId, userId, errorMessage, err: error },
+          "RevenueCat API call failed - returning graceful response"
         );
-        return reply.code(500).send({ error: "Failed to sync subscription" });
+
+        // Return graceful response indicating sync failed but without 500 error
+        // This ensures sign-in flow doesn't break due to RevenueCat unavailability
+        return reply.code(200).send({
+          success: true,
+          status: "inactive",
+          expiresAt: null,
+          trialEndsAt: null,
+          synced: false,
+          error: `RevenueCat API unavailable: ${errorMessage}`,
+        });
       }
     }
   );

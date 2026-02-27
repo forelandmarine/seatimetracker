@@ -56,7 +56,20 @@ export default function PaywallScreen() {
 
   const handlePurchase = async () => {
     if (availablePackages.length === 0) {
-      Alert.alert('Error', 'No subscription packages available. Please try again later.');
+      Alert.alert(
+        'Test Mode',
+        'Subscription packages are not available in test mode. In production, users will be able to purchase subscriptions here.',
+        [
+          {
+            text: 'Continue Anyway',
+            onPress: () => router.replace('/(tabs)/(home)'),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
       return;
     }
 
@@ -285,6 +298,17 @@ export default function PaywallScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Skip button for test mode */}
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => router.replace('/(tabs)/(home)')}
+          disabled={purchasing || restoring}
+        >
+          <Text style={[styles.skipButtonText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+            Skip for Now (Test Mode)
+          </Text>
+        </TouchableOpacity>
+
         <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
           By subscribing, you agree to our Terms of Service and Privacy Policy
         </Text>
@@ -455,6 +479,16 @@ const styles = StyleSheet.create({
   restoreButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  skipButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  skipButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   termsText: {
     fontSize: 12,

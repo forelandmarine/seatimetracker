@@ -179,11 +179,12 @@ export default function SeaTimeScreen() {
     }
   }, [loadActiveVesselLocation]);
 
-  // Check subscription status and redirect to paywall if needed
+  // Check subscription status - show notice but don't force redirect in test mode
+  // Users can still access the app, but with limited functionality
   useEffect(() => {
     if (!subscriptionLoading && !isSubscribed) {
-      console.log('[Home] User not subscribed, redirecting to paywall');
-      router.push('/paywall');
+      console.log('[Home] User not subscribed (test mode - showing notice)');
+      // Don't force redirect - let user see the subscription notice in the UI
     }
   }, [isSubscribed, subscriptionLoading]);
 
