@@ -1,0 +1,1 @@
+ALTER TABLE "sea_time_entries" ADD COLUMN "sea_days" integer;
