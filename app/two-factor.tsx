@@ -83,7 +83,7 @@ export default function TwoFactorScreen() {
             const SecureStore = await import('expo-secure-store');
             sessionToken = await SecureStore.getItemAsync('seatimetracker.bearer_token');
           }
-        } catch {}
+        } catch (e) { console.warn('[TwoFactor] Failed to recover token from storage:', e); }
       }
 
       if (sessionToken) {
@@ -189,6 +189,10 @@ export default function TwoFactorScreen() {
               const cleaned = text.replace(/[^0-9]/g, '').slice(0, 6);
               console.log('[TwoFactor] OTP input changed, length:', cleaned.length);
               setCode(cleaned);
+              if (cleaned.length === 6) {
+                // Small delay to let state update render before verify
+                setTimeout(() => handleVerify(), 100);
+              }
               setError('');
             }}
             keyboardType="number-pad"
@@ -245,7 +249,7 @@ export default function TwoFactorScreen() {
           style={styles.backButton}
           onPress={() => {
             console.log('[TwoFactor] Back to sign in pressed');
-            router.replace('/auth');
+            router.back();
           }}
         >
           <Text style={styles.backText}>Back to Sign In</Text>

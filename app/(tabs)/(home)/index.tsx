@@ -80,6 +80,7 @@ export default function SeaTimeScreen() {
   const [newEngineType, setNewEngineType] = useState('');
   const [activeVesselLocation, setActiveVesselLocation] = useState<VesselLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
@@ -104,6 +105,7 @@ export default function SeaTimeScreen() {
   const loadActiveVesselLocation = useCallback(async (vesselId: string, forceRefresh: boolean = false) => {
     try {
       setLocationLoading(true);
+      setLocationError(null);
       console.log('[Home] Loading location for vessel:', vesselId, 'forceRefresh:', forceRefresh);
       
       // First, get the current cached location
@@ -137,8 +139,8 @@ export default function SeaTimeScreen() {
       }
     } catch (error: any) {
       console.error('[Home] Failed to load vessel location:', error);
-      // Don't show alert for location errors, just log them
       setActiveVesselLocation(null);
+      setLocationError('Unable to load vessel location');
     } finally {
       setLocationLoading(false);
     }
@@ -472,6 +474,28 @@ export default function SeaTimeScreen() {
           </View>
         </View>
 
+        {/* Empty State - No Vessels */}
+        {vessels.length === 0 ? (
+          <View style={styles.noVesselsContainer}>
+            <IconSymbol
+              ios_icon_name="sailboat"
+              android_material_icon_name="sailing"
+              size={80}
+              color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+            />
+            <Text style={styles.noVesselsTitle}>No Vessels Yet</Text>
+            <Text style={styles.noVesselsSubtitle}>
+              Add your first vessel to start tracking sea time
+            </Text>
+            <TouchableOpacity
+              style={styles.noVesselsButton}
+              onPress={() => setModalVisible(true)}
+            >
+              <Text style={styles.noVesselsButtonText}>Add Vessel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+        <>
         {/* Active Vessel Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -623,10 +647,10 @@ export default function SeaTimeScreen() {
                     color={isDark ? colors.textSecondary : colors.textSecondaryLight}
                   />
                   <Text style={styles.mapPlaceholderText}>
-                    {locationLoading ? 'Loading position...' : 'No position data available'}
+                    {locationLoading ? 'Loading position...' : locationError ? 'Unable to load position' : 'No position data available'}
                   </Text>
                   <Text style={styles.mapPlaceholderSubtext}>
-                    {locationLoading ? 'Please wait' : 'Check AIS to update vessel location'}
+                    {locationLoading ? 'Please wait' : locationError ? 'Check your connection and try again' : 'Check AIS to update vessel location'}
                   </Text>
                 </View>
               )}
@@ -703,6 +727,8 @@ export default function SeaTimeScreen() {
             ))
           )}
         </View>
+        </>
+        )}
       </ScrollView>
 
       {/* Add Vessel Modal */}
@@ -1346,6 +1372,37 @@ function createStyles(isDark: boolean) {
       fontSize: 13,
       color: isDark ? colors.text : colors.textLight,
       fontWeight: '500',
+    },
+    noVesselsContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 80,
+      paddingHorizontal: 32,
+    },
+    noVesselsTitle: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: isDark ? colors.text : colors.textLight,
+      marginTop: 20,
+    },
+    noVesselsSubtitle: {
+      fontSize: 15,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginTop: 8,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    noVesselsButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 32,
+      paddingVertical: 14,
+      borderRadius: 10,
+      marginTop: 24,
+    },
+    noVesselsButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: 'bold',
     },
   });
 }

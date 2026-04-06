@@ -1,9 +1,8 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
-import * as Haptics from 'expo-haptics';
 import {
   View,
   Text,
@@ -173,9 +172,11 @@ export default function VesselDetailScreen() {
   // Use global refresh hook - but don't pass loadData to avoid infinite loop
   const { triggerRefresh } = useGlobalRefresh();
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -671,8 +672,22 @@ export default function VesselDetailScreen() {
             </TouchableOpacity>
           </View>
 
+          {checkingAIS && !aisData && (
+            <View style={styles.aisLoadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.aisLoadingText}>Fetching AIS data...</Text>
+            </View>
+          )}
+
           {aisData ? (
             <>
+              {checkingAIS && (
+                <View style={styles.aisUpdatingRow}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.aisUpdatingText}>(Updating...)</Text>
+                </View>
+              )}
+
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Position</Text>
                 <Text style={styles.detailValue}>
@@ -714,9 +729,9 @@ export default function VesselDetailScreen() {
 
 
             </>
-          ) : (
+          ) : !checkingAIS ? (
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
-          )}
+          ) : null}
         </View>
 
         {/* Sea Time Summary Card */}
@@ -1169,6 +1184,29 @@ function createStyles(isDark: boolean) {
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       textAlign: 'center',
       paddingVertical: 20,
+    },
+    aisLoadingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 20,
+      gap: 8,
+    },
+    aisLoadingText: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+    },
+    aisUpdatingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingBottom: 8,
+      gap: 6,
+    },
+    aisUpdatingText: {
+      fontSize: 13,
+      color: colors.primary,
+      fontStyle: 'italic',
     },
 
     summaryRow: {

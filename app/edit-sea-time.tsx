@@ -457,8 +457,9 @@ export default function EditSeaTimeScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     console.log('[EditSeaTimeScreen] User tapped Save');
-    
+
     if (!entry) {
       showFeedback('Error', 'Entry not found', 'error');
       return;

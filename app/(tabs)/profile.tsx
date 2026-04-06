@@ -1,6 +1,7 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -514,6 +515,7 @@ export default function ProfileScreen() {
   const [summary, setSummary] = useState<SeaTimeSummary | null>(null);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(false);
@@ -563,22 +565,27 @@ export default function ProfileScreen() {
   const loadProfile = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
     console.log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
-    
+
+    if (retryCount === 0) {
+      setLoadError(false);
+    }
+
     try {
       const data = await seaTimeApi.getUserProfile();
       console.log('User profile loaded successfully:', data?.email);
       setProfile(data);
       setLoading(false);
+      setLoadError(false);
     } catch (error: any) {
       console.error(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
-      
+
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
         console.log(`Retrying profile load in ${waitTime}ms...`);
         setTimeout(() => loadProfile(retryCount + 1), waitTime);
       } else {
         setLoading(false);
-        showInfo('Profile Load Error', 'Unable to load your profile. Please check your internet connection and try again.', 'error');
+        setLoadError(true);
       }
     }
   }, []);
@@ -627,17 +634,21 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    console.log('ProfileScreen: Initial mount, loading data in parallel');
-    Promise.all([
-      loadProfile(),
-      loadSummary(),
-      loadVessels(),
-      checkBiometricStatus(),
-    ]).catch(error => {
-      console.error('Failed to load profile data:', error);
-    });
-  }, [loadProfile, loadSummary, loadVessels, checkBiometricStatus]);
+  useFocusEffect(
+    useCallback(() => {
+      console.log('ProfileScreen: Screen focused, loading data in parallel');
+      setLoading(true);
+      setLoadingSummary(true);
+      Promise.all([
+        loadProfile(),
+        loadSummary(),
+        loadVessels(),
+        checkBiometricStatus(),
+      ]).catch(error => {
+        console.error('Failed to load profile data:', error);
+      });
+    }, [loadProfile, loadSummary, loadVessels, checkBiometricStatus])
+  );
 
   useEffect(() => {
     if (refreshTrigger > 0) {
@@ -914,7 +925,7 @@ export default function ProfileScreen() {
       .substring(0, 2);
   };
 
-  if (loading) {
+  if (loading && !loadError) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -928,7 +939,7 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!profile) {
+  if (loadError || !profile) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
         <IconSymbol
@@ -941,12 +952,14 @@ export default function ProfileScreen() {
           Unable to Load Profile
         </Text>
         <Text style={{ color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 8, fontSize: 14, textAlign: 'center' }}>
-          Please check your internet connection
+          Unable to load profile. Check your connection and try again.
         </Text>
         <TouchableOpacity
           style={[styles.reportButton, { marginTop: 20, width: 200 }]}
           onPress={() => {
             setLoading(true);
+            setLoadError(false);
+            setLoadingSummary(true);
             loadProfile(0);
             loadSummary(0);
             loadVessels(0);

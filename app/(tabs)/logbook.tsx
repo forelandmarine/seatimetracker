@@ -692,6 +692,19 @@ export default function LogbookScreen() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return '✓';
+      case 'pending':
+        return '⏳';
+      case 'rejected':
+        return '✗';
+      default:
+        return '?';
+    }
+  };
+
   const formatDuration = (hours: number | string | null | undefined): string => {
     if (hours === null || hours === undefined) return 'In progress';
     const h = typeof hours === 'number' ? hours : parseFloat(hours);
@@ -951,7 +964,7 @@ export default function LogbookScreen() {
                           ]}
                         >
                           <Text style={styles.statusText}>
-                            {entry.status.toUpperCase()}
+                            {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
                           </Text>
                         </View>
                       </View>
@@ -1129,7 +1142,7 @@ export default function LogbookScreen() {
                                 ]}
                               >
                                 <Text style={styles.statusText}>
-                                  {entry.status.toUpperCase()}
+                                  {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
                                 </Text>
                               </View>
                             </View>
@@ -1228,7 +1241,7 @@ export default function LogbookScreen() {
                           ]}
                         >
                           <Text style={styles.statusText}>
-                            {entry.status.toUpperCase()}
+                            {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
                           </Text>
                         </View>
                       </View>

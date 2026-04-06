@@ -72,6 +72,7 @@ export default function ConfirmationsScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const notifiedEntriesRef = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(true);
   // pollIntervalRef removed — replaced by AppState foreground listener
   
   // CRITICAL: Defensive auth context access
@@ -228,6 +229,11 @@ export default function ConfirmationsScreen() {
     }
   }, [loadData]);
 
+  // Track mounted state to prevent setState after unmount
+  useEffect(() => {
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   // Re-fetch when app returns to foreground (replaces 30s polling interval —
   // less battery drain, no interval-leak risk, and catches new entries faster
   // than an interval would when the user actually looks at the screen).
@@ -235,6 +241,7 @@ export default function ConfirmationsScreen() {
     if (Platform.OS === 'web') return;
 
     const subscription = AppState.addEventListener('change', (nextState) => {
+      if (!isMountedRef.current) return;
       if (nextState === 'active') {
         checkForNewEntries();
       }
@@ -246,6 +253,7 @@ export default function ConfirmationsScreen() {
     setRefreshing(true);
     try {
       await loadData();
+      triggerRefresh();
     } catch (error) {
       console.error('[Confirmations] Refresh failed:', error);
     } finally {
@@ -586,6 +594,7 @@ export default function ConfirmationsScreen() {
                     style={styles.entryHeader}
                     onPress={() => toggleExpanded(entry.id)}
                     disabled={isProcessing}
+                    accessibilityLabel={isExpanded ? "Collapse entry details" : "Expand entry details"}
                   >
                     <View style={styles.entryHeaderLeft}>
                       <Text style={styles.vesselName}>
@@ -676,6 +685,7 @@ export default function ConfirmationsScreen() {
                       style={[styles.actionButton, styles.confirmButton, isProcessing && styles.disabledButton]}
                       onPress={() => handleConfirmEntry(entry)}
                       disabled={isProcessing}
+                      accessibilityLabel="Confirm sea time entry"
                     >
                       {isProcessing ? (
                         <ActivityIndicator size="small" color="#fff" />
@@ -695,6 +705,7 @@ export default function ConfirmationsScreen() {
                       style={[styles.actionButton, styles.rejectButton, isProcessing && styles.disabledButton]}
                       onPress={() => handleRejectEntry(entry.id)}
                       disabled={isProcessing}
+                      accessibilityLabel="Reject sea time entry"
                     >
                       {isProcessing ? (
                         <ActivityIndicator size="small" color="#fff" />

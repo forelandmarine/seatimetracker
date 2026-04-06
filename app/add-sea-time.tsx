@@ -343,15 +343,32 @@ export default function AddSeaTimeScreen() {
     onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', type: 'error' });
 
+  // Track form data in a ref so the beforeRemove listener doesn't need
+  // state dependencies (avoids unsubscribe/resubscribe gaps that let
+  // iOS swipe gestures and Android back button bypass the warning).
+  const formDataRef = React.useRef({ selectedVessel, startDate, endDate, notes, voyageFrom, voyageTo });
+  useEffect(() => {
+    formDataRef.current = { selectedVessel, startDate, endDate, notes, voyageFrom, voyageTo };
+  }, [selectedVessel, startDate, endDate, notes, voyageFrom, voyageTo]);
+
   // Warn user about unsaved changes when navigating away
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
       if (savedRef.current) return; // entry was saved, allow navigation
-      // Check if user has entered any data worth keeping
-      const hasData = selectedVessel || startDate || endDate || notes.trim() || voyageFrom.trim() || voyageTo.trim();
-      if (!hasData) return; // nothing to lose
 
+      // Prevent default immediately — must happen synchronously before any
+      // async work, otherwise iOS swipe gesture / Android back completes.
       e.preventDefault();
+
+      // Check if user has entered any data worth keeping
+      const { selectedVessel: v, startDate: sd, endDate: ed, notes: n, voyageFrom: vf, voyageTo: vt } = formDataRef.current;
+      const hasData = v || sd || ed || n.trim() || vf.trim() || vt.trim();
+      if (!hasData) {
+        // Nothing to lose — allow navigation
+        navigation.dispatch(e.data.action);
+        return;
+      }
+
       Alert.alert(
         'Discard changes?',
         'You have unsaved sea time data. Are you sure you want to go back?',
@@ -362,7 +379,7 @@ export default function AddSeaTimeScreen() {
       );
     });
     return unsubscribe;
-  }, [navigation, selectedVessel, startDate, endDate, notes, voyageFrom, voyageTo]);
+  }, [navigation]);
 
   const showFeedback = (title: string, message: string, type: 'error' | 'success', onConfirm?: () => void) => {
     setFeedbackModal({ visible: true, title, message, type, onConfirm });

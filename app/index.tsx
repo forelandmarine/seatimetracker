@@ -43,7 +43,7 @@ export default function Index() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>Checking your account...</Text>
       </View>
     );
   }
@@ -59,7 +59,7 @@ export default function Index() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>Verifying subscription...</Text>
       </View>
     );
   }

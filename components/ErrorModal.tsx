@@ -27,9 +27,9 @@ export default function ErrorModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.overlay}>
-        <View style={styles.content}>
+        <View style={styles.content} accessibilityViewIsModal={true}>
           <Text style={styles.title}>{modalTitle}</Text>
-          <Text style={styles.message}>{message}</Text>
+          <Text style={styles.message} accessibilityRole="alert">{message}</Text>
           {isRetryable && onRetry ? (
             <View style={styles.buttonRow}>
               <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onDismiss}>

@@ -43,6 +43,7 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isRetryableError, setIsRetryableError] = useState(false);
   const pendingRetryAction = React.useRef<(() => void) | null>(null);
+  const passwordRef = React.useRef<any>(null);
   const { user, signIn, signUp, signInWithApple, signInWithGoogle, checkAuth } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
@@ -353,6 +354,7 @@ export default function AuthScreen() {
             style={[styles.button, styles.biometricButton]}
             onPress={handleBiometricSignIn}
             disabled={loading}
+            accessibilityLabel="Sign in with biometrics"
           >
             <Text style={styles.biometricButtonText}>
               {Platform.OS === 'ios' ? '🔐 Sign in with Face ID' : '🔐 Sign in with Biometrics'}
@@ -393,12 +395,16 @@ export default function AuthScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
+            accessibilityLabel="Email address"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
           />
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
           <TextInput
+            ref={passwordRef}
             style={styles.input}
             placeholder={isSignUp ? "Minimum 6 characters" : "Enter your password"}
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
@@ -407,6 +413,9 @@ export default function AuthScreen() {
             secureTextEntry
             autoCapitalize="none"
             autoComplete={isSignUp ? 'password-new' : 'password'}
+            accessibilityLabel="Password"
+            returnKeyType="done"
+            onSubmitEditing={handleEmailAuth}
           />
         </View>
 

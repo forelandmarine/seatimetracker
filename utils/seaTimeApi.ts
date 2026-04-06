@@ -97,7 +97,16 @@ class ApiError extends Error {
   body: string;
   constructor(status: number, body: string) {
     const parsed = (() => { try { return JSON.parse(body); } catch { return null; } })();
-    super(parsed?.error || parsed?.message || `Request failed (${status})`);
+    const isHtml = body.trimStart().startsWith('<') || body.includes('<!DOCTYPE');
+
+    let message: string;
+    if (status >= 500 || isHtml) {
+      message = 'Server error. Please try again later.';
+    } else {
+      message = parsed?.error || parsed?.message || `Request failed (${status})`;
+    }
+
+    super(message);
     this.status = status;
     this.body = body;
   }
