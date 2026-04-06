@@ -1,0 +1,91 @@
+{
+  "expo": {
+    "name": "SeaTime Tracker",
+    "slug": "seatime-tracker",
+    "owner": "forelandmarine",
+    "version": "1.2.2",
+    "orientation": "portrait",
+    "icon": "./assets/images/brandmark-design-1024x1024.png",
+    "scheme": "seatimetracker",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/brandmark-design-1024x1024.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "buildNumber": "4",
+      "bundleIdentifier": "com.forelandmarine.seatimetracker",
+      "appleTeamId": "43GZCFFPR9",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "SeaTime Tracker needs access to your camera to take photos for your profile picture.",
+        "NSPhotoLibraryUsageDescription": "SeaTime Tracker needs access to your photo library to select a profile picture.",
+        "NSLocationWhenInUseUsageDescription": "SeaTime Tracker uses your location to track vessel positions and calculate sea time accurately for MCA compliance.",
+        "NSFaceIDUsageDescription": "SeaTime Tracker uses Face ID to securely sign you in without entering your password."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/brandmark-design-1024x1024.png",
+        "backgroundColor": "#ffffff"
+      },
+      "versionCode": 4,
+      "package": "com.forelandmarine.seatimetracker",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/f0500a31-f8b9-4d46-8b57-62c3847deff7.png"
+    },
+    "plugins": [
+      "./plugins/ios-crash-instrumentation",
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/f0500a31-f8b9-4d46-8b57-62c3847deff7.png",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-apple-authentication"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "backendUrl": "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev",
+      "revenueCatIosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+      "revenueCatAndroidApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+      "revenueCatEntitlementId": "pro",
+      "appStoreSharedSecret": "daaa18da0b174e11bc04fe1871e11608",
+      "eas": {
+        "projectId": "d982d462-52e2-493e-a176-8f75b09d5ef9"
+      }
+    },
+    "runtimeVersion": "1.0.4",
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
+    "developmentClient": {
+      "silentLaunch": true
+    }
+  }
+}

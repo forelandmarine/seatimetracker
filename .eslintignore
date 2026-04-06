@@ -1,0 +1,10 @@
+
+node_modules/
+.expo/
+.expo-shared/
+dist/
+backend/
+babel-plugins/
+scripts/
+*.config.js
+*.config.ts

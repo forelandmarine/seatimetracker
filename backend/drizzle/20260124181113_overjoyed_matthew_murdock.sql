@@ -1,0 +1,1 @@
+-- This migration was removed as it was incorrectly dropping columns that were just added
