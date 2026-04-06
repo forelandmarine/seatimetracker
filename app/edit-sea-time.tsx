@@ -385,10 +385,14 @@ export default function EditSeaTimeScreen() {
 
   const loadEntry = useCallback(async () => {
     try {
-      console.log('[EditSeaTimeScreen] Fetching entry details');
+      console.log('[EditSeaTimeScreen] Fetching entry details for:', entryId);
+      if (!entryId) {
+        showFeedback('Error', 'No entry ID provided', 'error', () => router.back());
+        return;
+      }
       setLoading(true);
       const entries = await seaTimeApi.getSeaTimeEntries();
-      const foundEntry = entries.find((e) => e.id === entryId);
+      const foundEntry = entries.find((e: any) => e.id === entryId);
       
       if (!foundEntry) {
         showFeedback('Error', 'Sea time entry not found', 'error', () => router.back());
