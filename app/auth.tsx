@@ -103,10 +103,22 @@ export default function AuthScreen() {
         return;
       }
 
-      // Resume session using the stored token (not a password replay).
-      // checkAuth will validate the token with the backend and set user state.
+      // Detect stale credentials from before the password→token migration.
+      // Old format stored a password (short, not hex); new format stores a
+      // 64-char hex session token.
+      const storedToken = credentials.token ?? (credentials as any).password;
+      const looksLikeToken = storedToken && storedToken.length >= 32 && /^[a-f0-9]+$/i.test(storedToken);
+
+      if (!storedToken || !looksLikeToken) {
+        await clearBiometricCredentials();
+        setHasSavedCredentials(false);
+        showError('Please sign in with your email and password to re-enable Face ID.');
+        return;
+      }
+
+      // Resume session using the stored token.
       const { setToken } = await import('@/utils/tokenStorage');
-      await setToken(credentials.token, true);
+      await setToken(storedToken, true);
       await checkAuth();
 
       // If checkAuth succeeded the user is set; if token was expired we
