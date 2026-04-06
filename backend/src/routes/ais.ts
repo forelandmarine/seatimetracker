@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { eq, desc, and, gte, isNotNull, lt } from "drizzle-orm";
+import { eq, desc, and, gte, isNotNull, lt, inArray } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import crypto from "crypto";
+import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -14,6 +15,14 @@ const DATALASTIC_API_KEY = process.env.DATALASTIC_API_KEY || '';
 const BASE44_API_URL = 'https://app.base44.com/api/apps/695fbc07612e977d62f60329/entities/Vessel';
 const BASE44_API_KEY = process.env.BASE44_API_KEY || '';
 const DATA_STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
+const AIS_FETCH_TIMEOUT_MS = 10_000; // 10 seconds — prevents a hung provider from blocking the scheduler
+
+/** Create an AbortSignal that fires after `ms` milliseconds. */
+function timeoutSignal(ms: number): AbortSignal {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
 
 // Helper to mask API key for logging
 function maskAPIKey(key: string): string {
@@ -228,12 +237,11 @@ async function fetchVesselAISDataFromDatalastic(
     try {
       response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        signal: timeoutSignal(AIS_FETCH_TIMEOUT_MS),
       });
     } catch (fetchError) {
-      logger.warn(`Datalastic API connection error for MMSI ${mmsi}: ${fetchError}`);
+      logger.warn(`Datalastic API connection/timeout error for MMSI ${mmsi}: ${fetchError}`);
       return null;
     }
 
@@ -394,13 +402,11 @@ async function fetchVesselAISDataFromBase44(
     try {
       response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'api_key': apiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'api_key': apiKey, 'Content-Type': 'application/json' },
+        signal: timeoutSignal(AIS_FETCH_TIMEOUT_MS),
       });
     } catch (fetchError) {
-      logger.warn(`Base44 API connection error for MMSI ${mmsi}: ${fetchError}`);
+      logger.warn(`Base44 API connection/timeout error for MMSI ${mmsi}: ${fetchError}`);
       return null;
     }
 
@@ -661,15 +667,13 @@ export async function fetchVesselAISData(
     try {
       response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        signal: timeoutSignal(AIS_FETCH_TIMEOUT_MS),
       });
     } catch (fetchError) {
       authStatus = 'connection_error';
       errorMessage = String(fetchError);
-      logger.error(`Connection error calling MyShipTracking API for MMSI ${mmsi}: ${fetchError}`);
+      logger.error(`Connection/timeout error calling MyShipTracking API for MMSI ${mmsi}: ${fetchError}`);
       if (vesselId && app && userId) {
         await logAPICall(app, vesselId, userId, mmsi, url, requestTime, 'connection_error', null, authStatus, errorMessage, 'myshiptracking');
       }
@@ -1053,10 +1057,16 @@ export function register(app: App, fastify: FastifyInstance) {
     const { vesselId } = request.params;
     const forceRefresh = request.query.forceRefresh === 'true';
 
+    // Authenticate the request sender
+    const requestUserId = await extractUserIdFromRequest(request, app);
+    if (!requestUserId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
     // Check if at least one API key is configured
     if (!DATALASTIC_API_KEY && !MYSHIPTRACKING_API_KEY && !BASE44_API_KEY) {
       app.logger.error('No AIS API keys are configured in environment');
-      return reply.code(500).send({ error: 'AIS service not configured - no API keys available' });
+      return reply.code(500).send({ error: 'AIS service not configured' });
     }
 
     // Fetch vessel from database
@@ -1070,31 +1080,19 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(404).send({ error: 'Vessel not found' });
     }
 
-    // Check subscription status for vessel owner
+    // Verify the request sender owns this vessel
     const userId = vessel[0].user_id;
+    if (userId !== requestUserId) {
+      return reply.code(403).send({ error: 'Access denied' });
+    }
     const users = await app.db
       .select()
       .from(authSchema.user)
       .where(eq(authSchema.user.id, userId));
 
     if (users.length > 0) {
-      const user = users[0];
-      const subscriptionStatus = (user as any).subscription_status || 'inactive';
-      const subscriptionExpiresAt = (user as any).subscription_expires_at;
-
-      let isSubscriptionActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
-      if (isSubscriptionActive && subscriptionExpiresAt) {
-        try {
-          const expiryDate = new Date(subscriptionExpiresAt);
-          if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
-            isSubscriptionActive = false;
-          }
-        } catch {
-          isSubscriptionActive = false;
-        }
-      }
-
-      if (!isSubscriptionActive) {
+      const user = users[0] as any;
+      if (!checkSubscriptionActive(user.subscription_status, user.subscription_expires_at)) {
         app.logger.warn(
           { userId, vesselId, subscriptionStatus },
           'AIS check denied: subscription not active'
@@ -1281,6 +1279,32 @@ export function register(app: App, fastify: FastifyInstance) {
 
         sea_time_entry_created = true;
         app.logger.info(`Created new sea time entry: ${new_entry.id} for vessel ${vesselId}`);
+
+        // Guard against race condition: if a concurrent request also inserted,
+        // keep only the earliest entry and delete the rest.
+        const allPending = await app.db
+          .select()
+          .from(schema.sea_time_entries)
+          .where(
+            and(
+              eq(schema.sea_time_entries.vessel_id, vesselId),
+              eq(schema.sea_time_entries.status, 'pending'),
+              isNotNull(schema.sea_time_entries.start_time)
+            )
+          )
+          .orderBy(schema.sea_time_entries.created_at);
+
+        if (allPending.length > 1) {
+          const keepId = allPending[0].id; // earliest
+          const dupeIds = allPending.slice(1).map(e => e.id);
+          await app.db
+            .delete(schema.sea_time_entries)
+            .where(inArray(schema.sea_time_entries.id, dupeIds));
+          app.logger.warn(
+            { vesselId, kept: keepId, deleted: dupeIds },
+            `Deduplicated ${dupeIds.length} concurrent pending sea time entries`
+          );
+        }
       } else {
         // Entry already exists, keep it open
         app.logger.info(`Vessel is still moving, keeping open entry: ${open_entry[0].id}`);

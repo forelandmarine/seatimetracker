@@ -68,7 +68,7 @@ export const apiCall = async <T = any>(
   console.log("[API] Calling:", url, options?.method || "GET");
 
   // Setup timeout if specified
-  const timeout = options?.timeout || 10000; // Default 10 second timeout
+  const timeout = options?.timeout || 15000; // Default 15 second timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -194,7 +194,7 @@ export const authenticatedApiCall = async <T = any>(
   console.log("[API] Authenticated call:", url, options?.method || "GET");
 
   // Setup timeout if specified
-  const timeout = options?.timeout || 10000; // Default 10 second timeout
+  const timeout = options?.timeout || 15000; // Default 15 second timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 

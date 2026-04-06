@@ -48,5 +48,8 @@ registerTrackingRoutes(app, app.fastify);
 registerSubscriptionRoutes(app, app.fastify);
 registerUsersRoutes(app, app.fastify);
 
+// Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
+app.fastify.get('/api/health', async () => ({ status: 'ok' }));
+
 await app.run();
 app.logger.info('Application running');

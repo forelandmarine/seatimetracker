@@ -4,6 +4,7 @@ import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
 import { fetchVesselAISDataWithFallback } from '../routes/ais.js';
 import { processNotificationSchedules } from '../routes/notifications.js';
+import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -109,44 +110,15 @@ async function runSchedulerIteration(app: App): Promise<void> {
       `Query result: found ${dueTasks.length} due AIS check task(s) for active vessels`
     );
 
-    // Filter tasks by subscription status
+    // Filter tasks by subscription status using the shared helper
     const activeSubscriptionTasks = dueTasks.filter(({ user }) => {
-      const subscriptionStatus = (user as any).subscription_status || 'inactive';
-      const subscriptionExpiresAt = (user as any).subscription_expires_at;
-
-      let isActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
-      if (isActive && subscriptionExpiresAt) {
-        try {
-          const expiryDate = new Date(subscriptionExpiresAt);
-          if (isNaN(expiryDate.getTime()) || expiryDate <= now) {
-            isActive = false;
-          }
-        } catch {
-          isActive = false;
-        }
-      }
-
-      return isActive;
+      const u = user as any;
+      return checkSubscriptionActive(u.subscription_status, u.subscription_expires_at);
     });
 
-    // Log tasks being skipped due to inactive subscriptions
     const inactiveSubscriptionTasks = dueTasks.filter(({ user }) => {
-      const subscriptionStatus = (user as any).subscription_status || 'inactive';
-      const subscriptionExpiresAt = (user as any).subscription_expires_at;
-
-      let isActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
-      if (isActive && subscriptionExpiresAt) {
-        try {
-          const expiryDate = new Date(subscriptionExpiresAt);
-          if (isNaN(expiryDate.getTime()) || expiryDate <= now) {
-            isActive = false;
-          }
-        } catch {
-          isActive = false;
-        }
-      }
-
-      return !isActive;
+      const u = user as any;
+      return !checkSubscriptionActive(u.subscription_status, u.subscription_expires_at);
     });
 
     // Handle vessels with inactive subscriptions
@@ -415,6 +387,34 @@ async function processScheduledTask(
       },
       `Failed to insert AIS check for vessel ${vessel_name} (MMSI: ${mmsi})`
     );
+  }
+
+  // Update ais_query_timestamps so manual user checks respect the rate limit
+  // (previously only the HTTP endpoint wrote this, so a user could re-check
+  // immediately after a scheduled check completed)
+  if (ais_check) {
+    try {
+      const existingTs = await app.db
+        .select()
+        .from(schema.ais_query_timestamps)
+        .where(and(
+          eq(schema.ais_query_timestamps.vessel_id, vesselId),
+          eq(schema.ais_query_timestamps.user_id, user_id)
+        ));
+
+      if (existingTs.length > 0) {
+        await app.db
+          .update(schema.ais_query_timestamps)
+          .set({ last_query_time: check_time })
+          .where(eq(schema.ais_query_timestamps.id, existingTs[0].id));
+      } else {
+        await app.db
+          .insert(schema.ais_query_timestamps)
+          .values({ vessel_id: vesselId, user_id: user_id, last_query_time: check_time });
+      }
+    } catch (tsError) {
+      app.logger.warn({ err: tsError, vesselId }, 'Failed to update ais_query_timestamps from scheduler (non-critical)');
+    }
   }
 
   // Handle sea time entry lifecycle based on movement analysis (only if AIS check was successful)

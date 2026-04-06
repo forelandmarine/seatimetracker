@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
+import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/profile - Get current user's profile
@@ -98,9 +99,12 @@ export function register(app: App, fastify: FastifyInstance) {
         }
       }
 
-      // Calculate testSubscriptionActive
-      const testSubscriptionActive = user.subscription_status === 'active' ||
-        (user.trial_ends_at && user.trial_ends_at > new Date());
+      // Calculate testSubscriptionActive using the shared subscription helper
+      // Checks both 'active' and 'trial' status + expiry dates consistently
+      const testSubscriptionActive = checkSubscriptionActive(
+        user.subscription_status,
+        (user as any).subscription_expires_at
+      ) || !!(user.trial_ends_at && user.trial_ends_at > new Date());
 
       app.logger.info({ userId: user.id, email: user.email }, 'Profile retrieved successfully');
 
