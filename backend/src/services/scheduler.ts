@@ -609,6 +609,16 @@ async function handleOffshorePassage(
       return;
     }
 
+    // Reject implausible distances — likely bad AIS data (e.g., 0,0 coordinates)
+    const MAX_OFFSHORE_DISTANCE_NM = 5000; // generous for multi-day ocean crossings
+    if (distanceNm > MAX_OFFSHORE_DISTANCE_NM) {
+      app.logger.warn(
+        { vesselId, mmsi, distanceNm, maxPlausible: MAX_OFFSHORE_DISTANCE_NM },
+        `Offshore passage distance implausible (${distanceNm} nm), likely bad AIS data — skipping`
+      );
+      return;
+    }
+
     // Offshore passage detected!
     const daysCount = Math.ceil(daysBetween);
 
@@ -786,6 +796,24 @@ async function handleSeaTimeEntries(
   const currentLat = parseFloat(String(currentCheck.latitude));
   const currentLng = parseFloat(String(currentCheck.longitude));
 
+  // Reject (0,0) coordinates — common AIS error / default value
+  if ((oldLat === 0 && oldLng === 0) || (currentLat === 0 && currentLng === 0)) {
+    app.logger.warn(
+      { vesselId, mmsi, oldLat, oldLng, currentLat, currentLng },
+      `Skipping entry: (0,0) coordinates detected — likely bad AIS data`
+    );
+    return;
+  }
+
+  // Reject NaN coordinates
+  if (isNaN(oldLat) || isNaN(oldLng) || isNaN(currentLat) || isNaN(currentLng)) {
+    app.logger.warn(
+      { vesselId, mmsi },
+      `Skipping entry: NaN coordinates detected`
+    );
+    return;
+  }
+
   const latDiff = Math.abs(currentLat - oldLat);
   const lngDiff = Math.abs(currentLng - oldLng);
   const maxDiff = Math.max(latDiff, lngDiff);
@@ -840,6 +868,18 @@ async function handleSeaTimeEntries(
     app.logger.debug(
       { vesselId, mmsi, distanceNm, minimumThreshold: 0.5 },
       `Vessel ${vessel_name} has not traveled enough distance (${distanceNm} nm < 0.5 nm minimum), skipping entry creation`
+    );
+    return;
+  }
+
+  // VALIDATION: Reject implausible distances. A fast yacht does ~30 knots max;
+  // in a 2-hour window that's ~60 nm. Allow generous headroom but reject
+  // obviously bogus data (e.g., AIS returning 0,0 for one check).
+  const MAX_PLAUSIBLE_DISTANCE_NM = 200;
+  if (distanceNm > MAX_PLAUSIBLE_DISTANCE_NM) {
+    app.logger.warn(
+      { vesselId, mmsi, distanceNm, maxPlausible: MAX_PLAUSIBLE_DISTANCE_NM },
+      `Vessel ${vessel_name} reported implausible distance (${distanceNm} nm > ${MAX_PLAUSIBLE_DISTANCE_NM} nm max), likely bad AIS data — skipping`
     );
     return;
   }

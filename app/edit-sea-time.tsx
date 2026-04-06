@@ -440,12 +440,16 @@ export default function EditSeaTimeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [entryId, router]);
+  // Only depend on entryId — router is excluded because useRouter() returns a
+  // new object each render, which would cause an infinite load loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryId]);
 
   useEffect(() => {
     console.log('[EditSeaTimeScreen] Component mounted, loading entry:', entryId);
     loadEntry();
-  }, [entryId, loadEntry]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryId]);
 
   const handleViewMCARequirements = async () => {
     console.log('[EditSeaTimeScreen] User tapped View MCA Requirements');
