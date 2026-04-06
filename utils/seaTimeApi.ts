@@ -299,9 +299,22 @@ export const getVesselAISStatus = async (vesselId: string) => {
 };
 
 // Read-only — returns cached AIS data from the database, never triggers an external API query.
+// Normalizes the /api/ais/status response into the flat { latitude, longitude, timestamp }
+// shape that callers (home screen, vessel detail) expect.
 export const getVesselAISLocation = async (vesselId: string) => {
   const res = await authFetch(`/api/ais/status/${vesselId}`);
-  return res.json();
+  const data = await res.json();
+
+  // /api/ais/status returns { is_moving, current_check, recent_checks }
+  // Extract location from the latest check so callers get a flat object.
+  const check = data.current_check || (data.recent_checks && data.recent_checks[0]);
+  return {
+    ...data,
+    latitude: check?.latitude ?? data.latitude ?? null,
+    longitude: check?.longitude ?? data.longitude ?? null,
+    speed_knots: check?.speed_knots ?? data.speed_knots ?? null,
+    timestamp: check?.check_time ?? check?.timestamp ?? data.timestamp ?? null,
+  };
 };
 
 // Get the time remaining until next AIS check is allowed
