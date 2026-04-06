@@ -124,8 +124,10 @@ export function register(app: App, fastify: FastifyInstance) {
           }
         }
 
-        // Create user with active subscription
+        // Create user with a 7-day free trial (not a full active subscription)
+        const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
         const userId = crypto.randomUUID();
+        const trialEnd = new Date(Date.now() + TRIAL_DURATION_MS);
         const [user] = await app.db
           .insert(authSchema.user)
           .values({
@@ -133,8 +135,9 @@ export function register(app: App, fastify: FastifyInstance) {
             email,
             name,
             emailVerified: false,
-            subscription_status: 'active',
-            subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+            subscription_status: 'trial',
+            subscription_expires_at: trialEnd,
+            trial_ends_at: trialEnd,
           })
           .returning();
 
@@ -684,6 +687,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
               app.logger.info({ appleUserId, email, name }, 'Creating new Apple user');
 
+              const appleTrialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
               const [newUser] = await app.db
                 .insert(authSchema.user)
                 .values({
@@ -691,8 +695,9 @@ export function register(app: App, fastify: FastifyInstance) {
                   email,
                   name,
                   emailVerified: true,
-                  subscription_status: 'active',
-                  subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+                  subscription_status: 'trial',
+                  subscription_expires_at: appleTrialEnd,
+                  trial_ends_at: appleTrialEnd,
                 })
                 .returning();
 
@@ -731,6 +736,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
             app.logger.info({ appleUserId, email: userEmail, name }, 'Creating new Apple user with generated email');
 
+            const appleGenTrialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
             const [newUser] = await app.db
               .insert(authSchema.user)
               .values({
@@ -738,8 +744,9 @@ export function register(app: App, fastify: FastifyInstance) {
                 email: userEmail,
                 name,
                 emailVerified: false,
-                subscription_status: 'active',
-                subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+                subscription_status: 'trial',
+                subscription_expires_at: appleGenTrialEnd,
+                trial_ends_at: appleGenTrialEnd,
               })
               .returning();
 

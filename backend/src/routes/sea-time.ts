@@ -4,53 +4,14 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-
-function calculateDurationHours(startTime: Date, endTime: Date): number {
-  const diffMs = endTime.getTime() - startTime.getTime();
-  return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100; // Round to 2 decimal places
-}
-
-// Helper function to calculate sea days (1 if duration >= 4 hours, 0 otherwise)
-function calculateSeaDays(durationHours: number): number {
-  return durationHours >= 4 ? 1 : 0;
-}
-
-// Valid service types
-const VALID_SERVICE_TYPES = ['actual_sea_service', 'watchkeeping_service', 'standby_service', 'yard_service', 'service_in_port'];
-
-// Helper function to validate service type
-function isValidServiceType(serviceType: any): boolean {
-  return typeof serviceType === 'string' && VALID_SERVICE_TYPES.includes(serviceType);
-}
-
-// Helper function to calculate distance in nautical miles using Haversine formula
-function calculateDistanceNauticalMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const EARTH_RADIUS_NM = 3440.065; // Nautical miles
-
-  // Convert degrees to radians
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const lat1Rad = lat1 * (Math.PI / 180);
-  const lat2Rad = lat2 * (Math.PI / 180);
-
-  // Haversine formula
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.asin(Math.sqrt(a));
-  const distance = EARTH_RADIUS_NM * c;
-
-  // Round to 2 decimal places
-  return Math.round(distance * 100) / 100;
-}
-
-// Helper function to get calendar day (YYYY-MM-DD) from a date
-function getCalendarDay(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import {
+  calculateDurationHours,
+  calculateSeaDays,
+  calculateDistanceNauticalMiles,
+  getCalendarDay,
+  isValidServiceType,
+  VALID_SERVICE_TYPES,
+} from "../utils/seaTime.js";
 
 // Helper function to check if another entry exists for the same calendar day
 async function checkEntryExistsForDay(app: App, userId: string, calendarDay: string, excludeEntryId?: string): Promise<boolean> {

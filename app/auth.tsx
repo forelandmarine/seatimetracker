@@ -5,28 +5,30 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   ActivityIndicator,
   useColorScheme,
   Platform,
   Image,
-  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { BACKEND_URL } from '@/utils/api';
 import { warmUpServer } from '@/utils/authRetry';
-import { 
-  getBiometricCredentials, 
-  saveBiometricCredentials, 
+import {
+  getBiometricCredentials,
+  saveBiometricCredentials,
   clearBiometricCredentials,
   isBiometricAvailable,
-  authenticateWithBiometrics 
+  authenticateWithBiometrics
 } from '@/utils/biometricAuth';
+import { getToken } from '@/utils/tokenStorage';
+import { log, error as logError } from '@/utils/log';
+import { RETRYABLE_CODES } from '@/utils/errorCodes';
+import ErrorModal from '@/components/ErrorModal';
+import { createAuthStyles } from '@/styles/authStyles';
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -41,17 +43,13 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isRetryableError, setIsRetryableError] = useState(false);
   const pendingRetryAction = React.useRef<(() => void) | null>(null);
-  const { signIn, signUp, signInWithApple, signInWithGoogle } = useAuth();
+  const { user, signIn, signUp, signInWithApple, signInWithGoogle, checkAuth } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    console.log('[AuthScreen] ========== AUTH SCREEN MOUNTED ==========');
-    console.log('[AuthScreen] Platform:', Platform.OS);
-    console.log('[AuthScreen] Backend URL:', BACKEND_URL || 'NOT CONFIGURED');
-    console.log('[AuthScreen] Color scheme:', colorScheme);
     checkBiometricAvailability();
     checkSavedCredentials();
     // Fire warm-up ping immediately so server is ready when user taps Sign In
@@ -61,38 +59,25 @@ export default function AuthScreen() {
   const checkBiometricAvailability = async () => {
     const available = await isBiometricAvailable();
     setBiometricAvailable(available);
-    console.log('[AuthScreen] Biometric authentication available:', available);
   };
 
   const checkSavedCredentials = async () => {
     const credentials = await getBiometricCredentials();
     setHasSavedCredentials(!!credentials);
-    if (credentials) {
-      console.log('[AuthScreen] Found saved credentials for:', credentials.email);
-    }
   };
 
-  const showError = (message: string, retryAction?: () => void) => {
-    console.error('[AuthScreen] Showing error modal:', message);
+  const showError = (message: string, retryAction?: () => void, errorCode?: string) => {
     setErrorMessage(message);
-    const isConnectionError = (
-      message.includes('Having trouble connecting') ||
-      message.includes('check your connection') ||
-      message.includes('Cannot connect') ||
-      message.includes('timed out') ||
-      message.includes('temporarily unavailable') ||
-      message.includes('connectivity issues') ||
-      message.includes('initializing') ||
-      message.includes('Server error') ||
-      message.includes('server error')
-    );
+    // Use error code if available, otherwise fall back to message heuristic
+    const isConnectionError = errorCode
+      ? RETRYABLE_CODES.has(errorCode)
+      : /trouble connecting|check your connection|Cannot connect|timed out|temporarily unavailable|connectivity issues|initializing|[Ss]erver error/.test(message);
     setIsRetryableError(isConnectionError && !!retryAction);
     pendingRetryAction.current = retryAction || null;
     setErrorModalVisible(true);
   };
 
   const handleRetryFromModal = () => {
-    console.log('[AuthScreen] User tapped Try Again from error modal');
     setErrorModalVisible(false);
     const action = pendingRetryAction.current;
     pendingRetryAction.current = null;
@@ -104,8 +89,6 @@ export default function AuthScreen() {
 
   const handleBiometricSignIn = async () => {
     try {
-      console.log('[AuthScreen] ========== BIOMETRIC SIGN IN STARTED ==========');
-      console.log('[AuthScreen] User tapped biometric sign in button');
       setLoading(true);
 
       const credentials = await getBiometricCredentials();
@@ -114,19 +97,29 @@ export default function AuthScreen() {
         return;
       }
 
-      console.log('[AuthScreen] Credentials found, requesting biometric authentication...');
       const authenticated = await authenticateWithBiometrics();
       if (!authenticated) {
-        console.log('[AuthScreen] Biometric authentication cancelled or failed');
         return;
       }
 
-      console.log('[AuthScreen] Biometric authentication successful, calling signIn...');
-      await signIn(credentials.email, credentials.password);
-      console.log('[AuthScreen] Sign in successful, navigating to index');
+      // Resume session using the stored token (not a password replay).
+      // checkAuth will validate the token with the backend and set user state.
+      const { setToken } = await import('@/utils/tokenStorage');
+      await setToken(credentials.token, true);
+      await checkAuth();
+
+      // If checkAuth succeeded the user is set; if token was expired we
+      // clear the stale biometric credentials so the user isn't stuck.
+      if (!user) {
+        await clearBiometricCredentials();
+        setHasSavedCredentials(false);
+        showError('Your session has expired. Please sign in with email and password.');
+        return;
+      }
+
       router.replace('/');
     } catch (error: any) {
-      console.error('[AuthScreen] Biometric sign in failed:', error);
+      logError('[AuthScreen] Biometric sign in failed:', error);
       showError(error.message || 'Biometric sign in failed');
     } finally {
       setLoading(false);
@@ -134,12 +127,8 @@ export default function AuthScreen() {
   };
 
   const handleEmailAuth = async () => {
-    console.log('[AuthScreen] ========== EMAIL AUTH STARTED ==========');
-    console.log('[AuthScreen] Mode:', isSignUp ? 'Sign Up' : 'Sign In');
-    console.log('[AuthScreen] Email:', email);
-    console.log('[AuthScreen] Has password:', !!password);
-    console.log('[AuthScreen] Backend URL:', BACKEND_URL);
-    
+    log('[AuthScreen] Email auth started, mode:', isSignUp ? 'Sign Up' : 'Sign In');
+
     if (!BACKEND_URL) {
       showError('Backend not configured. Please contact support.');
       return;
@@ -161,41 +150,34 @@ export default function AuthScreen() {
       return;
     }
 
-    console.log('[AuthScreen] Validation passed, calling auth function...');
     setLoading(true);
     
     try {
       if (isSignUp) {
-        console.log('[AuthScreen] Calling signUp...');
         await signUp(email, password, name || 'User');
-        console.log('[AuthScreen] Sign up successful');
       } else {
-        console.log('[AuthScreen] Calling signIn (rememberMe:', rememberMe, ')...');
         // Pass rememberMe to signIn — when true the token is persisted to SecureStore
         // (survives app restarts); when false it is kept in memory only.
         await signIn(email, password, rememberMe);
-        console.log('[AuthScreen] Sign in successful');
 
-        // Also save credentials for biometric sign-in when rememberMe is checked
+        // Save session token for biometric sign-in when rememberMe is checked
         if (rememberMe && biometricAvailable) {
           try {
-            console.log('[AuthScreen] rememberMe + biometrics available — saving credentials for biometric sign-in...');
-            await saveBiometricCredentials(email, password);
-            setHasSavedCredentials(true);
-            console.log('[AuthScreen] Credentials saved successfully for biometric sign-in');
-          } catch (bioError) {
-            console.error('[AuthScreen] Failed to save biometric credentials (non-fatal):', bioError);
+            const token = await getToken();
+            if (token) {
+              await saveBiometricCredentials(email, token);
+              setHasSavedCredentials(true);
+            }
+          } catch (_bioError) {
+            // non-fatal — biometric save failed silently
           }
         }
       }
 
-      console.log('[AuthScreen] Auth successful, navigating to index');
+      log('[AuthScreen] Auth successful, navigating to index');
       router.replace('/');
     } catch (error: any) {
-      console.error('[AuthScreen] ========== EMAIL AUTH FAILED ==========');
-      console.error('[AuthScreen] Error type:', error.constructor.name);
-      console.error('[AuthScreen] Error message:', error.message);
-      console.error('[AuthScreen] Error stack:', error.stack);
+      logError('[AuthScreen] Email auth failed:', error.message);
 
       const rawMsg: string = error.message || 'Authentication failed';
 
@@ -224,23 +206,16 @@ export default function AuthScreen() {
   };
 
   const handleAppleSignIn = async () => {
-    console.log('[AuthScreen] ========== APPLE SIGN IN BUTTON TAPPED ==========');
-    console.log('[AuthScreen] Platform:', Platform.OS);
-    
     try {
-      console.log('[AuthScreen] Checking if Apple Sign In is available...');
       const isAvailable = await AppleAuthentication.isAvailableAsync();
-      
+
       if (!isAvailable) {
-        console.warn('[AuthScreen] Apple Sign In not available on this device');
         showError('Sign in with Apple is not available on this device');
         return;
       }
 
-      console.log('[AuthScreen] Apple Sign In is available, showing Apple prompt...');
       setLoading(true);
-      
-      console.log('[AuthScreen] Calling AppleAuthentication.signInAsync...');
+
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -248,13 +223,7 @@ export default function AuthScreen() {
         ],
       });
 
-      console.log('[AuthScreen] Apple credential received');
-      console.log('[AuthScreen] Has identity token:', !!credential?.identityToken);
-      console.log('[AuthScreen] Has email:', !!credential?.email);
-      console.log('[AuthScreen] Has full name:', !!credential?.fullName);
-
       if (!credential?.identityToken) {
-        console.error('[AuthScreen] No identity token in Apple credential');
         showError('Failed to get Apple authentication token');
         return;
       }
@@ -267,40 +236,31 @@ export default function AuthScreen() {
         } : undefined,
       };
       
-      console.log('[AuthScreen] Apple user data:', JSON.stringify(appleUserData, null, 2));
-      console.log('[AuthScreen] Calling signInWithApple...');
-      
       await signInWithApple(credential.identityToken, appleUserData);
-      
-      console.log('[AuthScreen] Apple sign in successful, navigating to index');
+
+      log('[AuthScreen] Apple sign in successful, navigating to index');
       
       try {
         // Use setTimeout to ensure state updates complete before navigation
         setTimeout(() => {
-          console.log('[AuthScreen] Executing navigation to index');
           router.replace('/');
         }, 100);
       } catch (navError: any) {
-        console.error('[AuthScreen] Navigation after Apple sign in failed:', navError);
+        logError('[AuthScreen] Navigation after Apple sign in failed:', navError);
         // Fallback navigation attempt
         setTimeout(() => {
           try {
             router.replace('/');
-          } catch (retryError) {
-            console.error('[AuthScreen] Navigation retry also failed:', retryError);
+          } catch (_retryError) {
+            // silently ignored — first error already logged
           }
         }, 500);
       }
     } catch (error: any) {
-      console.error('[AuthScreen] ========== APPLE SIGN IN FAILED ==========');
-      console.error('[AuthScreen] Error type:', error.constructor.name);
-      console.error('[AuthScreen] Error code:', error.code);
-      console.error('[AuthScreen] Error message:', error.message);
-      console.error('[AuthScreen] Error stack:', error.stack);
-      
+      logError('[AuthScreen] Apple sign in failed:', error.message);
+
       // Don't show error for user cancellation
       if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
-        console.log('[AuthScreen] User cancelled Apple Sign In');
         return;
       }
       
@@ -326,31 +286,26 @@ export default function AuthScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    console.log('[AuthScreen] ========== GOOGLE SIGN IN BUTTON TAPPED ==========');
-    console.log('[AuthScreen] Platform:', Platform.OS);
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      console.log('[AuthScreen] Google sign in successful, navigating to index');
+      log('[AuthScreen] Google sign in successful, navigating to index');
       try {
         router.replace('/');
       } catch (navError: any) {
-        console.error('[AuthScreen] Navigation after Google sign in failed:', navError);
+        logError('[AuthScreen] Navigation after Google sign in failed:', navError);
         setTimeout(() => {
           try {
             router.replace('/');
-          } catch (retryError) {
-            console.error('[AuthScreen] Navigation retry also failed:', retryError);
+          } catch (_retryError) {
+            // silently ignored — first error already logged
           }
         }, 500);
       }
     } catch (error: any) {
-      console.error('[AuthScreen] ========== GOOGLE SIGN IN FAILED ==========');
-      console.error('[AuthScreen] Error type:', error.constructor.name);
-      console.error('[AuthScreen] Error message:', error.message);
+      logError('[AuthScreen] Google sign in failed:', error.message);
 
       if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
-        console.log('[AuthScreen] User cancelled Google Sign In');
         return;
       }
 
@@ -370,7 +325,7 @@ export default function AuthScreen() {
     }
   };
 
-  const styles = createStyles(isDark);
+  const styles = createAuthStyles(isDark);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -458,10 +413,7 @@ export default function AuthScreen() {
         {!isSignUp && (
           <TouchableOpacity
             style={styles.checkboxContainer}
-            onPress={() => {
-              console.log('[AuthScreen] Remember Me toggled:', !rememberMe);
-              setRememberMe(!rememberMe);
-            }}
+            onPress={() => setRememberMe(!rememberMe)}
           >
             <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
               {rememberMe && <Text style={styles.checkmark}>✓</Text>}
@@ -491,7 +443,7 @@ export default function AuthScreen() {
         <TouchableOpacity
           style={styles.switchButton}
           onPress={() => {
-            console.log('[AuthScreen] Switching mode to:', isSignUp ? 'Sign In' : 'Sign Up');
+            log('[AuthScreen] Switching mode to:', isSignUp ? 'Sign In' : 'Sign Up');
             setIsSignUp(!isSignUp);
             setEmail('');
             setPassword('');
@@ -508,10 +460,7 @@ export default function AuthScreen() {
         {!isSignUp && (
           <TouchableOpacity
             style={styles.forgotPasswordButton}
-            onPress={() => {
-              console.log('[AuthScreen] User tapped Forgot Password link');
-              router.push('/forgot-password');
-            }}
+            onPress={() => router.push('/forgot-password')}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -564,307 +513,15 @@ export default function AuthScreen() {
         </Text>
       </View>
 
-      {/* Error Modal */}
-      <Modal
+      <ErrorModal
         visible={errorModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setErrorModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {isRetryableError ? 'Connection Problem' : 'Sign In Error'}
-            </Text>
-            <Text style={styles.modalMessage}>{errorMessage}</Text>
-            {isRetryableError ? (
-              <View style={styles.modalButtonRow}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonSecondary]}
-                  onPress={() => setErrorModalVisible(false)}
-                >
-                  <Text style={styles.modalButtonSecondaryText}>Dismiss</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonPrimary]}
-                  onPress={handleRetryFromModal}
-                >
-                  <Text style={styles.modalButtonText}>Try Again</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={() => setErrorModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>OK</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
+        title={isRetryableError ? 'Connection Problem' : 'Sign In Error'}
+        message={errorMessage}
+        isRetryable={isRetryableError}
+        onDismiss={() => setErrorModalVisible(false)}
+        onRetry={handleRetryFromModal}
+      />
     </ScrollView>
   );
 }
 
-function createStyles(isDark: boolean) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? colors.background : colors.backgroundLight,
-    },
-    content: {
-      padding: 24,
-      paddingTop: Platform.OS === 'android' ? 48 : 24,
-    },
-    header: {
-      alignItems: 'center',
-      marginBottom: 40,
-      marginTop: 40,
-    },
-    logo: {
-      width: 100,
-      height: 100,
-    },
-    title: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 18,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-    },
-    form: {
-      width: '100%',
-      maxWidth: 400,
-      alignSelf: 'center',
-    },
-    inputContainer: {
-      marginBottom: 20,
-    },
-    label: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 8,
-    },
-    input: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 16,
-      color: isDark ? colors.text : colors.textLight,
-    },
-    button: {
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    primaryButton: {
-      backgroundColor: colors.primary,
-    },
-    buttonText: {
-      color: '#FFFFFF',
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    switchButton: {
-      marginTop: 16,
-      alignItems: 'center',
-    },
-    switchText: {
-      color: colors.primary,
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    forgotPasswordButton: {
-      marginTop: 12,
-      alignItems: 'center',
-    },
-    forgotPasswordText: {
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      fontSize: 15,
-      fontWeight: '500',
-      textDecorationLine: 'underline',
-    },
-    divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginVertical: 24,
-    },
-    dividerLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: isDark ? colors.border : colors.borderLight,
-    },
-    dividerText: {
-      marginHorizontal: 16,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    appleButton: {
-      width: '100%',
-      height: 50,
-    },
-    googleButton: {
-      backgroundColor: isDark ? '#2D2D2D' : '#FFFFFF',
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#DADCE0',
-    },
-    googleButtonIosSpacing: {
-      marginTop: 12,
-    },
-    googleButtonInner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    googleIcon: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: '#4285F4',
-      marginRight: 10,
-      fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    },
-    googleButtonText: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: '#3C4043',
-    },
-    googleButtonTextDark: {
-      color: '#FFFFFF',
-    },
-    biometricButton: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderWidth: 2,
-      borderColor: colors.primary,
-    },
-    biometricButtonText: {
-      color: colors.primary,
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    checkboxContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    checkbox: {
-      width: 24,
-      height: 24,
-      borderWidth: 2,
-      borderColor: isDark ? colors.border : colors.borderLight,
-      borderRadius: 6,
-      marginRight: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-    },
-    checkboxChecked: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    checkmark: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
-    checkboxLabel: {
-      flex: 1,
-      fontSize: 15,
-      color: isDark ? colors.text : colors.textLight,
-    },
-    footer: {
-      marginTop: 40,
-      alignItems: 'center',
-    },
-    footerText: {
-      fontSize: 14,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      textAlign: 'center',
-      marginBottom: 4,
-    },
-    warningBanner: {
-      backgroundColor: '#FFF3CD',
-      borderRadius: 8,
-      padding: 12,
-      marginTop: 16,
-      borderWidth: 1,
-      borderColor: '#FFC107',
-    },
-    warningText: {
-      color: '#856404',
-      fontSize: 14,
-      textAlign: 'center',
-      fontWeight: '500',
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-    },
-    modalContent: {
-      backgroundColor: isDark ? colors.cardBackground : '#FFFFFF',
-      borderRadius: 16,
-      padding: 24,
-      width: '100%',
-      maxWidth: 400,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: isDark ? colors.text : colors.textLight,
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    modalMessage: {
-      fontSize: 16,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 24,
-      textAlign: 'center',
-      lineHeight: 24,
-    },
-    modalButtonRow: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    modalButton: {
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-      flex: 1,
-    },
-    modalButtonPrimary: {
-      backgroundColor: colors.primary,
-    },
-    modalButtonSecondary: {
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    modalButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    modalButtonSecondaryText: {
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      fontSize: 16,
-      fontWeight: '600',
-    },
-  });
-}

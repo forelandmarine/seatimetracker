@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
+import { log, error } from '@/utils/log';
 
 export const API_BASE_URL =
   Constants.expoConfig?.extra?.backendUrl ||
@@ -31,8 +32,8 @@ const normalizeVessel = (vessel: any) => {
       ...vessel,
       vessel_type: vessel.vessel_type || vessel.type || null,
     };
-  } catch (error: any) {
-    console.error('[seaTimeApi] Error normalizing vessel:', error?.message || error);
+  } catch (e: any) {
+    error('[seaTimeApi] Error normalizing vessel:', e?.message || e);
     return null;
   }
 };
@@ -42,8 +43,8 @@ const getLastQueryTime = async (vesselId: string): Promise<Date | null> => {
   try {
     const timeString = await AsyncStorage.getItem(`${LAST_QUERY_TIME_PREFIX}${vesselId}`);
     return timeString ? new Date(timeString) : null;
-  } catch (error) {
-    console.error('[seaTimeApi] Error getting last query time:', error);
+  } catch (e) {
+    error('[seaTimeApi] Error getting last query time:', e);
     return null;
   }
 };
@@ -51,42 +52,30 @@ const getLastQueryTime = async (vesselId: string): Promise<Date | null> => {
 const setLastQueryTime = async (vesselId: string, time: Date): Promise<void> => {
   try {
     await AsyncStorage.setItem(`${LAST_QUERY_TIME_PREFIX}${vesselId}`, time.toISOString());
-    console.log('[seaTimeApi] Set last query time for vessel:', vesselId, 'at', time.toISOString());
-  } catch (error) {
-    console.error('[seaTimeApi] Error setting last query time:', error);
+  } catch (e) {
+    error('[seaTimeApi] Error setting last query time:', e);
   }
 };
 
 const shouldQueryVessel = async (vesselId: string, forceRefresh: boolean = false): Promise<boolean> => {
   if (forceRefresh) {
-    console.log('[seaTimeApi] Force refresh requested for vessel:', vesselId);
     return true;
   }
 
   const lastQueryTime = await getLastQueryTime(vesselId);
   if (!lastQueryTime) {
-    console.log('[seaTimeApi] No previous query time found for vessel:', vesselId, '- allowing query');
     return true;
   }
 
   const now = new Date();
   const timeSinceLastQuery = now.getTime() - lastQueryTime.getTime();
-  const shouldQuery = timeSinceLastQuery > VESSEL_QUERY_INTERVAL;
-
-  if (shouldQuery) {
-    console.log('[seaTimeApi] Last query was', Math.floor(timeSinceLastQuery / 1000 / 60), 'minutes ago - allowing query');
-  } else {
-    const minutesRemaining = Math.ceil((VESSEL_QUERY_INTERVAL - timeSinceLastQuery) / 1000 / 60);
-    console.log('[seaTimeApi] Rate limit active - last query was', Math.floor(timeSinceLastQuery / 1000 / 60), 'minutes ago. Next query allowed in', minutesRemaining, 'minutes');
-  }
-
-  return shouldQuery;
+  return timeSinceLastQuery > VESSEL_QUERY_INTERVAL;
 };
 
 // Check if backend is configured
 export const checkBackendConfigured = () => {
   const isConfigured = API_BASE_URL !== 'http://localhost:3000';
-  console.log('[seaTimeApi] Backend configured:', isConfigured, 'URL:', API_BASE_URL);
+  log('[seaTimeApi] Backend configured:', isConfigured, 'URL:', API_BASE_URL);
   return isConfigured;
 };
 
@@ -300,10 +289,9 @@ export const getVesselAISStatus = async (vesselId: string) => {
   return res.json();
 };
 
-// Read-only — doesn't trigger a new AIS API query
-export const getVesselAISLocation = async (vesselId: string, extended: boolean = false) => {
-  const qs = extended ? '?extended=true' : '';
-  const res = await authFetch(`/api/ais/check/${vesselId}${qs}`);
+// Read-only — returns cached AIS data from the database, never triggers an external API query.
+export const getVesselAISLocation = async (vesselId: string) => {
+  const res = await authFetch(`/api/ais/status/${vesselId}`);
   return res.json();
 };
 
@@ -476,13 +464,13 @@ export const saveActiveVesselCache = async (vessel: ActiveVesselCache | null): P
   try {
     if (vessel === null) {
       await AsyncStorage.removeItem(ACTIVE_VESSEL_CACHE_KEY);
-      console.log('[seaTimeApi] Active vessel cache cleared');
+      log('[seaTimeApi] Active vessel cache cleared');
     } else {
       await AsyncStorage.setItem(ACTIVE_VESSEL_CACHE_KEY, JSON.stringify(vessel));
-      console.log('[seaTimeApi] Active vessel cache saved:', vessel.vesselName, vessel.vesselId);
+      log('[seaTimeApi] Active vessel cache saved:', vessel.vesselName, vessel.vesselId);
     }
-  } catch (error) {
-    console.error('[seaTimeApi] Failed to save active vessel cache:', error);
+  } catch (e) {
+    error('[seaTimeApi] Failed to save active vessel cache:', e);
   }
 };
 
@@ -496,10 +484,10 @@ export const loadActiveVesselCache = async (): Promise<ActiveVesselCache | null>
     if (!raw) return null;
     const parsed: ActiveVesselCache = JSON.parse(raw);
     if (!parsed.vesselId || !parsed.vesselName) return null;
-    console.log('[seaTimeApi] Active vessel cache restored:', parsed.vesselName, parsed.vesselId);
+    log('[seaTimeApi] Active vessel cache restored:', parsed.vesselName, parsed.vesselId);
     return parsed;
-  } catch (error) {
-    console.error('[seaTimeApi] Failed to load active vessel cache:', error);
+  } catch (e) {
+    error('[seaTimeApi] Failed to load active vessel cache:', e);
     return null;
   }
 };

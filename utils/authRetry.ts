@@ -7,85 +7,33 @@
  */
 
 import { BACKEND_URL } from '@/utils/api';
+import { log, error } from '@/utils/log';
+import { isRetryableCode, CLIENT_ERROR_CODES } from '@/utils/errorCodes';
 
 const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 3 retries: 1s, 2s, 4s
 
 /**
  * Determines whether an error is retryable (server/network) vs. a definitive
  * client error (wrong credentials, validation, etc.) that should surface immediately.
+ *
+ * Prefers error codes when available, falls back to heuristics for network errors.
  */
-export function isRetryableError(error: any): boolean {
-  const msg: string = error?.message || '';
-
-  // Never retry on explicit 4xx client errors
-  const clientErrorPatterns = [
-    'Invalid email or password',
-    'already exists',
-    'already registered',
-    'Email already',
-    'No account found',
-    'Password must',
-    'invalid email',
-    'invalid password',
-    'User not found',
-    'Unauthorized',
-    '401',
-    '403',
-    '404',
-    '422',
-    'No session token received',
-    'Invalid identity token',
-    'Backend not configured',
-    'Authentication in progress',
-    'Please wait',
-  ];
-
-  for (const pattern of clientErrorPatterns) {
-    if (msg.toLowerCase().includes(pattern.toLowerCase())) {
-      console.log('[AuthRetry] Non-retryable client error detected:', pattern);
-      return false;
-    }
+export function isRetryableError(err: any): boolean {
+  // If the error carries a code from our backend, use it directly
+  const code: string | undefined = err?.code;
+  if (code) {
+    if (CLIENT_ERROR_CODES.has(code)) return false;
+    if (isRetryableCode(code)) return true;
   }
 
-  // Retry on network errors
-  if (
-    error?.name === 'AbortError' ||
-    error?.name === 'TypeError' ||
-    msg.includes('Network') ||
-    msg.includes('network') ||
-    msg.includes('timed out') ||
-    msg.includes('timeout') ||
-    msg.includes('ECONNREFUSED') ||
-    msg.includes('ENOTFOUND') ||
-    msg.includes('fetch failed')
-  ) {
-    console.log('[AuthRetry] Retryable network error:', msg);
-    return true;
-  }
+  // Network-level errors (no code available — these are fetch/transport failures)
+  if (err?.name === 'AbortError' || err?.name === 'TypeError') return true;
 
-  // Retry on server errors (5xx patterns in message)
-  if (
-    msg.includes('Server error') ||
-    msg.includes('server error') ||
-    msg.includes('500') ||
-    msg.includes('502') ||
-    msg.includes('503') ||
-    msg.includes('504') ||
-    msg.includes('initializing') ||
-    msg.includes('temporarily unavailable') ||
-    msg.includes('connectivity issues') ||
-    msg.includes('Connect Timeout') ||
-    msg.includes('UND_ERR') ||
-    msg.includes('internal error') ||
-    msg.includes('database is being set up') ||
-    msg.includes('service may be')
-  ) {
-    console.log('[AuthRetry] Retryable server error:', msg);
-    return true;
-  }
+  const msg: string = err?.message || '';
+  if (/network|timed out|timeout|ECONNREFUSED|ENOTFOUND|fetch failed/i.test(msg)) return true;
+  if (/server error|5\d{2}|temporarily unavailable|connectivity issues|Connect Timeout|UND_ERR|initializing/i.test(msg)) return true;
 
   // Default: do not retry unknown errors
-  console.log('[AuthRetry] Unknown error — not retrying:', msg);
   return false;
 }
 
@@ -106,42 +54,39 @@ export async function withAuthRetry<T>(
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
       if (attempt > 0) {
-        console.log(`[AuthRetry] [${label}] Retry attempt ${attempt}/${RETRY_DELAYS_MS.length}...`);
+        log(`[AuthRetry] [${label}] Retry ${attempt}/${RETRY_DELAYS_MS.length}`);
       }
 
       const result = await operation();
 
       if (attempt > 0) {
-        console.log(`[AuthRetry] [${label}] Succeeded on retry attempt ${attempt}`);
+        log(`[AuthRetry] [${label}] Succeeded on retry ${attempt}`);
       }
 
       return result;
-    } catch (error: any) {
-      lastError = error;
+    } catch (err: any) {
+      lastError = err;
 
-      console.error(`[AuthRetry] [${label}] Attempt ${attempt + 1} failed:`, error?.message);
+      error(`[AuthRetry] [${label}] Attempt ${attempt + 1} failed:`, err?.message);
 
       // If this is a client error, surface it immediately — no retry
-      if (!isRetryableError(error)) {
-        console.log(`[AuthRetry] [${label}] Client error — surfacing immediately`);
-        throw error;
+      if (!isRetryableError(err)) {
+        throw err;
       }
 
       // If we've exhausted all retries, throw the final error
       if (attempt >= RETRY_DELAYS_MS.length) {
-        console.error(`[AuthRetry] [${label}] All ${RETRY_DELAYS_MS.length} retries exhausted`);
+        error(`[AuthRetry] [${label}] All ${RETRY_DELAYS_MS.length} retries exhausted`);
         break;
       }
 
       // Wait before next retry
       const delay = RETRY_DELAYS_MS[attempt];
-      console.log(`[AuthRetry] [${label}] Waiting ${delay}ms before retry ${attempt + 1}...`);
       await sleep(delay);
     }
   }
 
   // All retries exhausted — throw a user-friendly connection error
-  console.error(`[AuthRetry] [${label}] All retries failed. Last error:`, lastError?.message);
   throw new Error(
     'Having trouble connecting. Please check your connection and try again.'
   );
@@ -155,11 +100,9 @@ export function warmUpServer(): void {
   if (!BACKEND_URL) return;
 
   const url = `${BACKEND_URL}/api/health`;
-  console.log('[AuthRetry] Firing warm-up ping to:', url);
 
   fetch(url, { method: 'GET' }).catch(() => {
     // Silently ignore — this is best-effort only
-    console.log('[AuthRetry] Warm-up ping failed (non-fatal)');
   });
 }
 
