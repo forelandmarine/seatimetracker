@@ -145,6 +145,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setIsStatusChecked(false);
 
+      // In Expo Go, RevenueCat native modules are not available.
+      // Detect this early and fall back to backend subscription check.
+      if (Constants.appOwnership === 'expo') {
+        warn('[Subscription] Running in Expo Go — RevenueCat unavailable, using backend fallback');
+        setInitializationFailed(true);
+        setIsInitialized(true);
+        setIsLoading(false);
+        setInitializedForUserId(user?.id ?? null);
+        return;
+      }
+
       try {
         // Configure SDK with appropriate logging level
         // Use WARN for TestFlight/Production to avoid blocking dialogs

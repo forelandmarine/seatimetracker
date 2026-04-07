@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --outdir=dist --platform=node --target=node20 --format=esm --packages=external --sourcemap",
+    "build": "esbuild src/index.ts --bundle --outdir=dist --platform=node --target=node20 --format=esm --packages=external --sourcemap && cp -r src/assets dist/assets",
     "typecheck": "tsc --noEmit",
     "start": "node --import @specific-dev/framework/telemetry dist/index.js",
     "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",

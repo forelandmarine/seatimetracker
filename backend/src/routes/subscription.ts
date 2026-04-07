@@ -77,6 +77,11 @@ function verifyAppleReceipt(receiptData: string, isSandbox: boolean = true): Pro
       });
     });
 
+    req.setTimeout(10000, () => {
+      req.destroy();
+      reject(new Error("Apple receipt verification timed out"));
+    });
+
     req.on("error", (error) => {
       reject(error);
     });
@@ -232,6 +237,11 @@ function fetchRevenueCatSubscription(
             reject(error);
           }
         });
+      });
+
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error("RevenueCat API request timed out"));
       });
 
       req.on("error", (error) => {

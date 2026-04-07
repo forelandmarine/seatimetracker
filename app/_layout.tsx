@@ -76,9 +76,8 @@ function RootLayoutContent() {
         <Stack.Screen
           name="edit-sea-time"
           options={{
-            presentation: 'modal',
-            title: 'Edit Sea Time',
-            headerBackTitle: 'Cancel',
+            presentation: 'card',
+            headerShown: false,
           }}
         />
         <Stack.Screen

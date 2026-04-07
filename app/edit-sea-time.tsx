@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -164,11 +164,12 @@ const createStyles = (isDark: boolean) =>
     },
     serviceTypeContainer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: 8,
     },
     serviceTypeButton: {
-      flex: 1,
-      paddingVertical: 12,
+      width: '48%',
+      paddingVertical: 14,
       paddingHorizontal: 12,
       borderRadius: 10,
       borderWidth: 1,
@@ -579,7 +580,7 @@ export default function EditSeaTimeScreen() {
   if (loading) {
     return (
       <>
-        <Stack.Screen options={{ headerShown: false }} />
+  
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -605,7 +606,7 @@ export default function EditSeaTimeScreen() {
   if (!entry) {
     return (
       <>
-        <Stack.Screen options={{ headerShown: false }} />
+  
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -640,7 +641,7 @@ export default function EditSeaTimeScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+
       
       <View style={styles.container}>
         <View style={styles.header}>
