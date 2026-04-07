@@ -1094,7 +1094,7 @@ export function register(app: App, fastify: FastifyInstance) {
       const user = users[0] as any;
       if (!checkSubscriptionActive(user.subscription_status, user.subscription_expires_at)) {
         app.logger.warn(
-          { userId, vesselId, subscriptionStatus },
+          { userId, vesselId, subscriptionStatus: user.subscription_status },
           'AIS check denied: subscription not active'
         );
         return reply.code(403).send({

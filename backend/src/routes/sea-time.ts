@@ -1673,9 +1673,25 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
 
-    // Note: Calendar day restriction has been removed to allow multiple entries per day as vessels move throughout the day
-    // The scheduler creates multiple entries (every 2 hours) when movement is detected
-    app.logger.debug({ userId: session.userId }, 'Creating entry - multiple entries per calendar day are now allowed');
+    // Reject entries with 0nm distance when coordinates are provided
+    if (
+      start_latitude != null && start_longitude != null &&
+      end_latitude != null && end_longitude != null
+    ) {
+      const distanceNm = calculateDistanceNauticalMiles(
+        Number(start_latitude), Number(start_longitude),
+        Number(end_latitude), Number(end_longitude)
+      );
+      if (distanceNm < 0.5) {
+        app.logger.warn(
+          { userId: session.userId, vessel_id, distanceNm },
+          'Rejected manual entry: distance below 0.5nm minimum'
+        );
+        return reply.code(400).send({
+          error: 'Sea time entry requires at least 0.5nm of vessel movement. The start and end positions are too close together.',
+        });
+      }
+    }
 
     // Create the sea time entry (marked as confirmed for manually created entries)
     try {

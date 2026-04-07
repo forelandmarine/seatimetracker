@@ -369,7 +369,7 @@ export default function AuthScreen() {
             accessibilityLabel="Sign in with biometrics"
           >
             <Text style={styles.biometricButtonText}>
-              {Platform.OS === 'ios' ? '🔐 Sign in with Face ID' : '🔐 Sign in with Biometrics'}
+              {Platform.OS === 'ios' ? 'Sign in with Face ID' : 'Sign in with Biometrics'}
             </Text>
           </TouchableOpacity>
         )}
@@ -507,22 +507,7 @@ export default function AuthScreen() {
           />
         )}
 
-        <TouchableOpacity
-          style={[styles.button, styles.googleButton, Platform.OS === 'ios' && styles.googleButtonIosSpacing]}
-          onPress={handleGoogleSignIn}
-          disabled={googleLoading || loading}
-        >
-          {googleLoading ? (
-            <ActivityIndicator color={isDark ? '#FFFFFF' : '#3C4043'} />
-          ) : (
-            <View style={styles.googleButtonInner}>
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={[styles.googleButtonText, isDark && styles.googleButtonTextDark]}>
-                Sign in with Google
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {/* Google sign-in removed */}
       </View>
 
       <View style={styles.footer}>

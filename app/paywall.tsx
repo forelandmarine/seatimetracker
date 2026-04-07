@@ -215,19 +215,26 @@ export default function PaywallScreen() {
     });
   };
 
-  const handleRedeemCode = () => {
-    console.log('[Paywall] User tapped Redeem Code — opening App Store redeem page');
-    const redeemUrl = 'https://apps.apple.com/redeem';
+  const handleRedeemCode = async () => {
+    console.log('[Paywall] User tapped Redeem Code');
     waitingForRedeemRef.current = true;
-    Linking.openURL(redeemUrl).catch(err => {
-      waitingForRedeemRef.current = false;
-      console.error('[Paywall] Failed to open App Store redeem URL:', err);
-      Alert.alert(
-        'Unable to Open App Store',
-        'Please open the App Store manually, tap your profile, and select "Redeem Gift Card or Code".',
-        [{ text: 'OK' }]
-      );
-    });
+    try {
+      // Use RevenueCat's native code redemption sheet (iOS 14+)
+      await Purchases.presentCodeRedemptionSheet();
+      console.log('[Paywall] Code redemption sheet presented');
+    } catch (err) {
+      console.warn('[Paywall] presentCodeRedemptionSheet failed, falling back to App Store URL:', err);
+      // Fallback to App Store redeem URL
+      Linking.openURL('https://apps.apple.com/redeem').catch(linkErr => {
+        waitingForRedeemRef.current = false;
+        console.error('[Paywall] Failed to open App Store redeem URL:', linkErr);
+        Alert.alert(
+          'Unable to Open App Store',
+          'Please open the App Store manually, tap your profile, and select "Redeem Gift Card or Code".',
+          [{ text: 'OK' }]
+        );
+      });
+    }
   };
 
   const handleClose = () => {

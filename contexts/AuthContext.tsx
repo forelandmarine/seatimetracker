@@ -10,7 +10,7 @@ import * as tokenStorage from '@/utils/tokenStorage';
 import { log, warn, error } from '@/utils/log';
 
 // Reasonable timeouts
-const API_TIMEOUT = 30000; // 30 seconds for API calls
+const API_TIMEOUT = 8000; // 8 seconds for API calls
 
 interface User {
   id: string;

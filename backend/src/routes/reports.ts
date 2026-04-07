@@ -12,7 +12,11 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ASSETS_DIR = path.join(__dirname, "..", "assets");
+// In dev (tsx): __dirname = src/routes/, assets at src/assets/
+// In prod (esbuild bundle): __dirname = dist/, assets at dist/assets/
+const ASSETS_DIR = fs.existsSync(path.join(__dirname, "..", "assets"))
+  ? path.join(__dirname, "..", "assets")
+  : path.join(__dirname, "assets");
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/reports/csv - Generate CSV file of sea time entries with date filtering
@@ -351,42 +355,7 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(401).send({ error: 'Authentication required' });
     }
 
-    // Check subscription status
-    const users = await app.db
-      .select()
-      .from(authSchema.user)
-      .where(eq(authSchema.user.id, userId));
-
-    if (users.length === 0) {
-      return reply.code(401).send({ error: 'User not found' });
-    }
-
-    const user = users[0];
-    const subscriptionStatus = (user as any).subscription_status || 'inactive';
-    const subscriptionExpiresAt = (user as any).subscription_expires_at;
-
-    let isSubscriptionActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
-    if (isSubscriptionActive && subscriptionExpiresAt) {
-      try {
-        const expiryDate = new Date(subscriptionExpiresAt);
-        if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
-          isSubscriptionActive = false;
-        }
-      } catch {
-        isSubscriptionActive = false;
-      }
-    }
-
-    if (!isSubscriptionActive) {
-      app.logger.warn(
-        { userId, subscriptionStatus },
-        'Summary report denied: subscription not active'
-      );
-      return reply.code(403).send({
-        error: 'Active subscription required to generate reports',
-      });
-    }
-
+    // Summary stats are available to all authenticated users (no subscription gate)
     const { startDate, endDate } = request.query;
 
     app.logger.info({ userId, startDate, endDate }, 'Generating summary report for user');

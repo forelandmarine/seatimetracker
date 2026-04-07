@@ -15,10 +15,7 @@ export default function Index() {
   useEffect(() => {
     try {
       if (authContext && !authContext.loading) {
-        const timer = setTimeout(() => {
-          setInitialCheckDone(true);
-        }, 100);
-        return () => clearTimeout(timer);
+        setInitialCheckDone(true);
       }
     } catch (error: any) {
       console.error('[Index] Error in auth check effect:', error);
