@@ -121,49 +121,23 @@ async function runSchedulerIteration(app: App): Promise<void> {
       return !checkSubscriptionActive(u.subscription_status, u.subscription_expires_at);
     });
 
-    // Handle vessels with inactive subscriptions
+    // Skip vessels with inactive subscriptions — do NOT deactivate or delete tasks.
+    // Subscription may renew shortly (e.g. billing retry, App Store delay).
+    // Tracking state should persist so it resumes automatically on renewal.
     if (inactiveSubscriptionTasks.length > 0) {
-      app.logger.warn(
+      app.logger.info(
         {
           skippedTaskCount: inactiveSubscriptionTasks.length,
           tasks: inactiveSubscriptionTasks.map(({ task, vessel, user }) => ({
             taskId: task.id,
             vesselId: vessel.id,
             vesselName: vessel.vessel_name,
-            mmsi: vessel.mmsi,
             userId: vessel.user_id,
             subscriptionStatus: (user as any).subscription_status || 'inactive',
-            subscriptionExpiresAt: (user as any).subscription_expires_at?.toISOString() || null,
           })),
         },
-        `Skipping ${inactiveSubscriptionTasks.length} task(s) due to inactive subscription - will deactivate vessels`
+        `Skipping ${inactiveSubscriptionTasks.length} task(s) due to inactive subscription (vessels remain active for auto-resume)`
       );
-
-      // Deactivate vessels and delete scheduled tasks for inactive subscriptions
-      for (const { task, vessel } of inactiveSubscriptionTasks) {
-        try {
-          // Deactivate the vessel
-          await app.db
-            .update(schema.vessels)
-            .set({ is_active: false })
-            .where(eq(schema.vessels.id, vessel.id));
-
-          // Delete the scheduled task
-          await app.db
-            .delete(schema.scheduled_tasks)
-            .where(eq(schema.scheduled_tasks.id, task.id));
-
-          app.logger.info(
-            { taskId: task.id, vesselId: vessel.id, vesselName: vessel.vessel_name },
-            `Deactivated vessel and deleted scheduled task due to inactive subscription`
-          );
-        } catch (error) {
-          app.logger.error(
-            { err: error, taskId: task.id, vesselId: vessel.id },
-            `Failed to deactivate vessel or delete scheduled task`
-          );
-        }
-      }
     }
 
     // Log which vessels are being checked
