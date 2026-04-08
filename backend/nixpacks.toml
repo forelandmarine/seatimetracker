@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["echo \"//npm.pkg.github.com/:_authToken=${NPM_TOKEN}\" > .npmrc && echo \"@specific-dev:registry=https://npm.pkg.github.com\" >> .npmrc && npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
