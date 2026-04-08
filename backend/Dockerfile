@@ -12,4 +12,4 @@ RUN npm run build && npm prune --omit=dev
 
 ENV NODE_ENV=production
 
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "echo DATABASE_URL=$DATABASE_URL && node dist/index.js"]
