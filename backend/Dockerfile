@@ -2,14 +2,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
-ARG NPM_TOKEN
-ENV NPM_TOKEN=$NPM_TOKEN
+COPY package.json package-lock.json specific-dev-framework-1.28.0.tgz ./
 
-COPY package.json package-lock.json .npmrc ./
-
-RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc && \
-    npm install && \
-    rm -f .npmrc
+RUN npm install
 
 COPY . .
 

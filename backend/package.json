@@ -19,7 +19,7 @@
     "@fastify/swagger": "9.6.1",
     "@fastify/websocket": "11.2.0",
     "@neondatabase/serverless": "1.0.2",
-    "@specific-dev/framework": "1.28.0",
+    "@specific-dev/framework": "file:./specific-dev-framework-1.28.0.tgz",
     "better-auth": "1.4.5",
     "commander": "12.1.0",
     "drizzle-orm": "0.44.7",
