@@ -518,6 +518,8 @@ export default function ProfileScreen() {
   const [loadError, setLoadError] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [reportTemplate, setReportTemplate] = useState<'mca' | 'uscg' | 'mnz' | 'amsa' | 'generic'>('mca');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [showVesselModal, setShowVesselModal] = useState(false);
@@ -742,11 +744,11 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadPDF = async () => {
-    console.log('User tapped Download PDF Report');
+    console.log('User tapped Download PDF Report, template:', reportTemplate);
     setDownloadingPDF(true);
     try {
       console.log('Calling downloadPDFReport API...');
-      const pdfBlob = await seaTimeApi.downloadPDFReport();
+      const pdfBlob = await seaTimeApi.downloadPDFReport(reportTemplate);
       console.log('PDF report downloaded, blob size:', pdfBlob.size);
 
       if (Platform.OS === 'web') {
@@ -1079,6 +1081,22 @@ export default function ProfileScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Download Reports</Text>
               <View style={styles.card}>
+                {/* Report template selector */}
+                <TouchableOpacity
+                  style={[styles.reportButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary }]}
+                  onPress={() => setShowTemplateModal(true)}
+                >
+                  <IconSymbol
+                    ios_icon_name="building.columns"
+                    android_material_icon_name="account-balance"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.reportButtonText, { color: colors.primary }]}>
+                    Template: {reportTemplate.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={styles.reportButton}
                   onPress={handleDownloadPDF}
@@ -1326,6 +1344,27 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/manual-tracking')}
+              >
+                <IconSymbol
+                  ios_icon_name="location.fill"
+                  android_material_icon_name="my-location"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Manual GPS tracking</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
               {biometricAvailable && (
                 <TouchableOpacity style={styles.menuItem} onPress={handleManageBiometric}>
                   <IconSymbol
@@ -1505,6 +1544,59 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Report template selector modal */}
+      <Modal
+        visible={showTemplateModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTemplateModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTemplateModal(false)}
+        >
+          <View style={[styles.confirmModalContent, { width: '85%', maxWidth: 360 }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.confirmModalTitle, { color: isDark ? '#ffffff' : '#000000' }]}>
+              Report template
+            </Text>
+            <Text style={[styles.confirmModalMessage, { marginBottom: 16 }]}>
+              Choose the certification body for this report
+            </Text>
+            {[
+              { id: 'mca', label: 'MCA — UK Maritime and Coastguard Agency' },
+              { id: 'uscg', label: 'USCG — United States Coast Guard' },
+              { id: 'mnz', label: 'MNZ — Maritime New Zealand' },
+              { id: 'amsa', label: 'AMSA — Australian Maritime Safety Authority' },
+              { id: 'generic', label: 'Generic' },
+            ].map((opt) => (
+              <TouchableOpacity
+                key={opt.id}
+                style={{
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  marginBottom: 4,
+                  backgroundColor: reportTemplate === opt.id ? colors.primary + '15' : 'transparent',
+                }}
+                onPress={() => {
+                  setReportTemplate(opt.id as any);
+                  setShowTemplateModal(false);
+                }}
+              >
+                <Text style={{
+                  fontSize: 14,
+                  color: reportTemplate === opt.id ? colors.primary : (isDark ? colors.text : colors.textLight),
+                  fontWeight: reportTemplate === opt.id ? '700' : '400',
+                }}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Info/Error/Success Modal - replaces Alert.alert() for web compatibility */}

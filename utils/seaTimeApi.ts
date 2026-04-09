@@ -421,8 +421,10 @@ export const downloadCSVReport = async () => {
   return res.text();
 };
 
-export const downloadPDFReport = async () => {
-  const res = await authFetch('/api/reports/pdf');
+export type ReportTemplate = 'mca' | 'uscg' | 'mnz' | 'amsa' | 'generic';
+
+export const downloadPDFReport = async (template: ReportTemplate = 'mca') => {
+  const res = await authFetch(`/api/reports/pdf?template=${template}`);
   return res.blob();
 };
 

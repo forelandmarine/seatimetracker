@@ -1,13 +1,19 @@
-import { eq, and, desc, isNotNull, lte } from 'drizzle-orm';
+import { eq, and, desc, isNotNull, lte, gte, isNull, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
 import { fetchVesselAISDataWithFallback } from '../routes/ais.js';
 import { processNotificationSchedules } from '../routes/notifications.js';
 import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
+import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
+
+// Track which users have received drip emails (in-memory cache; resets on restart
+// but the database createdAt window prevents double-sends across restarts).
+const day3Sent = new Set<string>();
+const day7Sent = new Set<string>();
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 let isSchedulerRunning = false;
@@ -48,6 +54,72 @@ export function stopScheduler(app: App): void {
 /**
  * Run a single scheduler iteration - check for due tasks
  */
+/**
+ * Process the welcome email drip sequence.
+ *
+ * Sends day-3 email to users created 3-4 days ago that haven't received it.
+ * Sends day-7 email to users created 7-8 days ago that haven't received it.
+ *
+ * Uses an in-memory cache to avoid double-sending within the same process
+ * lifetime. The createdAt window prevents the same user being eligible across
+ * multiple iterations on the same day.
+ */
+async function processDripEmails(app: App): Promise<void> {
+  const now = new Date();
+  const day3Start = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
+  const day3End = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const day7Start = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+  const day7End = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Day 3: users created 3-4 days ago
+  const day3Users = await app.db
+    .select()
+    .from(authSchema.user)
+    .where(
+      and(
+        gte(authSchema.user.createdAt, day3Start),
+        lte(authSchema.user.createdAt, day3End)
+      )
+    );
+
+  for (const u of day3Users) {
+    if (!u.email || day3Sent.has(u.id)) continue;
+    try {
+      const result = await sendDay3Email({ email: u.email, name: u.name }, app.logger);
+      if (result.success) {
+        day3Sent.add(u.id);
+        app.logger.info({ userId: u.id, email: u.email }, 'Day-3 drip email sent');
+      }
+    } catch (err) {
+      app.logger.warn({ err, userId: u.id }, 'Day-3 email failed');
+    }
+  }
+
+  // Day 7: users created 7-8 days ago
+  const day7Users = await app.db
+    .select()
+    .from(authSchema.user)
+    .where(
+      and(
+        gte(authSchema.user.createdAt, day7Start),
+        lte(authSchema.user.createdAt, day7End)
+      )
+    );
+
+  for (const u of day7Users) {
+    if (!u.email || day7Sent.has(u.id)) continue;
+    try {
+      const result = await sendDay7Email({ email: u.email, name: u.name }, app.logger);
+      if (result.success) {
+        day7Sent.add(u.id);
+        app.logger.info({ userId: u.id, email: u.email }, 'Day-7 drip email sent');
+      }
+    } catch (err) {
+      app.logger.warn({ err, userId: u.id }, 'Day-7 email failed');
+    }
+  }
+}
+
 async function runSchedulerIteration(app: App): Promise<void> {
   if (isSchedulerRunning) {
     app.logger.debug('Scheduler iteration already in progress, skipping');
@@ -65,6 +137,13 @@ async function runSchedulerIteration(app: App): Promise<void> {
       await processNotificationSchedules(app);
     } catch (error) {
       app.logger.error({ err: error }, 'Error processing notification schedules');
+    }
+
+    // Process welcome email drip sequence (day 3 and day 7)
+    try {
+      await processDripEmails(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing drip emails');
     }
 
     // Find all due scheduled tasks that are active AND for active vessels only

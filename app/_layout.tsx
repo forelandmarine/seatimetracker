@@ -133,6 +133,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="manual-tracking"
+          options={{
+            title: 'Manual tracking',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
           name="mca-requirements"
           options={{
             title: 'MCA Requirements',

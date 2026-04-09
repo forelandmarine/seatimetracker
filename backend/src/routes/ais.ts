@@ -6,6 +6,7 @@ import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import crypto from "crypto";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
+import { lookupPort } from "../utils/portDatabase.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -1528,6 +1529,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     const checkId = crypto.randomUUID();
     const is_moving = ais_data.speed_knots ? ais_data.speed_knots > 0 : false;
+    const friendlyDestination = lookupPort(ais_data.destination || null);
     const response = {
       check_id: checkId,
       mmsi: ais_data.mmsi || mmsi,
@@ -1541,6 +1543,7 @@ export function register(app: App, fastify: FastifyInstance) {
       timestamp: ais_data.timestamp?.toISOString() || null,
       status: ais_data.status,
       destination: ais_data.destination,
+      destination_friendly: friendlyDestination, // resolved via UN/LOCODE lookup
       eta: ais_data.eta,
       callsign: extended ? ais_data.callsign : undefined,
       vessel_type: extended ? ais_data.ship_type : undefined,

@@ -31,6 +31,9 @@ interface HubspotContactProperties {
   seatime_signup_date?: string; // ISO date
   seatime_department?: string;
   seatime_signup_source?: string;
+  seatime_vessel_name?: string;
+  seatime_vessel_mmsi?: string;
+  seatime_vessel_flag?: string;
 }
 
 /**
@@ -141,6 +144,91 @@ export async function upsertHubspotContact(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger?.error({ err: error, email: input.email }, "[HubSpot] Request failed");
+    return { success: false, error: errorMessage };
+  }
+}
+
+interface VesselEnrichmentInput {
+  email: string;
+  vesselName?: string;
+  mmsi?: string;
+  flag?: string;
+}
+
+/**
+ * Enrich an existing HubSpot contact with vessel information.
+ * Used when a user adds a vessel — gives the Foreland sales team
+ * vessel context for Lightship outreach.
+ */
+export async function enrichHubspotContactWithVessel(
+  input: VesselEnrichmentInput,
+  logger?: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void }
+): Promise<{ success: boolean; error?: string }> {
+  if (!HUBSPOT_API_KEY) {
+    return { success: false, error: "HUBSPOT_API_KEY not configured" };
+  }
+
+  const properties: Record<string, string> = {};
+  if (input.vesselName) properties.seatime_vessel_name = input.vesselName;
+  if (input.mmsi) properties.seatime_vessel_mmsi = input.mmsi;
+  if (input.flag) properties.seatime_vessel_flag = input.flag;
+
+  if (Object.keys(properties).length === 0) {
+    return { success: true };
+  }
+
+  try {
+    // Find by email
+    const searchRes = await fetch(`${HUBSPOT_API_URL}/crm/v3/objects/contacts/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filterGroups: [
+          {
+            filters: [{ propertyName: "email", operator: "EQ", value: input.email }],
+          },
+        ],
+        limit: 1,
+      }),
+    });
+
+    if (!searchRes.ok) {
+      logger?.warn({ status: searchRes.status }, "[HubSpot] Enrichment search failed");
+      return { success: false };
+    }
+
+    const searchData = (await searchRes.json()) as { results?: Array<{ id: string }> };
+    const contactId = searchData.results?.[0]?.id;
+    if (!contactId) {
+      logger?.info({ email: input.email }, "[HubSpot] Contact not found for enrichment");
+      return { success: false, error: "Contact not found" };
+    }
+
+    const updateRes = await fetch(`${HUBSPOT_API_URL}/crm/v3/objects/contacts/${contactId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ properties }),
+    });
+
+    if (!updateRes.ok) {
+      logger?.warn({ status: updateRes.status }, "[HubSpot] Enrichment update failed");
+      return { success: false };
+    }
+
+    logger?.info(
+      { email: input.email, contactId, vesselName: input.vesselName },
+      "[HubSpot] Contact enriched with vessel data"
+    );
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger?.error({ err: error, email: input.email }, "[HubSpot] Enrichment request failed");
     return { success: false, error: errorMessage };
   }
 }

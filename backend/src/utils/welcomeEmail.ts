@@ -143,6 +143,160 @@ function welcomeHtml(firstName: string): string {
 </html>`;
 }
 
+/**
+ * Day-3 follow-up email — sent 3 days after signup.
+ * Focus: tips on getting the most out of automatic tracking.
+ */
+export async function sendDay3Email(
+  input: SendWelcomeEmailInput,
+  logger?: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void }
+): Promise<{ success: boolean; error?: string }> {
+  if (!RESEND_API_KEY) {
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+  const firstName = (input.name || "").split(" ")[0] || "there";
+
+  try {
+    const resend = new Resend(RESEND_API_KEY);
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.email,
+      subject: "How to get the most out of SeaTime Tracker",
+      html: day3Html(firstName),
+      text: day3Text(firstName),
+    });
+    if (error) return { success: false, error: String(error) };
+    logger?.info({ email: input.email, emailId: data?.id }, "[Day3 Email] Sent");
+    return { success: true };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger?.error({ err, email: input.email }, "[Day3 Email] Failed");
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * Day-7 follow-up email — sent 7 days after signup.
+ * Focus: introduce Lightship for fleet managers.
+ */
+export async function sendDay7Email(
+  input: SendWelcomeEmailInput,
+  logger?: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void }
+): Promise<{ success: boolean; error?: string }> {
+  if (!RESEND_API_KEY) {
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+  const firstName = (input.name || "").split(" ")[0] || "there";
+
+  try {
+    const resend = new Resend(RESEND_API_KEY);
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.email,
+      subject: "Managing more than one yacht? Meet Lightship.",
+      html: day7Html(firstName),
+      text: day7Text(firstName),
+    });
+    if (error) return { success: false, error: String(error) };
+    logger?.info({ email: input.email, emailId: data?.id }, "[Day7 Email] Sent");
+    return { success: true };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger?.error({ err, email: input.email }, "[Day7 Email] Failed");
+    return { success: false, error: errorMessage };
+  }
+}
+
+function day3Html(firstName: string): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F7F9FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table cellspacing="0" cellpadding="0" align="center" width="600" style="margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;">
+    <tr><td style="background:#0077BE;padding:32px 40px;">
+      <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">SeaTime Tracker</span>
+      <h1 style="margin:8px 0 0;color:#fff;font-size:22px;font-weight:300;">How are you getting on, ${firstName}?</h1>
+    </td></tr>
+    <tr><td style="padding:40px;">
+      <p style="margin:0 0 16px;color:#1A1A1A;font-size:16px;line-height:1.6;">It's been a few days since you joined SeaTime Tracker. Here are three tips to get the most out of automatic sea time tracking.</p>
+
+      <h3 style="margin:24px 0 8px;color:#0077BE;font-size:14px;font-weight:700;letter-spacing:0.5px;">1. Check your vessel is active</h3>
+      <p style="margin:0 0 16px;color:#4A5568;font-size:14px;line-height:1.6;">Tracking only happens when your vessel is marked active in the home screen. Tap a vessel to activate it.</p>
+
+      <h3 style="margin:24px 0 8px;color:#0077BE;font-size:14px;font-weight:700;letter-spacing:0.5px;">2. Review confirmations weekly</h3>
+      <p style="margin:0 0 16px;color:#4A5568;font-size:14px;line-height:1.6;">Sea time entries start as 'pending'. Tap the Review tab and confirm them once a week so your records stay current. Set a reminder in Profile → Notification Settings.</p>
+
+      <h3 style="margin:24px 0 8px;color:#0077BE;font-size:14px;font-weight:700;letter-spacing:0.5px;">3. Add your certificates</h3>
+      <p style="margin:0 0 16px;color:#4A5568;font-size:14px;line-height:1.6;">Profile → Certificates lets you track STCW, ENG1, GMDSS, and other expiry dates. We'll remind you 90, 60, 30, and 7 days before each expires.</p>
+
+      <p style="margin:32px 0 0;color:#4A5568;font-size:14px;">Questions? Just reply to this email.</p>
+      <p style="margin:24px 0 0;color:#4A5568;font-size:14px;">Smooth sailing,<br>The Foreland Marine team</p>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+function day3Text(firstName: string): string {
+  return `How are you getting on, ${firstName}?
+
+It's been a few days since you joined SeaTime Tracker. Here are three tips:
+
+1. CHECK YOUR VESSEL IS ACTIVE — Tracking only happens for active vessels.
+2. REVIEW CONFIRMATIONS WEEKLY — Confirm pending entries once a week.
+3. ADD YOUR CERTIFICATES — Profile → Certificates tracks STCW, ENG1 etc with expiry reminders.
+
+Questions? Just reply.
+
+Smooth sailing,
+The Foreland Marine team`;
+}
+
+function day7Html(firstName: string): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F7F9FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table cellspacing="0" cellpadding="0" align="center" width="600" style="margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;">
+    <tr><td style="background:#0077BE;padding:32px 40px;">
+      <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">From Foreland Marine</span>
+      <h1 style="margin:8px 0 0;color:#fff;font-size:22px;font-weight:300;">Hi ${firstName}, a quick introduction.</h1>
+    </td></tr>
+    <tr><td style="padding:40px;">
+      <p style="margin:0 0 16px;color:#1A1A1A;font-size:16px;line-height:1.6;">SeaTime Tracker is built by Foreland Marine — a yacht management consultancy with offices in London, Antibes, Palma, and Fort Lauderdale.</p>
+
+      <p style="margin:0 0 16px;color:#4A5568;font-size:15px;line-height:1.6;">If you're a master, captain, or fleet manager who needs to track sea time, certificates, and incidents for an entire crew — not just yourself — we have a tool built for that:</p>
+
+      <table cellspacing="0" cellpadding="0" width="100%" style="background:#F7F9FC;border-left:4px solid #0077BE;border-radius:4px;margin:24px 0;">
+        <tr><td style="padding:24px;">
+          <h2 style="margin:0 0 8px;color:#0077BE;font-size:20px;font-weight:600;">Lightship ISM</h2>
+          <p style="margin:0 0 16px;color:#4A5568;font-size:14px;line-height:1.6;">Yacht administration, but a bit clever. Fleet management, ISM compliance, incident tracking, audit logs, certificate renewals, AIS sea service records — all in one place.</p>
+          <a href="https://forelandmarine.com/tools/lightship-ism" style="display:inline-block;background:#0077BE;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">See how it works</a>
+        </td></tr>
+      </table>
+
+      <p style="margin:24px 0 0;color:#4A5568;font-size:14px;line-height:1.6;">Not interested? No problem — keep using SeaTime Tracker for your own logbook. We won't keep pushing.</p>
+
+      <p style="margin:24px 0 0;color:#4A5568;font-size:14px;">Smooth sailing,<br>The Foreland Marine team</p>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+function day7Text(firstName: string): string {
+  return `Hi ${firstName}, a quick introduction.
+
+SeaTime Tracker is built by Foreland Marine — a yacht management consultancy with offices in London, Antibes, Palma, and Fort Lauderdale.
+
+If you're a master, captain, or fleet manager who needs to track sea time, certificates, and incidents for an entire crew, we have a tool for that: Lightship ISM.
+
+Lightship handles yacht administration, ISM compliance, incident tracking, audits, certificate renewals, and AIS sea service records — all in one place.
+
+See how it works: https://forelandmarine.com/tools/lightship-ism
+
+Not interested? No problem — keep using SeaTime Tracker for your own logbook.
+
+Smooth sailing,
+The Foreland Marine team`;
+}
+
 function welcomeText(firstName: string): string {
   return `Welcome aboard, ${firstName}.
 
