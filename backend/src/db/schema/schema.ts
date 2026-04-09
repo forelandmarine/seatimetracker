@@ -71,6 +71,11 @@ export const ais_checks = pgTable('ais_checks', {
   speed_knots: decimal('speed_knots', { precision: 8, scale: 2 }),
   latitude: decimal('latitude', { precision: 9, scale: 6 }),
   longitude: decimal('longitude', { precision: 10, scale: 6 }),
+  course: decimal('course', { precision: 6, scale: 2 }), // Course over ground in degrees
+  heading: decimal('heading', { precision: 6, scale: 2 }), // True heading in degrees
+  nav_status: text('nav_status'), // AIS navigation status (e.g. "Under way using engine", "At anchor")
+  destination: text('destination'), // Reported destination
+  eta: text('eta'), // Estimated time of arrival (raw string from AIS)
   api_source: text('api_source').default('myshiptracking'), // Track which API provided the data
   created_at: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [

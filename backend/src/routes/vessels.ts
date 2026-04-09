@@ -42,6 +42,11 @@ async function fetchAndStoreInitialAISCheck(
       speed_knots: ais_data.speed_knots !== null ? String(ais_data.speed_knots) : null,
       latitude: String(ais_data.latitude),
       longitude: String(ais_data.longitude),
+      course: ais_data.course !== null && ais_data.course !== undefined ? String(ais_data.course) : null,
+      heading: ais_data.heading !== null && ais_data.heading !== undefined ? String(ais_data.heading) : null,
+      nav_status: ais_data.status ?? null,
+      destination: ais_data.destination ?? null,
+      eta: ais_data.eta ?? null,
       api_source: apiSource,
     });
 

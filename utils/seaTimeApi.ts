@@ -321,7 +321,13 @@ export const getVesselAISLocation = async (vesselId: string) => {
     ...data,
     latitude: toNum(check?.latitude ?? data.latitude),
     longitude: toNum(check?.longitude ?? data.longitude),
+    speed: toNum(check?.speed_knots ?? data.speed_knots),
     speed_knots: toNum(check?.speed_knots ?? data.speed_knots),
+    course: toNum(check?.course ?? data.course),
+    heading: toNum(check?.heading ?? data.heading),
+    status: check?.nav_status ?? data.status ?? null,
+    destination: check?.destination ?? data.destination ?? null,
+    eta: check?.eta ?? data.eta ?? null,
     timestamp: check?.check_time ?? check?.timestamp ?? data.timestamp ?? null,
   };
 };

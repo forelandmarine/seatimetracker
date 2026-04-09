@@ -1196,6 +1196,11 @@ export function register(app: App, fastify: FastifyInstance) {
         speed_knots: ais_data.speed_knots !== null ? String(ais_data.speed_knots) : null,
         latitude: ais_data.latitude !== null ? String(ais_data.latitude) : null,
         longitude: ais_data.longitude !== null ? String(ais_data.longitude) : null,
+        course: ais_data.course !== null && ais_data.course !== undefined ? String(ais_data.course) : null,
+        heading: ais_data.heading !== null && ais_data.heading !== undefined ? String(ais_data.heading) : null,
+        nav_status: ais_data.status ?? null,
+        destination: ais_data.destination ?? null,
+        eta: ais_data.eta ?? null,
         api_source: apiSource,
       })
       .returning();
