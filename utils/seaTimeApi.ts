@@ -308,11 +308,20 @@ export const getVesselAISLocation = async (vesselId: string) => {
   // /api/ais/status returns { is_moving, current_check, recent_checks }
   // Extract location from the latest check so callers get a flat object.
   const check = data.current_check || (data.recent_checks && data.recent_checks[0]);
+
+  // Coerce lat/lng to numbers — the backend returns them as strings from
+  // PostgreSQL numeric columns, but the frontend expects numbers for math ops.
+  const toNum = (v: any): number | null => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
   return {
     ...data,
-    latitude: check?.latitude ?? data.latitude ?? null,
-    longitude: check?.longitude ?? data.longitude ?? null,
-    speed_knots: check?.speed_knots ?? data.speed_knots ?? null,
+    latitude: toNum(check?.latitude ?? data.latitude),
+    longitude: toNum(check?.longitude ?? data.longitude),
+    speed_knots: toNum(check?.speed_knots ?? data.speed_knots),
     timestamp: check?.check_time ?? check?.timestamp ?? data.timestamp ?? null,
   };
 };
