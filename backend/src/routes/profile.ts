@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
+import { extractUserIdFromRequest } from "../middleware/auth.js";
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/profile - Get current user's profile
@@ -343,6 +344,54 @@ export function register(app: App, fastify: FastifyInstance) {
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString(),
       });
+    }
+  );
+
+  // PUT /api/profile/signature - Update user's signature image
+  fastify.put<{ Body: { signature_image: string | null } }>(
+    '/api/profile/signature',
+    {
+      schema: {
+        description: 'Update user signature image (base64 PNG data URL) for embedding in PDF reports',
+        tags: ['profile'],
+        body: {
+          type: 'object',
+          required: ['signature_image'],
+          properties: {
+            signature_image: { type: ['string', 'null'], description: 'Base64 PNG data URL or null to clear' },
+          },
+        },
+        response: {
+          200: { type: 'object', properties: { success: { type: 'boolean' } } },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const userId = await extractUserIdFromRequest(request, app);
+      if (!userId) {
+        return reply.code(401).send({ error: 'Authentication required' });
+      }
+
+      const { signature_image } = request.body;
+
+      // Sanity check the data URL — must be a base64 PNG and not unreasonably large
+      if (signature_image !== null) {
+        if (typeof signature_image !== 'string' || !signature_image.startsWith('data:image/')) {
+          return reply.code(400).send({ error: 'signature_image must be a data URL or null' });
+        }
+        if (signature_image.length > 500_000) {
+          return reply.code(400).send({ error: 'Signature too large (max 500KB)' });
+        }
+      }
+
+      await app.db
+        .update(authSchema.user)
+        .set({ signature_image, updatedAt: new Date() } as any)
+        .where(eq(authSchema.user.id, userId));
+
+      app.logger.info({ userId, hasSignature: !!signature_image }, 'User signature updated');
+      return reply.code(200).send({ success: true });
     }
   );
 

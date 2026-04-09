@@ -1054,17 +1054,35 @@ export function register(app: App, fastify: FastifyInstance) {
     doc.text(`Submitted to: ${tpl.bodyName}`, ML, doc.y);
     doc.moveDown(1.5);
 
-    // Signature line + name + date
+    // Signature line + name + date.
+    // If the user has saved a signature image, embed it on top of the line;
+    // otherwise leave the line blank for printing/scanning.
     const sigLineY = doc.y;
+    const userSignature = (userProfile as any).signature_image as string | null | undefined;
+
     doc.strokeColor(DEEP_NAVY).lineWidth(0.5);
-    doc.moveTo(ML, sigLineY).lineTo(ML + 220, sigLineY).stroke();
-    doc.moveTo(ML + 260, sigLineY).lineTo(ML + 380, sigLineY).stroke();
+    doc.moveTo(ML, sigLineY + 30).lineTo(ML + 220, sigLineY + 30).stroke();
+    doc.moveTo(ML + 260, sigLineY + 30).lineTo(ML + 380, sigLineY + 30).stroke();
+
+    if (userSignature && userSignature.startsWith('data:image/')) {
+      try {
+        // Strip the data URL prefix to get raw base64
+        const base64 = userSignature.split(',')[1];
+        const buffer = Buffer.from(base64, 'base64');
+        doc.image(buffer, ML, sigLineY, { width: 200, height: 32, fit: [200, 32] });
+        // Auto-fill the date next to the signature
+        doc.font('NunitoSans').fontSize(10).fillColor(DEEP_NAVY);
+        doc.text(formatDate(new Date()), ML + 260, sigLineY + 12);
+      } catch (sigErr) {
+        app.logger.warn({ err: sigErr }, 'Failed to embed user signature, leaving blank');
+      }
+    }
 
     doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
-    doc.text('Signature', ML, sigLineY + 6);
-    doc.text('Date', ML + 260, sigLineY + 6);
+    doc.text('Signature', ML, sigLineY + 36);
+    doc.text('Date', ML + 260, sigLineY + 36);
 
-    doc.y = sigLineY + 30;
+    doc.y = sigLineY + 60;
     doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
     doc.text(userProfile.name || '', ML, doc.y);
     doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);

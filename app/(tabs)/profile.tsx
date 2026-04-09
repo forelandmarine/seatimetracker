@@ -1365,6 +1365,48 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/signature')}
+              >
+                <IconSymbol
+                  ios_icon_name="signature"
+                  android_material_icon_name="draw"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Signature for reports</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/refer')}
+              >
+                <IconSymbol
+                  ios_icon_name="person.2.fill"
+                  android_material_icon_name="people"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Refer a captain</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
               {biometricAvailable && (
                 <TouchableOpacity style={styles.menuItem} onPress={handleManageBiometric}>
                   <IconSymbol

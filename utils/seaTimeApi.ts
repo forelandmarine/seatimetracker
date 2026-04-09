@@ -428,6 +428,35 @@ export const downloadPDFReport = async (template: ReportTemplate = 'mca') => {
   return res.blob();
 };
 
+export const updateUserSignature = async (signatureDataUrl: string | null) => {
+  const res = await authFetch('/api/profile/signature', {
+    method: 'PUT',
+    body: { signature_image: signatureDataUrl },
+  });
+  return res.json();
+};
+
+export const trackLightshipClick = async () => {
+  try {
+    await authFetch('/api/lightship/click', { method: 'POST', body: {} });
+  } catch {
+    // Non-critical, fail silently
+  }
+};
+
+export const getReferralInfo = async () => {
+  const res = await authFetch('/api/referral');
+  return res.json();
+};
+
+export const togglePublicProfile = async (enabled: boolean) => {
+  const res = await authFetch('/api/profile/public-slug', {
+    method: 'POST',
+    body: { enabled },
+  });
+  return res.json();
+};
+
 export const createTestSeaDayEntry = async () => {
   const res = await authFetch('/api/sea-time/test-entry', { method: 'POST', body: {} });
   return res.json();

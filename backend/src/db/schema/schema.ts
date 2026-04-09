@@ -46,6 +46,11 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   additional_watchkeeping_hours: decimal('additional_watchkeeping_hours', { precision: 10, scale: 2 }), // Additional watchkeeping at anchor/mooring (engineering only)
   is_stationary: boolean('is_stationary'), // Whether vessel is stationary (at anchor or moored) for this entry
   distance_nm: decimal('distance_nm', { precision: 10, scale: 2 }), // Distance traveled in nautical miles (calculated from start/end coordinates)
+  // Voyage detail fields (Sprint 6)
+  from_port: text('from_port'),
+  to_port: text('to_port'),
+  cargo_type: text('cargo_type'),
+  signature_image: text('signature_image'), // Base64 PNG of user's signature for this entry's testimonial
   created_at: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('sea_time_entries_user_id_idx').on(table.user_id),
@@ -53,6 +58,8 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   index('sea_time_entries_status_idx').on(table.status),
   index('sea_time_entries_service_type_idx').on(table.service_type),
   index('sea_time_entries_mca_compliant_idx').on(table.mca_compliant),
+  index('sea_time_entries_from_port_idx').on(table.from_port),
+  index('sea_time_entries_to_port_idx').on(table.to_port),
 ]);
 
 export const ais_checks = pgTable('ais_checks', {

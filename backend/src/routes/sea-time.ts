@@ -787,8 +787,15 @@ export function register(app: App, fastify: FastifyInstance) {
     if (end_longitude !== undefined) {
       updateData.end_longitude = end_longitude !== null ? String(end_longitude) : null;
     }
-    // Note: from_port, to_port, cargo_type fields would require schema migration.
-    // For now we encode them in the notes field. Future task: add proper columns.
+    if (from_port !== undefined) {
+      updateData.from_port = from_port;
+    }
+    if (to_port !== undefined) {
+      updateData.to_port = to_port;
+    }
+    if (cargo_type !== undefined) {
+      updateData.cargo_type = cargo_type;
+    }
 
     // If no fields to update, return the current entry
     if (Object.keys(updateData).length === 0) {

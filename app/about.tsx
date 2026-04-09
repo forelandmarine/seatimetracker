@@ -115,7 +115,14 @@ export default function AboutScreen() {
         {/* Lightship promotion */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>FOR YACHT MANAGERS</Text>
-          <TouchableOpacity style={styles.featureCard} onPress={() => openLink(LIGHTSHIP_URL)}>
+          <TouchableOpacity
+            style={styles.featureCard}
+            onPress={async () => {
+              const { trackLightshipClick } = await import('@/utils/seaTimeApi');
+              trackLightshipClick();
+              openLink(LIGHTSHIP_URL);
+            }}
+          >
             <View style={styles.featureCardHeader}>
               <IconSymbol
                 ios_icon_name="building.2"

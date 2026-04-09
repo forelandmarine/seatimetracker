@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, date, integer } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -19,6 +19,14 @@ export const user = pgTable("user", {
   revenuecat_customer_id: text("revenuecat_customer_id"), // RevenueCat customer ID for sync
   subscription_platform: text("subscription_platform"), // 'ios', 'android', 'web', or null for legacy
   trial_ends_at: timestamp("trial_ends_at", { withTimezone: true }), // When trial period ends
+  // Sprint 6: referral, public profile, Lightship CTA tracking, signature
+  referral_code: text("referral_code").unique(),
+  referred_by_user_id: text("referred_by_user_id"),
+  referral_count: integer("referral_count").default(0),
+  public_slug: text("public_slug").unique(),
+  public_profile_enabled: boolean("public_profile_enabled").default(false),
+  lightship_interested_at: timestamp("lightship_interested_at", { withTimezone: true }),
+  signature_image: text("signature_image"), // base64 PNG data URL of user's signature
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

@@ -140,6 +140,20 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="signature"
+          options={{
+            title: 'Signature',
+            headerBackTitle: 'Cancel',
+          }}
+        />
+        <Stack.Screen
+          name="refer"
+          options={{
+            title: 'Refer a captain',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
           name="mca-requirements"
           options={{
             title: 'MCA Requirements',
