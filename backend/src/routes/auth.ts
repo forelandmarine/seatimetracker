@@ -124,10 +124,9 @@ export function register(app: App, fastify: FastifyInstance) {
           }
         }
 
-        // Create user with a 7-day free trial (not a full active subscription)
-        const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+        // Create user with inactive subscription — they will see the paywall
+        // and start their trial through RevenueCat / App Store.
         const userId = crypto.randomUUID();
-        const trialEnd = new Date(Date.now() + TRIAL_DURATION_MS);
         const [user] = await app.db
           .insert(authSchema.user)
           .values({
@@ -135,9 +134,7 @@ export function register(app: App, fastify: FastifyInstance) {
             email,
             name,
             emailVerified: false,
-            subscription_status: 'trial',
-            subscription_expires_at: trialEnd,
-            trial_ends_at: trialEnd,
+            subscription_status: 'inactive',
           })
           .returning();
 

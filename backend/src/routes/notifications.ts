@@ -83,13 +83,21 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId }, 'Retrieving notification schedule for user');
 
-    const schedule = await app.db.query.notification_schedules.findFirst({
+    let schedule = await app.db.query.notification_schedules.findFirst({
       where: eq(schema.notification_schedules.user_id, userId),
     });
 
+    // Auto-create default schedule if missing (handles new users where signup
+    // fire-and-forget creation hasn't completed yet)
     if (!schedule) {
-      app.logger.warn({ userId }, 'No notification schedule found for user');
-      return reply.code(404).send({ error: 'No notification schedule found' });
+      app.logger.info({ userId }, 'No schedule found, creating default');
+      await ensureUserNotificationSchedule(app, userId);
+      schedule = await app.db.query.notification_schedules.findFirst({
+        where: eq(schema.notification_schedules.user_id, userId),
+      });
+      if (!schedule) {
+        return reply.code(500).send({ error: 'Failed to create notification schedule' });
+      }
     }
 
     app.logger.info({ userId, scheduleId: schedule.id }, 'Notification schedule retrieved');
