@@ -71,3 +71,10 @@ app.fastify.get('/api/health', async () => ({ status: 'ok' }));
 
 await app.run();
 app.logger.info('Application running');
+
+// Start the background scheduler for AIS checks and notifications
+import('./services/scheduler.js').then(({ startScheduler }) => {
+  startScheduler(app).catch((err) => {
+    app.logger.error({ err }, 'Failed to start scheduler');
+  });
+});
