@@ -1,51 +1,52 @@
 
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
-// Maritime Color Palette — aligned with Foreland Marine brand
+// Foreland Marine brand palette
+// Source of truth: brand.yaml in /Users/jack/Library/Mobile Documents/com~apple~CloudDocs/Foreland Group/Marketing Materials/Brand Identity Pack
 export const colors = {
-  // Primary Maritime Blues
-  primary: '#0077BE',           // Ocean Blue - main brand color
-  secondary: '#003D5C',         // Deep Sea Blue - darker accent
-  accent: '#00A8E8',            // Bright Cyan - highlights
+  // Primary brand colors
+  primary: '#5386B6',           // Steel Blue — primary accent (links, buttons, highlights)
+  secondary: '#0C1E42',         // Midnight Blue — cards, panels, elevated surfaces
+  accent: '#7BA8C8',            // Muted Blue — secondary accent
 
-  // Backgrounds
-  background: '#0A1929',        // Dark Navy (dark mode)
-  backgroundLight: '#F0F8FF',   // Alice Blue (light mode)
-  cardBackground: '#1A2332',    // Dark cards (dark mode)
-  card: '#FFFFFF',              // White cards (light mode)
-  cardBackgroundLight: '#FFFFFF', // Alias for card — used by some screens
+  // Backgrounds (dark-first)
+  background: '#040D1A',        // Deep Navy — darkest background, hero sections
+  backgroundLight: '#FFFFFF',   // White — used in light mode and print contexts
+  cardBackground: '#0C1E42',    // Midnight Blue — cards in dark mode
+  card: '#FFFFFF',              // White cards in light mode
+  cardBackgroundLight: '#F7F9FC', // Light card alias — used by some screens
 
   // Text Colors
-  text: '#E8F1F5',              // Light text (dark mode)
-  textLight: '#1A1A1A',         // Dark text (light mode)
-  textSecondary: '#8B9DAF',     // Muted text (dark mode)
-  textSecondaryLight: '#5A6C7D', // Muted text (light mode)
+  text: '#FFFFFF',              // White headings/primary text on dark
+  textLight: '#040D1A',         // Deep Navy text on light
+  textSecondary: '#7BA8C8',     // Muted Blue body copy on dark
+  textSecondaryLight: '#4A5568', // Warm gray body copy on light
 
   // Status Colors
-  success: '#00C853',           // Green for confirmed
+  success: '#22C55E',           // Brand green for confirmed
   warning: '#FFB300',           // Amber for pending
-  error: '#D32F2F',             // Red for rejected/danger
-  danger: '#D32F2F',            // Red for rejected
+  error: '#DC2626',             // Red for rejected/danger
+  danger: '#DC2626',
 
-  // Borders
-  border: '#2A3F54',            // Dark border (dark mode)
-  borderLight: '#D1E3F0',       // Light border (light mode)
+  // Borders (subtle, low-opacity feel)
+  border: 'rgba(255, 255, 255, 0.08)', // White at 8% on dark
+  borderLight: '#E2E8F0',       // Light border on light bg
 
   // Special
-  highlight: '#FFD54F',         // Gold highlight
+  highlight: '#FFD54F',
 
-  // Maritime Accents
-  wave: '#4FC3F7',              // Light wave blue
-  foam: '#B3E5FC',              // Sea foam
-  lighthouse: '#FF6F00',        // Lighthouse beacon orange
+  // Maritime Accents (legacy — kept for compatibility, not used in brand)
+  wave: '#5386B6',
+  foam: '#7BA8C8',
+  lighthouse: '#FF6F00',
 
   // UI neutrals
   white: '#FFFFFF',
   black: '#000000',
 
-  // Switch colors (used for native Switch components)
+  // Switch colors
   switchTrackOff: '#767577',
-  switchTrackOn: '#0077BE',     // matches primary
+  switchTrackOn: '#5386B6',     // matches primary
   switchThumbOff: '#F4F3F4',
   switchThumbOn: '#FFFFFF',
 };

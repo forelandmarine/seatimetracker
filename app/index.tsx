@@ -5,12 +5,18 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
+import { isOnboardingComplete } from './onboarding';
 
 export default function Index() {
   // CRITICAL: Call useAuth and useSubscription at the top level - NEVER conditionally
   const authContext = useAuth();
   const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed } = useSubscription();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    isOnboardingComplete().then(setOnboardingDone);
+  }, []);
 
   useEffect(() => {
     try {
@@ -81,7 +87,11 @@ export default function Index() {
     return <Redirect href="/(tabs)" />;
   }
 
-  // Not authenticated → require login
+  // Not authenticated → onboarding (first time) or auth
+  if (onboardingDone === false) {
+    console.log('[Index] Not authenticated, first time, redirecting to /onboarding');
+    return <Redirect href="/onboarding" />;
+  }
   console.log('[Index] Not authenticated, redirecting to /auth');
   return <Redirect href="/auth" />;
 }

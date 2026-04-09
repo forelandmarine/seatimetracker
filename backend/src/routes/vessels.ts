@@ -467,14 +467,25 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
 
+    // Free tier: users without an active subscription can create 1 vessel.
+    // Subscribers can create unlimited vessels.
     if (!isSubscriptionActive) {
-      app.logger.warn(
-        { userId, subscriptionStatus },
-        'Vessel creation denied: subscription not active'
-      );
-      return reply.code(403).send({
-        error: 'Active subscription required to create vessels',
-      });
+      const FREE_VESSEL_LIMIT = 1;
+      const existingVessels = await app.db
+        .select()
+        .from(schema.vessels)
+        .where(eq(schema.vessels.user_id, userId));
+
+      if (existingVessels.length >= FREE_VESSEL_LIMIT) {
+        app.logger.warn(
+          { userId, subscriptionStatus, existingCount: existingVessels.length },
+          `Vessel creation denied: free tier limit (${FREE_VESSEL_LIMIT}) reached`
+        );
+        return reply.code(403).send({
+          error: `Free accounts can track ${FREE_VESSEL_LIMIT} vessel. Subscribe to add more.`,
+          code: 'free_tier_vessel_limit',
+        });
+      }
     }
 
     const {

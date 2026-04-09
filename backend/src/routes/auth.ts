@@ -5,6 +5,8 @@ import type { App } from "../index.js";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ensureUserNotificationSchedule } from "./notifications.js";
+import { upsertHubspotContact } from "../utils/hubspot.js";
+import { sendWelcomeEmail } from "../utils/welcomeEmail.js";
 
 /**
  * Hash password using PBKDF2 with SHA-256
@@ -198,6 +200,19 @@ export function register(app: App, fastify: FastifyInstance) {
             { userId, email, err },
             'Failed to create notification schedule during signup (non-critical)'
           );
+        });
+
+        // Track signup as a HubSpot contact (non-blocking, fire-and-forget)
+        upsertHubspotContact(
+          { email, firstName: name, source: 'signup_email' },
+          app.logger
+        ).catch((err) => {
+          app.logger.warn({ userId, email, err }, 'Failed to create HubSpot contact (non-critical)');
+        });
+
+        // Send welcome email (non-blocking, fire-and-forget)
+        sendWelcomeEmail({ email, name }, app.logger).catch((err) => {
+          app.logger.warn({ userId, email, err }, 'Failed to send welcome email (non-critical)');
         });
       } catch (error: any) {
         const errMsg = error?.message || String(error);
@@ -821,6 +836,27 @@ export function register(app: App, fastify: FastifyInstance) {
             'Failed to ensure notification schedule during Apple sign-in (non-critical)'
           );
         });
+
+        // Track new Apple signups in HubSpot (non-blocking, fire-and-forget)
+        if (isNewUser && user.email) {
+          upsertHubspotContact(
+            { email: user.email, firstName: user.name || undefined, source: 'signup_apple' },
+            app.logger
+          ).catch((err) => {
+            app.logger.warn(
+              { userId: user.id, email: user.email, err },
+              'Failed to create HubSpot contact for Apple signup (non-critical)'
+            );
+          });
+
+          // Send welcome email for new Apple signups
+          sendWelcomeEmail({ email: user.email, name: user.name || undefined }, app.logger).catch((err) => {
+            app.logger.warn(
+              { userId: user.id, email: user.email, err },
+              'Failed to send welcome email for Apple signup (non-critical)'
+            );
+          });
+        }
       } catch (error) {
         app.logger.error({ err: error, appleUserId }, 'Database error during Apple Sign-In');
         return reply.code(500).send({

@@ -113,6 +113,12 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="onboarding"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="mca-requirements"
           options={{
             title: 'MCA Requirements',

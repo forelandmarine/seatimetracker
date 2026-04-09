@@ -493,6 +493,28 @@ export default function SeaTimeScreen() {
             >
               <Text style={styles.noVesselsButtonText}>Add Vessel</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.noVesselsButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary, marginTop: 12 }]}
+              onPress={async () => {
+                try {
+                  await seaTimeApi.createVessel(
+                    '370648000',           // MSC Fantasia MMSI (currently underway)
+                    'MSC Fantasia (demo)',
+                    true,                  // activate immediately
+                    'PA',
+                    undefined,
+                    'Passenger',
+                    333,
+                    137936
+                  );
+                  await loadData();
+                } catch (e) {
+                  console.error('[Home] Failed to add demo vessel:', e);
+                }
+              }}
+            >
+              <Text style={[styles.noVesselsButtonText, { color: colors.primary }]}>Try with demo vessel</Text>
+            </TouchableOpacity>
           </View>
         ) : (
         <>
