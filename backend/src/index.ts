@@ -5,14 +5,19 @@ import * as authSchema from './db/auth-schema.js';
 // Merge auth schema with main schema for complete database type support
 const combinedSchema = { ...schema, ...authSchema } as typeof schema & typeof authSchema;
 
-// Run database migrations on startup to ensure all tables exist
-logger.info('Running database migrations...');
-try {
-  await runMigrations({ logger });
-  logger.info('Database migrations completed successfully');
-} catch (migrationError) {
-  logger.error({ err: migrationError }, 'Database migrations failed');
-  process.exit(1);
+// Run database migrations on startup unless explicitly skipped.
+// Set SKIP_MIGRATIONS=true when migrations are managed externally (e.g. via Supabase MCP).
+if (process.env.SKIP_MIGRATIONS === 'true') {
+  logger.info('SKIP_MIGRATIONS=true, skipping database migrations');
+} else {
+  logger.info('Running database migrations...');
+  try {
+    await runMigrations({ logger });
+    logger.info('Database migrations completed successfully');
+  } catch (migrationError) {
+    logger.error({ err: migrationError }, 'Database migrations failed');
+    process.exit(1);
+  }
 }
 
 // Import route registration functions
