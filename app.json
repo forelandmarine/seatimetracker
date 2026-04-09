@@ -69,7 +69,7 @@
       "router": {
         "origin": false
       },
-      "backendUrl": "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev",
+      "backendUrl": "https://seatimetracker-production.up.railway.app",
       "revenueCatIosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
       "revenueCatAndroidApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
       "revenueCatEntitlementId": "pro",

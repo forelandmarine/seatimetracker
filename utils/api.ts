@@ -30,7 +30,7 @@ import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
  */
 export const BACKEND_URL: string =
   Constants.expoConfig?.extra?.backendUrl ||
-  "https://uukpkcag4nsq8q632k643ztvus28frfe.app.specular.dev";
+  "https://seatimetracker-production.up.railway.app";
 
 console.log('[API] Backend URL configured:', BACKEND_URL || 'NOT CONFIGURED');
 
