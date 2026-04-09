@@ -1358,10 +1358,13 @@ export function register(app: App, fastify: FastifyInstance) {
           type: 'object',
           properties: {
             is_moving: { type: 'boolean' },
-            current_check: { type: 'object' },
+            current_check: {
+              type: ['object', 'null'],
+              additionalProperties: true,
+            },
             recent_checks: {
               type: 'array',
-              items: { type: 'object' },
+              items: { type: 'object', additionalProperties: true },
             },
           },
         },
