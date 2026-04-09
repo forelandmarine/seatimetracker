@@ -641,38 +641,80 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(403).send({ error: 'Not authorized to activate this vessel' });
     }
 
-    // Get all other vessels for this user to delete their tasks
+    // Multi-vessel concurrent tracking:
+    //   Free tier: 1 active vessel max — activating a new one deactivates the old.
+    //   Paid tier: up to 3 active vessels concurrently. For larger fleets,
+    //     the user is directed to Lightship ISM (sales hand-off in the UI).
+    const PAID_ACTIVE_LIMIT = 3;
+
+    // Look up subscription status to decide tier
+    const users = await app.db
+      .select()
+      .from(authSchema.user)
+      .where(eq(authSchema.user.id, userId));
+
+    const subscriptionStatus = (users[0] as any)?.subscription_status || 'inactive';
+    const subscriptionExpiresAt = (users[0] as any)?.subscription_expires_at;
+    let isSubscriptionActive = subscriptionStatus === 'active' || subscriptionStatus === 'trial';
+    if (isSubscriptionActive && subscriptionExpiresAt) {
+      try {
+        const expiry = new Date(subscriptionExpiresAt);
+        if (isNaN(expiry.getTime()) || expiry <= new Date()) isSubscriptionActive = false;
+      } catch {
+        isSubscriptionActive = false;
+      }
+    }
+
+    // Get all other vessels for this user
     const otherVessels = await app.db
       .select()
       .from(schema.vessels)
       .where(eq(schema.vessels.user_id, userId));
 
-    const otherVesselIds = otherVessels
-      .filter(v => v.id !== id)
-      .map(v => v.id);
+    const otherActiveVessels = otherVessels.filter((v) => v.id !== id && v.is_active);
 
-    app.logger.info(
-      { userId, vesselId: id },
-      `Activating vessel ${id} for user ${userId}, deactivating all other vessels`
-    );
+    if (!isSubscriptionActive) {
+      // Free tier: deactivate all other vessels (single-active behavior)
+      const deactivateIds = otherActiveVessels.map((v) => v.id);
+      if (deactivateIds.length > 0) {
+        await app.db
+          .update(schema.vessels)
+          .set({ is_active: false })
+          .where(inArray(schema.vessels.id, deactivateIds));
 
-    // Deactivate all other vessels
-    await app.db
-      .update(schema.vessels)
-      .set({ is_active: false })
-      .where(eq(schema.vessels.user_id, userId));
+        await app.db
+          .delete(schema.scheduled_tasks)
+          .where(inArray(schema.scheduled_tasks.vessel_id, deactivateIds));
 
-    // Delete scheduled tasks for all other vessels
-    if (otherVesselIds.length > 0) {
-      await app.db
-        .delete(schema.scheduled_tasks)
-        .where(inArray(schema.scheduled_tasks.vessel_id, otherVesselIds));
+        app.logger.info(
+          { userId, deactivatedCount: deactivateIds.length, tier: 'free' },
+          `Free tier — deactivated ${deactivateIds.length} other vessels`
+        );
+      }
+    } else {
+      // Paid tier: up to PAID_ACTIVE_LIMIT vessels concurrently
+      if (otherActiveVessels.length >= PAID_ACTIVE_LIMIT) {
+        // Deactivate the OLDEST active vessel to make room (FIFO eviction)
+        const sorted = [...otherActiveVessels].sort(
+          (a, b) =>
+            new Date(a.updated_at || a.created_at).getTime() -
+            new Date(b.updated_at || b.created_at).getTime()
+        );
+        const toDeactivate = sorted.slice(0, otherActiveVessels.length - PAID_ACTIVE_LIMIT + 1);
+        const evictIds = toDeactivate.map((v) => v.id);
+        await app.db
+          .update(schema.vessels)
+          .set({ is_active: false })
+          .where(inArray(schema.vessels.id, evictIds));
+        await app.db
+          .delete(schema.scheduled_tasks)
+          .where(inArray(schema.scheduled_tasks.vessel_id, evictIds));
+        app.logger.info(
+          { userId, evicted: evictIds, tier: 'paid' },
+          `Paid tier limit (${PAID_ACTIVE_LIMIT}) reached — evicted oldest vessels`
+        );
+      }
     }
-
-    app.logger.info(
-      { userId, deactivatedCount: otherVesselIds.length },
-      `Deactivated ${otherVesselIds.length} other vessels for user ${userId}`
-    );
 
     // Activate the specified vessel
     const [activated] = await app.db

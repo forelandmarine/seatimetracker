@@ -52,6 +52,11 @@ interface VesselLocation {
   latitude: number | null;
   longitude: number | null;
   timestamp: string | null;
+  recent_checks?: Array<{
+    latitude: number | string | null;
+    longitude: number | string | null;
+    check_time?: string;
+  }>;
 }
 
 export default function SeaTimeScreen() {
@@ -114,22 +119,24 @@ export default function SeaTimeScreen() {
         latitude: locationData.latitude,
         longitude: locationData.longitude,
         timestamp: locationData.timestamp,
+        recent_checks: locationData.recent_checks,
       });
       console.log('[Home] Location loaded:', locationData.latitude, locationData.longitude, 'timestamp:', locationData.timestamp);
-      
+
       // If forceRefresh is true, trigger a fresh AIS check (no stale check - always fresh on good connection)
       if (forceRefresh) {
         console.log('[Home] Force refresh requested, triggering fresh AIS check for instant data');
         try {
           // This will trigger a fresh API call to MyShipTracking
           await seaTimeApi.checkVesselAIS(vesselId, true);
-          
+
           // Reload the location after the fresh check
           const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
           setActiveVesselLocation({
             latitude: freshLocationData.latitude,
             longitude: freshLocationData.longitude,
             timestamp: freshLocationData.timestamp,
+            recent_checks: freshLocationData.recent_checks,
           });
           console.log('[Home] Fresh location loaded:', freshLocationData.latitude, freshLocationData.longitude, 'timestamp:', freshLocationData.timestamp);
         } catch (aisError: any) {
@@ -662,15 +669,51 @@ export default function SeaTimeScreen() {
                 ) : null}
               </TouchableOpacity>
 
+              {/* Manual "Check now" button */}
+              {activeVessel && (
+                <TouchableOpacity
+                  style={styles.checkNowButton}
+                  onPress={() => loadActiveVesselLocation(activeVessel.id, true)}
+                  disabled={locationLoading}
+                  accessibilityLabel="Check vessel position now"
+                >
+                  {locationLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <IconSymbol
+                        ios_icon_name="arrow.clockwise"
+                        android_material_icon_name="refresh"
+                        size={16}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.checkNowButtonText}>Check now</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
               {/* Map showing vessel location - always show if we have any location data */}
-              {activeVesselLocation && 
-               activeVesselLocation.latitude !== null && 
+              {activeVesselLocation &&
+               activeVesselLocation.latitude !== null &&
                activeVesselLocation.longitude !== null ? (
                 <View style={styles.mapContainer}>
                   <CartoMap
                     latitude={activeVesselLocation.latitude}
                     longitude={activeVesselLocation.longitude}
                     vesselName={activeVessel.vessel_name}
+                    track={
+                      // Reverse so oldest comes first (recent_checks is desc by check_time)
+                      activeVesselLocation.recent_checks
+                        ? [...activeVesselLocation.recent_checks]
+                            .reverse()
+                            .map((c) => ({
+                              latitude: typeof c.latitude === 'string' ? parseFloat(c.latitude) : (c.latitude || 0),
+                              longitude: typeof c.longitude === 'string' ? parseFloat(c.longitude) : (c.longitude || 0),
+                              timestamp: c.check_time,
+                            }))
+                        : undefined
+                    }
                   />
                 </View>
               ) : (
@@ -1407,6 +1450,22 @@ function createStyles(isDark: boolean) {
       fontSize: 13,
       color: isDark ? colors.text : colors.textLight,
       fontWeight: '500',
+    },
+    checkNowButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 10,
+      marginTop: 12,
+      marginBottom: 12,
+    },
+    checkNowButtonText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '600',
     },
     autoFillBanner: {
       flexDirection: 'row',

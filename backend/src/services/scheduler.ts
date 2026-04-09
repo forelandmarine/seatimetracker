@@ -213,14 +213,36 @@ async function runSchedulerIteration(app: App): Promise<void> {
 /**
  * Update the scheduled task's next_run time
  */
+/**
+ * Adaptive interval: shorter checks when underway, longer when stationary.
+ * Saves API credits and gives sub-hour resolution to active voyages.
+ *
+ * - Underway (moving): 30 minutes
+ * - Stationary in port: 6 hours
+ * - Default (no movement data yet): use task's configured interval
+ */
+function computeNextRunInterval(
+  defaultIntervalHours: string,
+  isMoving: boolean | null
+): number {
+  if (isMoving === true) {
+    return 0.5; // 30 minutes
+  }
+  if (isMoving === false) {
+    return 6; // 6 hours
+  }
+  return parseInt(defaultIntervalHours) || 2;
+}
+
 async function updateScheduledTaskNextRun(
   app: App,
   taskId: string,
-  intervalHours: string
+  intervalHours: string,
+  isMoving: boolean | null = null
 ): Promise<void> {
   try {
     const checkTime = new Date();
-    const intervalHoursNum = parseInt(intervalHours);
+    const intervalHoursNum = computeNextRunInterval(intervalHours, isMoving);
     const nextRunTime = new Date(checkTime.getTime() + intervalHoursNum * 60 * 60 * 1000);
 
     await app.db
@@ -232,8 +254,14 @@ async function updateScheduledTaskNextRun(
       .where(eq(schema.scheduled_tasks.id, taskId));
 
     app.logger.debug(
-      { taskId, lastRun: checkTime.toISOString(), nextRun: nextRunTime.toISOString() },
-      `Updated scheduled task next_run time`
+      {
+        taskId,
+        lastRun: checkTime.toISOString(),
+        nextRun: nextRunTime.toISOString(),
+        intervalHours: intervalHoursNum,
+        isMoving,
+      },
+      `Updated scheduled task next_run time (${intervalHoursNum}h interval, isMoving=${isMoving})`
     );
   } catch (error) {
     app.logger.error(
@@ -282,8 +310,9 @@ async function processScheduledTask(
       { error: ais_data.error, taskId, vesselId, mmsi },
       `Failed to fetch AIS data for scheduled task: ${taskId}, vessel=${vessel_name} (MMSI: ${mmsi})`
     );
-    // Still update the task's next_run time even on fetch error
-    await updateScheduledTaskNextRun(app, taskId, interval_hours);
+    // Still update the task's next_run time even on fetch error.
+    // Use a longer retry interval (1 hour) so we don't hammer the API.
+    await updateScheduledTaskNextRun(app, taskId, '1', null);
     return;
   }
 
@@ -400,9 +429,11 @@ async function processScheduledTask(
     await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id);
   }
 
-  // Always update the scheduled task with new run times
-  const intervalHours = parseInt(interval_hours);
-  const nextRunTime = new Date(check_time.getTime() + intervalHours * 60 * 60 * 1000);
+  // Adaptive interval: shorter checks when underway, longer when stationary.
+  // 30 min when moving, 6 hours when stationary, default otherwise.
+  const adaptiveIntervalHours = computeNextRunInterval(interval_hours, ais_data.is_moving ?? null);
+  const nextRunTime = new Date(check_time.getTime() + adaptiveIntervalHours * 60 * 60 * 1000);
+  const intervalHours = adaptiveIntervalHours;
 
   app.logger.debug(
     {

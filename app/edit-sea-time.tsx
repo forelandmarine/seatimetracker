@@ -306,6 +306,19 @@ const createStyles = (isDark: boolean) =>
     disabledInput: {
       opacity: 0.6,
     },
+    advancedToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      marginBottom: 8,
+    },
+    advancedToggleText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
   });
 
 const formatDateTime = (date: Date | null) => {
@@ -335,6 +348,11 @@ export default function EditSeaTimeScreen() {
   const [serviceType, setServiceType] = useState<ServiceType>('seagoing');
   const [voyageFrom, setVoyageFrom] = useState('');
   const [voyageTo, setVoyageTo] = useState('');
+  const [startLat, setStartLat] = useState('');
+  const [startLng, setStartLng] = useState('');
+  const [endLat, setEndLat] = useState('');
+  const [endLng, setEndLng] = useState('');
+  const [showPositionEditor, setShowPositionEditor] = useState(false);
   // Track whether user has modified any fields
   const [isDirty, setIsDirty] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -435,6 +453,12 @@ export default function EditSeaTimeScreen() {
       setVoyageFrom(extractedFrom);
       setVoyageTo(extractedTo);
       setNotes(remainingNotes.join('\n'));
+
+      // Populate position editor state
+      setStartLat(foundEntry.start_latitude != null ? String(foundEntry.start_latitude) : '');
+      setStartLng(foundEntry.start_longitude != null ? String(foundEntry.start_longitude) : '');
+      setEndLat(foundEntry.end_latitude != null ? String(foundEntry.end_latitude) : '');
+      setEndLng(foundEntry.end_longitude != null ? String(foundEntry.end_longitude) : '');
     } catch (error) {
       console.error('[EditSeaTimeScreen] Error loading entry:', error);
       showFeedback('Error', 'Failed to load sea time entry', 'error', () => router.back());
@@ -492,10 +516,30 @@ export default function EditSeaTimeScreen() {
       const fullNotes = noteParts.join('\n');
 
       console.log('[EditSeaTimeScreen] Updating sea time entry');
-      await seaTimeApi.updateSeaTimeEntry(entry.id, {
+
+      // Parse position values; null = clear, undefined = leave alone
+      const parseCoord = (s: string): number | null | undefined => {
+        if (s === '') return null;
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : undefined;
+      };
+
+      const updatePayload: any = {
         notes: fullNotes || null,
         service_type: backendServiceType,
-      });
+      };
+      if (showPositionEditor) {
+        const sLat = parseCoord(startLat);
+        const sLng = parseCoord(startLng);
+        const eLat = parseCoord(endLat);
+        const eLng = parseCoord(endLng);
+        if (sLat !== undefined) updatePayload.start_latitude = sLat;
+        if (sLng !== undefined) updatePayload.start_longitude = sLng;
+        if (eLat !== undefined) updatePayload.end_latitude = eLat;
+        if (eLng !== undefined) updatePayload.end_longitude = eLng;
+      }
+
+      await seaTimeApi.updateSeaTimeEntry(entry.id, updatePayload);
 
       savedOrDeletedRef.current = true;
       showFeedback('Success', 'Sea time entry updated successfully', 'success', () => router.back());
@@ -862,8 +906,82 @@ export default function EditSeaTimeScreen() {
             />
           </View>
 
-          <TouchableOpacity 
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+          {/* Advanced: Edit Position */}
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.advancedToggle}
+            onPress={() => setShowPositionEditor(!showPositionEditor)}
+          >
+            <Text style={styles.advancedToggleText}>
+              {showPositionEditor ? 'Hide' : 'Edit'} position (advanced)
+            </Text>
+            <IconSymbol
+              ios_icon_name={showPositionEditor ? 'chevron.up' : 'chevron.down'}
+              android_material_icon_name={showPositionEditor ? 'expand-less' : 'expand-more'}
+              size={20}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+
+          {showPositionEditor && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.helperText}>
+                Override the AIS-detected position. Enter decimal degrees (e.g. 51.5074, -0.1278).
+              </Text>
+              <View style={styles.voyageRow}>
+                <View style={styles.voyageColumn}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Start Lat</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.0000"
+                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    value={startLat}
+                    onChangeText={(t) => { setStartLat(t); setIsDirty(true); }}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+                <View style={styles.voyageColumn}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Start Lng</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.0000"
+                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    value={startLng}
+                    onChangeText={(t) => { setStartLng(t); setIsDirty(true); }}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+              </View>
+              <View style={styles.voyageRow}>
+                <View style={styles.voyageColumn}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>End Lat</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.0000"
+                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    value={endLat}
+                    onChangeText={(t) => { setEndLat(t); setIsDirty(true); }}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+                <View style={styles.voyageColumn}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>End Lng</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.0000"
+                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    value={endLng}
+                    onChangeText={(t) => { setEndLng(t); setIsDirty(true); }}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={saving}
           >

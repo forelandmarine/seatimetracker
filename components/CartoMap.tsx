@@ -4,15 +4,34 @@ import { View, StyleSheet, Text, useColorScheme } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/styles/commonStyles';
 
+interface TrackPoint {
+  latitude: number;
+  longitude: number;
+  timestamp?: string;
+}
+
 interface CartoMapProps {
   latitude: number;
   longitude: number;
   vesselName?: string;
+  /**
+   * Optional list of recent positions to render as a polyline track.
+   * Should be ordered oldest → newest. The current position is added
+   * automatically as the last point.
+   */
+  track?: TrackPoint[];
 }
 
-export default function CartoMap({ latitude, longitude, vesselName }: CartoMapProps) {
+export default function CartoMap({ latitude, longitude, vesselName, track }: CartoMapProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+
+  // Build track polyline JS — embed coordinates safely as JSON
+  const trackJson = JSON.stringify(
+    (track || [])
+      .filter((p) => p.latitude != null && p.longitude != null)
+      .map((p) => [Number(p.latitude), Number(p.longitude)])
+  );
 
   // Generate HTML for the map using CARTO basemap with theme support
   const mapHTML = `
@@ -64,8 +83,22 @@ export default function CartoMap({ latitude, longitude, vesselName }: CartoMapPr
 
         // Add marker for vessel
         const marker = L.marker([${latitude}, ${longitude}], { icon: vesselIcon }).addTo(map);
-        
+
         ${vesselName ? `marker.bindPopup('<div style="color: ${isDark ? '#ffffff' : '#000000'}; background-color: ${isDark ? '#2c2c2e' : '#ffffff'};"><b>${vesselName}</b><br>Lat: ${latitude.toFixed(4)}<br>Lon: ${longitude.toFixed(4)}</div>');` : ''}
+
+        // Optionally render the recent track as a polyline
+        const trackPoints = ${trackJson};
+        if (trackPoints && trackPoints.length > 1) {
+          const fullTrack = [...trackPoints, [${latitude}, ${longitude}]];
+          L.polyline(fullTrack, {
+            color: '${isDark ? '#5386B6' : '#0077BE'}',
+            weight: 3,
+            opacity: 0.85,
+            smoothFactor: 1,
+          }).addTo(map);
+          // Fit the map to show the whole track
+          map.fitBounds(L.latLngBounds(fullTrack), { padding: [30, 30], maxZoom: 12 });
+        }
 
         // Disable scroll zoom on mobile for better UX
         map.scrollWheelZoom.disable();

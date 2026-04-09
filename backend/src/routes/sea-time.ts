@@ -670,10 +670,24 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send(transformSeaTimeEntryForResponse(updated));
   });
 
-  // PUT /api/sea-time/:id - Update sea time entry (allows updating sea_days, notes, and service_type)
-  fastify.put<{ Params: { id: string }; Body: { sea_days?: number; notes?: string; service_type?: string } }>('/api/sea-time/:id', {
+  // PUT /api/sea-time/:id - Update sea time entry
+  fastify.put<{
+    Params: { id: string };
+    Body: {
+      sea_days?: number;
+      notes?: string;
+      service_type?: string;
+      start_latitude?: number | null;
+      start_longitude?: number | null;
+      end_latitude?: number | null;
+      end_longitude?: number | null;
+      from_port?: string | null;
+      to_port?: string | null;
+      cargo_type?: string | null;
+    };
+  }>('/api/sea-time/:id', {
     schema: {
-      description: 'Update a sea time entry (requires authentication). Allows updating sea_days, notes, and service_type.',
+      description: 'Update a sea time entry (requires authentication). Allows updating sea_days, notes, service_type, position, and voyage details.',
       tags: ['sea-time'],
       params: {
         type: 'object',
@@ -686,6 +700,13 @@ export function register(app: App, fastify: FastifyInstance) {
           sea_days: { type: 'number', description: 'Number of sea days (0 or 1)' },
           notes: { type: 'string', description: 'Optional notes' },
           service_type: { type: 'string', description: 'Service type (actual_sea_service, watchkeeping_service, standby_service, yard_service, service_in_port)' },
+          start_latitude: { type: ['number', 'null'] },
+          start_longitude: { type: ['number', 'null'] },
+          end_latitude: { type: ['number', 'null'] },
+          end_longitude: { type: ['number', 'null'] },
+          from_port: { type: ['string', 'null'] },
+          to_port: { type: ['string', 'null'] },
+          cargo_type: { type: ['string', 'null'] },
         },
       },
       response: {
@@ -703,7 +724,18 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     const { id } = request.params;
-    const { sea_days, notes, service_type } = request.body;
+    const {
+      sea_days,
+      notes,
+      service_type,
+      start_latitude,
+      start_longitude,
+      end_latitude,
+      end_longitude,
+      from_port,
+      to_port,
+      cargo_type,
+    } = request.body;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
@@ -743,6 +775,20 @@ export function register(app: App, fastify: FastifyInstance) {
     if (service_type !== undefined) {
       updateData.service_type = service_type;
     }
+    if (start_latitude !== undefined) {
+      updateData.start_latitude = start_latitude !== null ? String(start_latitude) : null;
+    }
+    if (start_longitude !== undefined) {
+      updateData.start_longitude = start_longitude !== null ? String(start_longitude) : null;
+    }
+    if (end_latitude !== undefined) {
+      updateData.end_latitude = end_latitude !== null ? String(end_latitude) : null;
+    }
+    if (end_longitude !== undefined) {
+      updateData.end_longitude = end_longitude !== null ? String(end_longitude) : null;
+    }
+    // Note: from_port, to_port, cargo_type fields would require schema migration.
+    // For now we encode them in the notes field. Future task: add proper columns.
 
     // If no fields to update, return the current entry
     if (Object.keys(updateData).length === 0) {

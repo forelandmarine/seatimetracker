@@ -395,6 +395,11 @@ export const updateSeaTimeEntry = async (
     leave_days?: number | null; duties_and_tasks?: string | null;
     area_cruised?: string | null; notes?: string | null;
     status?: string; service_type?: string | null;
+    sea_days?: number | null;
+    start_latitude?: number | null;
+    start_longitude?: number | null;
+    end_latitude?: number | null;
+    end_longitude?: number | null;
   }
 ) => {
   const res = await authFetch(`/api/sea-time/${entryId}`, { method: 'PUT', body: updates });
