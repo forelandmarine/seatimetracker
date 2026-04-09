@@ -19,9 +19,11 @@ async function ensureScheduledTask(app: App, vesselId: string, userId: string): 
       return;
     }
 
-    // Create a new scheduled task for the vessel with 2-hour check interval
+    // Create a new scheduled task for the vessel with 2-hour check interval.
+    // First check runs immediately so user sees data right after activation;
+    // subsequent checks are spaced 2 hours apart by the scheduler.
     const now = new Date();
-    const nextRun = new Date(now.getTime() + 2 * 60 * 60 * 1000); // Schedule first check 2 hours from now
+    const nextRun = now;
 
     const [newTask] = await app.db
       .insert(schema.scheduled_tasks)
