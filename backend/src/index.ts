@@ -34,7 +34,20 @@ import { register as registerUsersRoutes } from './routes/users.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
-app.withStorage();
+
+// Storage is optional — only enable if AWS_S3_BUCKET or STORAGE_API_BASE_URL is set.
+// Profile image upload features will be unavailable when storage is not configured.
+if (process.env.AWS_S3_BUCKET || process.env.STORAGE_API_BASE_URL) {
+  try {
+    app.withStorage();
+    logger.info('Storage enabled');
+  } catch (storageError) {
+    logger.warn({ err: storageError }, 'Storage initialization failed, continuing without storage');
+  }
+} else {
+  logger.info('Storage not configured, profile image features will be unavailable');
+}
+
 app.withAuth();
 
 // Export App type for use in route files
