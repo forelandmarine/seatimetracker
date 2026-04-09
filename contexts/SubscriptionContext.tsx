@@ -9,7 +9,7 @@ import Purchases, {
 import { useAuth } from './AuthContext';
 import { BACKEND_URL } from '@/utils/api';
 import Constants from 'expo-constants';
-import { log, warn, error } from '@/utils/log';
+import { log, warn, error as logError } from '@/utils/log';
 
 // Environment detection
 const isTestFlight = Constants.appOwnership === 'expo' ||
@@ -200,7 +200,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             setAvailablePackages([]);
           }
         } catch (offeringsError: any) {
-          error('[Subscription] Failed to fetch offerings:', offeringsError?.message);
+          logError('[Subscription] Failed to fetch offerings:', offeringsError?.message);
 
           // Don't set error - allow app to continue
           setAvailablePackages([]);
@@ -210,7 +210,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         await checkSubscriptionStatusInternal();
 
       } catch (initError: any) {
-        error('[Subscription] SDK initialization failed:', initError?.message);
+        logError('[Subscription] SDK initialization failed:', initError?.message);
 
         // CRITICAL: Mark initialization as failed
         // FIX 5: Do NOT reset revenueCatSubscribed — preserve last known value.
@@ -247,7 +247,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         if (data.synced === false) warn('[Subscription] Backend sync failed (non-critical):', data.error);
       }
     } catch (e) {
-      error('[Subscription] Failed to sync with backend (non-critical):', e);
+      logError('[Subscription] Failed to sync with backend (non-critical):', e);
     }
   };
 
@@ -275,7 +275,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // Mark status as confirmed — pause-tracking effect may now run safely.
       setIsStatusChecked(true);
     } catch (statusError: any) {
-      error('[Subscription] Failed to check subscription status:', statusError?.message);
+      logError('[Subscription] Failed to check subscription status:', statusError?.message);
 
       // SAFE DEFAULT: On any error (network, SDK, timeout) we do NOT know the
       // subscription state. The rule is: uncertainty must default to KEEPING
@@ -318,7 +318,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setAvailablePackages([]);
       }
     } catch (err: any) {
-      error('[Subscription] Failed to refresh offerings:', err?.message);
+      logError('[Subscription] Failed to refresh offerings:', err?.message);
       throw err;
     }
   }, [isInitialized]);
@@ -356,7 +356,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       return { customerInfo: info, success: subscribed };
     } catch (purchaseError: any) {
-      error('[Subscription] Purchase failed:', purchaseError?.message);
+      logError('[Subscription] Purchase failed:', purchaseError?.message);
 
       // Handle user cancellation gracefully
       if (purchaseError.userCancelled) {
@@ -394,7 +394,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       return info;
     } catch (restoreError: any) {
-      error('[Subscription] Restore failed:', restoreError?.message);
+      logError('[Subscription] Restore failed:', restoreError?.message);
       setError(restoreError.message || 'Failed to restore purchases');
       throw restoreError;
     }
@@ -460,7 +460,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (pauseError: any) {
-          error('[Subscription] Failed to pause tracking (non-critical):', pauseError);
+          logError('[Subscription] Failed to pause tracking (non-critical):', pauseError);
         }
       }
     };
