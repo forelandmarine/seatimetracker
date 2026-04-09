@@ -919,6 +919,7 @@ export function register(app: App, fastify: FastifyInstance): void {
                 subscription_product_id: subscriptionData.productId,
                 subscription_platform: subscriptionData.platform,
                 trial_ends_at: subscriptionData.trialEndsAt,
+                revenuecat_customer_id: customerId,
                 updatedAt: new Date(),
               })
               .where(eq(authSchema.user.id, userId));
