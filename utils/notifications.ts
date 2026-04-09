@@ -234,10 +234,12 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
       }
     }
 
-    // Schedule daily notification at the specified time
+    // Schedule daily notification at the specified time.
+    // expo-notifications v0.32+ requires explicit trigger type — use DAILY
+    // for daily-recurring notifications at a specific hour/minute.
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: '⚓️ Sea Time Review',
+        title: 'Sea Time Review',
         body: 'Time to review your sea time entries for today. Tap to check for pending confirmations.',
         data: {
           type: 'daily_sea_time_review',
@@ -255,10 +257,10 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
         }),
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
-      },
+      } as any,
     });
 
     console.log('[Notifications] Daily notification scheduled successfully at', scheduledTime, ':', notificationId);
