@@ -1282,6 +1282,27 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/language')}
+              >
+                <IconSymbol
+                  ios_icon_name="globe"
+                  android_material_icon_name="language"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Language</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.menuItem, styles.menuItemLast]}
                 onPress={() => router.push('/about')}
               >

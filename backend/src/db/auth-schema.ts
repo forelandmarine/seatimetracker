@@ -27,6 +27,7 @@ export const user = pgTable("user", {
   public_profile_enabled: boolean("public_profile_enabled").default(false),
   lightship_interested_at: timestamp("lightship_interested_at", { withTimezone: true }),
   signature_image: text("signature_image"), // base64 PNG data URL of user's signature
+  bonus_days: integer("bonus_days").default(0), // Free days earned from referrals etc.
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "retry": "Try again"
+  },
+  "tabs": {
+    "seaTime": "Sea Time",
+    "logbook": "Logbook",
+    "review": "Review",
+    "profile": "Profile"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "forgotPassword": "Forgot password?",
+    "createAccount": "Create account",
+    "alreadyHaveAccount": "Already have an account?",
+    "needAccount": "Need an account?",
+    "signInWithApple": "Sign in with Apple",
+    "signInWithFaceId": "Sign in with Face ID",
+    "signInWithBiometrics": "Sign in with Biometrics"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get started",
+    "slide1": {
+      "label": "AUTOMATIC TRACKING",
+      "title": "Your sea time, on autopilot.",
+      "body": "Add your vessel by MMSI and let SeaTime Tracker log your sea service automatically using AIS data. No more handwritten notebooks."
+    },
+    "slide2": {
+      "label": "MCA-COMPLIANT REPORTS",
+      "title": "Reports the MCA accepts.",
+      "body": "Generate sea service testimonials in the exact format required for CoC applications. PDF and CSV exports, ready to submit."
+    },
+    "slide3": {
+      "label": "BUILT BY MARINERS",
+      "title": "From the team behind Lightship.",
+      "body": "SeaTime Tracker is built by Foreland Marine — the same team behind Lightship ISM, the fleet management platform trusted by yacht managers worldwide."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Your AIS Tracking Companion",
+    "noVesselsTitle": "No Vessels Yet",
+    "noVesselsSubtitle": "Add your first vessel to start tracking sea time",
+    "addVessel": "Add Vessel",
+    "tryDemoVessel": "Try with demo vessel",
+    "activeVessel": "Active Vessel",
+    "historicVessels": "Historic Vessels",
+    "checkNow": "Check now",
+    "position": "Position",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "loadingLocation": "Loading location..."
+  },
+  "paywall": {
+    "subscribeNow": "Subscribe Now",
+    "restorePurchases": "Restore Purchases",
+    "redeemCode": "Redeem Code",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "perMonth": "per month",
+    "perYear": "per year",
+    "bestValue": "BEST VALUE",
+    "saveSeventeen": "Save ~17%",
+    "premiumFeatures": "Premium Features",
+    "feature1": "Automatic Vessel Tracking",
+    "feature2": "Easy Sea Time Recording",
+    "feature3": "MCA-Compliant Reports",
+    "feature4": "Cloud Sync & Backup",
+    "feature5": "Smart Notifications",
+    "termsAutoRenew": "Subscription automatically renews unless cancelled",
+    "termsCancelAnytime": "Cancel anytime in App Store settings",
+    "termsCharge": "Payment charged to Apple ID at confirmation"
+  },
+  "settings": {
+    "language": "Language",
+    "notifications": "Notification Settings",
+    "certificates": "Certificates",
+    "manualTracking": "Manual GPS tracking",
+    "signature": "Signature for reports",
+    "referFriend": "Refer a captain",
+    "about": "About & Help"
+  }
+}

@@ -1,4 +1,6 @@
-import { createApplication, runMigrations, logger } from "@specific-dev/framework";
+import { createApplication } from './app/application.js';
+import { runMigrations } from './app/migrate.js';
+import { logger } from './app/logger.js';
 import * as schema from './db/schema.js';
 import * as authSchema from './db/auth-schema.js';
 import { initSentry } from './utils/sentry.js';

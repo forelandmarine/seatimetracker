@@ -12,6 +12,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { initSentry } from '@/utils/sentry';
+import '@/i18n'; // Initialize i18next
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -150,6 +151,13 @@ function RootLayoutContent() {
           name="refer"
           options={{
             title: 'Refer a captain',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
+          name="language"
+          options={{
+            title: 'Language',
             headerBackTitle: 'Back',
           }}
         />

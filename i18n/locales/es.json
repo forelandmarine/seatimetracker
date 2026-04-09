@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Atrás",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "retry": "Reintentar"
+  },
+  "tabs": {
+    "seaTime": "Tiempo de mar",
+    "logbook": "Cuaderno de bitácora",
+    "review": "Revisar",
+    "profile": "Perfil"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "signOut": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "name": "Nombre",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "createAccount": "Crear cuenta",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "needAccount": "¿Necesitas una cuenta?",
+    "signInWithApple": "Iniciar sesión con Apple",
+    "signInWithFaceId": "Iniciar sesión con Face ID",
+    "signInWithBiometrics": "Iniciar sesión con biometría"
+  },
+  "onboarding": {
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "getStarted": "Empezar",
+    "slide1": {
+      "label": "SEGUIMIENTO AUTOMÁTICO",
+      "title": "Tu tiempo de mar, en piloto automático.",
+      "body": "Añade tu embarcación por MMSI y deja que SeaTime Tracker registre automáticamente tu servicio en el mar usando datos AIS."
+    },
+    "slide2": {
+      "label": "INFORMES CONFORMES MCA",
+      "title": "Informes que la MCA acepta.",
+      "body": "Genera testimonios de servicio en el mar en el formato exacto requerido para las solicitudes de CoC. Exportaciones en PDF y CSV, listas para enviar."
+    },
+    "slide3": {
+      "label": "HECHO POR MARINOS",
+      "title": "Del equipo detrás de Lightship.",
+      "body": "SeaTime Tracker está hecho por Foreland Marine — el mismo equipo detrás de Lightship ISM, la plataforma de gestión de flotas de confianza para gestores de yates en todo el mundo."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Tu compañero de seguimiento AIS",
+    "noVesselsTitle": "Aún no hay embarcaciones",
+    "noVesselsSubtitle": "Añade tu primera embarcación para comenzar a registrar el tiempo de mar",
+    "addVessel": "Añadir embarcación",
+    "tryDemoVessel": "Probar con embarcación demo",
+    "activeVessel": "Embarcación activa",
+    "historicVessels": "Embarcaciones históricas",
+    "checkNow": "Verificar ahora",
+    "position": "Posición",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "loadingLocation": "Cargando posición..."
+  },
+  "paywall": {
+    "subscribeNow": "Suscribirse",
+    "restorePurchases": "Restaurar compras",
+    "redeemCode": "Canjear código",
+    "monthly": "Mensual",
+    "annual": "Anual",
+    "perMonth": "al mes",
+    "perYear": "al año",
+    "bestValue": "MEJOR VALOR",
+    "saveSeventeen": "Ahorra ~17%",
+    "premiumFeatures": "Características Premium",
+    "feature1": "Seguimiento automático de embarcaciones",
+    "feature2": "Registro fácil del tiempo de mar",
+    "feature3": "Informes conformes con MCA",
+    "feature4": "Sincronización y copia de seguridad en la nube",
+    "feature5": "Notificaciones inteligentes",
+    "termsAutoRenew": "La suscripción se renueva automáticamente salvo cancelación",
+    "termsCancelAnytime": "Cancela en cualquier momento en la configuración de la App Store",
+    "termsCharge": "El pago se carga al ID de Apple en el momento de la confirmación"
+  },
+  "settings": {
+    "language": "Idioma",
+    "notifications": "Configuración de notificaciones",
+    "certificates": "Certificados",
+    "manualTracking": "Seguimiento GPS manual",
+    "signature": "Firma para informes",
+    "referFriend": "Recomendar a un capitán",
+    "about": "Acerca de y ayuda"
+  }
+}

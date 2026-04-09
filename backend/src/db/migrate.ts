@@ -1,4 +1,5 @@
-import { runMigrations, logger } from "@specific-dev/framework";
+import { runMigrations } from "../app/migrate.js";
+import { logger } from "../app/logger.js";
 
 runMigrations({ logger })
   .then(() => process.exit(0))

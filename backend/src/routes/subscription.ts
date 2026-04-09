@@ -924,6 +924,26 @@ export function register(app: App, fastify: FastifyInstance): void {
               })
               .where(eq(authSchema.user.id, userId));
 
+            // Apply bonus days (from referrals etc.) by extending expiry.
+            // We do this AFTER the RevenueCat sync so the date base is fresh.
+            const bonusDays = (user as any).bonus_days || 0;
+            if (bonusDays > 0 && subscriptionData.expiresAt) {
+              const extended = new Date(subscriptionData.expiresAt);
+              extended.setDate(extended.getDate() + bonusDays);
+              await app.db
+                .update(authSchema.user)
+                .set({
+                  subscription_expires_at: extended,
+                  bonus_days: 0, // consumed
+                  updatedAt: new Date(),
+                } as any)
+                .where(eq(authSchema.user.id, userId));
+              app.logger.info(
+                { userId, bonusDays, newExpiry: extended.toISOString() },
+                'Applied referral bonus days to subscription expiry'
+              );
+            }
+
             app.logger.info(
               { userId, subscriptionStatus, expiresAt: subscriptionData.expiresAt?.toISOString() },
               "Subscription synced successfully from RevenueCat"

@@ -148,22 +148,56 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({ error: "You cannot refer yourself" });
     }
 
-    // Mark this user as referred + increment referrer's count
+    // Mark this user as referred, grant both parties 30 bonus days
+    const REFERRAL_BONUS_DAYS = 30;
+
     await app.db
       .update(authSchema.user)
-      .set({ referred_by_user_id: referrer.id } as any)
+      .set({
+        referred_by_user_id: referrer.id,
+        bonus_days: (user.bonus_days || 0) + REFERRAL_BONUS_DAYS,
+      } as any)
       .where(eq(authSchema.user.id, userId));
 
     await app.db
       .update(authSchema.user)
-      .set({ referral_count: (referrer.referral_count || 0) + 1 } as any)
+      .set({
+        referral_count: (referrer.referral_count || 0) + 1,
+        bonus_days: (referrer.bonus_days || 0) + REFERRAL_BONUS_DAYS,
+      } as any)
       .where(eq(authSchema.user.id, referrer.id));
 
     app.logger.info(
-      { userId, referrerId: referrer.id, code: cleanCode },
-      "Referral redeemed"
+      { userId, referrerId: referrer.id, code: cleanCode, bonusDays: REFERRAL_BONUS_DAYS },
+      "Referral redeemed — both users granted bonus days"
     );
 
-    return reply.code(200).send({ success: true });
+    return reply.code(200).send({
+      success: true,
+      bonus_days_granted: REFERRAL_BONUS_DAYS,
+    });
+  });
+
+  // GET /api/referral/credits - Return current bonus_days for the user
+  fastify.get("/api/referral/credits", {
+    schema: {
+      description: "Get the current user's bonus days balance",
+      tags: ["referral"],
+      response: {
+        200: { type: "object", properties: { bonus_days: { type: "number" } } },
+        401: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: "Authentication required" });
+
+    const users = await app.db
+      .select()
+      .from(authSchema.user)
+      .where(eq(authSchema.user.id, userId));
+
+    const days = (users[0] as any)?.bonus_days || 0;
+    return reply.code(200).send({ bonus_days: days });
   });
 }

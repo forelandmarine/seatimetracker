@@ -26,23 +26,31 @@ export default function ReferScreen() {
   const [code, setCode] = useState('');
   const [count, setCount] = useState(0);
   const [shareUrl, setShareUrl] = useState('');
+  const [bonusDays, setBonusDays] = useState(0);
   const [redeemCode, setRedeemCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
+  const refresh = async () => {
+    try {
+      const [refRes, creditsRes] = await Promise.all([
+        authFetch('/api/referral'),
+        authFetch('/api/referral/credits'),
+      ]);
+      const data = await refRes.json();
+      const credits = await creditsRes.json();
+      setCode(data.code || '');
+      setCount(data.count || 0);
+      setShareUrl(data.shareUrl || '');
+      setBonusDays(credits.bonus_days || 0);
+    } catch (err) {
+      console.error('[Refer] Failed to load:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await authFetch('/api/referral');
-        const data = await res.json();
-        setCode(data.code || '');
-        setCount(data.count || 0);
-        setShareUrl(data.shareUrl || '');
-      } catch (err) {
-        console.error('[Refer] Failed to load:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    refresh();
   }, []);
 
   const handleShare = async () => {
@@ -68,8 +76,9 @@ export default function ReferScreen() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to redeem');
       }
-      Alert.alert('Code redeemed', 'Thanks — both you and your captain will get a bonus.');
+      Alert.alert('Code redeemed', 'Thanks — you both got 30 free days. The bonus is applied to your next subscription renewal.');
       setRedeemCode('');
+      refresh();
     } catch (err: any) {
       Alert.alert('Could not redeem', err?.message || 'Please check the code and try again.');
     } finally {
@@ -122,6 +131,23 @@ export default function ReferScreen() {
                 <Text style={styles.shareButtonText}>Share invite</Text>
               </TouchableOpacity>
             </View>
+
+            {bonusDays > 0 && (
+              <View style={styles.bonusBanner}>
+                <IconSymbol
+                  ios_icon_name="gift.fill"
+                  android_material_icon_name="card-giftcard"
+                  size={22}
+                  color={colors.success}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bonusTitle}>{bonusDays} bonus days</Text>
+                  <Text style={styles.bonusBody}>
+                    Applied automatically to your next subscription renewal.
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.divider} />
 
@@ -224,6 +250,27 @@ const createStyles = (isDark: boolean) =>
       color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '600',
+    },
+    bonusBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 14,
+      backgroundColor: colors.success + '15',
+      borderRadius: 12,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.success,
+      marginTop: 16,
+    },
+    bonusTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: isDark ? colors.text : colors.textLight,
+    },
+    bonusBody: {
+      fontSize: 12,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginTop: 2,
     },
     divider: {
       height: 1,
