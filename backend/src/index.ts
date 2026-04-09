@@ -1,6 +1,10 @@
 import { createApplication, runMigrations, logger } from "@specific-dev/framework";
 import * as schema from './db/schema.js';
 import * as authSchema from './db/auth-schema.js';
+import { initSentry } from './utils/sentry.js';
+
+// Initialize Sentry as early as possible. Safe no-op when not configured.
+initSentry();
 
 // Merge auth schema with main schema for complete database type support
 const combinedSchema = { ...schema, ...authSchema } as typeof schema & typeof authSchema;

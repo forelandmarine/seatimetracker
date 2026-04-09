@@ -1,0 +1,49 @@
+name: Backend smoke tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Live API smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /api/health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://seatimetracker-production.up.railway.app/api/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed: $STATUS"
+            exit 1
+          fi
+          echo "✅ Health check passed"
+
+      - name: Check authenticated endpoints reject without token
+        run: |
+          for path in "/api/vessels" "/api/profile" "/api/notifications/schedule" "/api/reports/summary"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://seatimetracker-production.up.railway.app${path}")
+            if [ "$STATUS" != "401" ] && [ "$STATUS" != "400" ]; then
+              echo "❌ ${path} returned ${STATUS} (expected 401)"
+              exit 1
+            fi
+            echo "✅ ${path} returns ${STATUS}"
+          done
+
+      - name: Check signup validation
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            https://seatimetracker-production.up.railway.app/api/auth/sign-up/email)
+          if [ "$STATUS" != "400" ]; then
+            echo "❌ Signup with empty body returned ${STATUS} (expected 400)"
+            exit 1
+          fi
+          echo "✅ Signup validation works"

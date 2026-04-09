@@ -41,8 +41,15 @@ export default function PaywallScreen() {
 
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const waitingForRedeemRef = useRef(false);
+
+  // Product identifiers — these must match App Store Connect / Google Play / RevenueCat
+  const PRODUCT_IDS = {
+    monthly: 'com.subscription.monthly',
+    annual: 'com.subscription.annual',
+  };
 
   // When app returns to foreground after redeem flow, refresh subscription status
   useEffect(() => {
@@ -98,13 +105,21 @@ export default function PaywallScreen() {
       return;
     }
 
-    // Find the monthly subscription package
-    const packageToPurchase = availablePackages.find(pkg => 
-      pkg.product.identifier === 'com.subscription.monthly'
+    // Find the package for the selected plan
+    const targetProductId = PRODUCT_IDS[selectedPlan];
+    let packageToPurchase = availablePackages.find(
+      (pkg) => pkg.product.identifier === targetProductId
     );
-    
+
+    // If the selected plan isn't available, fall back to whatever IS available
     if (!packageToPurchase) {
-      console.error('[Paywall] Product "com.subscription.monthly" not found');
+      packageToPurchase =
+        availablePackages.find((pkg) => pkg.product.identifier === PRODUCT_IDS.monthly) ||
+        availablePackages[0];
+    }
+
+    if (!packageToPurchase) {
+      console.error('[Paywall] No valid subscription product found');
       Alert.alert(
         'Subscription Unavailable',
         'The subscription product is not available. Please try again later or contact support.',
@@ -112,7 +127,7 @@ export default function PaywallScreen() {
       );
       return;
     }
-    
+
     console.log('[Paywall] Initiating purchase for:', packageToPurchase.product.identifier);
     setPurchasing(true);
 
@@ -262,7 +277,10 @@ export default function PaywallScreen() {
   }
 
   // Get the monthly package for display
-  const monthlyPackage = availablePackages.find(pkg => 
+  const annualPackage = availablePackages.find(
+    (pkg) => pkg.product.identifier === PRODUCT_IDS.annual
+  );
+  const monthlyPackage = availablePackages.find(pkg =>
     pkg.product.identifier === 'com.subscription.monthly'
   );
 
@@ -321,32 +339,96 @@ export default function PaywallScreen() {
             </Text>
           </View>
 
-          {/* Pricing Card - StoreKit Compliant */}
-          <View style={[styles.pricingCard, { backgroundColor: isDark ? colors.cardBackground : colors.card, borderColor: isDark ? colors.border : colors.borderLight }]}>
-            <View style={styles.pricingBadge}>
-              <Text style={styles.pricingBadgeText}>MONTHLY SUBSCRIPTION</Text>
-            </View>
-            
-            {/* Display App Store price (StoreKit requirement) */}
-            <Text style={[styles.priceAmount, { color: isDark ? colors.text : colors.textLight }]}>
-              {priceText}
+          {/* Plan selector — annual or monthly */}
+          <View style={styles.planSelector}>
+            {/* Annual plan card */}
+            {annualPackage && (
+              <TouchableOpacity
+                style={[
+                  styles.planCard,
+                  {
+                    backgroundColor: isDark ? colors.cardBackground : colors.card,
+                    borderColor: selectedPlan === 'annual' ? colors.primary : (isDark ? colors.border : colors.borderLight),
+                    borderWidth: selectedPlan === 'annual' ? 2 : 1,
+                  },
+                ]}
+                onPress={() => setSelectedPlan('annual')}
+              >
+                <View style={styles.planBadge}>
+                  <Text style={styles.planBadgeText}>BEST VALUE</Text>
+                </View>
+                <Text style={[styles.planTitle, { color: isDark ? colors.text : colors.textLight }]}>
+                  Annual
+                </Text>
+                <Text style={[styles.planPrice, { color: isDark ? colors.text : colors.textLight }]}>
+                  {annualPackage.product.priceString}
+                </Text>
+                <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+                  per year
+                </Text>
+                <Text style={[styles.planSavings, { color: colors.success }]}>
+                  Save ~17%
+                </Text>
+                {selectedPlan === 'annual' && (
+                  <View style={styles.planSelectedIndicator}>
+                    <IconSymbol
+                      ios_icon_name="checkmark.circle.fill"
+                      android_material_icon_name="check-circle"
+                      size={20}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Monthly plan card */}
+            {monthlyPackage && (
+              <TouchableOpacity
+                style={[
+                  styles.planCard,
+                  {
+                    backgroundColor: isDark ? colors.cardBackground : colors.card,
+                    borderColor: selectedPlan === 'monthly' ? colors.primary : (isDark ? colors.border : colors.borderLight),
+                    borderWidth: selectedPlan === 'monthly' ? 2 : 1,
+                  },
+                ]}
+                onPress={() => setSelectedPlan('monthly')}
+              >
+                <Text style={[styles.planTitle, { color: isDark ? colors.text : colors.textLight }]}>
+                  Monthly
+                </Text>
+                <Text style={[styles.planPrice, { color: isDark ? colors.text : colors.textLight }]}>
+                  {monthlyPackage.product.priceString}
+                </Text>
+                <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+                  per month
+                </Text>
+                {selectedPlan === 'monthly' && (
+                  <View style={styles.planSelectedIndicator}>
+                    <IconSymbol
+                      ios_icon_name="checkmark.circle.fill"
+                      android_material_icon_name="check-circle"
+                      size={20}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Subscription terms (App Store requirement) */}
+          <View style={styles.subscriptionTerms}>
+            <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+              • Subscription automatically renews unless cancelled
             </Text>
-            <Text style={[styles.pricePeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-              per month
+            <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+              • Cancel anytime in App Store settings
             </Text>
-            
-            {/* Clear subscription terms (App Store requirement) */}
-            <View style={styles.subscriptionTerms}>
-              <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-                • Subscription automatically renews unless cancelled
-              </Text>
-              <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-                • Cancel anytime in App Store settings
-              </Text>
-              <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-                • Payment charged to Apple ID at confirmation
-              </Text>
-            </View>
+            <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+              • Payment charged to Apple ID at confirmation
+            </Text>
           </View>
 
           {/* Features List */}
@@ -549,6 +631,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  planSelector: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  planCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    position: 'relative',
+    minHeight: 140,
+    justifyContent: 'center',
+  },
+  planBadge: {
+    position: 'absolute',
+    top: -10,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  planBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
+  planTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  planPrice: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  planPeriod: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  planSavings: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  planSelectedIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
   pricingBadge: {
     backgroundColor: colors.primary,
     paddingHorizontal: 12,
@@ -571,7 +705,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   subscriptionTerms: {
-    marginTop: 16,
+    marginTop: 8,
+    marginBottom: 24,
     gap: 6,
     alignItems: 'flex-start',
     width: '100%',

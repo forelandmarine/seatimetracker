@@ -11,9 +11,13 @@ import { BridgeReadyProvider } from '@/contexts/BridgeReadyContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { initSentry } from '@/utils/sentry';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Initialize Sentry as early as possible. Safe no-op when not configured.
+initSentry();
 
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
@@ -98,6 +102,13 @@ function RootLayoutContent() {
           name="scheduled-tasks"
           options={{
             title: 'Scheduled Tasks',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
+          name="about"
+          options={{
+            title: 'About',
             headerBackTitle: 'Back',
           }}
         />

@@ -1242,7 +1242,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               {biometricAvailable && (
-                <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleManageBiometric}>
+                <TouchableOpacity style={styles.menuItem} onPress={handleManageBiometric}>
                   <IconSymbol
                     ios_icon_name="faceid"
                     android_material_icon_name="fingerprint"
@@ -1262,6 +1262,27 @@ export default function ProfileScreen() {
                   />
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemLast]}
+                onPress={() => router.push('/about')}
+              >
+                <IconSymbol
+                  ios_icon_name="info.circle"
+                  android_material_icon_name="info"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>About & Help</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
