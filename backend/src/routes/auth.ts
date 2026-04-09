@@ -76,7 +76,7 @@ export function register(app: App, fastify: FastifyInstance) {
               },
             },
           },
-          400: { type: 'object', properties: { error: { type: 'string' } } },
+          400: { type: 'object', properties: { error: { type: 'string' }, detail: { type: 'string' } } },
         },
       },
     },
