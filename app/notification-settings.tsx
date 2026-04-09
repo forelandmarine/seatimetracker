@@ -304,8 +304,8 @@ export default function NotificationSettingsScreen() {
                   value={schedule?.is_active || false}
                   onValueChange={handleToggleNotifications}
                   disabled={updating}
-                  trackColor={{ false: '#767577', true: colors.primary }}
-                  thumbColor={Platform.OS === 'ios' ? '#ffffff' : schedule?.is_active ? '#ffffff' : '#f4f3f4'}
+                  trackColor={{ false: colors.switchTrackOff, true: colors.switchTrackOn }}
+                  thumbColor={Platform.OS === 'ios' ? colors.switchThumbOn : schedule?.is_active ? colors.switchThumbOn : colors.switchThumbOff}
                 />
               </View>
 

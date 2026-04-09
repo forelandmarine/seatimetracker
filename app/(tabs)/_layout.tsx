@@ -113,11 +113,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Reports',
+          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
-              ios_icon_name="doc.text.fill"
-              android_material_icon_name="description"
+              ios_icon_name="person.crop.circle.fill"
+              android_material_icon_name="account-circle"
               size={24}
               color={color}
             />

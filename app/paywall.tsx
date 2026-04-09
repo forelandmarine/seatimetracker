@@ -290,6 +290,8 @@ export default function PaywallScreen() {
           style={styles.closeButton}
           onPress={handleClose}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
         >
           <IconSymbol
             ios_icon_name="xmark"
@@ -671,7 +673,7 @@ const styles = StyleSheet.create({
   redeemButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0077BE',
+    color: colors.primary,
   },
   redeemHintText: {
     fontSize: 12,

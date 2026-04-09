@@ -889,7 +889,7 @@ export default function EditSeaTimeScreen() {
               <Text style={{
                 fontSize: 20,
                 fontWeight: 'bold',
-                color: feedbackModal.type === 'success' ? colors.primary : feedbackModal.type === 'confirm' ? (isDark ? '#ffffff' : '#000000') : '#dc2626',
+                color: feedbackModal.type === 'success' ? colors.primary : feedbackModal.type === 'confirm' ? (isDark ? '#ffffff' : '#000000') : colors.error,
                 marginBottom: 12,
                 textAlign: 'center',
               }}>
@@ -924,7 +924,7 @@ export default function EditSeaTimeScreen() {
                     disabled={deleting}
                     style={{
                       flex: 1,
-                      backgroundColor: '#dc2626',
+                      backgroundColor: colors.error,
                       borderRadius: 12,
                       padding: 16,
                       alignItems: 'center',
@@ -948,7 +948,7 @@ export default function EditSeaTimeScreen() {
               ) : (
                 <TouchableOpacity
                   style={{
-                    backgroundColor: feedbackModal.type === 'success' ? colors.primary : '#dc2626',
+                    backgroundColor: feedbackModal.type === 'success' ? colors.primary : colors.error,
                     borderRadius: 12,
                     padding: 16,
                     alignItems: 'center',

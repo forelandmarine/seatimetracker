@@ -310,7 +310,7 @@ const createStyles = (isDark: boolean) =>
       marginLeft: 10,
     },
     signOutButton: {
-      backgroundColor: '#ff4444',
+      backgroundColor: colors.error,
       borderRadius: 12,
       padding: 15,
       alignItems: 'center',
@@ -496,7 +496,7 @@ const createStyles = (isDark: boolean) =>
       borderColor: isDark ? colors.border : colors.borderLight,
     },
     confirmModalConfirmButton: {
-      backgroundColor: '#ff4444',
+      backgroundColor: colors.error,
     },
     confirmModalButtonText: {
       fontSize: 16,
@@ -1411,14 +1411,14 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.confirmModalContent}>
             <Text style={[styles.confirmModalTitle, {
-              color: infoModal.type === 'error' ? '#ff4444' : infoModal.type === 'success' ? colors.primary : (isDark ? '#ffffff' : '#000000')
+              color: infoModal.type === 'error' ? colors.error : infoModal.type === 'success' ? colors.primary : (isDark ? '#ffffff' : '#000000')
             }]}>
               {infoModal.title}
             </Text>
             <Text style={styles.confirmModalMessage}>{infoModal.message}</Text>
             <TouchableOpacity
               style={[styles.confirmModalButton, styles.confirmModalConfirmButton, {
-                backgroundColor: infoModal.type === 'error' ? '#ff4444' : colors.primary,
+                backgroundColor: infoModal.type === 'error' ? colors.error : colors.primary,
                 flex: undefined,
                 width: '100%',
               }]}

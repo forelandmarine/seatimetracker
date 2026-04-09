@@ -583,7 +583,7 @@ function createStyles(isDark: boolean) {
       textAlign: 'center',
     },
     modalTitleError: {
-      color: '#dc2626',
+      color: colors.error,
     },
     modalTitleSuccess: {
       color: colors.primary,
@@ -601,7 +601,7 @@ function createStyles(isDark: boolean) {
       alignItems: 'center',
     },
     modalButtonError: {
-      backgroundColor: '#dc2626',
+      backgroundColor: colors.error,
     },
     modalButtonSuccess: {
       backgroundColor: colors.primary,

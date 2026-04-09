@@ -307,7 +307,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       marginLeft: 10,
     },
     signOutButton: {
-      backgroundColor: '#ff4444',
+      backgroundColor: colors.error,
       borderRadius: 12,
       padding: 15,
       alignItems: 'center',
@@ -494,7 +494,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       borderColor: isDark ? colors.border : colors.borderLight,
     },
     confirmModalConfirmButton: {
-      backgroundColor: '#ff4444',
+      backgroundColor: colors.error,
     },
     confirmModalButtonText: {
       fontSize: 16,

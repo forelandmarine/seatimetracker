@@ -181,7 +181,7 @@ function createStyles(isDark: boolean) {
       alignItems: 'center',
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: '#ff4444',
+      borderColor: colors.error,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -189,17 +189,17 @@ function createStyles(isDark: boolean) {
       elevation: 3,
     },
     deleteAccountButtonText: {
-      color: '#ff4444',
+      color: colors.error,
       fontSize: 16,
       fontWeight: '600',
     },
     warningBox: {
-      backgroundColor: '#ff4444' + '15',
+      backgroundColor: colors.error + '15',
       borderRadius: 10,
       padding: 14,
       marginBottom: 16,
       borderLeftWidth: 4,
-      borderLeftColor: '#ff4444',
+      borderLeftColor: colors.error,
     },
     warningText: {
       fontSize: 13,
@@ -879,7 +879,7 @@ export default function UserProfileScreen() {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { maxHeight: undefined }]}>
               <Text style={[styles.modalTitle, {
-                color: feedbackModal.type === 'error' ? '#dc2626' : feedbackModal.type === 'success' ? colors.primary : (isDark ? colors.text : colors.textLight)
+                color: feedbackModal.type === 'error' ? colors.error : feedbackModal.type === 'success' ? colors.primary : (isDark ? colors.text : colors.textLight)
               }]}>
                 {feedbackModal.title}
               </Text>
@@ -888,7 +888,7 @@ export default function UserProfileScreen() {
               </Text>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary, {
-                  backgroundColor: feedbackModal.type === 'error' ? '#dc2626' : colors.primary,
+                  backgroundColor: feedbackModal.type === 'error' ? colors.error : colors.primary,
                 }]}
                 onPress={() => {
                   const onConfirm = feedbackModal.onConfirm;
@@ -926,7 +926,7 @@ export default function UserProfileScreen() {
                   <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonPrimary, { backgroundColor: '#dc2626' }]}
+                  style={[styles.modalButton, styles.modalButtonPrimary, { backgroundColor: colors.error }]}
                   onPress={() => {
                     const onConfirm = confirmModal.onConfirm;
                     setConfirmModal(prev => ({ ...prev, visible: false }));
@@ -1134,7 +1134,7 @@ export default function UserProfileScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonPrimary, { backgroundColor: '#dc2626' }]}
+                  style={[styles.modalButton, styles.modalButtonPrimary, { backgroundColor: colors.error }]}
                   onPress={confirmDeleteAccount}
                   disabled={deletingAccount}
                 >

@@ -664,7 +664,7 @@ export default function LogbookScreen() {
       case 'pending':
         return '#FF9500';
       case 'rejected':
-        return '#FF3B30';
+        return colors.error;
       default:
         return '#8E8E93';
     }

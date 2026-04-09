@@ -155,10 +155,9 @@ const createStyles = (isDark: boolean) =>
       gap: 8,
     },
     serviceTypeButton: {
-      flex: 1,
-      minWidth: '45%',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
+      width: '48%',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
       borderRadius: 10,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
@@ -1179,7 +1178,7 @@ export default function AddSeaTimeScreen() {
               <Text style={{
                 fontSize: 20,
                 fontWeight: 'bold',
-                color: feedbackModal.type === 'success' ? colors.primary : '#dc2626',
+                color: feedbackModal.type === 'success' ? colors.primary : colors.error,
                 marginBottom: 12,
                 textAlign: 'center',
               }}>
@@ -1196,7 +1195,7 @@ export default function AddSeaTimeScreen() {
               </Text>
               <TouchableOpacity
                 style={{
-                  backgroundColor: feedbackModal.type === 'success' ? colors.primary : '#dc2626',
+                  backgroundColor: feedbackModal.type === 'success' ? colors.primary : colors.error,
                   borderRadius: 12,
                   padding: 16,
                   alignItems: 'center',

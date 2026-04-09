@@ -585,6 +585,19 @@ export default function SeaTimeScreen() {
                     <Text style={styles.locationSectionTitle}>Position</Text>
                     <Text style={styles.vesselLocation}>Loading location...</Text>
                   </View>
+                ) : locationError ? (
+                  <View style={styles.locationSection}>
+                    <Text style={styles.locationSectionTitle}>Position</Text>
+                    <View style={styles.locationErrorBanner}>
+                      <IconSymbol
+                        ios_icon_name="exclamationmark.triangle.fill"
+                        android_material_icon_name="warning"
+                        size={16}
+                        color={colors.warning}
+                      />
+                      <Text style={styles.locationErrorText}>{locationError}</Text>
+                    </View>
+                  </View>
                 ) : activeVesselLocation && (activeVesselLocation.latitude !== null || activeVesselLocation.longitude !== null) ? (
                   (() => {
                     const dmsLocation = formatLocationDMS(activeVesselLocation.latitude, activeVesselLocation.longitude);
@@ -1355,6 +1368,23 @@ function createStyles(isDark: boolean) {
       fontSize: 12,
       color: isDark ? colors.text : colors.textLight,
       fontWeight: '600',
+    },
+    locationErrorBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+      padding: 12,
+      backgroundColor: colors.warning + '15',
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.warning,
+    },
+    locationErrorText: {
+      flex: 1,
+      fontSize: 13,
+      color: isDark ? colors.text : colors.textLight,
+      fontWeight: '500',
     },
     autoFillBanner: {
       flexDirection: 'row',
