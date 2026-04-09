@@ -4,6 +4,54 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
+import { fetchVesselAISDataWithFallback } from "./ais.js";
+
+// Trigger an immediate AIS check for a vessel and store the result.
+// Used on activation to populate position data right away rather than waiting
+// for the scheduler's next iteration.
+async function fetchAndStoreInitialAISCheck(
+  app: App,
+  vesselId: string,
+  mmsi: string,
+  userId: string
+): Promise<void> {
+  try {
+    const { data: ais_data, apiSource } = await fetchVesselAISDataWithFallback(
+      mmsi,
+      app.logger,
+      vesselId,
+      app,
+      userId,
+      true
+    );
+
+    if (ais_data.error || ais_data.latitude === null || ais_data.longitude === null) {
+      app.logger.warn(
+        { vesselId, mmsi, error: ais_data.error },
+        'Initial AIS fetch failed or returned no position'
+      );
+      return;
+    }
+
+    await app.db.insert(schema.ais_checks).values({
+      user_id: userId,
+      vessel_id: vesselId,
+      check_time: new Date(),
+      is_moving: ais_data.is_moving,
+      speed_knots: ais_data.speed_knots !== null ? String(ais_data.speed_knots) : null,
+      latitude: String(ais_data.latitude),
+      longitude: String(ais_data.longitude),
+      api_source: apiSource,
+    });
+
+    app.logger.info(
+      { vesselId, mmsi, lat: ais_data.latitude, lng: ais_data.longitude },
+      'Initial AIS check stored on vessel activation'
+    );
+  } catch (err) {
+    app.logger.error({ err, vesselId, mmsi }, 'Failed to fetch initial AIS check');
+  }
+}
 
 // Helper function to ensure a scheduled task exists for a vessel
 async function ensureScheduledTask(app: App, vesselId: string, userId: string): Promise<void> {
@@ -629,6 +677,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Create scheduled task for activated vessel
     await ensureScheduledTask(app, activated.id, userId);
+
+    // Fetch initial AIS position immediately so user sees data right after activation
+    await fetchAndStoreInitialAISCheck(app, activated.id, activated.mmsi, userId);
 
     return reply.code(200).send(transformVesselForResponse(activated));
   });
