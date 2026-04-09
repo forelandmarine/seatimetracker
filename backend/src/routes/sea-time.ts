@@ -1571,14 +1571,17 @@ export function register(app: App, fastify: FastifyInstance) {
         properties: {
           vessel_id: { type: 'string', description: 'UUID of the vessel' },
           start_time: { type: 'string', description: 'ISO 8601 start time' },
-          end_time: { type: 'string', description: 'ISO 8601 end time (optional)' },
-          sea_days: { type: 'number', description: 'Number of sea days (default: 1)' },
-          service_type: { type: 'string', description: 'Service type (default: actual_sea_service)' },
-          notes: { type: 'string', description: 'Optional notes' },
-          start_latitude: { type: 'number', description: 'Start position latitude' },
-          start_longitude: { type: 'number', description: 'Start position longitude' },
-          end_latitude: { type: 'number', description: 'End position latitude' },
-          end_longitude: { type: 'number', description: 'End position longitude' },
+          end_time: { type: ['string', 'null'], description: 'ISO 8601 end time (optional)' },
+          sea_days: { type: ['number', 'null'], description: 'Number of sea days (default: 1)' },
+          service_type: { type: ['string', 'null'], description: 'Service type (default: actual_sea_service)' },
+          notes: { type: ['string', 'null'], description: 'Optional notes' },
+          start_latitude: { type: ['number', 'null'], description: 'Start position latitude' },
+          start_longitude: { type: ['number', 'null'], description: 'Start position longitude' },
+          end_latitude: { type: ['number', 'null'], description: 'End position latitude' },
+          end_longitude: { type: ['number', 'null'], description: 'End position longitude' },
+          from_port: { type: ['string', 'null'] },
+          to_port: { type: ['string', 'null'] },
+          cargo_type: { type: ['string', 'null'] },
         },
       },
       response: {
@@ -1619,7 +1622,27 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { vessel_id, start_time, end_time, sea_days = 1, service_type, notes, start_latitude, start_longitude, end_latitude, end_longitude } = request.body;
+    const {
+      vessel_id,
+      start_time,
+      end_time: rawEndTime,
+      sea_days: rawSeaDays,
+      service_type: rawServiceType,
+      notes: rawNotes,
+      start_latitude: rawStartLat,
+      start_longitude: rawStartLng,
+      end_latitude: rawEndLat,
+      end_longitude: rawEndLng,
+    } = request.body as any;
+    // Coerce null → undefined for downstream code that uses ?? defaults
+    const end_time = rawEndTime ?? undefined;
+    const sea_days = rawSeaDays ?? 1;
+    const service_type = rawServiceType ?? undefined;
+    const notes = rawNotes ?? undefined;
+    const start_latitude = rawStartLat ?? undefined;
+    const start_longitude = rawStartLng ?? undefined;
+    const end_latitude = rawEndLat ?? undefined;
+    const end_longitude = rawEndLng ?? undefined;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
