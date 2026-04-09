@@ -112,7 +112,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </View>
           )}
 
-          {__DEV__ && this.state.error && (
+          {this.state.error && (
             <ScrollView style={themedStyles.errorDetails}>
               <Text style={themedStyles.errorTitle}>🔍 Debug Info (Dev Only):</Text>
 
