@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex, date } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const vessels = pgTable('vessels', {
@@ -174,4 +174,24 @@ export const ais_query_timestampsRelations = relations(ais_query_timestamps, ({ 
     fields: [ais_query_timestamps.vessel_id],
     references: [vessels.id],
   }),
+}));
+
+// Maritime certificates: STCW, ENG1, GMDSS, ECDIS, etc.
+// Tracks expiry dates so we can send reminders.
+export const certificates = pgTable('certificates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  certificate_type: text('certificate_type').notNull(), // 'stcw_basic_safety', 'eng1', 'gmdss_goc', etc.
+  certificate_number: text('certificate_number'),
+  issuing_body: text('issuing_body'),
+  issued_date: date('issued_date'),
+  expiry_date: date('expiry_date'),
+  notes: text('notes'),
+  image_url: text('image_url'),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index('certificates_user_id_idx').on(table.user_id),
+  expiryDateIdx: index('certificates_expiry_date_idx').on(table.expiry_date),
+  typeIdx: index('certificates_certificate_type_idx').on(table.certificate_type),
 }));

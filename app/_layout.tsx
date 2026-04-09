@@ -119,6 +119,20 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="certificates"
+          options={{
+            title: 'Certificates',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
+          name="certificate-edit"
+          options={{
+            title: 'Certificate',
+            headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
           name="mca-requirements"
           options={{
             title: 'MCA Requirements',

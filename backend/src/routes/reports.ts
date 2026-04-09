@@ -468,16 +468,155 @@ export function register(app: App, fastify: FastifyInstance) {
     });
   });
 
-  // GET /api/reports/pdf - Generate PDF report with date filtering
-  fastify.get<{ Querystring: { startDate?: string; endDate?: string } }>('/api/reports/pdf', {
+  // GET /api/reports/xlsx - Generate Excel report
+  fastify.get<{ Querystring: { startDate?: string; endDate?: string } }>('/api/reports/xlsx', {
     schema: {
-      description: 'Generate PDF report of sea time entries with optional date filtering (requires authentication)',
+      description: 'Generate Excel (.xlsx) sea time report (requires authentication)',
       tags: ['reports'],
       querystring: {
         type: 'object',
         properties: {
           startDate: { type: 'string', description: 'ISO 8601 date string' },
           endDate: { type: 'string', description: 'ISO 8601 date string' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
+    // Check subscription
+    const users = await app.db.select().from(authSchema.user).where(eq(authSchema.user.id, userId));
+    if (users.length === 0) return reply.code(401).send({ error: 'User not found' });
+    const user = users[0];
+    const status = (user as any).subscription_status || 'inactive';
+    const expires = (user as any).subscription_expires_at;
+    let active = status === 'active' || status === 'trial';
+    if (active && expires) {
+      try {
+        const exp = new Date(expires);
+        if (isNaN(exp.getTime()) || exp <= new Date()) active = false;
+      } catch {
+        active = false;
+      }
+    }
+    if (!active) {
+      return reply.code(403).send({ error: 'Active subscription required to generate reports' });
+    }
+
+    const { startDate, endDate } = request.query;
+
+    let entries = await app.db.query.sea_time_entries.findMany({
+      with: { vessel: true },
+      where: eq(schema.sea_time_entries.user_id, userId),
+    });
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null;
+      const end = endDate ? new Date(endDate) : null;
+      entries = entries.filter((e) => {
+        const d = new Date(e.start_time);
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      });
+    }
+    entries = entries
+      .filter((e) => e.status === 'confirmed')
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+    try {
+      // Lazy import — package may not be installed in dev
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.default.Workbook();
+      workbook.creator = 'SeaTime Tracker by Foreland Marine';
+      workbook.created = new Date();
+
+      const sheet = workbook.addWorksheet('Sea Time Records');
+      sheet.columns = [
+        { header: 'Start Date', key: 'start', width: 12 },
+        { header: 'End Date', key: 'end', width: 12 },
+        { header: 'Vessel', key: 'vessel', width: 20 },
+        { header: 'MMSI', key: 'mmsi', width: 12 },
+        { header: 'Flag', key: 'flag', width: 8 },
+        { header: 'Type', key: 'type', width: 14 },
+        { header: 'Length (m)', key: 'length', width: 10 },
+        { header: 'Gross Tonnes', key: 'gt', width: 12 },
+        { header: 'Service Type', key: 'serviceType', width: 18 },
+        { header: 'Sea Days', key: 'days', width: 10 },
+        { header: 'Duration (h)', key: 'hours', width: 12 },
+        { header: 'Notes', key: 'notes', width: 30 },
+      ];
+
+      // Header style
+      sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0077BE' },
+      };
+      sheet.getRow(1).alignment = { vertical: 'middle' };
+      sheet.getRow(1).height = 22;
+
+      entries.forEach((e: any) => {
+        sheet.addRow({
+          start: new Date(e.start_time).toLocaleDateString('en-GB'),
+          end: e.end_time ? new Date(e.end_time).toLocaleDateString('en-GB') : '',
+          vessel: e.vessel?.vessel_name || '',
+          mmsi: e.vessel?.mmsi || '',
+          flag: e.vessel?.flag || '',
+          type: e.vessel?.type || '',
+          length: e.vessel?.length_metres || '',
+          gt: e.vessel?.gross_tonnes || '',
+          serviceType: e.service_type || '',
+          days: e.sea_days || 0,
+          hours: e.duration_hours || '',
+          notes: e.notes || '',
+        });
+      });
+
+      // Totals row
+      const totalDays = entries.reduce((sum: number, e: any) => sum + (e.sea_days || 0), 0);
+      sheet.addRow({});
+      const totalRow = sheet.addRow({ vessel: 'TOTAL', days: totalDays });
+      totalRow.font = { bold: true };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      reply.header(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      reply.header(
+        'Content-Disposition',
+        `attachment; filename="seatime_report_${new Date().toISOString().split('T')[0]}.xlsx"`
+      );
+      return reply.send(Buffer.from(buffer));
+    } catch (err: any) {
+      app.logger.error({ err }, 'Failed to generate Excel report');
+      return reply.code(500).send({
+        error: 'Failed to generate Excel report',
+        detail: err?.message || String(err),
+      });
+    }
+  });
+
+  // GET /api/reports/pdf - Generate PDF report with date filtering
+  fastify.get<{ Querystring: { startDate?: string; endDate?: string; template?: string } }>('/api/reports/pdf', {
+    schema: {
+      description: 'Generate PDF report of sea time entries (requires authentication)',
+      tags: ['reports'],
+      querystring: {
+        type: 'object',
+        properties: {
+          startDate: { type: 'string', description: 'ISO 8601 date string' },
+          endDate: { type: 'string', description: 'ISO 8601 date string' },
+          template: {
+            type: 'string',
+            enum: ['mca', 'uscg', 'mnz', 'amsa', 'generic'],
+            description: 'Certification body template (default: mca)',
+          },
         },
       },
       response: {
@@ -529,9 +668,41 @@ export function register(app: App, fastify: FastifyInstance) {
       });
     }
 
-    const { startDate, endDate } = request.query;
+    const { startDate, endDate, template = 'mca' } = request.query;
 
-    app.logger.info({ userId, startDate, endDate }, 'Generating PDF report for user');
+    // Template configuration: each certification body has a slightly different
+    // header / declaration. The schema mostly stays the same but the title and
+    // signed-by text differ.
+    const TEMPLATES: Record<string, { title: string; bodyName: string; declaration: string }> = {
+      mca: {
+        title: 'SEA TIME TESTIMONIAL',
+        bodyName: 'Maritime and Coastguard Agency (MCA)',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with MCA requirements.',
+      },
+      uscg: {
+        title: 'SEA SERVICE LETTER',
+        bodyName: 'United States Coast Guard (USCG)',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this letter in accordance with USCG requirements (46 CFR).',
+      },
+      mnz: {
+        title: 'SEA SERVICE TESTIMONIAL',
+        bodyName: 'Maritime New Zealand (MNZ)',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with Maritime New Zealand requirements.',
+      },
+      amsa: {
+        title: 'SEA SERVICE TESTIMONIAL',
+        bodyName: 'Australian Maritime Safety Authority (AMSA)',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with AMSA requirements.',
+      },
+      generic: {
+        title: 'SEA TIME REPORT',
+        bodyName: 'Maritime Authority',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this report.',
+      },
+    };
+    const tpl = TEMPLATES[template] || TEMPLATES.mca;
+
+    app.logger.info({ userId, startDate, endDate, template }, 'Generating PDF report for user');
 
     // Fetch user profile data
     const userProfile = await app.db.query.user.findFirst({
@@ -662,7 +833,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Section label
     doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(STEEL_BLUE);
-    doc.text('SEA TIME REPORT', ML, 82, { characterSpacing: 2.5 });
+    doc.text(tpl.title, ML, 82, { characterSpacing: 2.5 });
 
     // Accent line
     doc.strokeColor(STEEL_BLUE).lineWidth(0.75);
@@ -861,6 +1032,43 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.text(def.desc, ML, doc.y, { width: CW });
       doc.moveDown(0.4);
     });
+
+    // ============================================================
+    // DECLARATION block — required for testimonial submissions
+    // ============================================================
+    ensureSpace(160);
+    doc.moveDown(0.6);
+    doc.strokeColor(BORDER).lineWidth(0.5);
+    doc.moveTo(ML, doc.y).lineTo(PW - MR, doc.y).stroke();
+    doc.y += 12;
+
+    doc.font('NunitoSans-SemiBold').fontSize(8).fillColor(STEEL_BLUE);
+    doc.text('DECLARATION', ML, doc.y, { characterSpacing: 2 });
+    doc.moveDown(0.4);
+
+    doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY);
+    doc.text(tpl.declaration, ML, doc.y, { width: CW, lineGap: 3 });
+    doc.moveDown(1);
+
+    doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+    doc.text(`Submitted to: ${tpl.bodyName}`, ML, doc.y);
+    doc.moveDown(1.5);
+
+    // Signature line + name + date
+    const sigLineY = doc.y;
+    doc.strokeColor(DEEP_NAVY).lineWidth(0.5);
+    doc.moveTo(ML, sigLineY).lineTo(ML + 220, sigLineY).stroke();
+    doc.moveTo(ML + 260, sigLineY).lineTo(ML + 380, sigLineY).stroke();
+
+    doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+    doc.text('Signature', ML, sigLineY + 6);
+    doc.text('Date', ML + 260, sigLineY + 6);
+
+    doc.y = sigLineY + 30;
+    doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+    doc.text(userProfile.name || '', ML, doc.y);
+    doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+    doc.text('Name (please print)', ML, doc.y + 12);
 
     // ============================================================
     // FOOTER (on every page) — must happen BEFORE doc.end()

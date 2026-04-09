@@ -864,6 +864,50 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDownloadXLSX = async () => {
+    console.log('User tapped Download Excel Report');
+    setDownloadingCSV(true); // reuse loading state
+    try {
+      const { BACKEND_URL } = await import('@/utils/api');
+      const { getToken } = await import('@/utils/tokenStorage');
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/reports/xlsx`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed to download Excel report (${res.status})`);
+
+      if (Platform.OS === 'web') {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showInfo('Success', 'Excel report downloaded successfully', 'success');
+      } else {
+        const arrayBuffer = await res.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          showInfo('Success', 'Excel report saved to device', 'success');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to download Excel report:', error);
+      showInfo('Error', 'Failed to download Excel report. Please try again.', 'error');
+    } finally {
+      setDownloadingCSV(false);
+    }
+  };
+
   const handleManageBiometric = async () => {
     console.log('User tapped Manage Biometric Authentication');
     
@@ -1074,6 +1118,26 @@ export default function ProfileScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.reportButton}
+                  onPress={handleDownloadXLSX}
+                  disabled={downloadingCSV}
+                >
+                  {downloadingCSV ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <>
+                      <IconSymbol
+                        ios_icon_name="tablecells.fill"
+                        android_material_icon_name="table-chart"
+                        size={24}
+                        color="#ffffff"
+                      />
+                      <Text style={styles.reportButtonText}>Download Excel Report</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -1220,8 +1284,8 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={biometricAvailable ? styles.menuItem : [styles.menuItem, styles.menuItemLast]} 
+              <TouchableOpacity
+                style={styles.menuItem}
                 onPress={() => router.push('/notification-settings')}
               >
                 <IconSymbol
@@ -1232,6 +1296,27 @@ export default function ProfileScreen() {
                   style={styles.menuItemIcon}
                 />
                 <Text style={styles.menuItemText}>Notification Settings</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/certificates')}
+              >
+                <IconSymbol
+                  ios_icon_name="doc.text.fill"
+                  android_material_icon_name="article"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Certificates</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

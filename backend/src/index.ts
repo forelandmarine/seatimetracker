@@ -35,6 +35,7 @@ import { register as registerNotificationsRoutes } from './routes/notifications.
 import { register as registerTrackingRoutes } from './routes/tracking.js';
 import { register as registerSubscriptionRoutes } from './routes/subscription.js';
 import { register as registerUsersRoutes } from './routes/users.js';
+import { register as registerCertificatesRoutes } from './routes/certificates.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
@@ -69,6 +70,7 @@ registerNotificationsRoutes(app, app.fastify);
 registerTrackingRoutes(app, app.fastify);
 registerSubscriptionRoutes(app, app.fastify);
 registerUsersRoutes(app, app.fastify);
+registerCertificatesRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
 app.fastify.get('/api/health', async () => ({ status: 'ok' }));
