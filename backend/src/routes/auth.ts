@@ -202,10 +202,17 @@ export function register(app: App, fastify: FastifyInstance) {
             'Failed to create notification schedule during signup (non-critical)'
           );
         });
-      } catch (error) {
-        app.logger.error({ err: error, email }, 'Registration error');
+      } catch (error: any) {
+        const errMsg = error?.message || String(error);
+        const errStack = error?.stack || '';
+        const errCause = error?.cause ? String(error.cause) : '';
+        app.logger.error(
+          { err: error, errMsg, errStack, errCause, email },
+          'Registration error: ' + errMsg
+        );
         return reply.code(400).send({
           error: 'Failed to register user',
+          detail: errMsg,
         });
       }
     }
