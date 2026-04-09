@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Kanselahin",
+    "save": "I-save",
+    "delete": "Tanggalin",
+    "edit": "I-edit",
+    "back": "Bumalik",
+    "loading": "Naglo-load...",
+    "error": "Error",
+    "success": "Tagumpay",
+    "retry": "Subukan muli"
+  },
+  "tabs": {
+    "seaTime": "Sea Time",
+    "logbook": "Logbook",
+    "review": "Suriin",
+    "profile": "Profile"
+  },
+  "auth": {
+    "signIn": "Mag-sign in",
+    "signUp": "Mag-sign up",
+    "signOut": "Mag-sign out",
+    "email": "Email",
+    "password": "Password",
+    "name": "Pangalan",
+    "forgotPassword": "Nakalimutan ang password?",
+    "createAccount": "Gumawa ng account",
+    "alreadyHaveAccount": "Mayroon ka nang account?",
+    "needAccount": "Kailangan ng account?",
+    "signInWithApple": "Mag-sign in gamit ang Apple",
+    "signInWithFaceId": "Mag-sign in gamit ang Face ID",
+    "signInWithBiometrics": "Mag-sign in gamit ang biometrics"
+  },
+  "onboarding": {
+    "skip": "Laktawan",
+    "next": "Susunod",
+    "getStarted": "Magsimula",
+    "slide1": {
+      "label": "AWTOMATIKONG PAGSUBAYBAY",
+      "title": "Ang iyong sea time, awtomatiko.",
+      "body": "Idagdag ang iyong barko sa pamamagitan ng MMSI at hayaang awtomatikong i-record ng SeaTime Tracker ang iyong sea service gamit ang AIS data."
+    },
+    "slide2": {
+      "label": "MGA REPORT NA SUMUSUNOD SA MCA",
+      "title": "Mga report na tinatanggap ng MCA.",
+      "body": "Gumawa ng sea service testimonials sa eksaktong format na kailangan para sa CoC applications. PDF at CSV exports, handa nang isumite."
+    },
+    "slide3": {
+      "label": "GINAWA NG MGA MARINO",
+      "title": "Mula sa team sa likod ng Lightship.",
+      "body": "Ang SeaTime Tracker ay ginawa ng Foreland Marine — ang parehong team sa likod ng Lightship ISM, ang fleet management platform na pinagkakatiwalaan ng mga yacht manager sa buong mundo."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Iyong AIS Tracking Companion",
+    "noVesselsTitle": "Wala pang Barko",
+    "noVesselsSubtitle": "Idagdag ang iyong unang barko upang simulan ang pagsubaybay sa sea time",
+    "addVessel": "Magdagdag ng barko",
+    "tryDemoVessel": "Subukan gamit ang demo na barko",
+    "activeVessel": "Aktibong barko",
+    "historicVessels": "Mga nakaraang barko",
+    "checkNow": "Tingnan ngayon",
+    "position": "Posisyon",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "loadingLocation": "Naglo-load ng lokasyon..."
+  },
+  "paywall": {
+    "subscribeNow": "Mag-subscribe ngayon",
+    "restorePurchases": "Ibalik ang mga pagbili",
+    "redeemCode": "I-redeem ang code",
+    "monthly": "Buwanan",
+    "annual": "Taunan",
+    "perMonth": "kada buwan",
+    "perYear": "kada taon",
+    "bestValue": "PINAKAMAGANDANG HALAGA",
+    "saveSeventeen": "Makatipid ng ~17%",
+    "premiumFeatures": "Mga Premium Feature",
+    "feature1": "Awtomatikong vessel tracking",
+    "feature2": "Madaling pag-record ng sea time",
+    "feature3": "Mga MCA-compliant na report",
+    "feature4": "Cloud sync at backup",
+    "feature5": "Mga matalinong notification",
+    "termsAutoRenew": "Awtomatikong magre-renew ang subscription maliban kung kanselahin",
+    "termsCancelAnytime": "Kanselahin anumang oras sa App Store settings",
+    "termsCharge": "Sisingilin sa Apple ID sa pagkumpirma"
+  },
+  "settings": {
+    "language": "Wika",
+    "notifications": "Mga setting ng notification",
+    "certificates": "Mga sertipiko",
+    "manualTracking": "Manu-manong GPS tracking",
+    "signature": "Lagda para sa mga report",
+    "referFriend": "Mag-refer ng kapitan",
+    "about": "Tungkol & tulong"
+  }
+}

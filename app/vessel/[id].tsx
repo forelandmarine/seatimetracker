@@ -732,6 +732,58 @@ export default function VesselDetailScreen() {
           ) : !checkingAIS ? (
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
           ) : null}
+
+          {/* Manual GPS fallback — surfaced contextually when AIS is missing or stale */}
+          {(() => {
+            const aisIsStale = (() => {
+              if (!aisData?.timestamp) return true;
+              try {
+                const ageHours = (Date.now() - new Date(aisData.timestamp).getTime()) / (1000 * 60 * 60);
+                return ageHours > 6;
+              } catch {
+                return true;
+              }
+            })();
+            if (!aisIsStale) return null;
+            return (
+              <TouchableOpacity
+                onPress={() => router.push('/manual-tracking')}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.primary + '12',
+                  borderWidth: 1,
+                  borderColor: colors.primary + '30',
+                }}
+              >
+                <IconSymbol
+                  ios_icon_name="location.fill"
+                  android_material_icon_name="my-location"
+                  size={20}
+                  color={colors.primary}
+                  style={{ marginRight: 10 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                    Track manually with phone GPS
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                    {aisData ? 'AIS data is stale — fall back to manual tracking' : 'No AIS coverage — use phone GPS instead'}
+                  </Text>
+                </View>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="chevron-right"
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            );
+          })()}
         </View>
 
         {/* Sea Time Summary Card */}

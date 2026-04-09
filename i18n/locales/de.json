@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "loading": "Wird geladen...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "retry": "Erneut versuchen"
+  },
+  "tabs": {
+    "seaTime": "Seefahrtszeit",
+    "logbook": "Logbuch",
+    "review": "Prüfen",
+    "profile": "Profil"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signOut": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "name": "Name",
+    "forgotPassword": "Passwort vergessen?",
+    "createAccount": "Konto erstellen",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+    "needAccount": "Konto benötigt?",
+    "signInWithApple": "Mit Apple anmelden",
+    "signInWithFaceId": "Mit Face ID anmelden",
+    "signInWithBiometrics": "Mit Biometrie anmelden"
+  },
+  "onboarding": {
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "getStarted": "Loslegen",
+    "slide1": {
+      "label": "AUTOMATISCHE ERFASSUNG",
+      "title": "Ihre Seefahrtszeit, automatisch.",
+      "body": "Fügen Sie Ihr Schiff per MMSI hinzu und lassen Sie SeaTime Tracker Ihre Seefahrtszeit automatisch über AIS-Daten erfassen. Schluss mit handgeschriebenen Heften."
+    },
+    "slide2": {
+      "label": "MCA-KONFORME BERICHTE",
+      "title": "Berichte, die die MCA akzeptiert.",
+      "body": "Erstellen Sie Bescheinigungen über Seefahrtszeit im exakt geforderten Format für CoC-Anträge. PDF- und CSV-Exporte, einreichbereit."
+    },
+    "slide3": {
+      "label": "VON SEELEUTEN ENTWICKELT",
+      "title": "Vom Team hinter Lightship.",
+      "body": "SeaTime Tracker wurde von Foreland Marine entwickelt — demselben Team hinter Lightship ISM, der weltweit von Yachtmanagern genutzten Flottenmanagement-Plattform."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Ihr AIS-Tracking-Begleiter",
+    "noVesselsTitle": "Noch keine Schiffe",
+    "noVesselsSubtitle": "Fügen Sie Ihr erstes Schiff hinzu, um die Erfassung zu starten",
+    "addVessel": "Schiff hinzufügen",
+    "tryDemoVessel": "Mit Demo-Schiff testen",
+    "activeVessel": "Aktives Schiff",
+    "historicVessels": "Frühere Schiffe",
+    "checkNow": "Jetzt prüfen",
+    "position": "Position",
+    "latitude": "Breite",
+    "longitude": "Länge",
+    "loadingLocation": "Position wird geladen..."
+  },
+  "paywall": {
+    "subscribeNow": "Jetzt abonnieren",
+    "restorePurchases": "Käufe wiederherstellen",
+    "redeemCode": "Code einlösen",
+    "monthly": "Monatlich",
+    "annual": "Jährlich",
+    "perMonth": "pro Monat",
+    "perYear": "pro Jahr",
+    "bestValue": "BESTES ANGEBOT",
+    "saveSeventeen": "Sparen Sie ~17%",
+    "premiumFeatures": "Premium-Funktionen",
+    "feature1": "Automatische Schiffsverfolgung",
+    "feature2": "Einfache Erfassung der Seefahrtszeit",
+    "feature3": "MCA-konforme Berichte",
+    "feature4": "Cloud-Synchronisierung & Backup",
+    "feature5": "Intelligente Benachrichtigungen",
+    "termsAutoRenew": "Das Abonnement verlängert sich automatisch, sofern nicht gekündigt",
+    "termsCancelAnytime": "Jederzeit in den App Store-Einstellungen kündbar",
+    "termsCharge": "Zahlung wird bei Bestätigung über die Apple-ID abgebucht"
+  },
+  "settings": {
+    "language": "Sprache",
+    "notifications": "Benachrichtigungseinstellungen",
+    "certificates": "Zertifikate",
+    "manualTracking": "Manuelle GPS-Verfolgung",
+    "signature": "Signatur für Berichte",
+    "referFriend": "Kapitän empfehlen",
+    "about": "Über & Hilfe"
+  }
+}

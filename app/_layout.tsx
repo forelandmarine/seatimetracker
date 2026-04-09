@@ -102,8 +102,15 @@ function RootLayoutContent() {
         <Stack.Screen
           name="scheduled-tasks"
           options={{
-            title: 'Scheduled Tasks',
+            title: 'AIS Check Schedule',
             headerBackTitle: 'Back',
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            headerBackTitle: 'Profile',
           }}
         />
         <Stack.Screen

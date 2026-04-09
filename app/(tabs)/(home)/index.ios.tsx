@@ -3,6 +3,13 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
+  listCertificates,
+  daysUntilExpiry,
+  expiryStatus,
+  CERTIFICATE_TYPE_LABELS,
+  type Certificate,
+} from '@/utils/certificatesApi';
+import {
   View,
   Text,
   StyleSheet,
@@ -79,6 +86,7 @@ export default function SeaTimeScreen() {
   const [newEngineType, setNewEngineType] = useState('');
   const [activeVesselLocation, setActiveVesselLocation] = useState<VesselLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [nextExpiringCert, setNextExpiringCert] = useState<Certificate | null>(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark, insets.top);
@@ -143,9 +151,26 @@ export default function SeaTimeScreen() {
     }
   }, []);
 
+  const loadCertificates = useCallback(async () => {
+    try {
+      const certs = await listCertificates();
+      // Pick the one closest to expiry that isn't already expired by more than 30 days.
+      const candidates = certs
+        .filter((c) => c.expiry_date)
+        .map((c) => ({ cert: c, days: daysUntilExpiry(c) ?? Number.POSITIVE_INFINITY }))
+        .filter((c) => c.days >= -30) // hide deeply-expired certs
+        .sort((a, b) => a.days - b.days);
+      setNextExpiringCert(candidates[0]?.cert || null);
+    } catch (err) {
+      console.error('[Home] Failed to load certificates (non-critical):', err);
+      setNextExpiringCert(null);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       console.log('[Home] Loading vessels (iOS)...');
+      void loadCertificates();
       const vesselsData = await seaTimeApi.getVessels();
       console.log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
       
@@ -193,7 +218,7 @@ export default function SeaTimeScreen() {
       console.log('[Home] Load data complete, setting loading to false');
       setLoading(false);
     }
-  }, [loadActiveVesselLocation]);
+  }, [loadActiveVesselLocation, loadCertificates]);
 
   // Refresh data whenever the screen comes into focus (single load trigger)
   useFocusEffect(
@@ -628,6 +653,75 @@ export default function SeaTimeScreen() {
             </View>
           )}
         </View>
+
+        {/* Certificates Card — surfaces next-expiring cert */}
+        {nextExpiringCert && (() => {
+          const days = daysUntilExpiry(nextExpiringCert);
+          const status = expiryStatus(nextExpiringCert);
+          const label = CERTIFICATE_TYPE_LABELS[nextExpiringCert.certificate_type] || nextExpiringCert.certificate_type;
+          let bg: string;
+          let accent: string;
+          let icon: string;
+          let summary: string;
+          if (status === 'expired') {
+            bg = colors.error + '15';
+            accent = colors.error;
+            icon = 'exclamationmark.triangle.fill';
+            summary = days !== null && days < 0 ? `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago` : 'Expired';
+          } else if (status === 'soon') {
+            bg = colors.warning + '15';
+            accent = colors.warning;
+            icon = 'exclamationmark.circle.fill';
+            summary = `Expires in ${days} day${days === 1 ? '' : 's'}`;
+          } else {
+            bg = colors.primary + '12';
+            accent = colors.primary;
+            icon = 'doc.text.fill';
+            summary = `Expires in ${days} day${days === 1 ? '' : 's'}`;
+          }
+          return (
+            <View style={styles.section}>
+              <TouchableOpacity
+                onPress={() => router.push('/certificates')}
+                activeOpacity={0.7}
+                style={{
+                  backgroundColor: bg,
+                  borderRadius: 12,
+                  padding: 14,
+                  borderLeftWidth: 4,
+                  borderLeftColor: accent,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <IconSymbol
+                  ios_icon_name={icon as any}
+                  android_material_icon_name="article"
+                  size={24}
+                  color={accent}
+                  style={{ marginRight: 12 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: accent, marginBottom: 2 }}>
+                    NEXT CERTIFICATE EXPIRING
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? colors.text : colors.textLight }}>
+                    {label}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 2 }}>
+                    {summary}
+                  </Text>
+                </View>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="chevron-right"
+                  size={20}
+                  color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                />
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
 
         {/* Historic Vessels Section - Always show */}
         <View style={styles.section}>

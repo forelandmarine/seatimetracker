@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "U redu",
+    "cancel": "Odustani",
+    "save": "Spremi",
+    "delete": "Obriši",
+    "edit": "Uredi",
+    "back": "Natrag",
+    "loading": "Učitavanje...",
+    "error": "Greška",
+    "success": "Uspjeh",
+    "retry": "Pokušaj ponovno"
+  },
+  "tabs": {
+    "seaTime": "Pomorski staž",
+    "logbook": "Brodski dnevnik",
+    "review": "Pregled",
+    "profile": "Profil"
+  },
+  "auth": {
+    "signIn": "Prijavi se",
+    "signUp": "Registriraj se",
+    "signOut": "Odjavi se",
+    "email": "E-pošta",
+    "password": "Lozinka",
+    "name": "Ime",
+    "forgotPassword": "Zaboravljena lozinka?",
+    "createAccount": "Stvori račun",
+    "alreadyHaveAccount": "Već imate račun?",
+    "needAccount": "Trebate račun?",
+    "signInWithApple": "Prijavi se putem Applea",
+    "signInWithFaceId": "Prijavi se putem Face ID-a",
+    "signInWithBiometrics": "Prijavi se biometrijom"
+  },
+  "onboarding": {
+    "skip": "Preskoči",
+    "next": "Dalje",
+    "getStarted": "Započni",
+    "slide1": {
+      "label": "AUTOMATSKO PRAĆENJE",
+      "title": "Vaš pomorski staž, na autopilotu.",
+      "body": "Dodajte svoj brod putem MMSI-ja i pustite SeaTime Tracker da automatski bilježi vašu plovidbu pomoću AIS podataka."
+    },
+    "slide2": {
+      "label": "IZVJEŠĆA U SKLADU S MCA",
+      "title": "Izvješća koja MCA prihvaća.",
+      "body": "Generirajte potvrde o pomorskom stažu u točnom formatu potrebnom za zahtjeve za CoC. PDF i CSV izvozi spremni za podnošenje."
+    },
+    "slide3": {
+      "label": "IZRAĐENO OD POMORACA",
+      "title": "Od tima iza Lightshipa.",
+      "body": "SeaTime Tracker razvio je Foreland Marine — isti tim koji stoji iza Lightship ISM-a, platforme za upravljanje flotom kojoj vjeruju upravitelji jahti diljem svijeta."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Vaš pratitelj za AIS praćenje",
+    "noVesselsTitle": "Još nema brodova",
+    "noVesselsSubtitle": "Dodajte svoj prvi brod kako biste počeli pratiti pomorski staž",
+    "addVessel": "Dodaj brod",
+    "tryDemoVessel": "Isprobaj s demo brodom",
+    "activeVessel": "Aktivni brod",
+    "historicVessels": "Prijašnji brodovi",
+    "checkNow": "Provjeri sada",
+    "position": "Pozicija",
+    "latitude": "Geografska širina",
+    "longitude": "Geografska dužina",
+    "loadingLocation": "Učitavanje pozicije..."
+  },
+  "paywall": {
+    "subscribeNow": "Pretplati se odmah",
+    "restorePurchases": "Vrati kupnje",
+    "redeemCode": "Iskoristi kod",
+    "monthly": "Mjesečno",
+    "annual": "Godišnje",
+    "perMonth": "mjesečno",
+    "perYear": "godišnje",
+    "bestValue": "NAJBOLJA VRIJEDNOST",
+    "saveSeventeen": "Uštedite ~17%",
+    "premiumFeatures": "Premium značajke",
+    "feature1": "Automatsko praćenje brodova",
+    "feature2": "Jednostavno bilježenje pomorskog staža",
+    "feature3": "Izvješća u skladu s MCA",
+    "feature4": "Sinkronizacija i sigurnosna kopija u oblaku",
+    "feature5": "Pametne obavijesti",
+    "termsAutoRenew": "Pretplata se automatski obnavlja osim ako se ne otkaže",
+    "termsCancelAnytime": "Otkažite u bilo kojem trenutku u postavkama App Storea",
+    "termsCharge": "Plaćanje se naplaćuje s Apple ID-a pri potvrdi"
+  },
+  "settings": {
+    "language": "Jezik",
+    "notifications": "Postavke obavijesti",
+    "certificates": "Certifikati",
+    "manualTracking": "Ručno GPS praćenje",
+    "signature": "Potpis za izvješća",
+    "referFriend": "Preporuči kapetana",
+    "about": "O aplikaciji i pomoć"
+  }
+}

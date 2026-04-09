@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "Tamam",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "back": "Geri",
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "retry": "Tekrar dene"
+  },
+  "tabs": {
+    "seaTime": "Deniz süresi",
+    "logbook": "Seyir defteri",
+    "review": "İnceleme",
+    "profile": "Profil"
+  },
+  "auth": {
+    "signIn": "Giriş yap",
+    "signUp": "Kayıt ol",
+    "signOut": "Çıkış yap",
+    "email": "E-posta",
+    "password": "Şifre",
+    "name": "İsim",
+    "forgotPassword": "Şifrenizi mi unuttunuz?",
+    "createAccount": "Hesap oluştur",
+    "alreadyHaveAccount": "Zaten bir hesabınız var mı?",
+    "needAccount": "Hesaba mı ihtiyacınız var?",
+    "signInWithApple": "Apple ile giriş yap",
+    "signInWithFaceId": "Face ID ile giriş yap",
+    "signInWithBiometrics": "Biyometri ile giriş yap"
+  },
+  "onboarding": {
+    "skip": "Atla",
+    "next": "İleri",
+    "getStarted": "Başla",
+    "slide1": {
+      "label": "OTOMATİK TAKİP",
+      "title": "Deniz süreniz, otomatik pilotta.",
+      "body": "Geminizi MMSI ile ekleyin ve SeaTime Tracker'ın AIS verilerini kullanarak deniz hizmetinizi otomatik kaydetmesine izin verin."
+    },
+    "slide2": {
+      "label": "MCA UYUMLU RAPORLAR",
+      "title": "MCA'nın kabul ettiği raporlar.",
+      "body": "CoC başvuruları için gereken kesin formatta deniz hizmeti belgeleri oluşturun. Sunulmaya hazır PDF ve CSV dışa aktarımları."
+    },
+    "slide3": {
+      "label": "DENİZCİLER TARAFINDAN YAPILDI",
+      "title": "Lightship'in arkasındaki ekipten.",
+      "body": "SeaTime Tracker, Foreland Marine tarafından geliştirilmiştir — dünya çapında yat yöneticilerinin güvendiği Lightship ISM filo yönetim platformunun arkasındaki ekip."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "AIS takip arkadaşınız",
+    "noVesselsTitle": "Henüz gemi yok",
+    "noVesselsSubtitle": "Deniz süresi takibine başlamak için ilk geminizi ekleyin",
+    "addVessel": "Gemi ekle",
+    "tryDemoVessel": "Demo gemiyle dene",
+    "activeVessel": "Aktif gemi",
+    "historicVessels": "Geçmiş gemiler",
+    "checkNow": "Şimdi kontrol et",
+    "position": "Konum",
+    "latitude": "Enlem",
+    "longitude": "Boylam",
+    "loadingLocation": "Konum yükleniyor..."
+  },
+  "paywall": {
+    "subscribeNow": "Şimdi abone ol",
+    "restorePurchases": "Satın alımları geri yükle",
+    "redeemCode": "Kod kullan",
+    "monthly": "Aylık",
+    "annual": "Yıllık",
+    "perMonth": "ay başına",
+    "perYear": "yıl başına",
+    "bestValue": "EN İYİ DEĞER",
+    "saveSeventeen": "~%17 tasarruf",
+    "premiumFeatures": "Premium Özellikler",
+    "feature1": "Otomatik gemi takibi",
+    "feature2": "Kolay deniz süresi kaydı",
+    "feature3": "MCA uyumlu raporlar",
+    "feature4": "Bulut senkronizasyonu ve yedekleme",
+    "feature5": "Akıllı bildirimler",
+    "termsAutoRenew": "Abonelik iptal edilmedikçe otomatik olarak yenilenir",
+    "termsCancelAnytime": "App Store ayarlarından istediğiniz zaman iptal edin",
+    "termsCharge": "Onay sırasında Apple Kimliğinizden ücret alınır"
+  },
+  "settings": {
+    "language": "Dil",
+    "notifications": "Bildirim ayarları",
+    "certificates": "Sertifikalar",
+    "manualTracking": "Manuel GPS takibi",
+    "signature": "Raporlar için imza",
+    "referFriend": "Bir kaptan davet et",
+    "about": "Hakkında ve yardım"
+  }
+}

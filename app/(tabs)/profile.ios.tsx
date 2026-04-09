@@ -11,10 +11,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
-  Modal,
   RefreshControl,
-  Linking,
-  Dimensions,
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as Sharing from 'expo-sharing';
@@ -24,9 +21,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as seaTimeApi from '@/utils/seaTimeApi';
-import { authenticatedDelete } from '@/utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SIGNATURE_STORAGE_KEY = 'seatime_user_signature';
 
 interface UserProfile {
   id: string;
@@ -215,6 +212,22 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: colors.text,
       marginBottom: 10,
     },
+    disclosureRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: isDark ? colors.cardBackground : colors.card,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+    },
+    disclosureTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? colors.text : colors.textLight,
+    },
     card: {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
@@ -306,35 +319,9 @@ const createStyles = (isDark: boolean, topInset: number) =>
       fontWeight: '600',
       marginLeft: 10,
     },
-    signOutButton: {
-      backgroundColor: colors.error,
-      borderRadius: 12,
-      padding: 15,
-      alignItems: 'center',
-      marginTop: 20,
-    },
-    signOutButtonText: {
-      color: '#ffffff',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-
-    supportButton: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 12,
-      padding: 15,
-      alignItems: 'center',
-      marginTop: 10,
-      marginBottom: 20,
-      borderWidth: 1,
-      borderColor: colors.primary,
-    },
-    supportButtonText: {
-      color: colors.primary,
-      fontSize: 16,
-      fontWeight: '600',
-    },
     departmentBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: colors.primary + '20',
       borderRadius: 20,
       paddingHorizontal: 16,
@@ -390,59 +377,6 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       lineHeight: 20,
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalContent: {
-      backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
-      borderRadius: 16,
-      padding: 20,
-      width: SCREEN_WIDTH - 40,
-      maxHeight: '80%',
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 16,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: isDark ? '#ffffff' : '#000000',
-      flex: 1,
-    },
-    closeButton: {
-      padding: 4,
-    },
-    modalScrollView: {
-      maxHeight: 400,
-    },
-    particularRow: {
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-    },
-    particularRowLast: {
-      borderBottomWidth: 0,
-    },
-    particularLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: isDark ? '#8e8e93' : '#8e8e93',
-      marginBottom: 4,
-    },
-    particularValue: {
-      fontSize: 16,
-      color: isDark ? '#ffffff' : '#000000',
-      fontWeight: '500',
-    },
     infoBox: {
       backgroundColor: colors.primary + '15',
       borderRadius: 10,
@@ -456,57 +390,6 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: isDark ? colors.text : colors.textLight,
       lineHeight: 20,
     },
-    confirmModalContent: {
-      backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
-      borderRadius: 16,
-      padding: 24,
-      width: '100%',
-      maxWidth: 340,
-    },
-    confirmModalTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: isDark ? '#ffffff' : '#000000',
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    confirmModalMessage: {
-      fontSize: 15,
-      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
-      marginBottom: 24,
-      textAlign: 'center',
-      lineHeight: 22,
-    },
-    confirmModalButtons: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    confirmModalButton: {
-      flex: 1,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 10,
-      alignItems: 'center',
-    },
-    confirmModalCancelButton: {
-      backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderWidth: 1,
-      borderColor: isDark ? colors.border : colors.borderLight,
-    },
-    confirmModalConfirmButton: {
-      backgroundColor: colors.error,
-    },
-    confirmModalButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    confirmModalCancelText: {
-      color: isDark ? colors.text : colors.textLight,
-    },
-    confirmModalConfirmText: {
-      color: '#ffffff',
-    },
-
   });
 
 export default function ProfileScreen() {
@@ -518,16 +401,13 @@ export default function ProfileScreen() {
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
-  const [showVesselModal, setShowVesselModal] = useState(false);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
+  const [showDefinitions, setShowDefinitions] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const styles = createStyles(isDark, insets.top);
   const router = useRouter();
-  const { signOut, refreshTrigger } = useAuth();
+  const { refreshTrigger } = useAuth();
 
   console.log('ProfileScreen (iOS) rendered');
 
@@ -645,64 +525,12 @@ export default function ProfileScreen() {
     }
   }, [loadProfile, loadSummary, loadVessels]);
 
-  const handleEditProfile = () => {
-    console.log('User tapped User Profile');
-    router.push('/user-profile');
-  };
-
-  const handleScheduledTasks = () => {
-    console.log('User tapped Scheduled Tasks');
-    router.push('/scheduled-tasks');
-  };
-
-  const handleSupport = async () => {
-    console.log('User tapped Support button');
-    const supportEmail = 'info@forelandmarine.com';
-    const subject = 'SeaTime Tracker Support Request';
-    const body = 'Hello,\n\nI need assistance with:\n\n';
-    
-    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
-        console.log('Support email opened successfully');
-      } else {
-        console.log('Cannot open email client, showing alert with email address');
-        Alert.alert(
-          'Contact Support',
-          `Please email us at:\n${supportEmail}`,
-          [
-            { text: 'OK', style: 'default' }
-          ]
-        );
-      }
-    } catch (error) {
-      console.error('Failed to open email client:', error);
-      Alert.alert(
-        'Contact Support',
-        `Please email us at:\n${supportEmail}`,
-        [
-          { text: 'OK', style: 'default' }
-        ]
-      );
-    }
-  };
-
   const handleVesselPress = (vesselName: string) => {
     console.log('User tapped vessel:', vesselName);
     const vessel = vessels.find((v) => v.vessel_name === vesselName);
     if (vessel) {
-      setSelectedVessel(vessel);
-      setShowVesselModal(true);
+      router.push(`/vessel/${vessel.id}`);
     }
-  };
-
-  const handleCloseModal = () => {
-    console.log('User closed vessel modal');
-    setShowVesselModal(false);
-    setSelectedVessel(null);
   };
 
   const formatServiceType = (serviceType: string): string => {
@@ -737,6 +565,29 @@ export default function ProfileScreen() {
 
   const handleDownloadPDF = async () => {
     console.log('User tapped Download PDF Report');
+
+    // Check whether the user has captured a signature. If not, prompt before
+    // generating the PDF — signed reports look more credible to MCA assessors.
+    try {
+      const sig = await AsyncStorage.getItem(SIGNATURE_STORAGE_KEY);
+      if (!sig) {
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Add your signature?',
+            'Reports look more credible to MCA assessors when signed. You can add a signature now or download an unsigned report.',
+            [
+              { text: 'Download unsigned', style: 'cancel', onPress: () => resolve(true) },
+              { text: 'Add signature', onPress: () => { router.push('/signature'); resolve(false); } },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) }
+          );
+        });
+        if (!proceed) return;
+      }
+    } catch (err) {
+      console.warn('[Profile] Failed to read signature, continuing without:', err);
+    }
+
     setDownloadingPDF(true);
     try {
       console.log('Calling downloadPDFReport API...');
@@ -833,34 +684,6 @@ export default function ProfileScreen() {
       setDownloadingCSV(false);
     }
   };
-
-  const handleSignOut = () => {
-    console.log('User tapped Sign Out button');
-    setShowSignOutModal(true);
-  };
-
-  const confirmSignOut = async () => {
-    console.log('User confirmed sign out in modal');
-    setSigningOut(true);
-    try {
-      await signOut();
-      console.log('Sign out successful');
-      setShowSignOutModal(false);
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setShowSignOutModal(false);
-      Alert.alert('Error', 'Failed to sign out. Please try again.');
-    } finally {
-      setSigningOut(false);
-    }
-  };
-
-  const cancelSignOut = () => {
-    console.log('User cancelled sign out');
-    setShowSignOutModal(false);
-  };
-
-
 
   const getInitials = (name: string | null | undefined) => {
     if (!name || typeof name !== 'string') {
@@ -980,8 +803,15 @@ export default function ProfileScreen() {
             <Text style={styles.profileEmail}>{profile.email}</Text>
             {profile.department && (
               <View style={styles.departmentBadge}>
+                <IconSymbol
+                  ios_icon_name={profile.department.toLowerCase() === 'deck' ? 'sailboat.fill' : 'gearshape.2.fill'}
+                  android_material_icon_name={profile.department.toLowerCase() === 'deck' ? 'directions-boat' : 'settings'}
+                  size={14}
+                  color={colors.primary}
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.departmentBadgeText}>
-                  {profile.department.toLowerCase() === 'deck' ? '⚓ Deck Department' : '⚙️ Engineering Department'}
+                  {profile.department.toLowerCase() === 'deck' ? 'Deck Department' : 'Engineering Department'}
                 </Text>
               </View>
             )}
@@ -1120,200 +950,54 @@ export default function ProfileScreen() {
 
           {profile.department && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {profile.department.toLowerCase() === 'deck' ? 'Deck Department - Sea Service Definitions (MSN 1858)' : 'Engineering Department - Sea Service Definitions (MSN 1904)'}
-              </Text>
-              <View style={styles.infoBox}>
-                <Text style={styles.infoText}>
-                  These definitions ensure your sea time records are compliant with MCA regulations for {profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers. All data capture in this app follows these standards.
+              <TouchableOpacity
+                style={styles.disclosureRow}
+                onPress={() => setShowDefinitions((s) => !s)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.disclosureTitle}>
+                  What counts as sea time?
                 </Text>
-              </View>
-              {filteredDefinitions.map((definition, index) => (
-                <View key={index} style={styles.definitionCard}>
-                  <Text style={styles.definitionTitle}>{definition.title}</Text>
-                  <Text style={styles.definitionDescription}>{definition.description}</Text>
+                <IconSymbol
+                  ios_icon_name={showDefinitions ? 'chevron.up' : 'chevron.down'}
+                  android_material_icon_name={showDefinitions ? 'expand-less' : 'expand-more'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              {showDefinitions && (
+                <View style={{ marginTop: 10 }}>
+                  <View style={styles.infoBox}>
+                    <Text style={styles.infoText}>
+                      These definitions ensure your sea time records are compliant with MCA regulations for {profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers ({profile.department.toLowerCase() === 'deck' ? 'MSN 1858' : 'MSN 1904'}). All data capture in this app follows these standards.
+                    </Text>
+                  </View>
+                  {filteredDefinitions.map((definition, index) => (
+                    <View key={index} style={styles.definitionCard}>
+                      <Text style={styles.definitionTitle}>{definition.title}</Text>
+                      <Text style={styles.definitionDescription}>{definition.description}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              )}
             </View>
           )}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.card}>
-              <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
-                <IconSymbol
-                  ios_icon_name="person.circle"
-                  android_material_icon_name="person"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>User Profile</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.menuItem} onPress={handleScheduledTasks}>
-                <IconSymbol
-                  ios_icon_name="clock"
-                  android_material_icon_name="schedule"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Scheduled Tasks</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => router.push('/notification-settings')}
-              >
-                <IconSymbol
-                  ios_icon_name="bell"
-                  android_material_icon_name="notifications"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Notification Settings</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/certificates')}
-              >
-                <IconSymbol
-                  ios_icon_name="doc.text.fill"
-                  android_material_icon_name="article"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Certificates</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/manual-tracking')}
-              >
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="my-location"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Manual GPS tracking</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/signature')}
-              >
-                <IconSymbol
-                  ios_icon_name="signature"
-                  android_material_icon_name="draw"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Signature for reports</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/refer')}
-              >
-                <IconSymbol
-                  ios_icon_name="person.2.fill"
-                  android_material_icon_name="people"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Refer a captain</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/language')}
-              >
-                <IconSymbol
-                  ios_icon_name="globe"
-                  android_material_icon_name="language"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Language</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={[styles.menuItem, styles.menuItemLast]}
-                onPress={() => router.push('/about')}
+                onPress={() => router.push('/settings')}
+                activeOpacity={0.6}
               >
                 <IconSymbol
-                  ios_icon_name="info.circle"
-                  android_material_icon_name="info"
+                  ios_icon_name="gearshape.fill"
+                  android_material_icon_name="settings"
                   size={24}
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>About & Help</Text>
+                <Text style={styles.menuItemText}>Settings</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
@@ -1324,143 +1008,8 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>
-            <Text style={styles.supportButtonText}>Contact Support</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <Modal
-        visible={showVesselModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseModal}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={handleCloseModal}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Yacht Particulars</Text>
-                <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
-                  <IconSymbol
-                    ios_icon_name="xmark"
-                    android_material_icon_name="close"
-                    size={24}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalScrollView}>
-                {selectedVessel && (
-                  <>
-                    <View style={styles.particularRow}>
-                      <Text style={styles.particularLabel}>Vessel Name</Text>
-                      <Text style={styles.particularValue}>{selectedVessel.vessel_name}</Text>
-                    </View>
-                    <View style={styles.particularRow}>
-                      <Text style={styles.particularLabel}>MMSI</Text>
-                      <Text style={styles.particularValue}>{selectedVessel.mmsi}</Text>
-                    </View>
-                    {selectedVessel.flag && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Flag</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.flag}</Text>
-                      </View>
-                    )}
-                    {selectedVessel.official_number && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Official Number</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.official_number}</Text>
-                      </View>
-                    )}
-                    {selectedVessel.vessel_type && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Vessel Type</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.vessel_type}</Text>
-                      </View>
-                    )}
-                    {selectedVessel.length_metres && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Length</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.length_metres}m</Text>
-                      </View>
-                    )}
-                    {selectedVessel.gross_tonnes && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Gross Tonnes</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.gross_tonnes}</Text>
-                      </View>
-                    )}
-                    {selectedVessel.callsign && (
-                      <View style={styles.particularRow}>
-                        <Text style={styles.particularLabel}>Callsign</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.callsign}</Text>
-                      </View>
-                    )}
-                    <View style={[styles.particularRow, styles.particularRowLast]}>
-                      <Text style={styles.particularLabel}>Status</Text>
-                      <Text style={styles.particularValue}>
-                        {selectedVessel.is_active ? 'Active' : 'Inactive'}
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal
-        visible={showSignOutModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={cancelSignOut}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmModalContent}>
-            <Text style={styles.confirmModalTitle}>Sign Out</Text>
-            <Text style={styles.confirmModalMessage}>
-              Are you sure you want to sign out?
-            </Text>
-            <View style={styles.confirmModalButtons}>
-              <TouchableOpacity
-                style={[styles.confirmModalButton, styles.confirmModalCancelButton]}
-                onPress={cancelSignOut}
-                disabled={signingOut}
-              >
-                <Text style={[styles.confirmModalButtonText, styles.confirmModalCancelText]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmModalButton, styles.confirmModalConfirmButton]}
-                onPress={confirmSignOut}
-                disabled={signingOut}
-              >
-                {signingOut ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
-                ) : (
-                  <Text style={[styles.confirmModalButtonText, styles.confirmModalConfirmText]}>
-                    Sign Out
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
 
     </View>
   );

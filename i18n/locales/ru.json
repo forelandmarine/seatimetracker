@@ -1,0 +1,99 @@
+{
+  "common": {
+    "ok": "ОК",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "edit": "Изменить",
+    "back": "Назад",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Готово",
+    "retry": "Повторить"
+  },
+  "tabs": {
+    "seaTime": "Морской стаж",
+    "logbook": "Журнал",
+    "review": "Проверка",
+    "profile": "Профиль"
+  },
+  "auth": {
+    "signIn": "Войти",
+    "signUp": "Регистрация",
+    "signOut": "Выйти",
+    "email": "Эл. почта",
+    "password": "Пароль",
+    "name": "Имя",
+    "forgotPassword": "Забыли пароль?",
+    "createAccount": "Создать аккаунт",
+    "alreadyHaveAccount": "Уже есть аккаунт?",
+    "needAccount": "Нужен аккаунт?",
+    "signInWithApple": "Войти через Apple",
+    "signInWithFaceId": "Войти через Face ID",
+    "signInWithBiometrics": "Войти по биометрии"
+  },
+  "onboarding": {
+    "skip": "Пропустить",
+    "next": "Далее",
+    "getStarted": "Начать",
+    "slide1": {
+      "label": "АВТОМАТИЧЕСКИЙ УЧЁТ",
+      "title": "Ваш морской стаж — на автопилоте.",
+      "body": "Добавьте судно по MMSI и позвольте SeaTime Tracker автоматически фиксировать ваш морской стаж по данным AIS."
+    },
+    "slide2": {
+      "label": "ОТЧЁТЫ ПО ТРЕБОВАНИЯМ MCA",
+      "title": "Отчёты, которые принимает MCA.",
+      "body": "Создавайте справки о морском стаже в формате, требуемом для подачи на CoC. Экспорт в PDF и CSV, готовый к подаче."
+    },
+    "slide3": {
+      "label": "СОЗДАНО МОРЯКАМИ",
+      "title": "От команды Lightship.",
+      "body": "SeaTime Tracker создан компанией Foreland Marine — той же командой, что и Lightship ISM, платформа управления флотом, которой доверяют менеджеры яхт по всему миру."
+    }
+  },
+  "home": {
+    "title": "SeaTime Tracker",
+    "subtitle": "Ваш помощник для отслеживания AIS",
+    "noVesselsTitle": "Судов пока нет",
+    "noVesselsSubtitle": "Добавьте первое судно, чтобы начать учёт морского стажа",
+    "addVessel": "Добавить судно",
+    "tryDemoVessel": "Попробовать с демо-судном",
+    "activeVessel": "Активное судно",
+    "historicVessels": "Прошлые суда",
+    "checkNow": "Проверить сейчас",
+    "position": "Позиция",
+    "latitude": "Широта",
+    "longitude": "Долгота",
+    "loadingLocation": "Загрузка позиции..."
+  },
+  "paywall": {
+    "subscribeNow": "Подписаться",
+    "restorePurchases": "Восстановить покупки",
+    "redeemCode": "Использовать промокод",
+    "monthly": "Ежемесячно",
+    "annual": "Ежегодно",
+    "perMonth": "в месяц",
+    "perYear": "в год",
+    "bestValue": "ЛУЧШЕЕ ПРЕДЛОЖЕНИЕ",
+    "saveSeventeen": "Экономия ~17%",
+    "premiumFeatures": "Премиум-функции",
+    "feature1": "Автоматическое отслеживание судов",
+    "feature2": "Простой учёт морского стажа",
+    "feature3": "Отчёты по требованиям MCA",
+    "feature4": "Облачная синхронизация и резервное копирование",
+    "feature5": "Умные уведомления",
+    "termsAutoRenew": "Подписка продлевается автоматически, если не отменена",
+    "termsCancelAnytime": "Отмена в любое время в настройках App Store",
+    "termsCharge": "Оплата списывается с Apple ID при подтверждении"
+  },
+  "settings": {
+    "language": "Язык",
+    "notifications": "Настройки уведомлений",
+    "certificates": "Сертификаты",
+    "manualTracking": "Ручное отслеживание GPS",
+    "signature": "Подпись для отчётов",
+    "referFriend": "Пригласить капитана",
+    "about": "О приложении и помощь"
+  }
+}
