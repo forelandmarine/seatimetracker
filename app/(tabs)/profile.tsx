@@ -22,14 +22,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
-import { 
-import { log, warn, error as logError } from '@/utils/log';
-
-  isBiometricAvailable, 
-  getBiometricCredentials, 
+import {
+  isBiometricAvailable,
+  getBiometricCredentials,
   clearBiometricCredentials,
-  getBiometricType 
+  getBiometricType
 } from '@/utils/biometricAuth';
+import { log, warn, error as logError } from '@/utils/log';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

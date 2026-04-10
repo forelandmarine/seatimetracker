@@ -17,8 +17,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
-import { error as logError } from '@/utils/log';
-
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
   Certificate,
@@ -27,6 +25,7 @@ import { error as logError } from '@/utils/log';
   listCertificates,
   updateCertificate,
 } from '@/utils/certificatesApi';
+import { error as logError } from '@/utils/log';
 
 export default function CertificateEditScreen() {
   const router = useRouter();
