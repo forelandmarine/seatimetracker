@@ -43,8 +43,8 @@ export default function Index() {
 
   const { user, loading: authLoading } = authContext;
 
-  // Show loading while checking auth
-  if (authLoading || !initialCheckDone) {
+  // Show loading while checking auth or onboarding state
+  if (authLoading || !initialCheckDone || onboardingDone === null) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />

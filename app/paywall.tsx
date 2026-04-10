@@ -62,7 +62,26 @@ export default function PaywallScreen() {
 
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  // Default to annual if available, otherwise monthly
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+
+  // Auto-select the first available plan if the default isn't available
+  useEffect(() => {
+    if (availablePackages.length > 0) {
+      const hasAnnual = availablePackages.some(
+        (pkg) => pkg.product.identifier === PRODUCT_IDS.annual || pkg.packageType === 'ANNUAL'
+      );
+      const hasMonthly = availablePackages.some(
+        (pkg) => pkg.product.identifier === PRODUCT_IDS.monthly || pkg.packageType === 'MONTHLY'
+      );
+      log('[Paywall] Packages resolved - hasAnnual:', hasAnnual, 'hasMonthly:', hasMonthly);
+      if (selectedPlan === 'annual' && !hasAnnual && hasMonthly) {
+        setSelectedPlan('monthly');
+      } else if (selectedPlan === 'monthly' && !hasMonthly && hasAnnual) {
+        setSelectedPlan('annual');
+      }
+    }
+  }, [availablePackages]);
   const [offeringsLoading, setOfferingsLoading] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const waitingForRedeemRef = useRef(false);
@@ -547,18 +566,18 @@ export default function PaywallScreen() {
             {/* Primary Subscribe Button */}
             <TouchableOpacity
               style={[
-                styles.primaryButton, 
+                styles.primaryButton,
                 { backgroundColor: colors.primary },
-                (purchasing || restoring || availablePackages.length === 0) && styles.buttonDisabled
+                (purchasing || restoring || (!annualPackage && !monthlyPackage)) && styles.buttonDisabled
               ]}
               onPress={handlePurchase}
-              disabled={purchasing || restoring || availablePackages.length === 0}
+              disabled={purchasing || restoring || (!annualPackage && !monthlyPackage)}
             >
               {purchasing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  {availablePackages.length === 0
+                  {(!annualPackage && !monthlyPackage)
                     ? 'Subscription Unavailable'
                     : (() => {
                         const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
