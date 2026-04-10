@@ -44,8 +44,7 @@ export default function AuthScreen() {
   const [isRetryableError, setIsRetryableError] = useState(false);
   const pendingRetryAction = React.useRef<(() => void) | null>(null);
   const passwordRef = React.useRef<any>(null);
-  const { user, signIn, signUp, signInWithApple, signInWithGoogle, checkAuth } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const { user, signIn, signUp, signInWithApple, checkAuth } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -298,46 +297,6 @@ export default function AuthScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-      log('[AuthScreen] Google sign in successful, navigating to index');
-      try {
-        router.replace('/');
-      } catch (navError: any) {
-        logError('[AuthScreen] Navigation after Google sign in failed:', navError);
-        setTimeout(() => {
-          try {
-            router.replace('/');
-          } catch (_retryError) {
-            // silently ignored — first error already logged
-          }
-        }, 500);
-      }
-    } catch (error: any) {
-      logError('[AuthScreen] Google sign in failed:', error.message);
-
-      if (error.code === 'ERR_CANCELED' || error.code === 'ERR_REQUEST_CANCELED') {
-        return;
-      }
-
-      let errorMsg = 'Unable to sign in with Google';
-      if (error.message?.includes('Having trouble connecting')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
-      } else if (error.message?.includes('Network') || error.message?.includes('timed out')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
-      } else if (error.message?.includes('Server error') || error.message?.includes('server error')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
-      } else if (error.message) {
-        errorMsg = error.message;
-      }
-      showError(errorMsg, () => handleGoogleSignIn());
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   const styles = createAuthStyles(isDark);
 
   return (
@@ -507,7 +466,6 @@ export default function AuthScreen() {
           />
         )}
 
-        {/* Google sign-in removed */}
       </View>
 
       <View style={styles.footer}>

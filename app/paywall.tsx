@@ -22,6 +22,14 @@ import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Purchases from 'react-native-purchases';
+import Constants from 'expo-constants';
+
+// Read product IDs from app.json config — avoids hardcoding so they can
+// be changed in one place without touching component code.
+const PRODUCT_IDS_CONFIG = {
+  monthly: Constants.expoConfig?.extra?.monthlyProductId || 'com.subscription.monthly',
+  annual: Constants.expoConfig?.extra?.annualProductId || 'com.subscription.annual',
+};
 
 export default function PaywallScreen() {
   const router = useRouter();
@@ -45,11 +53,7 @@ export default function PaywallScreen() {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const waitingForRedeemRef = useRef(false);
 
-  // Product identifiers — these must match App Store Connect / Google Play / RevenueCat
-  const PRODUCT_IDS = {
-    monthly: 'com.subscription.monthly',
-    annual: 'com.subscription.annual',
-  };
+  const PRODUCT_IDS = PRODUCT_IDS_CONFIG;
 
   // When app returns to foreground after redeem flow, refresh subscription status
   useEffect(() => {
@@ -61,7 +65,7 @@ export default function PaywallScreen() {
         console.log('[Paywall] App returned to foreground after redeem — refreshing subscription status');
         try {
           const info = await Purchases.getCustomerInfo();
-          const hasActiveEntitlement = Object.keys(info.entitlements.active).length > 0;
+          const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
           console.log('[Paywall] Post-redeem subscription check — active entitlements:', Object.keys(info.entitlements.active));
           if (hasActiveEntitlement) {
             console.log('[Paywall] Subscription active after redeem, navigating home');
@@ -178,7 +182,7 @@ export default function PaywallScreen() {
     try {
       const info = await restorePurchases();
       
-      const hasActiveEntitlement = Object.keys(info.entitlements.active).length > 0;
+      const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
       
       if (hasActiveEntitlement) {
         console.log('[Paywall] Purchases restored successfully');
@@ -281,7 +285,7 @@ export default function PaywallScreen() {
     (pkg) => pkg.product.identifier === PRODUCT_IDS.annual
   );
   const monthlyPackage = availablePackages.find(pkg =>
-    pkg.product.identifier === 'com.subscription.monthly'
+    pkg.product.identifier === PRODUCT_IDS.monthly
   );
 
   // Extract price from App Store (StoreKit compliance)
@@ -366,9 +370,17 @@ export default function PaywallScreen() {
                 <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
                   per year
                 </Text>
-                <Text style={[styles.planSavings, { color: colors.success }]}>
-                  Save ~17%
-                </Text>
+                {annualPackage.product.introPrice ? (
+                  <Text style={[styles.planSavings, { color: colors.success }]}>
+                    {annualPackage.product.introPrice.priceString === '$0.00' || annualPackage.product.introPrice.price === 0
+                      ? `Free for ${annualPackage.product.introPrice.periodNumberOfUnits} ${annualPackage.product.introPrice.periodUnit === 'DAY' ? 'days' : annualPackage.product.introPrice.periodUnit === 'WEEK' ? 'weeks' : 'months'}`
+                      : `${annualPackage.product.introPrice.priceString} intro`}
+                  </Text>
+                ) : (
+                  <Text style={[styles.planSavings, { color: colors.success }]}>
+                    Save ~17%
+                  </Text>
+                )}
                 {selectedPlan === 'annual' && (
                   <View style={styles.planSelectedIndicator}>
                     <IconSymbol
@@ -404,6 +416,13 @@ export default function PaywallScreen() {
                 <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
                   per month
                 </Text>
+                {monthlyPackage.product.introPrice && (
+                  <Text style={[styles.planSavings, { color: colors.success }]}>
+                    {monthlyPackage.product.introPrice.priceString === '$0.00' || monthlyPackage.product.introPrice.price === 0
+                      ? `Free for ${monthlyPackage.product.introPrice.periodNumberOfUnits} ${monthlyPackage.product.introPrice.periodUnit === 'DAY' ? 'days' : monthlyPackage.product.introPrice.periodUnit === 'WEEK' ? 'weeks' : 'months'}`
+                      : `${monthlyPackage.product.introPrice.priceString} intro`}
+                  </Text>
+                )}
                 {selectedPlan === 'monthly' && (
                   <View style={styles.planSelectedIndicator}>
                     <IconSymbol

@@ -21,7 +21,9 @@ const isProduction = !isDevelopment && !isTestFlight;
 const REVENUECAT_API_KEY_IOS = Constants.expoConfig?.extra?.revenueCatIosApiKey || 'appl_JGAVizuUPjFzvacGxciCepqaqAJ';
 const REVENUECAT_API_KEY_ANDROID = Constants.expoConfig?.extra?.revenueCatAndroidApiKey || 'appl_JGAVizuUPjFzvacGxciCepqaqAJ';
 
-// Product identifier - UPDATED to match App Store Connect
+// Product & entitlement identifiers — read from app.json config so they can
+// change without a code update.
+const PRO_ENTITLEMENT_ID = Constants.expoConfig?.extra?.revenueCatEntitlementId || 'pro';
 const PRO_MONTHLY_PRODUCT_ID = 'com.subscription.monthly';
 
 interface SubscriptionContextType {
@@ -257,13 +259,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       setCustomerInfo(info);
 
-      // Check if user has any active entitlements
-      const hasActiveEntitlement = Object.keys(info.entitlements.active).length > 0;
+      // Check for the specific "pro" entitlement (matches RevenueCat dashboard config)
+      const hasProEntitlement = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
 
-      // Also check for the specific product ID (UPDATED)
+      // Fallback: also check for the specific product ID in active subscriptions
       const hasProMonthly = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID);
 
-      const subscribed = hasActiveEntitlement || hasProMonthly;
+      const subscribed = hasProEntitlement || hasProMonthly;
 
       log('[Subscription] Subscription status determined:', subscribed);
 
