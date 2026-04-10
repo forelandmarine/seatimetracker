@@ -207,7 +207,7 @@ export default function ManualTrackingScreen() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          For vessels without AIS — tenders, sailing yachts, RIBs. Tap{' '}
+          For vessels without AIS (tenders, sailing yachts, RIBs). Tap{' '}
           <Text style={{ fontWeight: '700' }}>Start voyage</Text> when you depart and{' '}
           <Text style={{ fontWeight: '700' }}>End voyage</Text> when you arrive. Your phone's GPS
           will record both positions.

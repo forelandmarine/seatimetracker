@@ -134,7 +134,7 @@ export default function AboutScreen() {
             </View>
             <Text style={styles.featureCardBody}>
               Managing an entire fleet? Lightship is our ISM compliance and yacht administration
-              platform — incident tracking, audits, certificates, AIS records, and more.
+              platform: incident tracking, audits, certificates, AIS records, and more.
             </Text>
             <View style={styles.featureCardCta}>
               <Text style={styles.featureCardCtaText}>Learn more</Text>

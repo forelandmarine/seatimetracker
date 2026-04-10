@@ -78,7 +78,7 @@ export default function ReferScreen() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to redeem');
       }
-      Alert.alert('Code redeemed', 'Thanks — you both got 30 free days. The bonus is applied to your next subscription renewal.');
+      Alert.alert('Code redeemed', 'Thanks! You both got 30 free days. The bonus is applied to your next subscription renewal.');
       setRedeemCode('');
       refresh();
     } catch (err: any) {
@@ -119,7 +119,7 @@ export default function ReferScreen() {
           <>
             <View style={styles.codeCard}>
               <Text style={styles.label}>Your referral code</Text>
-              <Text style={styles.code}>{code || '—'}</Text>
+              <Text style={styles.code}>{code || '-'}</Text>
               <Text style={styles.statText}>
                 {count} captain{count === 1 ? '' : 's'} referred so far
               </Text>

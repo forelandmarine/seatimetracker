@@ -211,7 +211,7 @@ export default function CertificatesScreen() {
           </View>
           <Text style={styles.lightshipBody}>
             Tracking certificates for an entire crew? Lightship ISM handles fleet-wide certificate
-            tracking, audits, and incident reports — built by Foreland Marine.
+            tracking, audits, and incident reports. Built by Foreland Marine.
           </Text>
           <TouchableOpacity
             onPress={async () => {
