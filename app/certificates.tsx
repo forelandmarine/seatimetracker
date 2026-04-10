@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
+  TextInput,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -33,6 +34,7 @@ export default function CertificatesScreen() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -58,6 +60,21 @@ export default function CertificatesScreen() {
     await load();
     setRefreshing(false);
   };
+
+  const filteredCerts = useMemo(() => {
+    if (!searchQuery.trim()) return certs;
+    const q = searchQuery.toLowerCase();
+    return certs.filter((c) => {
+      const label = CERTIFICATE_TYPE_LABELS[c.certificate_type] || c.certificate_type;
+      const status = expiryStatus(c);
+      return (
+        label.toLowerCase().includes(q) ||
+        (c.certificate_number && c.certificate_number.toLowerCase().includes(q)) ||
+        (c.issuing_body && c.issuing_body.toLowerCase().includes(q)) ||
+        status.includes(q)
+      );
+    });
+  }, [certs, searchQuery]);
 
   const renderCert = (cert: Certificate) => {
     const status = expiryStatus(cert);
@@ -141,7 +158,29 @@ export default function CertificatesScreen() {
           </View>
         ) : (
           <View style={styles.list}>
-            {certs.map(renderCert)}
+            <View style={styles.searchContainer}>
+              <IconSymbol
+                ios_icon_name="magnifyingglass"
+                android_material_icon_name="search"
+                size={18}
+                color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search certificates..."
+                placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+              />
+            </View>
+            {filteredCerts.length === 0 ? (
+              <Text style={styles.noResults}>No certificates match "{searchQuery}"</Text>
+            ) : (
+              filteredCerts.map(renderCert)
+            )}
 
             <TouchableOpacity
               style={styles.addButtonInline}
@@ -202,6 +241,29 @@ const createStyles = (isDark: boolean) =>
     },
     list: {
       padding: 16,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: isDark ? colors.text : colors.textLight,
+      padding: 0,
+    },
+    noResults: {
+      textAlign: 'center',
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      fontSize: 14,
+      paddingVertical: 20,
     },
     emptyState: {
       paddingVertical: 60,

@@ -135,6 +135,23 @@ const createStyles = (isDark: boolean, topInset: number) =>
       paddingTop: 16,
       paddingBottom: 100,
     },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: isDark ? colors.text : colors.textLight,
+      padding: 0,
+    },
     summaryCard: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
       borderRadius: 16,
@@ -594,6 +611,7 @@ export default function LogbookScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -700,13 +718,13 @@ export default function LogbookScreen() {
   };
 
   const calculateTotalHours = () => {
-    return entries
+    return visibleEntries
       .filter((e) => e.status === 'confirmed')
       .reduce((sum, entry) => sum + toNumber(entry.duration_hours), 0);
   };
 
   const calculateTotalDays = () => {
-    return entries
+    return visibleEntries
       .filter((e) => e.status === 'confirmed')
       .reduce((sum, entry) => sum + (entry.sea_days || 0), 0);
   };
@@ -768,8 +786,21 @@ export default function LogbookScreen() {
     return marked;
   }, [entries, selectedDate]);
 
+  // ---------- search filter ----------
+  const visibleEntries = useMemo(() => {
+    if (!searchQuery.trim()) return entries;
+    const q = searchQuery.toLowerCase();
+    return entries.filter((e) => {
+      const vesselName = e.vessel?.vessel_name?.toLowerCase() || '';
+      const notes = (e.notes || '').toLowerCase();
+      const dateStr = new Date(e.start_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toLowerCase();
+      const serviceType = (e.service_type || '').replace(/_/g, ' ').toLowerCase();
+      return vesselName.includes(q) || notes.includes(q) || dateStr.includes(q) || serviceType.includes(q);
+    });
+  }, [entries, searchQuery]);
+
   const groupEntriesByVessel = () => {
-    const confirmedEntries = entries.filter((e) => e.status === 'confirmed');
+    const confirmedEntries = visibleEntries.filter((e) => e.status === 'confirmed');
     const grouped: { [vesselId: string]: { vessel: Vessel | null; entries: SeaTimeEntry[] } } = {};
     
     confirmedEntries.forEach((entry) => {
@@ -790,10 +821,10 @@ export default function LogbookScreen() {
     return grouped;
   };
 
-  const confirmedEntries = entries
+  const confirmedEntries = visibleEntries
     .filter((e) => e.status === 'confirmed')
     .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
-  const pendingEntries = entries.filter((e) => e.status === 'pending');
+  const pendingEntries = visibleEntries.filter((e) => e.status === 'pending');
   const groupedByVessel = groupEntriesByVessel();
 
   if (loading) {
@@ -1004,7 +1035,7 @@ export default function LogbookScreen() {
       ) : (
         <ScrollView
           style={styles.container}
-          contentContainerStyle={entries.length === 0 ? { flex: 1 } : styles.scrollContent}
+          contentContainerStyle={entries.length === 0 && !searchQuery ? { flex: 1 } : styles.scrollContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1013,7 +1044,29 @@ export default function LogbookScreen() {
             />
           }
         >
-          {entries.length === 0 ? (
+          {/* Search bar — only in list view when we have entries */}
+          {entries.length > 0 && (
+            <View style={styles.searchContainer}>
+              <IconSymbol
+                ios_icon_name="magnifyingglass"
+                android_material_icon_name="search"
+                size={18}
+                color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by vessel, date, service type..."
+                placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+              />
+            </View>
+          )}
+
+          {entries.length === 0 && !searchQuery ? (
             <View style={styles.emptyContainer}>
               <IconSymbol
                 ios_icon_name="book.closed"
@@ -1025,6 +1078,10 @@ export default function LogbookScreen() {
               <Text style={styles.emptySubtext}>
                 Tap the + button to manually add a sea time entry, or start tracking vessels
               </Text>
+            </View>
+          ) : visibleEntries.length === 0 && searchQuery ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No entries match "{searchQuery}"</Text>
             </View>
           ) : (
             <React.Fragment>
