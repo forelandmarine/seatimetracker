@@ -33,6 +33,17 @@ const PRODUCT_IDS_CONFIG = {
   annual: Constants.expoConfig?.extra?.annualProductId || 'com.subscription.annual',
 };
 
+/** Format introductory offer as user-friendly text, e.g. "Free 1-month trial" */
+function formatIntroOffer(intro: { price: number; priceString: string; periodNumberOfUnits: number; periodUnit: string }): string {
+  const isFree = intro.priceString === '$0.00' || intro.price === 0;
+  const n = intro.periodNumberOfUnits;
+  const unit = intro.periodUnit === 'DAY' ? 'day' : intro.periodUnit === 'WEEK' ? 'week' : 'month';
+  if (isFree) {
+    return `Free ${n}-${unit} trial`;
+  }
+  return `${intro.priceString} for ${n} ${unit}${n !== 1 ? 's' : ''}`;
+}
+
 export default function PaywallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -382,9 +393,7 @@ export default function PaywallScreen() {
                 </Text>
                 {annualPackage.product.introPrice ? (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
-                    {annualPackage.product.introPrice.priceString === '$0.00' || annualPackage.product.introPrice.price === 0
-                      ? `Free for ${annualPackage.product.introPrice.periodNumberOfUnits} ${annualPackage.product.introPrice.periodUnit === 'DAY' ? (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'day' : 'days') : annualPackage.product.introPrice.periodUnit === 'WEEK' ? (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'week' : 'weeks') : (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'month' : 'months')}`
-                      : `${annualPackage.product.introPrice.priceString} intro`}
+                    {formatIntroOffer(annualPackage.product.introPrice)}
                   </Text>
                 ) : (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
@@ -428,9 +437,7 @@ export default function PaywallScreen() {
                 </Text>
                 {monthlyPackage.product.introPrice && (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
-                    {monthlyPackage.product.introPrice.priceString === '$0.00' || monthlyPackage.product.introPrice.price === 0
-                      ? `Free for ${monthlyPackage.product.introPrice.periodNumberOfUnits} ${monthlyPackage.product.introPrice.periodUnit === 'DAY' ? (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'day' : 'days') : monthlyPackage.product.introPrice.periodUnit === 'WEEK' ? (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'week' : 'weeks') : (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'month' : 'months')}`
-                      : `${monthlyPackage.product.introPrice.priceString} intro`}
+                    {formatIntroOffer(monthlyPackage.product.introPrice)}
                   </Text>
                 )}
                 {selectedPlan === 'monthly' && (

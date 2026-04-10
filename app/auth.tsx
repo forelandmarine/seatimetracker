@@ -300,7 +300,7 @@ export default function AuthScreen() {
   const styles = createAuthStyles(isDark);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
       <View style={styles.header}>
         <Image
           source={isDark ? require('@/assets/images/8331a0b9-33c9-4ff2-93d0-772c257bd0c9.png') : require('@/assets/images/8044436c-d8cf-489e-bf5f-7a7114b33cc0.png')}
@@ -363,6 +363,7 @@ export default function AuthScreen() {
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={email}
             onChangeText={setEmail}
+            onChange={(e) => setEmail(e.nativeEvent.text)}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
@@ -382,6 +383,7 @@ export default function AuthScreen() {
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={password}
             onChangeText={setPassword}
+            onChange={(e) => setPassword(e.nativeEvent.text)}
             secureTextEntry
             autoCapitalize="none"
             autoComplete={isSignUp ? 'password-new' : 'password'}
