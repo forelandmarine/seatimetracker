@@ -381,7 +381,7 @@ export default function PaywallScreen() {
                 {annualPackage.product.introPrice ? (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
                     {annualPackage.product.introPrice.priceString === '$0.00' || annualPackage.product.introPrice.price === 0
-                      ? `Free for ${annualPackage.product.introPrice.periodNumberOfUnits} ${annualPackage.product.introPrice.periodUnit === 'DAY' ? 'days' : annualPackage.product.introPrice.periodUnit === 'WEEK' ? 'weeks' : 'months'}`
+                      ? `Free for ${annualPackage.product.introPrice.periodNumberOfUnits} ${annualPackage.product.introPrice.periodUnit === 'DAY' ? (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'day' : 'days') : annualPackage.product.introPrice.periodUnit === 'WEEK' ? (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'week' : 'weeks') : (annualPackage.product.introPrice.periodNumberOfUnits === 1 ? 'month' : 'months')}`
                       : `${annualPackage.product.introPrice.priceString} intro`}
                   </Text>
                 ) : (
@@ -427,7 +427,7 @@ export default function PaywallScreen() {
                 {monthlyPackage.product.introPrice && (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
                     {monthlyPackage.product.introPrice.priceString === '$0.00' || monthlyPackage.product.introPrice.price === 0
-                      ? `Free for ${monthlyPackage.product.introPrice.periodNumberOfUnits} ${monthlyPackage.product.introPrice.periodUnit === 'DAY' ? 'days' : monthlyPackage.product.introPrice.periodUnit === 'WEEK' ? 'weeks' : 'months'}`
+                      ? `Free for ${monthlyPackage.product.introPrice.periodNumberOfUnits} ${monthlyPackage.product.introPrice.periodUnit === 'DAY' ? (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'day' : 'days') : monthlyPackage.product.introPrice.periodUnit === 'WEEK' ? (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'week' : 'weeks') : (monthlyPackage.product.introPrice.periodNumberOfUnits === 1 ? 'month' : 'months')}`
                       : `${monthlyPackage.product.introPrice.priceString} intro`}
                   </Text>
                 )}
@@ -549,7 +549,13 @@ export default function PaywallScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  {availablePackages.length === 0 ? 'Subscription Unavailable' : 'Subscribe Now'}
+                  {availablePackages.length === 0
+                    ? 'Subscription Unavailable'
+                    : (() => {
+                        const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+                        const hasFreeTrial = pkg?.product.introPrice && (pkg.product.introPrice.priceString === '$0.00' || pkg.product.introPrice.price === 0);
+                        return hasFreeTrial ? 'Start Free Trial' : 'Subscribe Now';
+                      })()}
                 </Text>
               )}
             </TouchableOpacity>
