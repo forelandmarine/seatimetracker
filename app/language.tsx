@@ -48,8 +48,8 @@ export default function LanguageScreen() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Choose the language for the app interface. Some text is still being translated and will
-          appear in English until updated.
+          Choose your preferred language. Onboarding, paywall, and navigation are fully translated.
+          Some detail screens will appear in English.
         </Text>
 
         {SUPPORTED_LANGUAGES.map((lang, index) => (

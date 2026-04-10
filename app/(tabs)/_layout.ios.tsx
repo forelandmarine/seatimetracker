@@ -9,8 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 import { log } from '@/utils/log';
+import { useTranslation } from 'react-i18next';
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const router = useRouter();
@@ -71,7 +73,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(home)"
         options={{
-          title: 'Sea Time',
+          title: t('tabs.seaTime'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="sailboat.fill"
@@ -85,7 +87,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="logbook"
         options={{
-          title: 'Logbook',
+          title: t('tabs.logbook'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="book.closed.fill"
@@ -99,7 +101,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="confirmations"
         options={{
-          title: 'Review',
+          title: t('tabs.review'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="checkmark.circle.fill"
@@ -113,7 +115,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="person.crop.circle.fill"

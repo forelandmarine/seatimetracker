@@ -24,6 +24,7 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { log, warn, error as logError } from '@/utils/log';
+import { useTranslation } from 'react-i18next';
 
 const SIGNATURE_STORAGE_KEY = 'seatime_user_signature';
 
@@ -410,6 +411,7 @@ export default function ProfileScreen() {
   const styles = createStyles(isDark, insets.top);
   const router = useRouter();
   const { refreshTrigger } = useAuth();
+  const { t } = useTranslation();
 
   log('ProfileScreen (iOS) rendered');
 
@@ -775,9 +777,9 @@ export default function ProfileScreen() {
           />
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-              Profile
+              {t('profile.title')}
             </Text>
-            <Text style={styles.headerSubtitle}>Your Sea Time Profile & Reports</Text>
+            <Text style={styles.headerSubtitle}>{t('profile.subtitle')}</Text>
           </View>
         </View>
       </View>
@@ -821,7 +823,7 @@ export default function ProfileScreen() {
 
           {!loadingSummary && summary && summary.entries_by_vessel.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Download Reports</Text>
+              <Text style={styles.sectionTitle}>{t('profile.downloadReports')}</Text>
               <View style={styles.card}>
                 <TouchableOpacity
                   style={styles.reportButton}
@@ -838,7 +840,7 @@ export default function ProfileScreen() {
                         size={24}
                         color="#ffffff"
                       />
-                      <Text style={styles.reportButtonText}>Download PDF Report</Text>
+                      <Text style={styles.reportButtonText}>{t('profile.downloadPDF')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -858,7 +860,7 @@ export default function ProfileScreen() {
                         size={24}
                         color="#ffffff"
                       />
-                      <Text style={styles.reportButtonText}>Download CSV Report</Text>
+                      <Text style={styles.reportButtonText}>{t('profile.downloadCSV')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -867,7 +869,7 @@ export default function ProfileScreen() {
           )}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sea Time Summary</Text>
+            <Text style={styles.sectionTitle}>{t('profile.seaTimeSummary')}</Text>
             <View style={styles.card}>
               {loadingSummary ? (
                 <Text style={styles.loadingText}>Loading summary...</Text>
@@ -880,7 +882,7 @@ export default function ProfileScreen() {
                   {summary.entries_by_vessel.length > 0 && (
                     <>
                       <View style={[styles.summaryRow, styles.summaryRowLast]}>
-                        <Text style={styles.summaryLabel}>Total Days</Text>
+                        <Text style={styles.summaryLabel}>{t('profile.totalDays')}</Text>
                         <Text style={styles.summaryValue}>{totalDays}</Text>
                       </View>
                     </>
@@ -894,7 +896,7 @@ export default function ProfileScreen() {
 
           {!loadingSummary && summary && summary.entries_by_vessel.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Sea Time by Vessel</Text>
+              <Text style={styles.sectionTitle}>{t('profile.seaTimeByVessel')}</Text>
               <View style={styles.card}>
                 {summary.entries_by_vessel.map((vessel, index) => {
                   const vesselDays = vessel.total_days;
@@ -927,7 +929,7 @@ export default function ProfileScreen() {
 
           {!loadingSummary && summary && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Sea Time by Service Type</Text>
+              <Text style={styles.sectionTitle}>{t('profile.seaTimeByService')}</Text>
               <View style={styles.card}>
                 {allServiceTypes.map((serviceEntry, index) => {
                   const serviceDays = serviceEntry.total_days;
@@ -958,7 +960,7 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.disclosureTitle}>
-                  What counts as sea time?
+                  {t('profile.whatCountsAsSeaTime')}
                 </Text>
                 <IconSymbol
                   ios_icon_name={showDefinitions ? 'chevron.up' : 'chevron.down'}
@@ -999,7 +1001,7 @@ export default function ProfileScreen() {
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>Settings</Text>
+                <Text style={styles.menuItemText}>{t('settings.title')}</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

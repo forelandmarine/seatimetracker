@@ -26,6 +26,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { getRequirementTitles } from '@/constants/mcaRequirements';
 
 import { log, error as logError } from '@/utils/log';
+import { useTranslation } from 'react-i18next';
 
 interface Vessel {
   id: string;
@@ -606,6 +607,7 @@ export default function LogbookScreen() {
   const insets = useSafeAreaInsets();
   const styles = createStyles(isDark, insets.top);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [entries, setEntries] = useState<SeaTimeEntry[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
@@ -841,7 +843,7 @@ export default function LogbookScreen() {
             />
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                Logbook
+                {t('logbook.title')}
               </Text>
               <Text style={styles.headerSubtitle}>Loading your sea time records...</Text>
             </View>
@@ -866,7 +868,7 @@ export default function LogbookScreen() {
             <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
               Logbook
             </Text>
-            <Text style={styles.headerSubtitle}>Your Sea Time Logbook</Text>
+            <Text style={styles.headerSubtitle}>{t('logbook.subtitle')}</Text>
           </View>
         </View>
         
@@ -881,7 +883,7 @@ export default function LogbookScreen() {
               }}
             >
               <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-                List
+                {t('logbook.list')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -892,7 +894,7 @@ export default function LogbookScreen() {
               }}
             >
               <Text style={[styles.toggleText, viewMode === 'calendar' && styles.toggleTextActive]}>
-                Calendar
+                {t('logbook.calendar')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1076,10 +1078,8 @@ export default function LogbookScreen() {
                 size={64}
                 color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
-              <Text style={styles.emptyText}>No sea time entries yet</Text>
-              <Text style={styles.emptySubtext}>
-                Tap the + button to manually add a sea time entry, or start tracking vessels
-              </Text>
+              <Text style={styles.emptyText}>{t('logbook.noEntries')}</Text>
+              <Text style={styles.emptySubtext}>{t('logbook.noEntriesHint')}</Text>
             </View>
           ) : visibleEntries.length === 0 && searchQuery ? (
             <View style={styles.emptyContainer}>
@@ -1088,24 +1088,24 @@ export default function LogbookScreen() {
           ) : (
             <React.Fragment>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Summary</Text>
+                <Text style={styles.summaryTitle}>{t('logbook.summary')}</Text>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Total Days</Text>
+                  <Text style={styles.summaryLabel}>{t('profile.totalDays')}</Text>
                   <Text style={styles.summaryValue}>{totalDays}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Confirmed Entries</Text>
+                  <Text style={styles.summaryLabel}>{t('logbook.confirmedEntries')}</Text>
                   <Text style={styles.summaryValue}>{confirmedEntries.length}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Pending Review</Text>
+                  <Text style={styles.summaryLabel}>{t('logbook.pendingReview')}</Text>
                   <Text style={styles.summaryValue}>{pendingEntries.length}</Text>
                 </View>
               </View>
 
               {confirmedEntries.length > 0 && (
                 <React.Fragment>
-                  <Text style={styles.sectionTitle}>Sea Time Records by Vessel</Text>
+                  <Text style={styles.sectionTitle}>{t('logbook.byVessel')}</Text>
                   {Object.entries(groupedByVessel).map(([vesselId, group]) => {
                     const vesselTotalHours = group.entries.reduce(
                       (sum, entry) => sum + toNumber(entry.duration_hours),

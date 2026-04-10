@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const SUPPORT_EMAIL = 'info@forelandmarine.com';
 
@@ -72,6 +73,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const styles = createStyles(isDark);
   const { signOut } = useAuth();
+  const { t } = useTranslation();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -106,117 +108,41 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top > 0 ? 0 : 0 }]}>
-      <Stack.Screen options={{ title: 'Settings', headerBackTitle: 'Profile' }} />
+      <Stack.Screen options={{ title: t('settings.title'), headerBackTitle: t('tabs.profile') }} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* PROFILE */}
-        <Text style={styles.sectionTitle}>PROFILE</Text>
+        <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="person.circle"
-            androidIcon="person"
-            label="Edit profile"
-            onPress={() => router.push('/user-profile')}
-            isDark={isDark}
-          />
-          <SettingsRow
-            icon="signature"
-            androidIcon="draw"
-            label="Signature for reports"
-            onPress={() => router.push('/signature')}
-            isLast
-            isDark={isDark}
-          />
+          <SettingsRow icon="person.circle" androidIcon="person" label={t('settings.editProfile')} onPress={() => router.push('/user-profile')} isDark={isDark} />
+          <SettingsRow icon="signature" androidIcon="draw" label={t('settings.signatureForReports')} onPress={() => router.push('/signature')} isLast isDark={isDark} />
         </View>
 
-        {/* CERTIFICATES */}
-        <Text style={styles.sectionTitle}>CERTIFICATES</Text>
+        <Text style={styles.sectionTitle}>{t('settings.certificates')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="doc.text.fill"
-            androidIcon="article"
-            label="Manage certificates"
-            onPress={() => router.push('/certificates')}
-            isLast
-            isDark={isDark}
-          />
+          <SettingsRow icon="doc.text.fill" androidIcon="article" label={t('settings.manageCertificates')} onPress={() => router.push('/certificates')} isLast isDark={isDark} />
         </View>
 
-        {/* TRACKING */}
-        <Text style={styles.sectionTitle}>TRACKING</Text>
+        <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="clock"
-            androidIcon="schedule"
-            label="AIS check schedule"
-            onPress={() => router.push('/scheduled-tasks')}
-            isDark={isDark}
-          />
-          <SettingsRow
-            icon="location.fill"
-            androidIcon="my-location"
-            label="Manual GPS tracking"
-            onPress={() => router.push('/manual-tracking')}
-            isDark={isDark}
-          />
-          <SettingsRow
-            icon="bell"
-            androidIcon="notifications"
-            label="Notifications"
-            onPress={() => router.push('/notification-settings')}
-            isLast
-            isDark={isDark}
-          />
+          <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />
+          <SettingsRow icon="location.fill" androidIcon="my-location" label={t('settings.manualGps')} onPress={() => router.push('/manual-tracking')} isDark={isDark} />
+          <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isLast isDark={isDark} />
         </View>
 
-        {/* PREFERENCES */}
-        <Text style={styles.sectionTitle}>PREFERENCES</Text>
+        <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="globe"
-            androidIcon="language"
-            label="Language"
-            onPress={() => router.push('/language')}
-            isLast
-            isDark={isDark}
-          />
+          <SettingsRow icon="globe" androidIcon="language" label={t('settings.language')} onPress={() => router.push('/language')} isLast isDark={isDark} />
         </View>
 
-        {/* GROW THE CREW */}
-        <Text style={styles.sectionTitle}>GROW THE CREW</Text>
+        <Text style={styles.sectionTitle}>{t('settings.growTheCrew')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="person.2.fill"
-            androidIcon="people"
-            label="Refer a captain"
-            onPress={() => router.push('/refer')}
-            isLast
-            isDark={isDark}
-          />
+          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referACaptain')} onPress={() => router.push('/refer')} isLast isDark={isDark} />
         </View>
 
-        {/* SUPPORT */}
-        <Text style={styles.sectionTitle}>SUPPORT</Text>
+        <Text style={styles.sectionTitle}>{t('settings.support')}</Text>
         <View style={styles.card}>
-          <SettingsRow
-            icon="info.circle"
-            androidIcon="info"
-            label="About & help"
-            onPress={() => router.push('/about')}
-            isDark={isDark}
-          />
-          <SettingsRow
-            icon="envelope"
-            androidIcon="email"
-            label="Contact support"
-            onPress={handleSupport}
-            isDark={isDark}
-          />
-          <SettingsRow
-            icon="rectangle.portrait.and.arrow.right"
-            androidIcon="logout"
-            label="Sign out"
-            onPress={() => setShowSignOutModal(true)}
-            destructive
+          <SettingsRow icon="info.circle" androidIcon="info" label={t('settings.aboutAndHelp')} onPress={() => router.push('/about')} isDark={isDark} />
+          <SettingsRow icon="envelope" androidIcon="email" label={t('settings.contactSupport')} onPress={handleSupport} isDark={isDark} />
+          <SettingsRow icon="rectangle.portrait.and.arrow.right" androidIcon="logout" label={t('settings.signOut')} onPress={() => setShowSignOutModal(true)} destructive
             isLast
             isDark={isDark}
           />

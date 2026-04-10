@@ -9,7 +9,13 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "retry": "Try again"
+    "retry": "Try again",
+    "search": "Search",
+    "noResults": "No results found",
+    "confirm": "Confirm",
+    "done": "Done",
+    "close": "Close",
+    "refresh": "Refresh"
   },
   "tabs": {
     "seaTime": "Sea Time",
@@ -18,19 +24,24 @@
     "profile": "Profile"
   },
   "auth": {
-    "signIn": "Sign in",
-    "signUp": "Sign up",
-    "signOut": "Sign out",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
     "email": "Email",
     "password": "Password",
-    "name": "Name",
-    "forgotPassword": "Forgot password?",
-    "createAccount": "Create account",
-    "alreadyHaveAccount": "Already have an account?",
-    "needAccount": "Need an account?",
+    "name": "Name (Optional)",
+    "forgotPassword": "Forgot Password?",
+    "alreadyHaveAccount": "Already have an account? Sign In",
+    "needAccount": "Don't have an account? Sign Up",
     "signInWithApple": "Sign in with Apple",
     "signInWithFaceId": "Sign in with Face ID",
-    "signInWithBiometrics": "Sign in with Biometrics"
+    "rememberMe": "Remember me",
+    "rememberMeBiometric": "Remember me (enable Face ID sign in)",
+    "enterEmail": "your.email@example.com",
+    "enterPassword": "Enter your password",
+    "minPassword": "Minimum 8 characters",
+    "secureData": "Your sea time data is private and secure.",
+    "iosCompliant": "Compliant with iOS data handling regulations."
   },
   "onboarding": {
     "skip": "Skip",
@@ -38,36 +49,101 @@
     "getStarted": "Get started",
     "slide1": {
       "label": "AUTOMATIC TRACKING",
-      "title": "Your sea time, on autopilot.",
-      "body": "Add your vessel by MMSI and let SeaTime Tracker log your sea service automatically using AIS data. No more handwritten notebooks."
+      "title": "Ditch the paper logbook.",
+      "body": "Enter your MMSI and SeaTime Tracker picks up AIS positions automatically. Your sea service builds in the background while you focus on the job."
     },
     "slide2": {
       "label": "MCA-COMPLIANT REPORTS",
-      "title": "Reports the MCA accepts.",
-      "body": "Generate sea service testimonials in the exact format required for CoC applications. PDF and CSV exports, ready to submit."
+      "title": "CoC-ready at the tap of a button.",
+      "body": "Export sea service testimonials in the format the MCA actually requires. PDF or CSV, signed and ready to submit with your next Notice of Eligibility."
     },
     "slide3": {
       "label": "BUILT BY MARINERS",
-      "title": "From the team behind Lightship.",
-      "body": "SeaTime Tracker is built by Foreland Marine — the same team behind Lightship ISM, the fleet management platform trusted by yacht managers worldwide."
+      "title": "By Foreland Marine.",
+      "body": "We build Lightship ISM for fleet managers. SeaTime Tracker puts the same standards into the hands of individual officers and engineers."
     }
   },
   "home": {
     "title": "SeaTime Tracker",
     "subtitle": "Your AIS Tracking Companion",
-    "noVesselsTitle": "No Vessels Yet",
-    "noVesselsSubtitle": "Add your first vessel to start tracking sea time",
-    "addVessel": "Add Vessel",
-    "tryDemoVessel": "Try with demo vessel",
     "activeVessel": "Active Vessel",
     "historicVessels": "Historic Vessels",
-    "checkNow": "Check now",
+    "noActiveVessel": "No active vessel",
+    "tapToActivate": "Tap a vessel below to view details and activate it",
+    "addFirstVessel": "Tap the + button to add your first vessel",
+    "noHistoricVessels": "No historic vessels",
+    "historicSubtext": "Vessels you've previously tracked will appear here",
+    "tracking": "TRACKING",
+    "addNewVessel": "Add New Vessel",
+    "vesselName": "Vessel Name",
+    "mmsi": "MMSI",
+    "autoFillHint": "Optional fields will be auto-filled from AIS data when available",
+    "nextCertExpiring": "NEXT CERTIFICATE EXPIRING"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Your Sea Time Profile & Reports",
+    "downloadReports": "Download Reports",
+    "downloadPDF": "Download PDF Report",
+    "downloadCSV": "Download CSV Report",
+    "seaTimeSummary": "Sea Time Summary",
+    "totalDays": "Total Days",
+    "seaTimeByVessel": "Sea Time by Vessel",
+    "seaTimeByService": "Sea Time by Service Type",
+    "whatCountsAsSeaTime": "What counts as sea time?",
+    "noConfirmedEntries": "No confirmed sea time entries yet",
+    "settings": "Settings",
+    "addSignature": "Add your signature?",
+    "signaturePrompt": "Reports look more credible to MCA assessors when signed. You can add a signature now or download an unsigned report.",
+    "downloadUnsigned": "Download unsigned",
+    "addSignatureAction": "Add signature"
+  },
+  "logbook": {
+    "title": "Logbook",
+    "subtitle": "Your Sea Time Logbook",
+    "list": "List",
+    "calendar": "Calendar",
+    "summary": "Summary",
+    "confirmedEntries": "Confirmed Entries",
+    "pendingReview": "Pending Review",
+    "byVessel": "Sea Time Records by Vessel",
+    "noEntries": "No sea time entries yet",
+    "noEntriesHint": "Tap the + button to manually add a sea time entry, or start tracking vessels",
+    "searchPlaceholder": "Search by vessel, date, service type...",
+    "selectDate": "Select a date on the calendar to view sea time entries for that day",
+    "entries": "Entries",
+    "total": "Total"
+  },
+  "review": {
+    "title": "Review",
+    "subtitle": "Confirm your sea time entries",
+    "pendingEntries": "Pending Entries",
+    "noPending": "No entries to review",
+    "noPendingHint": "When your vessel stops moving, entries appear here for review",
+    "days": "days",
+    "day": "day"
+  },
+  "vessel": {
+    "particulars": "Vessel Particulars",
+    "aisData": "AIS Data",
+    "seaTimeSummary": "Sea Time Summary",
+    "seaTimeEntries": "Sea Time Entries",
+    "noAisData": "No AIS data available. Tap refresh to check.",
+    "trackManually": "Track manually with phone GPS",
+    "aisStale": "AIS data is stale. Fall back to manual tracking",
+    "noAisCoverage": "No AIS coverage. Use phone GPS instead",
     "position": "Position",
-    "latitude": "Latitude",
-    "longitude": "Longitude",
-    "loadingLocation": "Loading location..."
+    "speed": "Speed",
+    "course": "Course",
+    "heading": "Heading",
+    "status": "Status",
+    "destination": "Destination",
+    "lastUpdate": "Last Update",
+    "activate": "Activate Vessel",
+    "editParticulars": "Edit Particulars"
   },
   "paywall": {
+    "startFreeTrial": "Start Free Trial",
     "subscribeNow": "Subscribe Now",
     "restorePurchases": "Restore Purchases",
     "redeemCode": "Redeem Code",
@@ -88,12 +164,30 @@
     "termsCharge": "Payment charged to Apple ID at confirmation"
   },
   "settings": {
+    "title": "Settings",
+    "profile": "PROFILE",
+    "editProfile": "Edit profile",
+    "signatureForReports": "Signature for reports",
+    "certificates": "CERTIFICATES",
+    "manageCertificates": "Manage certificates",
+    "tracking": "TRACKING",
+    "aisSchedule": "AIS check schedule",
+    "manualGps": "Manual GPS tracking",
+    "notifications": "Notifications",
+    "preferences": "PREFERENCES",
     "language": "Language",
-    "notifications": "Notification Settings",
-    "certificates": "Certificates",
-    "manualTracking": "Manual GPS tracking",
-    "signature": "Signature for reports",
-    "referFriend": "Refer a captain",
-    "about": "About & Help"
+    "growTheCrew": "GROW THE CREW",
+    "referACaptain": "Refer a captain",
+    "support": "SUPPORT",
+    "aboutAndHelp": "About & help",
+    "contactSupport": "Contact support",
+    "signOut": "Sign out"
+  },
+  "serviceTypes": {
+    "actual_sea_service": "Actual Sea Service",
+    "watchkeeping_service": "Watchkeeping Service",
+    "standby_service": "Stand-by Service",
+    "yard_service": "Yard Service",
+    "service_in_port": "Service in Port"
   }
 }

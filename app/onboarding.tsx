@@ -51,25 +51,25 @@ const slides: OnboardingSlide[] = [
     iconName: 'sailboat.fill',
     iconAndroid: 'sailing',
     label: 'AUTOMATIC TRACKING',
-    title: 'Your sea time, on autopilot.',
+    title: 'Ditch the paper logbook.',
     body:
-      'Add your vessel by MMSI and let SeaTime Tracker log your sea service automatically using AIS data. No more handwritten notebooks.',
+      'Enter your MMSI and SeaTime Tracker picks up AIS positions automatically. Your sea service builds in the background while you focus on the job.',
   },
   {
     iconName: 'doc.text.fill',
     iconAndroid: 'description',
     label: 'MCA-COMPLIANT REPORTS',
-    title: 'Reports the MCA accepts.',
+    title: 'CoC-ready at the tap of a button.',
     body:
-      'Generate sea service testimonials in the exact format required for CoC applications. PDF and CSV exports, ready to submit.',
+      'Export sea service testimonials in the format the MCA actually requires. PDF or CSV, signed and ready to submit with your next Notice of Eligibility.',
   },
   {
     iconName: 'building.2.fill',
     iconAndroid: 'business',
     label: 'BUILT BY MARINERS',
-    title: 'From the team behind Lightship.',
+    title: 'By Foreland Marine.',
     body:
-      'SeaTime Tracker is built by Foreland Marine — the same team behind Lightship ISM, the fleet management platform trusted by yacht managers worldwide.',
+      'We build Lightship ISM for fleet managers. SeaTime Tracker puts the same standards into the hands of individual officers and engineers.',
   },
 ];
 
