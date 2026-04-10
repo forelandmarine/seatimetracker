@@ -13,6 +13,8 @@ import { appleRed, borderColor } from "@/constants/Colors";
 import { IconCircle } from "./IconCircle";
 import { IconSymbol } from "./IconSymbol";
 
+import { log } from '@/utils/log';
+
 // Platform-specific import - only load on native platforms
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Haptics = Platform.OS !== 'web' ? require("expo-haptics") : null;
@@ -37,7 +39,7 @@ export default function ListItem({ listId }: { listId: string }) {
           if (Platform.OS === "ios" && Haptics) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
-          console.log("delete");
+          log("delete");
         }}
       >
         <Reanimated.View style={[styleAnimation, styles.rightAction]}>

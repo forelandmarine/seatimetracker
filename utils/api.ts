@@ -22,6 +22,8 @@
 import Constants from "expo-constants";
 import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
 
+import { log, error as logError } from '@/utils/log';
+
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
  * It is set automatically when the backend is deployed.
@@ -32,7 +34,7 @@ export const BACKEND_URL: string =
   Constants.expoConfig?.extra?.backendUrl ||
   "https://seatimetracker-production.up.railway.app";
 
-console.log('[API] Backend URL configured:', BACKEND_URL || 'NOT CONFIGURED');
+log('[API] Backend URL configured:', BACKEND_URL || 'NOT CONFIGURED');
 
 /**
  * Check if backend is properly configured
@@ -65,7 +67,7 @@ export const apiCall = async <T = any>(
   }
 
   const url = `${BACKEND_URL}${endpoint}`;
-  console.log("[API] Calling:", url, options?.method || "GET");
+  log("[API] Calling:", url, options?.method || "GET");
 
   // Setup timeout if specified
   const timeout = options?.timeout || 15000; // Default 15 second timeout
@@ -86,22 +88,22 @@ export const apiCall = async <T = any>(
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("[API] Error response:", response.status, text);
+      logError("[API] Error response:", response.status, text);
       throw new Error(`API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
-    console.log("[API] Success:", data);
+    log("[API] Success:", data);
     return data;
   } catch (error: any) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      console.error("[API] Request timed out after", timeout, "ms");
+      logError("[API] Request timed out after", timeout, "ms");
       throw new Error(`Request timed out after ${timeout}ms`);
     }
     
-    console.error("[API] Request failed:", error);
+    logError("[API] Request failed:", error);
     throw error;
   }
 };
@@ -191,7 +193,7 @@ export const authenticatedApiCall = async <T = any>(
   }
 
   const url = `${BACKEND_URL}${endpoint}`;
-  console.log("[API] Authenticated call:", url, options?.method || "GET");
+  log("[API] Authenticated call:", url, options?.method || "GET");
 
   // Setup timeout if specified
   const timeout = options?.timeout || 15000; // Default 15 second timeout
@@ -213,7 +215,7 @@ export const authenticatedApiCall = async <T = any>(
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("[API] Error response:", response.status, text);
+      logError("[API] Error response:", response.status, text);
       
       if (response.status === 401) {
         notifyUnauthorized();
@@ -225,30 +227,30 @@ export const authenticatedApiCall = async <T = any>(
 
     // Handle 204 No Content responses (e.g., DELETE /api/users/me)
     if (response.status === 204 || response.headers.get('content-length') === '0') {
-      console.log("[API] Success: 204 No Content");
+      log("[API] Success: 204 No Content");
       return null as T;
     }
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
-      console.log("[API] Success:", data);
+      log("[API] Success:", data);
       return data;
     }
 
     // For non-JSON responses, return text
     const text = await response.text();
-    console.log("[API] Success (text):", text?.substring(0, 100));
+    log("[API] Success (text):", text?.substring(0, 100));
     return text as unknown as T;
   } catch (error: any) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      console.error("[API] Request timed out after", timeout, "ms");
+      logError("[API] Request timed out after", timeout, "ms");
       throw new Error(`Request timed out after ${timeout}ms`);
     }
     
-    console.error("[API] Request failed:", error);
+    logError("[API] Request failed:", error);
     throw error;
   }
 };

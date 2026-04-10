@@ -23,6 +23,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 const SIGNATURE_STORAGE_KEY = 'seatime_user_signature';
 
 interface UserProfile {
@@ -409,23 +411,23 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { refreshTrigger } = useAuth();
 
-  console.log('ProfileScreen (iOS) rendered');
+  log('ProfileScreen (iOS) rendered');
 
   const loadProfile = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
       const data = await seaTimeApi.getUserProfile();
-      console.log('User profile loaded successfully:', data?.email);
+      log('User profile loaded successfully:', data?.email);
       setProfile(data);
       setLoading(false);
     } catch (error: any) {
-      console.error(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying profile load in ${waitTime}ms...`);
+        log(`Retrying profile load in ${waitTime}ms...`);
         setTimeout(() => loadProfile(retryCount + 1), waitTime);
       } else {
         setLoading(false);
@@ -443,74 +445,74 @@ export default function ProfileScreen() {
 
   const loadSummary = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
       const data = await seaTimeApi.getReportSummary();
-      console.log('Sea time summary loaded successfully');
+      log('Sea time summary loaded successfully');
       setSummary(data);
       setLoadingSummary(false);
     } catch (error: any) {
-      console.error(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying summary load in ${waitTime}ms...`);
+        log(`Retrying summary load in ${waitTime}ms...`);
         setTimeout(() => loadSummary(retryCount + 1), waitTime);
       } else {
         setLoadingSummary(false);
-        console.warn('Summary load failed after retries, continuing without summary');
+        warn('Summary load failed after retries, continuing without summary');
       }
     }
   }, []);
 
   const loadVessels = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
       const data = await seaTimeApi.getVessels();
-      console.log('Vessels loaded successfully:', data?.length);
+      log('Vessels loaded successfully:', data?.length);
       setVessels(data);
     } catch (error: any) {
-      console.error(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying vessels load in ${waitTime}ms...`);
+        log(`Retrying vessels load in ${waitTime}ms...`);
         setTimeout(() => loadVessels(retryCount + 1), waitTime);
       } else {
-        console.warn('Vessels load failed after retries, continuing without vessels');
+        warn('Vessels load failed after retries, continuing without vessels');
       }
     }
   }, []);
 
   useEffect(() => {
-    console.log('ProfileScreen (iOS): Initial mount, loading data in parallel');
+    log('ProfileScreen (iOS): Initial mount, loading data in parallel');
     Promise.all([
       loadProfile(),
       loadSummary(),
       loadVessels(),
     ]).catch(error => {
-      console.error('Failed to load profile data:', error);
+      logError('Failed to load profile data:', error);
     });
   }, [loadProfile, loadSummary, loadVessels]);
 
   useEffect(() => {
     if (refreshTrigger > 0) {
-      console.log('ProfileScreen (iOS): Global refresh triggered, reloading profile data in parallel');
+      log('ProfileScreen (iOS): Global refresh triggered, reloading profile data in parallel');
       Promise.all([
         loadProfile(),
         loadSummary(),
         loadVessels(),
       ]).catch(error => {
-        console.error('Failed to refresh profile data:', error);
+        logError('Failed to refresh profile data:', error);
       });
     }
   }, [refreshTrigger, loadProfile, loadSummary, loadVessels]);
 
   const handleRefresh = useCallback(async () => {
-    console.log('User pulled to refresh profile screen');
+    log('User pulled to refresh profile screen');
     setRefreshing(true);
     try {
       await Promise.all([
@@ -519,14 +521,14 @@ export default function ProfileScreen() {
         loadVessels(),
       ]);
     } catch (error) {
-      console.error('Failed to refresh profile data:', error);
+      logError('Failed to refresh profile data:', error);
     } finally {
       setRefreshing(false);
     }
   }, [loadProfile, loadSummary, loadVessels]);
 
   const handleVesselPress = (vesselName: string) => {
-    console.log('User tapped vessel:', vesselName);
+    log('User tapped vessel:', vesselName);
     const vessel = vessels.find((v) => v.vessel_name === vesselName);
     if (vessel) {
       router.push(`/vessel/${vessel.id}`);
@@ -564,7 +566,7 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadPDF = async () => {
-    console.log('User tapped Download PDF Report');
+    log('User tapped Download PDF Report');
 
     // Check whether the user has captured a signature. If not, prompt before
     // generating the PDF — signed reports look more credible to MCA assessors.
@@ -585,30 +587,30 @@ export default function ProfileScreen() {
         if (!proceed) return;
       }
     } catch (err) {
-      console.warn('[Profile] Failed to read signature, continuing without:', err);
+      warn('[Profile] Failed to read signature, continuing without:', err);
     }
 
     setDownloadingPDF(true);
     try {
-      console.log('Calling downloadPDFReport API...');
+      log('Calling downloadPDFReport API...');
       const pdfBlob = await seaTimeApi.downloadPDFReport();
-      console.log('PDF report downloaded, blob size:', pdfBlob.size);
+      log('PDF report downloaded, blob size:', pdfBlob.size);
 
-      console.log('iOS platform: Saving PDF to file system');
+      log('iOS platform: Saving PDF to file system');
       const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
       
-      console.log('Converting blob to base64...');
+      log('Converting blob to base64...');
       const reader = new FileReader();
       
       reader.onerror = (error) => {
-        console.error('FileReader error:', error);
+        logError('FileReader error:', error);
         throw new Error('Failed to read PDF data');
       };
       
       reader.onloadend = async () => {
         try {
-          console.log('Blob converted to base64, writing to file system...');
+          log('Blob converted to base64, writing to file system...');
           const base64data = reader.result as string;
           const base64 = base64data.split(',')[1];
           
@@ -616,34 +618,34 @@ export default function ProfileScreen() {
             encoding: FileSystem.EncodingType.Base64,
           });
           
-          console.log('PDF saved to:', fileUri);
+          log('PDF saved to:', fileUri);
           
           const fileInfo = await FileSystem.getInfoAsync(fileUri);
-          console.log('File info:', fileInfo);
+          log('File info:', fileInfo);
           
           if (await Sharing.isAvailableAsync()) {
-            console.log('Sharing is available, opening share dialog...');
+            log('Sharing is available, opening share dialog...');
             await Sharing.shareAsync(fileUri, {
               mimeType: 'application/pdf',
               dialogTitle: 'Save or Share PDF Report',
               UTI: 'com.adobe.pdf',
             });
-            console.log('Share dialog opened successfully');
+            log('Share dialog opened successfully');
           } else {
-            console.log('Sharing not available, showing success alert');
+            log('Sharing not available, showing success alert');
             Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
           }
         } catch (error) {
-          console.error('Error in FileReader onloadend:', error);
+          logError('Error in FileReader onloadend:', error);
           throw error;
         }
       };
       
-      console.log('Starting FileReader...');
+      log('Starting FileReader...');
       reader.readAsDataURL(pdfBlob);
     } catch (error: any) {
-      console.error('Failed to download PDF report:', error);
-      console.error('Error details:', {
+      logError('Failed to download PDF report:', error);
+      logError('Error details:', {
         message: error?.message,
         stack: error?.stack,
         name: error?.name,
@@ -658,11 +660,11 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadCSV = async () => {
-    console.log('User tapped Download CSV Report');
+    log('User tapped Download CSV Report');
     setDownloadingCSV(true);
     try {
       const csvData = await seaTimeApi.downloadCSVReport();
-      console.log('CSV report downloaded, size:', csvData.length);
+      log('CSV report downloaded, size:', csvData.length);
 
       const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.csv`;
       
@@ -670,7 +672,7 @@ export default function ProfileScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
       
-      console.log('CSV saved to:', fileUri);
+      log('CSV saved to:', fileUri);
       
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
@@ -678,7 +680,7 @@ export default function ProfileScreen() {
         Alert.alert('Success', 'CSV report saved to device');
       }
     } catch (error) {
-      console.error('Failed to download CSV report:', error);
+      logError('Failed to download CSV report:', error);
       Alert.alert('Error', 'Failed to download CSV report. Please try again.');
     } finally {
       setDownloadingCSV(false);
@@ -759,8 +761,8 @@ export default function ProfileScreen() {
 
   const allServiceTypes = getAllServiceTypesWithDays();
 
-  console.log('Profile image URL:', imageUrl);
-  console.log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
+  log('Profile image URL:', imageUrl);
+  log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
 
   return (
     <View style={styles.container}>

@@ -22,6 +22,7 @@ import {
   expiryStatus,
   listCertificates,
 } from '@/utils/certificatesApi';
+import { error as logError } from '@/utils/log';
 
 const LIGHTSHIP_URL = 'https://forelandmarine.com/tools/lightship-ism';
 
@@ -42,7 +43,7 @@ export default function CertificatesScreen() {
       const data = await listCertificates();
       setCerts(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('[Certificates] Failed to load:', err);
+      logError('[Certificates] Failed to load:', err);
       setCerts([]);
     } finally {
       setLoading(false);

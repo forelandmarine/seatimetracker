@@ -23,6 +23,8 @@ import { Calendar } from 'react-native-calendars';
 import { getRequirementTitles } from '@/constants/mcaRequirements';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -614,17 +616,17 @@ export default function LogbookScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      console.log('[LogbookScreen] Fetching sea time entries and vessels');
+      log('[LogbookScreen] Fetching sea time entries and vessels');
       const [entriesData, vesselsData] = await Promise.all([
         seaTimeApi.getSeaTimeEntries(),
         seaTimeApi.getVessels(),
       ]);
-      console.log('[LogbookScreen] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
+      log('[LogbookScreen] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
       
       setEntries(entriesData);
       setVessels(vesselsData);
     } catch (error) {
-      console.error('[LogbookScreen] Error loading data:', error);
+      logError('[LogbookScreen] Error loading data:', error);
       showError('Failed to load logbook data');
     } finally {
       setLoading(false);
@@ -633,30 +635,30 @@ export default function LogbookScreen() {
   }, []);
 
   useEffect(() => {
-    console.log('[LogbookScreen] Component mounted, loading data');
+    log('[LogbookScreen] Component mounted, loading data');
     loadData();
   }, [loadData]);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('[LogbookScreen] Screen focused, refreshing data');
+      log('[LogbookScreen] Screen focused, refreshing data');
       loadData();
     }, [loadData])
   );
 
   const onRefresh = useCallback(() => {
-    console.log('[LogbookScreen] User initiated refresh');
+    log('[LogbookScreen] User initiated refresh');
     setRefreshing(true);
     loadData();
   }, [loadData]);
 
   const handleAddEntry = () => {
-    console.log('[LogbookScreen] User tapped Add Entry button');
+    log('[LogbookScreen] User tapped Add Entry button');
     router.push('/add-sea-time');
   };
 
   const handleEditEntry = (entry: SeaTimeEntry) => {
-    console.log('[LogbookScreen] User tapped to edit entry:', entry.id);
+    log('[LogbookScreen] User tapped to edit entry:', entry.id);
     router.push(`/edit-sea-time?id=${entry.id}`);
   };
 
@@ -756,7 +758,7 @@ export default function LogbookScreen() {
 
   const handleDatePress = (day: any) => {
     const dateString = day.dateString;
-    console.log('[LogbookScreen] User tapped calendar date:', dateString);
+    log('[LogbookScreen] User tapped calendar date:', dateString);
     setSelectedDate(dateString);
   };
 
@@ -868,7 +870,7 @@ export default function LogbookScreen() {
             <TouchableOpacity
               style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
               onPress={() => {
-                console.log('[LogbookScreen] Switching to list view');
+                log('[LogbookScreen] Switching to list view');
                 setViewMode('list');
                 setSelectedDate(null);
               }}
@@ -880,7 +882,7 @@ export default function LogbookScreen() {
             <TouchableOpacity
               style={[styles.toggleButton, viewMode === 'calendar' && styles.toggleButtonActive]}
               onPress={() => {
-                console.log('[LogbookScreen] Switching to calendar view');
+                log('[LogbookScreen] Switching to calendar view');
                 setViewMode('calendar');
               }}
             >
@@ -1226,7 +1228,7 @@ export default function LogbookScreen() {
                       key={entry.id}
                       style={styles.entryCard}
                       onPress={() => {
-                        console.log('[LogbookScreen] User tapped pending entry, navigating to Review tab');
+                        log('[LogbookScreen] User tapped pending entry, navigating to Review tab');
                         router.navigate('/(tabs)/confirmations');
                       }}
                     >

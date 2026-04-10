@@ -23,6 +23,8 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -391,7 +393,7 @@ export default function AddSeaTimeScreen() {
   };
 
   useEffect(() => {
-    console.log('[AddSeaTimeScreen] Subscription state - subscriptionLoading:', subscriptionLoading, 'isSubscribed:', isSubscribed);
+    log('[AddSeaTimeScreen] Subscription state - subscriptionLoading:', subscriptionLoading, 'isSubscribed:', isSubscribed);
     // Load vessels regardless of subscription state so the form is usable
     if (!subscriptionLoading) {
       loadVessels();
@@ -400,19 +402,19 @@ export default function AddSeaTimeScreen() {
 
   const loadVessels = async () => {
     try {
-      console.log('[AddSeaTimeScreen] Loading vessels');
+      log('[AddSeaTimeScreen] Loading vessels');
       setLoading(true);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.error('[AddSeaTimeScreen] Vessel fetch timed out after 15s');
+        logError('[AddSeaTimeScreen] Vessel fetch timed out after 15s');
         controller.abort();
       }, 15000);
 
       const API_URL = seaTimeApi.API_BASE_URL;
       const { getToken } = await import('@/utils/tokenStorage');
       const token = await getToken();
-      console.log('[AddSeaTimeScreen] Token retrieved:', token ? 'exists' : 'null');
+      log('[AddSeaTimeScreen] Token retrieved:', token ? 'exists' : 'null');
 
       const response = await fetch(`${API_URL}/api/vessels`, {
         method: 'GET',
@@ -424,11 +426,11 @@ export default function AddSeaTimeScreen() {
       });
 
       clearTimeout(timeoutId);
-      console.log('[AddSeaTimeScreen] Vessels response status:', response.status);
+      log('[AddSeaTimeScreen] Vessels response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AddSeaTimeScreen] Failed to fetch vessels:', response.status, errorText);
+        logError('[AddSeaTimeScreen] Failed to fetch vessels:', response.status, errorText);
         throw new Error(`Failed to load vessels: ${response.status}`);
       }
 
@@ -439,7 +441,7 @@ export default function AddSeaTimeScreen() {
         .map(v => ({ ...v, vessel_type: v.vessel_type || v.type || null }))
         .filter((v): v is Vessel => v != null);
 
-      console.log('[AddSeaTimeScreen] Loaded vessels:', vesselsData.length);
+      log('[AddSeaTimeScreen] Loaded vessels:', vesselsData.length);
       setVessels(vesselsData);
       if (vesselsData.length === 0) {
         showFeedback('No Vessels', 'You need to add a vessel first before logging sea time.', 'error');
@@ -447,10 +449,10 @@ export default function AddSeaTimeScreen() {
     } catch (error: any) {
       if (error?.name === 'AbortError' && abortRef.current.signal.aborted) return; // unmount
       if (error?.name === 'AbortError') {
-        console.error('[AddSeaTimeScreen] Vessel fetch timed out');
+        logError('[AddSeaTimeScreen] Vessel fetch timed out');
         showFeedback('Connection Timeout', 'Could not load vessels. Please check your connection and try again.', 'error');
       } else {
-        console.error('[AddSeaTimeScreen] Error loading vessels:', error);
+        logError('[AddSeaTimeScreen] Error loading vessels:', error);
         showFeedback('Error', error.message || 'Failed to load vessels. Please try again.', 'error');
       }
     } finally {
@@ -459,14 +461,14 @@ export default function AddSeaTimeScreen() {
   };
 
   const handleViewMCARequirements = async () => {
-    console.log('[AddSeaTimeScreen] User tapped View MCA Requirements');
+    log('[AddSeaTimeScreen] User tapped View MCA Requirements');
     try {
       const userProfile = await seaTimeApi.getUserProfile();
       const department = userProfile?.department?.toLowerCase() || 'deck';
-      console.log('[AddSeaTimeScreen] User department:', department);
+      log('[AddSeaTimeScreen] User department:', department);
       router.push(`/mca-requirements?department=${department}`);
     } catch (error) {
-      console.error('[AddSeaTimeScreen] Failed to get user profile:', error);
+      logError('[AddSeaTimeScreen] Failed to get user profile:', error);
       router.push('/mca-requirements?department=deck');
     }
   };
@@ -488,7 +490,7 @@ export default function AddSeaTimeScreen() {
   };
 
   const handleSave = async () => {
-    console.log('[AddSeaTimeScreen] User tapped Save');
+    log('[AddSeaTimeScreen] User tapped Save');
     
     if (!selectedVessel) {
       showFeedback('Error', 'Please select a vessel', 'error');
@@ -515,7 +517,7 @@ export default function AddSeaTimeScreen() {
         return;
       }
       
-      console.log('[AddSeaTimeScreen] Duration validation passed:', durationHours, 'hours');
+      log('[AddSeaTimeScreen] Duration validation passed:', durationHours, 'hours');
     }
 
     try {
@@ -537,17 +539,17 @@ export default function AddSeaTimeScreen() {
       const noteParts = [voyageFromNote, voyageToNote, notes].filter(Boolean);
       const fullNotes = noteParts.join('\n');
 
-      console.log('[AddSeaTimeScreen] Creating manual sea time entry');
+      log('[AddSeaTimeScreen] Creating manual sea time entry');
       const saveController = new AbortController();
       const saveTimeoutId = setTimeout(() => {
-        console.error('[AddSeaTimeScreen] Save entry timed out after 15s');
+        logError('[AddSeaTimeScreen] Save entry timed out after 15s');
         saveController.abort();
       }, 15000);
 
       const API_URL = seaTimeApi.API_BASE_URL;
       const { getToken } = await import('@/utils/tokenStorage');
       const saveToken = await getToken();
-      console.log('[AddSeaTimeScreen] Save token retrieved:', saveToken ? 'exists' : 'null');
+      log('[AddSeaTimeScreen] Save token retrieved:', saveToken ? 'exists' : 'null');
 
       const saveResponse = await fetch(`${API_URL}/api/logbook/manual-entry`, {
         method: 'POST',
@@ -570,18 +572,18 @@ export default function AddSeaTimeScreen() {
       });
 
       clearTimeout(saveTimeoutId);
-      console.log('[AddSeaTimeScreen] Save response status:', saveResponse.status);
+      log('[AddSeaTimeScreen] Save response status:', saveResponse.status);
 
       if (!saveResponse.ok) {
         const errorText = await saveResponse.text();
-        console.error('[AddSeaTimeScreen] Failed to save entry:', saveResponse.status, errorText);
+        logError('[AddSeaTimeScreen] Failed to save entry:', saveResponse.status, errorText);
         throw new Error(`Failed to save entry: ${saveResponse.status}`);
       }
 
       savedRef.current = true;
       showFeedback('Success', 'Sea time entry added successfully', 'success', () => router.back());
     } catch (error: any) {
-      console.error('[AddSeaTimeScreen] Error saving entry:', error);
+      logError('[AddSeaTimeScreen] Error saving entry:', error);
       showFeedback('Error', error.message || 'Failed to save sea time entry', 'error');
     } finally {
       setSaving(false);
@@ -780,7 +782,7 @@ export default function AddSeaTimeScreen() {
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => {
-                console.log('[AddSeaTimeScreen] User tapped vessel picker');
+                log('[AddSeaTimeScreen] User tapped vessel picker');
                 setShowVesselPicker(true);
               }}
             >
@@ -809,7 +811,7 @@ export default function AddSeaTimeScreen() {
             <TouchableOpacity
               style={styles.dateTimeButton}
               onPress={() => {
-                console.log('[AddSeaTimeScreen] User tapped start date/time');
+                log('[AddSeaTimeScreen] User tapped start date/time');
                 setShowStartDatePicker(true);
               }}
             >
@@ -835,7 +837,7 @@ export default function AddSeaTimeScreen() {
             <TouchableOpacity
               style={styles.dateTimeButton}
               onPress={() => {
-                console.log('[AddSeaTimeScreen] User tapped end date/time');
+                log('[AddSeaTimeScreen] User tapped end date/time');
                 setShowEndDatePicker(true);
               }}
             >
@@ -963,7 +965,7 @@ export default function AddSeaTimeScreen() {
                           index === vessels.length - 1 && styles.vesselOptionLast,
                         ]}
                         onPress={() => {
-                          console.log('[AddSeaTimeScreen] User selected vessel:', vessel.vessel_name);
+                          log('[AddSeaTimeScreen] User selected vessel:', vessel.vessel_name);
                           setSelectedVessel(vessel);
                           setShowVesselPicker(false);
                         }}
@@ -1019,7 +1021,7 @@ export default function AddSeaTimeScreen() {
                     display="spinner"
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
-                        console.log('[AddSeaTimeScreen] Start date selected:', selectedDate);
+                        log('[AddSeaTimeScreen] Start date selected:', selectedDate);
                         setStartDate(selectedDate);
                       }
                     }}
@@ -1070,7 +1072,7 @@ export default function AddSeaTimeScreen() {
                     display="spinner"
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
-                        console.log('[AddSeaTimeScreen] End date selected:', selectedDate);
+                        log('[AddSeaTimeScreen] End date selected:', selectedDate);
                         setEndDate(selectedDate);
                       }
                     }}

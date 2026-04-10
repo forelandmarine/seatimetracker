@@ -2,6 +2,8 @@
 import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
+import { log } from '@/utils/log';
+
 /**
  * Hook to trigger and listen for app-wide data refreshes
  * 
@@ -19,7 +21,7 @@ export function useGlobalRefresh(onRefresh?: () => void) {
 
   useEffect(() => {
     if (refreshTrigger > 0 && onRefresh) {
-      console.log('[useGlobalRefresh] Refresh triggered, calling onRefresh callback');
+      log('[useGlobalRefresh] Refresh triggered, calling onRefresh callback');
       onRefresh();
     }
   }, [refreshTrigger, onRefresh]);

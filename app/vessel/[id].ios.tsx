@@ -24,6 +24,8 @@ import {
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -117,7 +119,7 @@ export default function VesselDetailScreen() {
     if (!vesselId) return;
 
     try {
-      console.log('[VesselDetail iOS] Loading data for vessel:', vesselId);
+      log('[VesselDetail iOS] Loading data for vessel:', vesselId);
       const [vesselsData, seaTimeData] = await Promise.all([
         seaTimeApi.getVessels(),
         seaTimeApi.getVesselSeaTime(vesselId),
@@ -130,9 +132,9 @@ export default function VesselDetailScreen() {
         // Only fetch AIS location if vessel is active
         if (currentVessel.is_active) {
           try {
-            console.log('[VesselDetail iOS] Fetching AIS location for active vessel');
+            log('[VesselDetail iOS] Fetching AIS location for active vessel');
             const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
-            console.log('[VesselDetail iOS] AIS location data:', aisLocation);
+            log('[VesselDetail iOS] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
             const transformedAisData: AISData = {
@@ -155,18 +157,18 @@ export default function VesselDetailScreen() {
             };
             
             setAisData(transformedAisData);
-            console.log('[VesselDetail iOS] AIS data set successfully');
+            log('[VesselDetail iOS] AIS data set successfully');
           } catch (aisError) {
-            console.error('[VesselDetail iOS] Failed to fetch AIS location:', aisError);
+            logError('[VesselDetail iOS] Failed to fetch AIS location:', aisError);
             // Don't fail the whole load if AIS fetch fails
           }
         }
       }
 
       setSeaTimeEntries(seaTimeData);
-      console.log('[VesselDetail iOS] Data loaded successfully');
+      log('[VesselDetail iOS] Data loaded successfully');
     } catch (error: any) {
-      console.error('[VesselDetail iOS] Failed to load data:', error);
+      logError('[VesselDetail iOS] Failed to load data:', error);
       Alert.alert('Error', 'Failed to load vessel data: ' + error.message);
     } finally {
       setLoading(false);
@@ -201,7 +203,7 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail iOS] User action: Saving vessel particulars');
+      log('[VesselDetail iOS] User action: Saving vessel particulars');
       await seaTimeApi.updateVesselParticulars(vessel.id, {
         vessel_name: editedVesselName.trim() || undefined,
         flag: editedFlag.trim() || undefined,
@@ -219,7 +221,7 @@ export default function VesselDetailScreen() {
       triggerRefresh();
       Alert.alert('Success', 'Vessel particulars updated');
     } catch (error: any) {
-      console.error('[VesselDetail iOS] Failed to update vessel particulars:', error);
+      logError('[VesselDetail iOS] Failed to update vessel particulars:', error);
       Alert.alert('Error', 'Failed to update vessel particulars: ' + error.message);
     }
   };
@@ -244,20 +246,20 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail iOS] User action: Activating vessel');
+      log('[VesselDetail iOS] User action: Activating vessel');
       await seaTimeApi.activateVessel(vessel.id);
       await loadData();
       // FIX 7: Trigger global refresh so the home screen reflects the newly active vessel
       triggerRefresh();
       Alert.alert('Success', `${vessel.vessel_name} is now being tracked`);
     } catch (error: any) {
-      console.error('[VesselDetail iOS] Failed to activate vessel:', error);
+      logError('[VesselDetail iOS] Failed to activate vessel:', error);
       Alert.alert('Error', 'Failed to activate vessel: ' + error.message);
     }
   };
 
   const cancelActivateVessel = () => {
-    console.log('[VesselDetail iOS] User cancelled vessel activation');
+    log('[VesselDetail iOS] User cancelled vessel activation');
   };
 
   const handleCheckAIS = async () => {
@@ -265,14 +267,14 @@ export default function VesselDetailScreen() {
 
     try {
       setCheckingAIS(true);
-      console.log('[VesselDetail iOS] User action: Manual AIS check requested');
+      log('[VesselDetail iOS] User action: Manual AIS check requested');
       
       // First trigger the AIS check (POST) with forceRefresh=true to bypass rate limiting
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
       const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
-      console.log('[VesselDetail iOS] AIS location data:', aisLocation);
+      log('[VesselDetail iOS] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
       const transformedAisData: AISData = {
@@ -297,7 +299,7 @@ export default function VesselDetailScreen() {
       setAisData(transformedAisData);
       Alert.alert('Success', 'AIS data updated');
     } catch (error: any) {
-      console.error('[VesselDetail iOS] Failed to check AIS:', error);
+      logError('[VesselDetail iOS] Failed to check AIS:', error);
       
       // Parse error message to provide user-friendly feedback
       let userMessage = 'Failed to check vessel location. Please try again.';
@@ -342,7 +344,7 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail iOS] User action: Deleting vessel');
+      log('[VesselDetail iOS] User action: Deleting vessel');
       await seaTimeApi.deleteVessel(vessel.id);
       triggerRefresh();
       Alert.alert('Success', 'Vessel deleted', [
@@ -352,17 +354,17 @@ export default function VesselDetailScreen() {
         },
       ]);
     } catch (error: any) {
-      console.error('[VesselDetail iOS] Failed to delete vessel:', error);
+      logError('[VesselDetail iOS] Failed to delete vessel:', error);
       Alert.alert('Error', 'Failed to delete vessel: ' + error.message);
     }
   };
 
   const cancelDeleteVessel = () => {
-    console.log('[VesselDetail iOS] User cancelled vessel deletion');
+    log('[VesselDetail iOS] User cancelled vessel deletion');
   };
 
   const toggleExpanded = (entryId: string) => {
-    console.log('[VesselDetail iOS] Toggling expanded state for entry:', entryId);
+    log('[VesselDetail iOS] Toggling expanded state for entry:', entryId);
     setExpandedEntries(prev => {
       const newSet = new Set(prev);
       if (newSet.has(entryId)) {

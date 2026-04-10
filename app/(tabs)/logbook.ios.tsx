@@ -25,6 +25,8 @@ import { Calendar } from 'react-native-calendars';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getRequirementTitles } from '@/constants/mcaRequirements';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -615,17 +617,17 @@ export default function LogbookScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      console.log('[LogbookScreen iOS] Fetching sea time entries and vessels');
+      log('[LogbookScreen iOS] Fetching sea time entries and vessels');
       const [entriesData, vesselsData] = await Promise.all([
         seaTimeApi.getSeaTimeEntries(),
         seaTimeApi.getVessels(),
       ]);
-      console.log('[LogbookScreen iOS] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
+      log('[LogbookScreen iOS] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
       
       setEntries(entriesData);
       setVessels(vesselsData);
     } catch (error) {
-      console.error('[LogbookScreen iOS] Error loading data:', error);
+      logError('[LogbookScreen iOS] Error loading data:', error);
       Alert.alert('Error', 'Failed to load logbook data');
     } finally {
       setLoading(false);
@@ -635,24 +637,24 @@ export default function LogbookScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('[LogbookScreen] Screen focused, refreshing data');
+      log('[LogbookScreen] Screen focused, refreshing data');
       loadData();
     }, [loadData])
   );
 
   const onRefresh = useCallback(() => {
-    console.log('[LogbookScreen iOS] User initiated refresh');
+    log('[LogbookScreen iOS] User initiated refresh');
     setRefreshing(true);
     loadData();
   }, [loadData]);
 
   const handleAddEntry = () => {
-    console.log('[LogbookScreen iOS] User tapped Add Entry button');
+    log('[LogbookScreen iOS] User tapped Add Entry button');
     router.push('/add-sea-time');
   };
 
   const handleEditEntry = (entry: SeaTimeEntry) => {
-    console.log('[LogbookScreen iOS] User tapped to edit entry:', entry.id);
+    log('[LogbookScreen iOS] User tapped to edit entry:', entry.id);
     router.push(`/edit-sea-time?id=${entry.id}`);
   };
 
@@ -731,7 +733,7 @@ export default function LogbookScreen() {
 
   const handleDatePress = (day: any) => {
     const dateString = day.dateString;
-    console.log('[LogbookScreen iOS] User tapped calendar date:', dateString);
+    log('[LogbookScreen iOS] User tapped calendar date:', dateString);
     setSelectedDate(dateString);
   };
 
@@ -873,7 +875,7 @@ export default function LogbookScreen() {
             <TouchableOpacity
               style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
               onPress={() => {
-                console.log('[LogbookScreen iOS] Switching to list view');
+                log('[LogbookScreen iOS] Switching to list view');
                 setViewMode('list');
                 setSelectedDate(null);
               }}
@@ -885,7 +887,7 @@ export default function LogbookScreen() {
             <TouchableOpacity
               style={[styles.toggleButton, viewMode === 'calendar' && styles.toggleButtonActive]}
               onPress={() => {
-                console.log('[LogbookScreen iOS] Switching to calendar view');
+                log('[LogbookScreen iOS] Switching to calendar view');
                 setViewMode('calendar');
               }}
             >
@@ -1205,7 +1207,7 @@ export default function LogbookScreen() {
                         key={entry.id}
                         style={styles.entryCard}
                         onPress={() => {
-                          console.log('[LogbookScreen iOS] User tapped pending entry, navigating to Review tab');
+                          log('[LogbookScreen iOS] User tapped pending entry, navigating to Review tab');
                           router.push('/(tabs)/confirmations');
                         }}
                       >

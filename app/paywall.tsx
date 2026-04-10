@@ -24,6 +24,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Purchases from 'react-native-purchases';
 import Constants from 'expo-constants';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 // Read product IDs from app.json config — avoids hardcoding so they can
 // be changed in one place without touching component code.
 const PRODUCT_IDS_CONFIG = {
@@ -63,17 +65,17 @@ export default function PaywallScreen() {
       const isNowActive = nextAppState === 'active';
       if (wasBackground && isNowActive && waitingForRedeemRef.current) {
         waitingForRedeemRef.current = false;
-        console.log('[Paywall] App returned to foreground after redeem — refreshing subscription status');
+        log('[Paywall] App returned to foreground after redeem — refreshing subscription status');
         try {
           const info = await Purchases.getCustomerInfo();
           const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
-          console.log('[Paywall] Post-redeem subscription check — active entitlements:', Object.keys(info.entitlements.active));
+          log('[Paywall] Post-redeem subscription check — active entitlements:', Object.keys(info.entitlements.active));
           if (hasActiveEntitlement) {
-            console.log('[Paywall] Subscription active after redeem, navigating home');
+            log('[Paywall] Subscription active after redeem, navigating home');
             router.replace('/(tabs)/(home)');
           }
         } catch (err) {
-          console.error('[Paywall] Failed to refresh subscription after redeem:', err);
+          logError('[Paywall] Failed to refresh subscription after redeem:', err);
         }
       }
       appStateRef.current = nextAppState;
@@ -85,17 +87,17 @@ export default function PaywallScreen() {
   // after login — SubscriptionContext may not have fetched them before the
   // paywall renders).
   useEffect(() => {
-    console.log('[Paywall] Paywall screen mounted');
-    console.log('[Paywall] Available packages:', availablePackages.length);
-    console.log('[Paywall] Is loading:', isLoading);
-    console.log('[Paywall] Is subscribed:', isSubscribed);
+    log('[Paywall] Paywall screen mounted');
+    log('[Paywall] Available packages:', availablePackages.length);
+    log('[Paywall] Is loading:', isLoading);
+    log('[Paywall] Is subscribed:', isSubscribed);
 
     if (availablePackages.length === 0 && !isLoading) {
-      console.log('[Paywall] No packages available on mount — refreshing offerings');
+      log('[Paywall] No packages available on mount — refreshing offerings');
       setOfferingsLoading(true);
       refreshOfferings()
         .catch((err: any) => {
-          console.error('[Paywall] Failed to refresh offerings on mount:', err?.message);
+          logError('[Paywall] Failed to refresh offerings on mount:', err?.message);
         })
         .finally(() => setOfferingsLoading(false));
     }
@@ -104,14 +106,14 @@ export default function PaywallScreen() {
   // Redirect if already subscribed
   useEffect(() => {
     if (!isLoading && isSubscribed) {
-      console.log('[Paywall] User is subscribed, redirecting to home');
+      log('[Paywall] User is subscribed, redirecting to home');
       router.replace('/(tabs)/(home)');
     }
   }, [isSubscribed, isLoading]);
 
   const handlePurchase = async () => {
     if (availablePackages.length === 0) {
-      console.error('[Paywall] Cannot purchase - no packages available');
+      logError('[Paywall] Cannot purchase - no packages available');
       Alert.alert(
         'Subscription Unavailable',
         'Subscription packages are currently unavailable. Please try again later or contact support if the problem persists.',
@@ -130,7 +132,7 @@ export default function PaywallScreen() {
       availablePackages[0];
 
     if (!packageToPurchase) {
-      console.error('[Paywall] No valid subscription product found');
+      logError('[Paywall] No valid subscription product found');
       Alert.alert(
         'Subscription Unavailable',
         'The subscription product is not available. Please try again later or contact support.',
@@ -139,14 +141,14 @@ export default function PaywallScreen() {
       return;
     }
 
-    console.log('[Paywall] Initiating purchase for:', packageToPurchase.product.identifier);
+    log('[Paywall] Initiating purchase for:', packageToPurchase.product.identifier);
     setPurchasing(true);
 
     try {
       const result = await purchasePackage(packageToPurchase);
       
       if (result.success) {
-        console.log('[Paywall] Purchase successful');
+        log('[Paywall] Purchase successful');
         Alert.alert(
           'Subscription Active',
           'Your subscription is now active. Enjoy unlimited vessel tracking!',
@@ -158,7 +160,7 @@ export default function PaywallScreen() {
           ]
         );
       } else {
-        console.warn('[Paywall] Purchase completed but subscription not active');
+        warn('[Paywall] Purchase completed but subscription not active');
         Alert.alert(
           'Processing Purchase',
           'Your purchase is being processed. Please wait a moment and check back.',
@@ -166,10 +168,10 @@ export default function PaywallScreen() {
         );
       }
     } catch (error: any) {
-      console.error('[Paywall] Purchase failed:', error);
+      logError('[Paywall] Purchase failed:', error);
       
       if (error.message === 'Purchase cancelled') {
-        console.log('[Paywall] User cancelled purchase');
+        log('[Paywall] User cancelled purchase');
       } else {
         Alert.alert(
           'Purchase Failed',
@@ -183,7 +185,7 @@ export default function PaywallScreen() {
   };
 
   const handleRestore = async () => {
-    console.log('[Paywall] User initiated restore');
+    log('[Paywall] User initiated restore');
     setRestoring(true);
 
     try {
@@ -192,7 +194,7 @@ export default function PaywallScreen() {
       const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
       
       if (hasActiveEntitlement) {
-        console.log('[Paywall] Purchases restored successfully');
+        log('[Paywall] Purchases restored successfully');
         Alert.alert(
           'Purchases Restored',
           'Your subscription has been restored successfully.',
@@ -204,7 +206,7 @@ export default function PaywallScreen() {
           ]
         );
       } else {
-        console.log('[Paywall] No active purchases found');
+        log('[Paywall] No active purchases found');
         Alert.alert(
           'No Purchases Found',
           'No active subscriptions were found for this Apple ID. If you believe this is an error, please contact support.',
@@ -212,7 +214,7 @@ export default function PaywallScreen() {
         );
       }
     } catch (error: any) {
-      console.error('[Paywall] Restore failed:', error);
+      logError('[Paywall] Restore failed:', error);
       Alert.alert(
         'Restore Failed',
         'Unable to restore purchases. Please try again or contact support if the problem persists.',
@@ -225,35 +227,35 @@ export default function PaywallScreen() {
 
   const handleTerms = () => {
     const termsUrl = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
-    console.log('[Paywall] Opening Terms of Service:', termsUrl);
+    log('[Paywall] Opening Terms of Service:', termsUrl);
     Linking.openURL(termsUrl).catch(err => {
-      console.error('[Paywall] Failed to open Terms URL:', err);
+      logError('[Paywall] Failed to open Terms URL:', err);
       Alert.alert('Error', 'Unable to open Terms of Service. Please visit apple.com/legal/internet-services/itunes/dev/stdeula/');
     });
   };
 
   const handlePrivacy = () => {
     const privacyUrl = 'https://forelandmarine.com/privacy-policy';
-    console.log('[Paywall] Opening Privacy Policy:', privacyUrl);
+    log('[Paywall] Opening Privacy Policy:', privacyUrl);
     Linking.openURL(privacyUrl).catch(err => {
-      console.error('[Paywall] Failed to open Privacy URL:', err);
+      logError('[Paywall] Failed to open Privacy URL:', err);
       Alert.alert('Error', 'Unable to open Privacy Policy. Please visit forelandmarine.com/privacy-policy');
     });
   };
 
   const handleRedeemCode = async () => {
-    console.log('[Paywall] User tapped Redeem Code');
+    log('[Paywall] User tapped Redeem Code');
     waitingForRedeemRef.current = true;
     try {
       // Use RevenueCat's native code redemption sheet (iOS 14+)
       await Purchases.presentCodeRedemptionSheet();
-      console.log('[Paywall] Code redemption sheet presented');
+      log('[Paywall] Code redemption sheet presented');
     } catch (err) {
-      console.warn('[Paywall] presentCodeRedemptionSheet failed, falling back to App Store URL:', err);
+      warn('[Paywall] presentCodeRedemptionSheet failed, falling back to App Store URL:', err);
       // Fallback to App Store redeem URL
       Linking.openURL('https://apps.apple.com/redeem').catch(linkErr => {
         waitingForRedeemRef.current = false;
-        console.error('[Paywall] Failed to open App Store redeem URL:', linkErr);
+        logError('[Paywall] Failed to open App Store redeem URL:', linkErr);
         Alert.alert(
           'Unable to Open App Store',
           'Please open the App Store manually, tap your profile, and select "Redeem Gift Card or Code".',
@@ -267,7 +269,7 @@ export default function PaywallScreen() {
     // Always go to /auth — authenticated users will be redirected through the
     // normal index → subscription → tabs flow. Going to /(tabs) while unsubscribed
     // would immediately redirect back to paywall, creating a soft-lock.
-    console.log('[Paywall] User tapped X button, navigating to /auth');
+    log('[Paywall] User tapped X button, navigating to /auth');
     router.replace('/auth');
   };
 
@@ -288,7 +290,7 @@ export default function PaywallScreen() {
   }
 
   // Log all available packages for debugging product ID mismatches
-  console.log('[Paywall] Available packages:', availablePackages.map(p => ({
+  log('[Paywall] Available packages:', availablePackages.map(p => ({
     id: p.product.identifier,
     type: p.packageType,
     price: p.product.priceString,
@@ -305,7 +307,7 @@ export default function PaywallScreen() {
     availablePackages.find((pkg) => pkg.product.identifier === PRODUCT_IDS.monthly) ||
     availablePackages.find((pkg) => pkg.packageType === 'MONTHLY');
 
-  console.log('[Paywall] Resolved packages:', {
+  log('[Paywall] Resolved packages:', {
     annual: annualPackage?.product.identifier || 'NOT FOUND',
     monthly: monthlyPackage?.product.identifier || 'NOT FOUND',
     lookingFor: PRODUCT_IDS,

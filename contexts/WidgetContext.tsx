@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 // Define the WidgetKit module type for type safety
 interface WidgetKitModule {
   setItem: (key: string, value: string, appGroup: string) => Promise<void>;
@@ -49,7 +51,7 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       widgetKitModule.current = module as WidgetKitModule;
       return widgetKitModule.current;
     } catch (e: any) {
-      console.error('Failed to load react-native-widgetkit:', e);
+      logError('Failed to load react-native-widgetkit:', e);
       setWidgetError(`Failed to load widget module: ${e.message}`);
       return null;
     } finally {
@@ -60,14 +62,14 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Refresh widget data
   const refreshWidget = useCallback(async (data: any) => {
     if (Platform.OS !== 'ios') {
-      console.log('WidgetKit is iOS-only. Skipping refresh.');
+      log('WidgetKit is iOS-only. Skipping refresh.');
       return;
     }
 
     try {
       const WidgetKit = await loadWidgetKitModule();
       if (!WidgetKit) {
-        console.warn('WidgetKit module not available, cannot refresh widget.');
+        warn('WidgetKit module not available, cannot refresh widget.');
         return;
       }
 
@@ -75,9 +77,9 @@ export const WidgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await WidgetKit.setItem('widgetData', JSON.stringify(data), appGroup);
       WidgetKit.reloadAllWidgets();
       setWidgetError(null);
-      console.log('Widget refreshed successfully.');
+      log('Widget refreshed successfully.');
     } catch (e: any) {
-      console.error('Error refreshing widget:', e);
+      logError('Error refreshing widget:', e);
       setWidgetError(`Failed to refresh widget: ${e.message}`);
     }
   }, [loadWidgetKitModule]);

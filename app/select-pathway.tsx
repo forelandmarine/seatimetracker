@@ -17,6 +17,8 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
+import { log, error as logError } from '@/utils/log';
+
 type Department = 'Deck' | 'Engineering';
 
 function createStyles(isDark: boolean) {
@@ -190,28 +192,28 @@ export default function SelectPathwayScreen() {
   // CRITICAL: Check subscription status before allowing pathway selection
   // This ensures users cannot bypass the paywall by directly navigating to this screen
   useEffect(() => {
-    console.log('[SelectPathway] Subscription check - isLoading:', subscriptionLoading, 'isSubscribed:', isSubscribed);
+    log('[SelectPathway] Subscription check - isLoading:', subscriptionLoading, 'isSubscribed:', isSubscribed);
     
     // Wait for subscription check to complete
     if (subscriptionLoading) {
-      console.log('[SelectPathway] Subscription still loading, waiting...');
+      log('[SelectPathway] Subscription still loading, waiting...');
       return;
     }
     
     // CRITICAL: If not subscribed, redirect to paywall immediately
     // This is a MANDATORY gate - no exceptions
     if (!isSubscribed) {
-      console.log('[SelectPathway] ⚠️⚠️⚠️ USER NOT SUBSCRIBED - BLOCKING ACCESS ⚠️⚠️⚠️');
-      console.log('[SelectPathway] Redirecting to paywall - user must subscribe before selecting pathway');
+      log('[SelectPathway] ⚠️⚠️⚠️ USER NOT SUBSCRIBED - BLOCKING ACCESS ⚠️⚠️⚠️');
+      log('[SelectPathway] Redirecting to paywall - user must subscribe before selecting pathway');
       router.replace('/paywall');
       return;
     }
     
-    console.log('[SelectPathway] ✅ User is subscribed, allowing pathway selection');
+    log('[SelectPathway] ✅ User is subscribed, allowing pathway selection');
   }, [isSubscribed, subscriptionLoading, router]);
 
   const handleSelectDepartment = (department: Department) => {
-    console.log('User selected department:', department);
+    log('User selected department:', department);
     setSelectedDepartment(department);
   };
 
@@ -221,16 +223,16 @@ export default function SelectPathwayScreen() {
       return;
     }
 
-    console.log('User tapped Continue button with department:', selectedDepartment);
+    log('User tapped Continue button with department:', selectedDepartment);
     setSaving(true);
 
     try {
       // Convert to lowercase for backend
       const departmentLowercase = selectedDepartment.toLowerCase();
-      console.log('Sending department to backend:', departmentLowercase);
+      log('Sending department to backend:', departmentLowercase);
       
       await seaTimeApi.updateUserProfile({ department: departmentLowercase });
-      console.log('Department saved successfully:', departmentLowercase);
+      log('Department saved successfully:', departmentLowercase);
       
       Alert.alert(
         'Pathway Selected',
@@ -239,14 +241,14 @@ export default function SelectPathwayScreen() {
           {
             text: 'OK',
             onPress: () => {
-              console.log('Navigating to home screen');
+              log('Navigating to home screen');
               router.replace('/(tabs)');
             },
           },
         ]
       );
     } catch (error: any) {
-      console.error('Failed to save department:', error);
+      logError('Failed to save department:', error);
       Alert.alert('Error', error.message || 'Failed to save your pathway selection. Please try again.');
       setSaving(false);
     }
@@ -266,7 +268,7 @@ export default function SelectPathwayScreen() {
   // CRITICAL: If not subscribed after loading completes, show nothing
   // The useEffect will redirect to paywall
   if (!isSubscribed) {
-    console.log('[SelectPathway] Not subscribed, blocking UI render');
+    log('[SelectPathway] Not subscribed, blocking UI render');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />

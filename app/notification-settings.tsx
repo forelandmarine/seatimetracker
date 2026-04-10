@@ -18,6 +18,8 @@ import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { scheduleDailySeaTimeReviewNotification, cancelAllNotifications } from '@/utils/notifications';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 interface NotificationSchedule {
   id: string;
   notification_type: string;
@@ -129,13 +131,13 @@ export default function NotificationSettingsScreen() {
   }, []);
 
   const loadSchedule = async () => {
-    console.log('[NotificationSettings] Loading notification schedule');
+    log('[NotificationSettings] Loading notification schedule');
     try {
       const data = await seaTimeApi.getNotificationSchedule();
-      console.log('[NotificationSettings] Schedule loaded:', data);
+      log('[NotificationSettings] Schedule loaded:', data);
       setSchedule(data);
     } catch (error) {
-      console.error('[NotificationSettings] Failed to load schedule:', error);
+      logError('[NotificationSettings] Failed to load schedule:', error);
       Alert.alert('Error', 'Failed to load notification settings');
     } finally {
       setLoading(false);
@@ -143,39 +145,39 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleToggleNotifications = async (value: boolean) => {
-    console.log('[NotificationSettings] Toggling notifications:', value);
+    log('[NotificationSettings] Toggling notifications:', value);
     setUpdating(true);
     try {
       // Get device timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      console.log('[NotificationSettings] Device timezone:', timezone);
+      log('[NotificationSettings] Device timezone:', timezone);
 
       const updated = await seaTimeApi.updateNotificationSchedule({
         is_active: value,
         timezone: timezone,
       });
-      console.log('[NotificationSettings] Notifications toggled:', updated);
+      log('[NotificationSettings] Notifications toggled:', updated);
       setSchedule(updated);
 
       // Update local notifications
       if (value) {
         const scheduledTime = updated.scheduled_time || '18:00';
-        console.log('[NotificationSettings] Scheduling local notification at', scheduledTime);
+        log('[NotificationSettings] Scheduling local notification at', scheduledTime);
         const notificationId = await scheduleDailySeaTimeReviewNotification(scheduledTime);
         if (notificationId) {
-          console.log('[NotificationSettings] Local notification scheduled:', notificationId);
+          log('[NotificationSettings] Local notification scheduled:', notificationId);
           Alert.alert('Success', `Daily notifications enabled at ${scheduledTime} local time`);
         } else {
-          console.warn('[NotificationSettings] Failed to schedule local notification');
+          warn('[NotificationSettings] Failed to schedule local notification');
           Alert.alert('Warning', 'Notifications enabled but local scheduling failed. Please check notification permissions.');
         }
       } else {
-        console.log('[NotificationSettings] Canceling all local notifications');
+        log('[NotificationSettings] Canceling all local notifications');
         await cancelAllNotifications();
         Alert.alert('Success', 'Daily notifications disabled');
       }
     } catch (error) {
-      console.error('[NotificationSettings] Failed to toggle notifications:', error);
+      logError('[NotificationSettings] Failed to toggle notifications:', error);
       // Roll back the switch to its previous state so UI matches server
       setSchedule(prev => prev ? { ...prev, is_active: !value } : null);
       Alert.alert('Error', 'Failed to update notification settings. Please try again.');
@@ -185,7 +187,7 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleChangeTime = () => {
-    console.log('[NotificationSettings] User tapped change time');
+    log('[NotificationSettings] User tapped change time');
     
     // Show a list of common times
     const timeOptions = [
@@ -200,35 +202,35 @@ export default function NotificationSettingsScreen() {
     const buttons = timeOptions.map(option => ({
       text: option.label,
       onPress: async () => {
-        console.log('[NotificationSettings] Setting new time:', option.value);
+        log('[NotificationSettings] Setting new time:', option.value);
         setUpdating(true);
         try {
           // Get device timezone
           const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          console.log('[NotificationSettings] Device timezone:', timezone);
+          log('[NotificationSettings] Device timezone:', timezone);
 
           const updated = await seaTimeApi.updateNotificationSchedule({
             scheduled_time: option.value,
             timezone: timezone,
           });
-          console.log('[NotificationSettings] Time updated:', updated);
+          log('[NotificationSettings] Time updated:', updated);
           setSchedule(updated);
 
           // Update local notifications if active
           if (updated.is_active) {
-            console.log('[NotificationSettings] Rescheduling local notification at', option.value);
+            log('[NotificationSettings] Rescheduling local notification at', option.value);
             await cancelAllNotifications();
             const notificationId = await scheduleDailySeaTimeReviewNotification(option.value);
             if (notificationId) {
-              console.log('[NotificationSettings] Local notification rescheduled:', notificationId);
+              log('[NotificationSettings] Local notification rescheduled:', notificationId);
             } else {
-              console.warn('[NotificationSettings] Failed to reschedule local notification');
+              warn('[NotificationSettings] Failed to reschedule local notification');
             }
           }
 
           Alert.alert('Success', `Notification time updated to ${option.label}`);
         } catch (error) {
-          console.error('[NotificationSettings] Failed to update time:', error);
+          logError('[NotificationSettings] Failed to update time:', error);
           Alert.alert('Error', 'Failed to update notification time');
         } finally {
           setUpdating(false);
@@ -249,7 +251,7 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleChangeTimezone = () => {
-    console.log('[NotificationSettings] User tapped change timezone');
+    log('[NotificationSettings] User tapped change timezone');
     Alert.alert(
       'Change Timezone',
       'Your timezone is automatically detected from your device. To change it, update your device settings.',

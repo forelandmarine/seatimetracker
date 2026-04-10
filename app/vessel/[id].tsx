@@ -22,6 +22,8 @@ import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -113,7 +115,7 @@ export default function VesselDetailScreen() {
     if (!vesselId) return;
 
     try {
-      console.log('[VesselDetail] Loading data for vessel:', vesselId);
+      log('[VesselDetail] Loading data for vessel:', vesselId);
       const [vesselsData, seaTimeData] = await Promise.all([
         seaTimeApi.getVessels(),
         seaTimeApi.getVesselSeaTime(vesselId),
@@ -126,9 +128,9 @@ export default function VesselDetailScreen() {
         // Only fetch AIS location if vessel is active
         if (currentVessel.is_active) {
           try {
-            console.log('[VesselDetail] Fetching AIS location for active vessel');
+            log('[VesselDetail] Fetching AIS location for active vessel');
             const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
-            console.log('[VesselDetail] AIS location data:', aisLocation);
+            log('[VesselDetail] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
             const transformedAisData: AISData = {
@@ -151,18 +153,18 @@ export default function VesselDetailScreen() {
             };
             
             setAisData(transformedAisData);
-            console.log('[VesselDetail] AIS data set successfully');
+            log('[VesselDetail] AIS data set successfully');
           } catch (aisError) {
-            console.error('[VesselDetail] Failed to fetch AIS location:', aisError);
+            logError('[VesselDetail] Failed to fetch AIS location:', aisError);
             // Don't fail the whole load if AIS fetch fails
           }
         }
       }
 
       setSeaTimeEntries(seaTimeData);
-      console.log('[VesselDetail] Data loaded successfully');
+      log('[VesselDetail] Data loaded successfully');
     } catch (error: any) {
-      console.error('[VesselDetail] Failed to load data:', error);
+      logError('[VesselDetail] Failed to load data:', error);
       Alert.alert('Error', 'Failed to load vessel data: ' + error.message);
     } finally {
       setLoading(false);
@@ -202,7 +204,7 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail] User action: Saving vessel particulars');
+      log('[VesselDetail] User action: Saving vessel particulars');
       await seaTimeApi.updateVesselParticulars(vessel.id, {
         vessel_name: editedVesselName.trim() || undefined,
         flag: editedFlag.trim() || undefined,
@@ -220,7 +222,7 @@ export default function VesselDetailScreen() {
       triggerRefresh(); // Trigger app-wide refresh
       Alert.alert('Success', 'Vessel particulars updated');
     } catch (error: any) {
-      console.error('[VesselDetail] Failed to update vessel particulars:', error);
+      logError('[VesselDetail] Failed to update vessel particulars:', error);
       Alert.alert('Error', 'Failed to update vessel particulars: ' + error.message);
     }
   };
@@ -245,19 +247,19 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail] User action: Activating vessel');
+      log('[VesselDetail] User action: Activating vessel');
       await seaTimeApi.activateVessel(vessel.id);
       await loadData();
       triggerRefresh(); // Trigger app-wide refresh
       Alert.alert('Success', `${vessel.vessel_name} is now being tracked`);
     } catch (error: any) {
-      console.error('[VesselDetail] Failed to activate vessel:', error);
+      logError('[VesselDetail] Failed to activate vessel:', error);
       Alert.alert('Error', 'Failed to activate vessel: ' + error.message);
     }
   };
 
   const cancelActivateVessel = () => {
-    console.log('[VesselDetail] User cancelled vessel activation');
+    log('[VesselDetail] User cancelled vessel activation');
   };
 
   const handleCheckAIS = async () => {
@@ -265,14 +267,14 @@ export default function VesselDetailScreen() {
 
     try {
       setCheckingAIS(true);
-      console.log('[VesselDetail] User action: Manual AIS check requested');
+      log('[VesselDetail] User action: Manual AIS check requested');
       
       // First trigger the AIS check (POST) with forceRefresh=true to bypass rate limiting
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
       const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
-      console.log('[VesselDetail] AIS location data:', aisLocation);
+      log('[VesselDetail] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
       const transformedAisData: AISData = {
@@ -297,7 +299,7 @@ export default function VesselDetailScreen() {
       setAisData(transformedAisData);
       Alert.alert('Success', 'AIS data updated');
     } catch (error: any) {
-      console.error('[VesselDetail] Failed to check AIS:', error);
+      logError('[VesselDetail] Failed to check AIS:', error);
       
       // Parse error message to provide user-friendly feedback
       let userMessage = 'Failed to check vessel location. Please try again.';
@@ -342,7 +344,7 @@ export default function VesselDetailScreen() {
     if (!vessel) return;
 
     try {
-      console.log('[VesselDetail] User action: Deleting vessel');
+      log('[VesselDetail] User action: Deleting vessel');
       await seaTimeApi.deleteVessel(vessel.id);
       triggerRefresh(); // Trigger app-wide refresh
       Alert.alert('Success', 'Vessel deleted', [
@@ -352,17 +354,17 @@ export default function VesselDetailScreen() {
         },
       ]);
     } catch (error: any) {
-      console.error('[VesselDetail] Failed to delete vessel:', error);
+      logError('[VesselDetail] Failed to delete vessel:', error);
       Alert.alert('Error', 'Failed to delete vessel: ' + error.message);
     }
   };
 
   const cancelDeleteVessel = () => {
-    console.log('[VesselDetail] User cancelled vessel deletion');
+    log('[VesselDetail] User cancelled vessel deletion');
   };
 
   const toggleExpanded = (entryId: string) => {
-    console.log('[VesselDetail] Toggling expanded state for entry:', entryId);
+    log('[VesselDetail] Toggling expanded state for entry:', entryId);
     setExpandedEntries(prev => {
       const newSet = new Set(prev);
       if (newSet.has(entryId)) {
@@ -383,7 +385,7 @@ export default function VesselDetailScreen() {
       if (isNaN(date.getTime())) return dateString;
       return date.toLocaleDateString();
     } catch (e) {
-      console.error('[VesselDetail] Failed to format date:', e);
+      logError('[VesselDetail] Failed to format date:', e);
       return dateString || 'N/A';
     }
   };
@@ -397,7 +399,7 @@ export default function VesselDetailScreen() {
       if (isNaN(date.getTime())) return dateString;
       return date.toLocaleString();
     } catch (e) {
-      console.error('[VesselDetail] Failed to format datetime:', e);
+      logError('[VesselDetail] Failed to format datetime:', e);
       return dateString || 'N/A';
     }
   };
@@ -468,7 +470,7 @@ export default function VesselDetailScreen() {
       
       return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
     } catch (e) {
-      console.error('[VesselDetail] Failed to convert to DMS:', e);
+      logError('[VesselDetail] Failed to convert to DMS:', e);
       return 'Invalid';
     }
   };
@@ -490,7 +492,7 @@ export default function VesselDetailScreen() {
       }
       return `${convertToDMS(lat, true)}, ${convertToDMS(lon, false)}`;
     } catch (e) {
-      console.error('[VesselDetail] Failed to format coordinates:', e);
+      logError('[VesselDetail] Failed to format coordinates:', e);
       return 'Invalid coordinates';
     }
   };
@@ -522,7 +524,7 @@ export default function VesselDetailScreen() {
       if (minutes === 0) return `${wholeHours}h`;
       return `${wholeHours}h ${minutes}m`;
     } catch (e) {
-      console.error('[VesselDetail] Failed to format duration:', e);
+      logError('[VesselDetail] Failed to format duration:', e);
       return 'Invalid duration';
     }
   };

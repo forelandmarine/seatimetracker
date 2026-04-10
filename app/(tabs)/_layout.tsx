@@ -8,6 +8,8 @@ import { useColorScheme } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
+import { log } from '@/utils/log';
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -15,25 +17,25 @@ export default function TabLayout() {
   const { user, loading: authLoading } = useAuth();
   const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed } = useSubscription();
 
-  console.log('[TabLayout] Rendering tabs, user:', user?.email ?? 'unauthenticated');
+  log('[TabLayout] Rendering tabs, user:', user?.email ?? 'unauthenticated');
 
   useEffect(() => {
     if (authLoading || subscriptionLoading) return;
 
     if (!user) {
-      console.log('[TabLayout] No user, redirecting to /auth');
+      log('[TabLayout] No user, redirecting to /auth');
       router.replace('/auth');
       return;
     }
 
     // If RevenueCat failed to load, fail open — do not redirect paying users to paywall
     if (revenueCatFailed) {
-      console.log('[TabLayout] RevenueCat failed to load, failing open (allowing access)');
+      log('[TabLayout] RevenueCat failed to load, failing open (allowing access)');
       return;
     }
 
     if (!isSubscribed) {
-      console.log('[TabLayout] User not subscribed, redirecting to /paywall');
+      log('[TabLayout] User not subscribed, redirecting to /paywall');
       router.replace('/paywall');
     }
   }, [user, isSubscribed, authLoading, subscriptionLoading, revenueCatFailed, router]);

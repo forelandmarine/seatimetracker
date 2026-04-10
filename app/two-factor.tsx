@@ -18,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authClient } from '@/lib/auth';
 import { setToken } from '@/utils/tokenStorage';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 export default function TwoFactorScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,13 +34,13 @@ export default function TwoFactorScreen() {
   const styles = createStyles(isDark);
 
   useEffect(() => {
-    console.log('[TwoFactor] Screen mounted');
+    log('[TwoFactor] Screen mounted');
     // Auto-focus the input
     setTimeout(() => inputRef.current?.focus(), 300);
   }, []);
 
   const handleVerify = async () => {
-    console.log('[TwoFactor] Verify button pressed, code length:', code.length);
+    log('[TwoFactor] Verify button pressed, code length:', code.length);
 
     if (code.length !== 6) {
       setError('Please enter the full 6-digit code');
@@ -49,7 +51,7 @@ export default function TwoFactorScreen() {
     setLoading(true);
 
     try {
-      console.log('[TwoFactor] Calling authClient.twoFactor.verifyOtp...');
+      log('[TwoFactor] Calling authClient.twoFactor.verifyOtp...');
       const result = await authClient.twoFactor.verifyOtp({ code });
       if (result.error) {
         const msg = result.error.message || 'Verification failed';
@@ -83,25 +85,25 @@ export default function TwoFactorScreen() {
             const SecureStore = await import('expo-secure-store');
             sessionToken = await SecureStore.getItemAsync('seatimetracker.bearer_token');
           }
-        } catch (e) { console.warn('[TwoFactor] Failed to recover token from storage:', e); }
+        } catch (e) { warn('[TwoFactor] Failed to recover token from storage:', e); }
       }
 
       if (sessionToken) {
         // Store via the unified token storage (always persist after 2FA)
         await setToken(sessionToken, true);
-        console.log('[TwoFactor] Session token stored via unified tokenStorage');
+        log('[TwoFactor] Session token stored via unified tokenStorage');
       } else {
-        console.warn('[TwoFactor] Could not extract session token — fetchUser will attempt via stored token');
+        warn('[TwoFactor] Could not extract session token — fetchUser will attempt via stored token');
       }
 
-      console.log('[TwoFactor] Verification successful, hydrating user session...');
+      log('[TwoFactor] Verification successful, hydrating user session...');
       await fetchUser();
       // Navigate to index so the full redirect chain runs:
       // index → subscription check → department check → /(tabs)
-      console.log('[TwoFactor] User session hydrated, navigating to index for redirect chain');
+      log('[TwoFactor] User session hydrated, navigating to index for redirect chain');
       router.replace('/');
     } catch (err: any) {
-      console.error('[TwoFactor] verifyOtp threw:', err);
+      logError('[TwoFactor] verifyOtp threw:', err);
       setError(err?.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
@@ -109,24 +111,24 @@ export default function TwoFactorScreen() {
   };
 
   const handleResend = async () => {
-    console.log('[TwoFactor] Resend Code pressed');
+    log('[TwoFactor] Resend Code pressed');
     setResending(true);
     setError('');
     setResendSuccess(false);
 
     try {
-      console.log('[TwoFactor] Calling authClient.twoFactor.sendOtp...');
+      log('[TwoFactor] Calling authClient.twoFactor.sendOtp...');
       const result = await authClient.twoFactor.sendOtp();
       if (result.error) {
         setError(result.error.message || 'Failed to resend code');
         return;
       }
-      console.log('[TwoFactor] OTP resent successfully');
+      log('[TwoFactor] OTP resent successfully');
       setResendSuccess(true);
       setCode('');
       setTimeout(() => setResendSuccess(false), 4000);
     } catch (err: any) {
-      console.error('[TwoFactor] sendOtp threw:', err);
+      logError('[TwoFactor] sendOtp threw:', err);
       setError(err?.message || 'Failed to resend code. Please try again.');
     } finally {
       setResending(false);
@@ -187,7 +189,7 @@ export default function TwoFactorScreen() {
             value={code}
             onChangeText={(text) => {
               const cleaned = text.replace(/[^0-9]/g, '').slice(0, 6);
-              console.log('[TwoFactor] OTP input changed, length:', cleaned.length);
+              log('[TwoFactor] OTP input changed, length:', cleaned.length);
               setCode(cleaned);
               if (cleaned.length === 6) {
                 // Small delay to let state update render before verify
@@ -248,7 +250,7 @@ export default function TwoFactorScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
-            console.log('[TwoFactor] Back to sign in pressed');
+            log('[TwoFactor] Back to sign in pressed');
             router.back();
           }}
         >

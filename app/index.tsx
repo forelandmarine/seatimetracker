@@ -7,6 +7,8 @@ import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
 import { isOnboardingComplete } from './onboarding';
 
+import { log, error as logError } from '@/utils/log';
+
 export default function Index() {
   // CRITICAL: Call useAuth and useSubscription at the top level - NEVER conditionally
   const authContext = useAuth();
@@ -24,13 +26,13 @@ export default function Index() {
         setInitialCheckDone(true);
       }
     } catch (error: any) {
-      console.error('[Index] Error in auth check effect:', error);
+      logError('[Index] Error in auth check effect:', error);
       setInitialCheckDone(true);
     }
   }, [authContext]);
 
   if (!authContext) {
-    console.error('[Index] CRITICAL: Auth context is undefined');
+    logError('[Index] CRITICAL: Auth context is undefined');
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>Authentication Error</Text>
@@ -54,11 +56,11 @@ export default function Index() {
   const isAuthenticated = Boolean(user);
   const hasDepartment = Boolean(user?.hasDepartment || (user as any)?.department);
 
-  console.log('[Index] Auth state - authenticated:', isAuthenticated, 'subscribed:', isSubscribed, 'hasDepartment:', hasDepartment);
+  log('[Index] Auth state - authenticated:', isAuthenticated, 'subscribed:', isSubscribed, 'hasDepartment:', hasDepartment);
 
   // Subscription loading — wait before deciding
   if (subscriptionLoading) {
-    console.log('[Index] Subscription check in progress...');
+    log('[Index] Subscription check in progress...');
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -72,27 +74,27 @@ export default function Index() {
     // Authenticated but NOT subscribed → paywall
     // If RevenueCat failed to load, fail open so paying users are not blocked
     if (!isSubscribed && !revenueCatFailed) {
-      console.log('[Index] Authenticated but not subscribed, redirecting to /paywall');
+      log('[Index] Authenticated but not subscribed, redirecting to /paywall');
       return <Redirect href="/paywall" />;
     }
 
     // Subscribed but no department → pathway selection
     if (!hasDepartment) {
-      console.log('[Index] Subscribed but no department, redirecting to /select-pathway');
+      log('[Index] Subscribed but no department, redirecting to /select-pathway');
       return <Redirect href="/select-pathway" />;
     }
 
     // Fully set up → main app
-    console.log('[Index] User fully set up, redirecting to /(tabs)');
+    log('[Index] User fully set up, redirecting to /(tabs)');
     return <Redirect href="/(tabs)" />;
   }
 
   // Not authenticated → onboarding (first time) or auth
   if (onboardingDone === false) {
-    console.log('[Index] Not authenticated, first time, redirecting to /onboarding');
+    log('[Index] Not authenticated, first time, redirecting to /onboarding');
     return <Redirect href="/onboarding" />;
   }
-  console.log('[Index] Not authenticated, redirecting to /auth');
+  log('[Index] Not authenticated, redirecting to /auth');
   return <Redirect href="/auth" />;
 }
 

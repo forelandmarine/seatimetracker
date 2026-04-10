@@ -1,7 +1,7 @@
 
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Platform } from 'react-native';
-import { log, error } from '@/utils/log';
+import { log, error, warn } from '@/utils/log';
 
 const BIOMETRIC_CREDENTIALS_KEY = 'seatime_biometric_credentials';
 
@@ -80,7 +80,7 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
     // Check if biometric is still available
     const available = await isBiometricAvailable();
     if (!available) {
-      console.warn('[BiometricAuth] Biometric authentication no longer available');
+      warn('[BiometricAuth] Biometric authentication no longer available');
       return false;
     }
 
@@ -98,9 +98,9 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
       return true;
     } else {
       if (result.error === 'lockout') {
-        console.warn('[BiometricAuth] Too many failed attempts - biometric locked');
+        warn('[BiometricAuth] Too many failed attempts - biometric locked');
       } else if (result.error === 'not_enrolled') {
-        console.warn('[BiometricAuth] No biometric credentials enrolled');
+        warn('[BiometricAuth] No biometric credentials enrolled');
       }
 
       return false;

@@ -24,6 +24,8 @@ import React, { Component, ReactNode } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform, Appearance } from "react-native";
 import { colors } from '@/styles/commonStyles';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -47,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    console.error('[ErrorBoundary] Error caught:', error);
+    logError('[ErrorBoundary] Error caught:', error);
     return {
       hasError: true,
       error,
@@ -57,14 +59,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error to console with full details
-    console.error('[ErrorBoundary] ========================================');
-    console.error('[ErrorBoundary] Error caught by boundary:');
-    console.error('[ErrorBoundary] Error:', error);
-    console.error('[ErrorBoundary] Error message:', error.message);
-    console.error('[ErrorBoundary] Error stack:', error.stack);
-    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
-    console.error('[ErrorBoundary] Platform:', Platform.OS);
-    console.error('[ErrorBoundary] ========================================');
+    logError('[ErrorBoundary] ========================================');
+    logError('[ErrorBoundary] Error caught by boundary:');
+    logError('[ErrorBoundary] Error:', error);
+    logError('[ErrorBoundary] Error message:', error.message);
+    logError('[ErrorBoundary] Error stack:', error.stack);
+    logError('[ErrorBoundary] Component stack:', errorInfo.componentStack);
+    logError('[ErrorBoundary] Platform:', Platform.OS);
+    logError('[ErrorBoundary] ========================================');
 
     // Update state with error info
     this.setState({
@@ -77,7 +79,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleReset = () => {
-    console.log('[ErrorBoundary] Resetting error boundary');
+    log('[ErrorBoundary] Resetting error boundary');
     this.setState({
       hasError: false,
       error: null,

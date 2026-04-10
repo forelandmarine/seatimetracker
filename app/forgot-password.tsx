@@ -18,6 +18,8 @@ import { colors } from '@/styles/commonStyles';
 import { BACKEND_URL } from '@/utils/api';
 import { IconSymbol } from '@/components/IconSymbol';
 
+import { log, error as logError } from '@/utils/log';
+
 type Step = 'email' | 'code' | 'password';
 
 interface FeedbackModal {
@@ -74,7 +76,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleRequestCode = async () => {
-    console.log('[ForgotPassword] User tapped Request Reset Code button');
+    log('[ForgotPassword] User tapped Request Reset Code button');
     
     if (!email) {
       showError('Please enter your email address');
@@ -88,7 +90,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      console.log('[ForgotPassword] Requesting reset code for:', email);
+      log('[ForgotPassword] Requesting reset code for:', email);
       
       const response = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
         method: 'POST',
@@ -98,19 +100,19 @@ export default function ForgotPasswordScreen() {
         body: JSON.stringify({ email }),
       });
 
-      console.log('[ForgotPassword] Response status:', response.status);
+      log('[ForgotPassword] Response status:', response.status);
 
       if (!response.ok) {
         const errText = await response.text();
         let errorData: any = {};
         try { errorData = JSON.parse(errText); } catch { /* HTML or plain text */ }
-        console.error('[ForgotPassword] Request failed:', response.status, errText.substring(0, 200));
+        logError('[ForgotPassword] Request failed:', response.status, errText.substring(0, 200));
         throw new Error(errorData.error || errorData.message || `Failed to send reset code (${response.status})`);
       }
 
       const data = await response.json();
-      console.log('[ForgotPassword] Reset code sent successfully');
-      console.log('[ForgotPassword] Reset code ID:', data.resetCodeId);
+      log('[ForgotPassword] Reset code sent successfully');
+      log('[ForgotPassword] Reset code ID:', data.resetCodeId);
       
       // Store the resetCodeId for the next step
       setResetCodeId(data.resetCodeId);
@@ -120,7 +122,7 @@ export default function ForgotPasswordScreen() {
         () => setStep('code')
       );
     } catch (error: any) {
-      console.error('[ForgotPassword] Request code failed:', error);
+      logError('[ForgotPassword] Request code failed:', error);
       
       const errorMessage = error.message || 'Failed to send reset code';
       const userMessage = errorMessage.includes('Email not found')
@@ -136,7 +138,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleVerifyCode = async () => {
-    console.log('[ForgotPassword] Verifying reset code');
+    log('[ForgotPassword] Verifying reset code');
     
     if (!resetCode) {
       showError('Please enter the reset code');
@@ -150,7 +152,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      console.log('[ForgotPassword] Verifying code for resetCodeId:', resetCodeId);
+      log('[ForgotPassword] Verifying code for resetCodeId:', resetCodeId);
       
       const response = await fetch(`${BACKEND_URL}/api/auth/verify-reset-code`, {
         method: 'POST',
@@ -163,23 +165,23 @@ export default function ForgotPasswordScreen() {
         }),
       });
 
-      console.log('[ForgotPassword] Verify response status:', response.status);
+      log('[ForgotPassword] Verify response status:', response.status);
 
       if (!response.ok) {
         const errText = await response.text();
         let errorData: any = {};
         try { errorData = JSON.parse(errText); } catch { /* HTML or plain text */ }
-        console.error('[ForgotPassword] Verification failed:', response.status, errText.substring(0, 200));
+        logError('[ForgotPassword] Verification failed:', response.status, errText.substring(0, 200));
         throw new Error(errorData.error || errorData.message || `Invalid reset code (${response.status})`);
       }
 
       await response.json();
-      console.log('[ForgotPassword] Code verified successfully');
+      log('[ForgotPassword] Code verified successfully');
 
       // Move to password step
       setStep('password');
     } catch (error: any) {
-      console.error('[ForgotPassword] Verify code failed:', error);
+      logError('[ForgotPassword] Verify code failed:', error);
       
       const errorMessage = error.message || 'Failed to verify code';
       const userMessage = errorMessage.includes('Invalid or expired')
@@ -195,7 +197,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleResetPassword = async () => {
-    console.log('[ForgotPassword] User tapped Reset Password button');
+    log('[ForgotPassword] User tapped Reset Password button');
     
     if (!newPassword) {
       showError('Please enter a new password');
@@ -214,7 +216,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      console.log('[ForgotPassword] Resetting password with resetCodeId:', resetCodeId);
+      log('[ForgotPassword] Resetting password with resetCodeId:', resetCodeId);
       
       const response = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
         method: 'POST',
@@ -228,28 +230,28 @@ export default function ForgotPasswordScreen() {
         }),
       });
 
-      console.log('[ForgotPassword] Response status:', response.status);
+      log('[ForgotPassword] Response status:', response.status);
 
       if (!response.ok) {
         const errText = await response.text();
         let errorData: any = {};
         try { errorData = JSON.parse(errText); } catch { /* HTML or plain text */ }
-        console.error('[ForgotPassword] Reset failed:', response.status, errText.substring(0, 200));
+        logError('[ForgotPassword] Reset failed:', response.status, errText.substring(0, 200));
         throw new Error(errorData.error || errorData.message || `Failed to reset password (${response.status})`);
       }
 
       await response.json();
-      console.log('[ForgotPassword] Password reset successful');
+      log('[ForgotPassword] Password reset successful');
 
       showSuccess(
         'Your password has been reset successfully. You can now sign in with your new password.',
         () => {
-          console.log('[ForgotPassword] Navigating back to auth screen');
+          log('[ForgotPassword] Navigating back to auth screen');
           router.back();
         }
       );
     } catch (error: any) {
-      console.error('[ForgotPassword] Reset password failed:', error);
+      logError('[ForgotPassword] Reset password failed:', error);
       
       const errorMessage = error.message || 'Failed to reset password';
       const userMessage = errorMessage.includes('Invalid or expired')
@@ -265,7 +267,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleBackToEmail = () => {
-    console.log('[ForgotPassword] User tapped back to email');
+    log('[ForgotPassword] User tapped back to email');
     setStep('email');
     setResetCode('');
     setResetCodeId('');
@@ -434,7 +436,7 @@ export default function ForgotPasswordScreen() {
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => {
-            console.log('[ForgotPassword] User tapped Cancel button');
+            log('[ForgotPassword] User tapped Cancel button');
             router.back();
           }}
           disabled={loading}

@@ -1,7 +1,9 @@
 
 import { Platform } from 'react-native';
 
-console.log('[Notifications] Notification utility initialized');
+import { log, warn, error as logError } from '@/utils/log';
+
+log('[Notifications] Notification utility initialized');
 
 /**
  * CRITICAL FIX: Lazy load notification modules
@@ -18,13 +20,13 @@ async function loadNotificationModules() {
       import('expo-device'),
     ]);
 
-    console.log('[Notifications] ✅ Modules loaded successfully');
+    log('[Notifications] ✅ Modules loaded successfully');
     return {
       Notifications: NotificationsModule,
       Device: DeviceModule,
     };
   } catch (error) {
-    console.error('[Notifications] ❌ Failed to load modules:', error);
+    logError('[Notifications] ❌ Failed to load modules:', error);
     return { Notifications: null, Device: null };
   }
 }
@@ -37,17 +39,17 @@ async function loadNotificationModules() {
 export async function registerForPushNotificationsAsync(): Promise<boolean> {
   // Notifications are not supported on web
   if (Platform.OS === 'web') {
-    console.log('[Notifications] Notifications not supported on web');
+    log('[Notifications] Notifications not supported on web');
     return false;
   }
 
-  console.log('[Notifications] Requesting notification permissions');
+  log('[Notifications] Requesting notification permissions');
   
   try {
     const { Notifications, Device } = await loadNotificationModules();
     
     if (!Notifications || !Device) {
-      console.error('[Notifications] Required modules not loaded');
+      logError('[Notifications] Required modules not loaded');
       return false;
     }
 
@@ -61,10 +63,10 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
         shouldShowList: true,
       }),
     });
-    console.log('[Notifications] ✅ Notification handler set');
+    log('[Notifications] ✅ Notification handler set');
 
     if (!Device.isDevice) {
-      console.warn('[Notifications] Must use physical device for notifications');
+      warn('[Notifications] Must use physical device for notifications');
       return false;
     }
 
@@ -72,7 +74,7 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
-    console.log('[Notifications] Existing permission status:', existingStatus);
+    log('[Notifications] Existing permission status:', existingStatus);
 
     // Request permissions if not already granted
     if (existingStatus !== 'granted') {
@@ -89,11 +91,11 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
         },
       });
       finalStatus = status;
-      console.log('[Notifications] Permission request result:', status);
+      log('[Notifications] Permission request result:', status);
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('[Notifications] Notification permissions not granted');
+      warn('[Notifications] Notification permissions not granted');
       return false;
     }
 
@@ -110,13 +112,13 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
         enableLights: true,
         showBadge: true,
       });
-      console.log('[Notifications] Android notification channel created');
+      log('[Notifications] Android notification channel created');
     }
 
-    console.log('[Notifications] Notification permissions granted successfully');
+    log('[Notifications] Notification permissions granted successfully');
     return true;
   } catch (error) {
-    console.error('[Notifications] ❌ Permission request failed:', error);
+    logError('[Notifications] ❌ Permission request failed:', error);
     return false;
   }
 }
@@ -137,7 +139,7 @@ export async function scheduleSeaTimeNotification(
 ): Promise<string | null> {
   // Notifications are not supported on web
   if (Platform.OS === 'web') {
-    console.log('[Notifications] Skipping notification on web');
+    log('[Notifications] Skipping notification on web');
     return null;
   }
 
@@ -145,11 +147,11 @@ export async function scheduleSeaTimeNotification(
     const { Notifications } = await loadNotificationModules();
     
     if (!Notifications) {
-      console.error('[Notifications] Module not loaded');
+      logError('[Notifications] Module not loaded');
       return null;
     }
 
-    console.log('[Notifications] Scheduling notification for sea time entry:', {
+    log('[Notifications] Scheduling notification for sea time entry:', {
       vesselName,
       entryId,
       durationHours,
@@ -185,10 +187,10 @@ export async function scheduleSeaTimeNotification(
       trigger: null, // Deliver immediately
     });
 
-    console.log('[Notifications] Notification scheduled successfully:', notificationId);
+    log('[Notifications] Notification scheduled successfully:', notificationId);
     return notificationId;
   } catch (error) {
-    console.error('[Notifications] Failed to schedule notification:', error);
+    logError('[Notifications] Failed to schedule notification:', error);
     return null;
   }
 }
@@ -201,7 +203,7 @@ export async function scheduleSeaTimeNotification(
 export async function scheduleDailySeaTimeReviewNotification(scheduledTime: string = '18:00'): Promise<string | null> {
   // Notifications are not supported on web
   if (Platform.OS === 'web') {
-    console.log('[Notifications] Skipping daily notification setup on web');
+    log('[Notifications] Skipping daily notification setup on web');
     return null;
   }
 
@@ -209,11 +211,11 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
     const { Notifications } = await loadNotificationModules();
     
     if (!Notifications) {
-      console.error('[Notifications] Module not loaded');
+      logError('[Notifications] Module not loaded');
       return null;
     }
 
-    console.log('[Notifications] Setting up daily sea time review notification at', scheduledTime);
+    log('[Notifications] Setting up daily sea time review notification at', scheduledTime);
 
     // Parse the scheduled time
     const [hourStr, minuteStr] = scheduledTime.split(':');
@@ -221,7 +223,7 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
     const minute = parseInt(minuteStr, 10);
 
     if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      console.error('[Notifications] Invalid time format:', scheduledTime);
+      logError('[Notifications] Invalid time format:', scheduledTime);
       return null;
     }
 
@@ -230,7 +232,7 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
     for (const notification of existingNotifications) {
       if (notification.content.data?.type === 'daily_sea_time_review') {
         await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-        console.log('[Notifications] Cancelled existing daily notification:', notification.identifier);
+        log('[Notifications] Cancelled existing daily notification:', notification.identifier);
       }
     }
 
@@ -263,10 +265,10 @@ export async function scheduleDailySeaTimeReviewNotification(scheduledTime: stri
       } as any,
     });
 
-    console.log('[Notifications] Daily notification scheduled successfully at', scheduledTime, ':', notificationId);
+    log('[Notifications] Daily notification scheduled successfully at', scheduledTime, ':', notificationId);
     return notificationId;
   } catch (error) {
-    console.error('[Notifications] Failed to schedule daily notification:', error);
+    logError('[Notifications] Failed to schedule daily notification:', error);
     return null;
   }
 }
@@ -287,11 +289,11 @@ export async function cancelNotification(notificationId: string): Promise<void> 
       return;
     }
 
-    console.log('[Notifications] Canceling notification:', notificationId);
+    log('[Notifications] Canceling notification:', notificationId);
     await Notifications.cancelScheduledNotificationAsync(notificationId);
-    console.log('[Notifications] Notification canceled successfully');
+    log('[Notifications] Notification canceled successfully');
   } catch (error) {
-    console.error('[Notifications] Failed to cancel notification:', error);
+    logError('[Notifications] Failed to cancel notification:', error);
   }
 }
 
@@ -310,11 +312,11 @@ export async function cancelAllNotifications(): Promise<void> {
       return;
     }
 
-    console.log('[Notifications] Canceling all notifications');
+    log('[Notifications] Canceling all notifications');
     await Notifications.cancelAllScheduledNotificationsAsync();
-    console.log('[Notifications] All notifications canceled successfully');
+    log('[Notifications] All notifications canceled successfully');
   } catch (error) {
-    console.error('[Notifications] Failed to cancel all notifications:', error);
+    logError('[Notifications] Failed to cancel all notifications:', error);
   }
 }
 
@@ -336,7 +338,7 @@ export async function getBadgeCount(): Promise<number> {
     const count = await Notifications.getBadgeCountAsync();
     return count;
   } catch (error) {
-    console.error('[Notifications] Failed to get badge count:', error);
+    logError('[Notifications] Failed to get badge count:', error);
     return 0;
   }
 }
@@ -357,10 +359,10 @@ export async function setBadgeCount(count: number): Promise<void> {
       return;
     }
 
-    console.log('[Notifications] Setting badge count to:', count);
+    log('[Notifications] Setting badge count to:', count);
     await Notifications.setBadgeCountAsync(count);
   } catch (error) {
-    console.error('[Notifications] Failed to set badge count:', error);
+    logError('[Notifications] Failed to set badge count:', error);
   }
 }
 

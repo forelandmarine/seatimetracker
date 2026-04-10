@@ -11,6 +11,8 @@
 
 import { Platform } from 'react-native';
 
+import { error as logError } from '@/utils/log';
+
 const TOKEN_KEY = 'seatime_auth_token';
 
 // ---------------------------------------------------------------------------
@@ -57,7 +59,7 @@ export async function getToken(): Promise<string | null> {
     const SecureStore = await import('expo-secure-store');
     return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch (error) {
-    console.error('[tokenStorage] Error getting token:', error);
+    logError('[tokenStorage] Error getting token:', error);
     return null;
   }
 }
@@ -83,7 +85,7 @@ export async function setToken(token: string, persist: boolean = true): Promise<
     const SecureStore = await import('expo-secure-store');
     await SecureStore.setItemAsync(TOKEN_KEY, token);
   } catch (error) {
-    console.error('[tokenStorage] Error storing token:', error);
+    logError('[tokenStorage] Error storing token:', error);
     throw error;
   }
 }
@@ -101,7 +103,7 @@ export async function removeToken(): Promise<void> {
     const SecureStore = await import('expo-secure-store');
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   } catch (error) {
-    console.error('[tokenStorage] Error removing token:', error);
+    logError('[tokenStorage] Error removing token:', error);
     // Don't throw — sign out should always succeed locally
   }
 }

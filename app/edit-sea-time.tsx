@@ -21,6 +21,8 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { log, error as logError } from '@/utils/log';
+
 interface Vessel {
   id: string;
   mmsi: string;
@@ -404,7 +406,7 @@ export default function EditSeaTimeScreen() {
 
   const loadEntry = useCallback(async () => {
     try {
-      console.log('[EditSeaTimeScreen] Fetching entry details for:', entryId);
+      log('[EditSeaTimeScreen] Fetching entry details for:', entryId);
       if (!entryId) {
         showFeedback('Error', 'No entry ID provided', 'error', () => router.back());
         return;
@@ -418,7 +420,7 @@ export default function EditSeaTimeScreen() {
         return;
       }
 
-      console.log('[EditSeaTimeScreen] Entry loaded:', foundEntry);
+      log('[EditSeaTimeScreen] Entry loaded:', foundEntry);
       setEntry(foundEntry);
 
       const backendToUIServiceType: { [key: string]: ServiceType } = {
@@ -460,7 +462,7 @@ export default function EditSeaTimeScreen() {
       setEndLat(foundEntry.end_latitude != null ? String(foundEntry.end_latitude) : '');
       setEndLng(foundEntry.end_longitude != null ? String(foundEntry.end_longitude) : '');
     } catch (error) {
-      console.error('[EditSeaTimeScreen] Error loading entry:', error);
+      logError('[EditSeaTimeScreen] Error loading entry:', error);
       showFeedback('Error', 'Failed to load sea time entry', 'error', () => router.back());
     } finally {
       setLoading(false);
@@ -471,27 +473,27 @@ export default function EditSeaTimeScreen() {
   }, [entryId]);
 
   useEffect(() => {
-    console.log('[EditSeaTimeScreen] Component mounted, loading entry:', entryId);
+    log('[EditSeaTimeScreen] Component mounted, loading entry:', entryId);
     loadEntry();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId]);
 
   const handleViewMCARequirements = async () => {
-    console.log('[EditSeaTimeScreen] User tapped View MCA Requirements');
+    log('[EditSeaTimeScreen] User tapped View MCA Requirements');
     try {
       const userProfile = await seaTimeApi.getUserProfile();
       const department = userProfile?.department?.toLowerCase() || 'deck';
-      console.log('[EditSeaTimeScreen] User department:', department);
+      log('[EditSeaTimeScreen] User department:', department);
       router.push(`/mca-requirements?department=${department}`);
     } catch (error) {
-      console.error('[EditSeaTimeScreen] Failed to get user profile:', error);
+      logError('[EditSeaTimeScreen] Failed to get user profile:', error);
       router.push('/mca-requirements?department=deck');
     }
   };
 
   const handleSave = async () => {
     if (saving) return;
-    console.log('[EditSeaTimeScreen] User tapped Save');
+    log('[EditSeaTimeScreen] User tapped Save');
 
     if (!entry) {
       showFeedback('Error', 'Entry not found', 'error');
@@ -515,7 +517,7 @@ export default function EditSeaTimeScreen() {
       const noteParts = [voyageFromNote, voyageToNote, notes].filter(Boolean);
       const fullNotes = noteParts.join('\n');
 
-      console.log('[EditSeaTimeScreen] Updating sea time entry');
+      log('[EditSeaTimeScreen] Updating sea time entry');
 
       // Parse position values; null = clear, undefined = leave alone
       const parseCoord = (s: string): number | null | undefined => {
@@ -544,7 +546,7 @@ export default function EditSeaTimeScreen() {
       savedOrDeletedRef.current = true;
       showFeedback('Success', 'Sea time entry updated successfully', 'success', () => router.back());
     } catch (error: any) {
-      console.error('[EditSeaTimeScreen] Error saving entry:', error);
+      logError('[EditSeaTimeScreen] Error saving entry:', error);
       showFeedback('Error', error.message || 'Failed to update sea time entry', 'error');
     } finally {
       setSaving(false);
@@ -554,7 +556,7 @@ export default function EditSeaTimeScreen() {
   const handleDelete = () => {
     if (!entry) return;
 
-    console.log('[EditSeaTimeScreen] User tapped delete button');
+    log('[EditSeaTimeScreen] User tapped delete button');
     
     showConfirm(
       'Delete Entry',
@@ -563,13 +565,13 @@ export default function EditSeaTimeScreen() {
         if (deleting) return; // guard against double-tap
         setDeleting(true);
         try {
-          console.log('[EditSeaTimeScreen] Deleting sea time entry:', entry.id);
+          log('[EditSeaTimeScreen] Deleting sea time entry:', entry.id);
           await seaTimeApi.deleteSeaTimeEntry(entry.id);
           savedOrDeletedRef.current = true;
           // Show success modal; when user taps OK, navigate back once
           showFeedback('Success', 'Sea time entry deleted successfully', 'success', () => router.back());
         } catch (error: any) {
-          console.error('[EditSeaTimeScreen] Error deleting entry:', error);
+          logError('[EditSeaTimeScreen] Error deleting entry:', error);
           showFeedback('Error', error.message || 'Failed to delete sea time entry', 'error');
         } finally {
           setDeleting(false);

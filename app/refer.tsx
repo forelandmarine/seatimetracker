@@ -16,6 +16,8 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { authFetch } from '@/utils/api';
 
+import { error as logError } from '@/utils/log';
+
 export default function ReferScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -43,7 +45,7 @@ export default function ReferScreen() {
       setShareUrl(data.shareUrl || '');
       setBonusDays(credits.bonus_days || 0);
     } catch (err) {
-      console.error('[Refer] Failed to load:', err);
+      logError('[Refer] Failed to load:', err);
     } finally {
       setLoading(false);
     }
@@ -60,7 +62,7 @@ export default function ReferScreen() {
         url: shareUrl,
       });
     } catch (err) {
-      console.error('[Refer] Share failed:', err);
+      logError('[Refer] Share failed:', err);
     }
   };
 

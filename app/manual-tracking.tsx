@@ -27,6 +27,8 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 
+import { error as logError } from '@/utils/log';
+
 const ACTIVE_VOYAGE_KEY = 'seatime_active_manual_voyage';
 
 interface ActiveVoyage {
@@ -63,7 +65,7 @@ export default function ManualTrackingScreen() {
         const active = (data || []).find((v: any) => v.is_active);
         if (active) setSelectedVesselId(active.id);
       } catch (err) {
-        console.error('[ManualTracking] Failed to load vessels:', err);
+        logError('[ManualTracking] Failed to load vessels:', err);
       }
     })();
 
@@ -108,7 +110,7 @@ export default function ManualTrackingScreen() {
         longitude: position.coords.longitude,
       };
     } catch (err) {
-      console.error('[ManualTracking] Location error:', err);
+      logError('[ManualTracking] Location error:', err);
       Alert.alert('Error', 'Failed to get current location. Please try again.');
       return null;
     }
@@ -168,7 +170,7 @@ export default function ManualTrackingScreen() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      console.error('[ManualTracking] Failed to save entry:', err);
+      logError('[ManualTracking] Failed to save entry:', err);
       Alert.alert('Error', err?.message || 'Failed to save voyage. Please try again.');
     } finally {
       setLoading(false);

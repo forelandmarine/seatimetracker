@@ -14,6 +14,8 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { MCA_REQUIREMENTS, MCARequirement } from '@/constants/mcaRequirements';
 
+import { log } from '@/utils/log';
+
 const createStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
@@ -152,7 +154,7 @@ export default function MCARequirementsScreen() {
   const { department } = useLocalSearchParams<{ department?: string }>();
 
   const userDepartment = department?.toLowerCase() || 'deck';
-  console.log('[MCARequirementsScreen] User viewing MCA requirements reference for department:', userDepartment);
+  log('[MCARequirementsScreen] User viewing MCA requirements reference for department:', userDepartment);
 
   const textColor = isDark ? colors.text : colors.textLight;
   const backgroundColor = isDark ? colors.background : colors.backgroundLight;

@@ -19,6 +19,8 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
+import { log } from '@/utils/log';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   loadingComponent?: React.ReactNode;
@@ -40,19 +42,19 @@ export function ProtectedRoute({
     if (isLoading) return;
 
     if (!user) {
-      console.log('[ProtectedRoute] User not authenticated, redirecting to /auth');
+      log('[ProtectedRoute] User not authenticated, redirecting to /auth');
       router.replace('/auth');
       return;
     }
 
     // If RevenueCat failed to load, fail open — do not redirect paying users to paywall
     if (revenueCatFailed) {
-      console.log('[ProtectedRoute] RevenueCat failed to load, failing open (allowing access)');
+      log('[ProtectedRoute] RevenueCat failed to load, failing open (allowing access)');
       return;
     }
 
     if (!isSubscribed) {
-      console.log('[ProtectedRoute] User not subscribed, redirecting to /paywall');
+      log('[ProtectedRoute] User not subscribed, redirecting to /paywall');
       router.replace('/paywall');
     }
   }, [user, isSubscribed, isLoading, revenueCatFailed, router]);

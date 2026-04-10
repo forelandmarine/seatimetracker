@@ -19,6 +19,8 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
+import { log, error as logError } from '@/utils/log';
+
 interface UserProfile {
   id: string;
   name: string;
@@ -334,14 +336,14 @@ export default function ReportsScreen() {
   const styles = createStyles(isDark);
   const router = useRouter();
 
-  console.log('ReportsScreen rendered');
+  log('ReportsScreen rendered');
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    console.log('Loading reports data');
+    log('Loading reports data');
     setLoading(true);
     setLoadingSummary(true);
     
@@ -352,12 +354,12 @@ export default function ReportsScreen() {
         seaTimeApi.getVessels(),
       ]);
       
-      console.log('Reports data loaded successfully');
+      log('Reports data loaded successfully');
       setProfile(profileData);
       setSummary(summaryData);
       setVessels(vesselsData);
     } catch (error) {
-      console.error('Failed to load reports data:', error);
+      logError('Failed to load reports data:', error);
       Alert.alert('Error', 'Failed to load reports data');
     } finally {
       setLoading(false);
@@ -366,7 +368,7 @@ export default function ReportsScreen() {
   };
 
   const handleVesselPress = (vesselName: string) => {
-    console.log('User tapped vessel:', vesselName);
+    log('User tapped vessel:', vesselName);
     const vessel = vessels.find((v) => v.vessel_name === vesselName);
     if (vessel) {
       setSelectedVessel(vessel);
@@ -375,7 +377,7 @@ export default function ReportsScreen() {
   };
 
   const handleCloseModal = () => {
-    console.log('User closed vessel modal');
+    log('User closed vessel modal');
     setShowVesselModal(false);
     setSelectedVessel(null);
   };
@@ -392,12 +394,12 @@ export default function ReportsScreen() {
   };
 
   const handleDownloadPDF = async () => {
-    console.log('User tapped Download PDF Report');
+    log('User tapped Download PDF Report');
     
     setDownloadingPDF(true);
     try {
       const pdfBlob = await seaTimeApi.downloadPDFReport();
-      console.log('PDF report downloaded, blob size:', pdfBlob.size);
+      log('PDF report downloaded, blob size:', pdfBlob.size);
 
       if (Platform.OS === 'web') {
         const url = URL.createObjectURL(pdfBlob);
@@ -422,7 +424,7 @@ export default function ReportsScreen() {
             encoding: FileSystem.EncodingType.Base64,
           });
           
-          console.log('PDF saved to:', fileUri);
+          log('PDF saved to:', fileUri);
           
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(fileUri);
@@ -432,7 +434,7 @@ export default function ReportsScreen() {
         };
       }
     } catch (error: any) {
-      console.error('Failed to download PDF report:', error);
+      logError('Failed to download PDF report:', error);
       Alert.alert('Error', 'Failed to download PDF report. Please try again.');
     } finally {
       setDownloadingPDF(false);
@@ -440,12 +442,12 @@ export default function ReportsScreen() {
   };
 
   const handleDownloadCSV = async () => {
-    console.log('User tapped Download CSV Report');
+    log('User tapped Download CSV Report');
     
     setDownloadingCSV(true);
     try {
       const csvData = await seaTimeApi.downloadCSVReport();
-      console.log('CSV report downloaded, size:', csvData.length);
+      log('CSV report downloaded, size:', csvData.length);
 
       if (Platform.OS === 'web') {
         const blob = new Blob([csvData], { type: 'text/csv' });
@@ -465,7 +467,7 @@ export default function ReportsScreen() {
           encoding: FileSystem.EncodingType.UTF8,
         });
         
-        console.log('CSV saved to:', fileUri);
+        log('CSV saved to:', fileUri);
         
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri);
@@ -474,7 +476,7 @@ export default function ReportsScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Failed to download CSV report:', error);
+      logError('Failed to download CSV report:', error);
       Alert.alert('Error', 'Failed to download CSV report. Please try again.');
     } finally {
       setDownloadingCSV(false);
@@ -482,7 +484,7 @@ export default function ReportsScreen() {
   };
 
   const handleVesselDiagnostic = () => {
-    console.log('User tapped Vessel Diagnostic button');
+    log('User tapped Vessel Diagnostic button');
     router.push('/scheduled-tasks');
   };
 

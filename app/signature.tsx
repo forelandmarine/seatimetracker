@@ -26,6 +26,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 
+import { warn, error as logError } from '@/utils/log';
+
 export const SIGNATURE_STORAGE_KEY = 'seatime_user_signature';
 
 export default function SignatureScreen() {
@@ -44,7 +46,7 @@ export default function SignatureScreen() {
     import('react-native-signature-canvas')
       .then((mod) => setSignatureComponent(() => mod.default))
       .catch((err) => {
-        console.warn('[Signature] Package not installed:', err);
+        warn('[Signature] Package not installed:', err);
         setLoadError(true);
       });
   }, []);
@@ -58,14 +60,14 @@ export default function SignatureScreen() {
       // Upload to backend so it persists across devices and embeds in PDF
       const { updateUserSignature } = await import('@/utils/seaTimeApi');
       await updateUserSignature(signature).catch((err) =>
-        console.warn('[Signature] Failed to upload to backend (non-critical):', err)
+        warn('[Signature] Failed to upload to backend (non-critical):', err)
       );
 
       Alert.alert('Signature saved', 'Your signature will appear on all PDF reports.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
-      console.error('[Signature] Failed to save:', err);
+      logError('[Signature] Failed to save:', err);
       Alert.alert('Error', 'Failed to save signature.');
     }
   };

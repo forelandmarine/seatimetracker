@@ -21,10 +21,10 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "SeaTime Tracker needs access to your camera to take photos for your profile picture.",
-        "NSPhotoLibraryUsageDescription": "SeaTime Tracker needs access to your photo library to select a profile picture.",
-        "NSLocationWhenInUseUsageDescription": "SeaTime Tracker uses your location to track vessel positions and calculate sea time accurately for MCA compliance.",
-        "NSFaceIDUsageDescription": "SeaTime Tracker uses Face ID to securely sign you in without entering your password."
+        "NSCameraUsageDescription": "SeaTime Tracker uses your camera to capture a profile photo for your seafarer account.",
+        "NSPhotoLibraryUsageDescription": "SeaTime Tracker accesses your photo library so you can select a profile photo for your seafarer account.",
+        "NSLocationWhenInUseUsageDescription": "SeaTime Tracker uses your location to record vessel positions for manual GPS tracking and to calculate sea time in compliance with MCA regulations.",
+        "NSFaceIDUsageDescription": "SeaTime Tracker uses Face ID for quick, secure sign-in to your account."
       }
     },
     "android": {

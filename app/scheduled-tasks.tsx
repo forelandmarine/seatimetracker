@@ -15,6 +15,8 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 
+import { log, error as logError } from '@/utils/log';
+
 interface ScheduledTask {
   id: string;
   vessel_id: string;
@@ -44,12 +46,12 @@ export default function ScheduledTasksScreen() {
 
   const loadTasks = async () => {
     try {
-      console.log('Loading scheduled tasks...');
+      log('Loading scheduled tasks...');
       const data = await seaTimeApi.getScheduledTasks();
-      console.log('Scheduled tasks loaded:', data.length);
+      log('Scheduled tasks loaded:', data.length);
       setTasks(data);
     } catch (error: any) {
-      console.error('Failed to load scheduled tasks:', error);
+      logError('Failed to load scheduled tasks:', error);
       Alert.alert('Error', 'Failed to load scheduled tasks: ' + error.message);
     } finally {
       setLoading(false);
@@ -58,14 +60,14 @@ export default function ScheduledTasksScreen() {
   };
 
   const onRefresh = () => {
-    console.log('User refreshing scheduled tasks');
+    log('User refreshing scheduled tasks');
     setRefreshing(true);
     loadTasks();
   };
 
   const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
     try {
-      console.log('Toggling task:', taskId, 'from', currentStatus, 'to', !currentStatus);
+      log('Toggling task:', taskId, 'from', currentStatus, 'to', !currentStatus);
       await seaTimeApi.toggleScheduledTask(taskId, !currentStatus);
       const newStatus = !currentStatus;
       const statusText = newStatus ? 'activated' : 'paused';
@@ -75,7 +77,7 @@ export default function ScheduledTasksScreen() {
       );
       loadTasks();
     } catch (error: any) {
-      console.error('Failed to toggle task:', error);
+      logError('Failed to toggle task:', error);
       Alert.alert('Error', 'Failed to update task: ' + error.message);
     }
   };

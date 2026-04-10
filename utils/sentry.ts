@@ -13,6 +13,8 @@
 
 import Constants from 'expo-constants';
 
+import { log, warn } from '@/utils/log';
+
 const SENTRY_DSN = Constants.expoConfig?.extra?.sentryDsn || process.env.EXPO_PUBLIC_SENTRY_DSN;
 const APP_VERSION = Constants.expoConfig?.version || 'unknown';
 const APP_BUILD =
@@ -24,7 +26,7 @@ let initialized = false;
 export async function initSentry(): Promise<void> {
   if (initialized) return;
   if (!SENTRY_DSN) {
-    console.log('[Sentry] No DSN configured, skipping init');
+    log('[Sentry] No DSN configured, skipping init');
     return;
   }
 
@@ -42,9 +44,9 @@ export async function initSentry(): Promise<void> {
       enabled: Constants.appOwnership !== 'expo',
     });
     initialized = true;
-    console.log('[Sentry] Initialized');
+    log('[Sentry] Initialized');
   } catch (err) {
-    console.warn('[Sentry] Init failed (package may not be installed):', err);
+    warn('[Sentry] Init failed (package may not be installed):', err);
   }
 }
 

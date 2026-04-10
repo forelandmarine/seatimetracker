@@ -23,6 +23,8 @@ import {
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { 
+import { log, warn, error as logError } from '@/utils/log';
+
   isBiometricAvailable, 
   getBiometricCredentials, 
   clearBiometricCredentials,
@@ -545,7 +547,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { signOut, refreshTrigger } = useAuth();
 
-  console.log('ProfileScreen rendered');
+  log('ProfileScreen rendered');
 
   const checkBiometricStatus = useCallback(async () => {
     try {
@@ -560,13 +562,13 @@ export default function ProfileScreen() {
         setHasSavedCredentials(!!credentials);
       }
     } catch (error) {
-      console.error('Error checking biometric status:', error);
+      logError('Error checking biometric status:', error);
     }
   }, []);
 
   const loadProfile = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading user profile (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
     if (retryCount === 0) {
       setLoadError(false);
@@ -574,16 +576,16 @@ export default function ProfileScreen() {
 
     try {
       const data = await seaTimeApi.getUserProfile();
-      console.log('User profile loaded successfully:', data?.email);
+      log('User profile loaded successfully:', data?.email);
       setProfile(data);
       setLoading(false);
       setLoadError(false);
     } catch (error: any) {
-      console.error(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load profile (attempt ${retryCount + 1}):`, error?.message);
 
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying profile load in ${waitTime}ms...`);
+        log(`Retrying profile load in ${waitTime}ms...`);
         setTimeout(() => loadProfile(retryCount + 1), waitTime);
       } else {
         setLoading(false);
@@ -594,51 +596,51 @@ export default function ProfileScreen() {
 
   const loadSummary = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading sea time summary (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
       const data = await seaTimeApi.getReportSummary();
-      console.log('Sea time summary loaded successfully');
+      log('Sea time summary loaded successfully');
       setSummary(data);
       setLoadingSummary(false);
     } catch (error: any) {
-      console.error(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying summary load in ${waitTime}ms...`);
+        log(`Retrying summary load in ${waitTime}ms...`);
         setTimeout(() => loadSummary(retryCount + 1), waitTime);
       } else {
         setLoadingSummary(false);
-        console.warn('Summary load failed after retries, continuing without summary');
+        warn('Summary load failed after retries, continuing without summary');
       }
     }
   }, []);
 
   const loadVessels = useCallback(async (retryCount = 0) => {
     const maxRetries = 1;
-    console.log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
+    log(`Loading vessels (attempt ${retryCount + 1}/${maxRetries + 1})`);
     
     try {
       const data = await seaTimeApi.getVessels();
-      console.log('Vessels loaded successfully:', data?.length);
+      log('Vessels loaded successfully:', data?.length);
       setVessels(data);
     } catch (error: any) {
-      console.error(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
+      logError(`Failed to load vessels (attempt ${retryCount + 1}):`, error?.message);
       
       if (retryCount < maxRetries && (error?.message?.includes('Network') || error?.message?.includes('fetch'))) {
         const waitTime = 500;
-        console.log(`Retrying vessels load in ${waitTime}ms...`);
+        log(`Retrying vessels load in ${waitTime}ms...`);
         setTimeout(() => loadVessels(retryCount + 1), waitTime);
       } else {
-        console.warn('Vessels load failed after retries, continuing without vessels');
+        warn('Vessels load failed after retries, continuing without vessels');
       }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('ProfileScreen: Screen focused, loading data in parallel');
+      log('ProfileScreen: Screen focused, loading data in parallel');
       setLoading(true);
       setLoadingSummary(true);
       Promise.all([
@@ -647,36 +649,36 @@ export default function ProfileScreen() {
         loadVessels(),
         checkBiometricStatus(),
       ]).catch(error => {
-        console.error('Failed to load profile data:', error);
+        logError('Failed to load profile data:', error);
       });
     }, [loadProfile, loadSummary, loadVessels, checkBiometricStatus])
   );
 
   useEffect(() => {
     if (refreshTrigger > 0) {
-      console.log('ProfileScreen: Global refresh triggered, reloading profile data in parallel');
+      log('ProfileScreen: Global refresh triggered, reloading profile data in parallel');
       Promise.all([
         loadProfile(),
         loadSummary(),
         loadVessels(),
       ]).catch(error => {
-        console.error('Failed to refresh profile data:', error);
+        logError('Failed to refresh profile data:', error);
       });
     }
   }, [refreshTrigger, loadProfile, loadSummary, loadVessels]);
 
   const handleEditProfile = () => {
-    console.log('User tapped User Profile');
+    log('User tapped User Profile');
     router.push('/user-profile');
   };
 
   const handleScheduledTasks = () => {
-    console.log('User tapped Scheduled Tasks');
+    log('User tapped Scheduled Tasks');
     router.push('/scheduled-tasks');
   };
 
   const handleSupport = async () => {
-    console.log('User tapped Support button');
+    log('User tapped Support button');
     const supportEmail = 'info@forelandmarine.com';
     const subject = 'SeaTime Tracker Support Request';
     const body = 'Hello,\n\nI need assistance with:\n\n';
@@ -687,19 +689,19 @@ export default function ProfileScreen() {
       const canOpen = await Linking.canOpenURL(mailtoUrl);
       if (canOpen) {
         await Linking.openURL(mailtoUrl);
-        console.log('Support email opened successfully');
+        log('Support email opened successfully');
       } else {
-        console.log('Cannot open email client, showing modal with email address');
+        log('Cannot open email client, showing modal with email address');
         showInfo('Contact Support', `Please email us at:\n${supportEmail}`, 'info');
       }
     } catch (error) {
-      console.error('Failed to open email client:', error);
+      logError('Failed to open email client:', error);
       showInfo('Contact Support', `Please email us at:\n${supportEmail}`, 'info');
     }
   };
 
   const handleVesselPress = (vesselName: string) => {
-    console.log('User tapped vessel:', vesselName);
+    log('User tapped vessel:', vesselName);
     const vessel = vessels.find((v) => v.vessel_name === vesselName);
     if (vessel) {
       setSelectedVessel(vessel);
@@ -708,7 +710,7 @@ export default function ProfileScreen() {
   };
 
   const handleCloseModal = () => {
-    console.log('User closed vessel modal');
+    log('User closed vessel modal');
     setShowVesselModal(false);
     setSelectedVessel(null);
   };
@@ -744,15 +746,15 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadPDF = async () => {
-    console.log('User tapped Download PDF Report, template:', reportTemplate);
+    log('User tapped Download PDF Report, template:', reportTemplate);
     setDownloadingPDF(true);
     try {
-      console.log('Calling downloadPDFReport API...');
+      log('Calling downloadPDFReport API...');
       const pdfBlob = await seaTimeApi.downloadPDFReport(reportTemplate);
-      console.log('PDF report downloaded, blob size:', pdfBlob.size);
+      log('PDF report downloaded, blob size:', pdfBlob.size);
 
       if (Platform.OS === 'web') {
-        console.log('Web platform: Creating download link');
+        log('Web platform: Creating download link');
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
@@ -761,24 +763,24 @@ export default function ProfileScreen() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        console.log('PDF download triggered successfully on web');
+        log('PDF download triggered successfully on web');
         showInfo('Success', 'PDF report downloaded successfully', 'success');
       } else {
-        console.log('Mobile platform: Saving PDF to file system');
+        log('Mobile platform: Saving PDF to file system');
         const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         
-        console.log('Converting blob to base64...');
+        log('Converting blob to base64...');
         const reader = new FileReader();
         
         reader.onerror = (error) => {
-          console.error('FileReader error:', error);
+          logError('FileReader error:', error);
           throw new Error('Failed to read PDF data');
         };
         
         reader.onloadend = async () => {
           try {
-            console.log('Blob converted to base64, writing to file system...');
+            log('Blob converted to base64, writing to file system...');
             const base64data = reader.result as string;
             const base64 = base64data.split(',')[1];
             
@@ -786,35 +788,35 @@ export default function ProfileScreen() {
               encoding: FileSystem.EncodingType.Base64,
             });
             
-            console.log('PDF saved to:', fileUri);
+            log('PDF saved to:', fileUri);
             
             const fileInfo = await FileSystem.getInfoAsync(fileUri);
-            console.log('File info:', fileInfo);
+            log('File info:', fileInfo);
             
             if (await Sharing.isAvailableAsync()) {
-              console.log('Sharing is available, opening share dialog...');
+              log('Sharing is available, opening share dialog...');
               await Sharing.shareAsync(fileUri, {
                 mimeType: 'application/pdf',
                 dialogTitle: 'Save or Share PDF Report',
                 UTI: 'com.adobe.pdf',
               });
-              console.log('Share dialog opened successfully');
+              log('Share dialog opened successfully');
             } else {
-              console.log('Sharing not available, showing success modal');
+              log('Sharing not available, showing success modal');
               showInfo('Success', `PDF report saved to:\n${fileUri}`, 'success');
             }
           } catch (error) {
-            console.error('Error in FileReader onloadend:', error);
+            logError('Error in FileReader onloadend:', error);
             throw error;
           }
         };
         
-        console.log('Starting FileReader...');
+        log('Starting FileReader...');
         reader.readAsDataURL(pdfBlob);
       }
     } catch (error: any) {
-      console.error('Failed to download PDF report:', error);
-      console.error('Error details:', {
+      logError('Failed to download PDF report:', error);
+      logError('Error details:', {
         message: error?.message,
         stack: error?.stack,
         name: error?.name,
@@ -826,11 +828,11 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadCSV = async () => {
-    console.log('User tapped Download CSV Report');
+    log('User tapped Download CSV Report');
     setDownloadingCSV(true);
     try {
       const csvData = await seaTimeApi.downloadCSVReport();
-      console.log('CSV report downloaded, size:', csvData.length);
+      log('CSV report downloaded, size:', csvData.length);
 
       if (Platform.OS === 'web') {
         const blob = new Blob([csvData], { type: 'text/csv' });
@@ -850,7 +852,7 @@ export default function ProfileScreen() {
           encoding: FileSystem.EncodingType.UTF8,
         });
         
-        console.log('CSV saved to:', fileUri);
+        log('CSV saved to:', fileUri);
         
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri);
@@ -859,7 +861,7 @@ export default function ProfileScreen() {
         }
       }
     } catch (error) {
-      console.error('Failed to download CSV report:', error);
+      logError('Failed to download CSV report:', error);
       showInfo('Error', 'Failed to download CSV report. Please try again.', 'error');
     } finally {
       setDownloadingCSV(false);
@@ -867,7 +869,7 @@ export default function ProfileScreen() {
   };
 
   const handleDownloadXLSX = async () => {
-    console.log('User tapped Download Excel Report');
+    log('User tapped Download Excel Report');
     setDownloadingCSV(true); // reuse loading state
     try {
       const { BACKEND_URL } = await import('@/utils/api');
@@ -903,7 +905,7 @@ export default function ProfileScreen() {
         }
       }
     } catch (error) {
-      console.error('Failed to download Excel report:', error);
+      logError('Failed to download Excel report:', error);
       showInfo('Error', 'Failed to download Excel report. Please try again.', 'error');
     } finally {
       setDownloadingCSV(false);
@@ -911,7 +913,7 @@ export default function ProfileScreen() {
   };
 
   const handleManageBiometric = async () => {
-    console.log('User tapped Manage Biometric Authentication');
+    log('User tapped Manage Biometric Authentication');
     
     if (!biometricAvailable) {
       showInfo(
@@ -934,19 +936,19 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = () => {
-    console.log('User tapped Sign Out button');
+    log('User tapped Sign Out button');
     setShowSignOutModal(true);
   };
 
   const confirmSignOut = async () => {
-    console.log('User confirmed sign out in modal');
+    log('User confirmed sign out in modal');
     setSigningOut(true);
     try {
       await signOut();
-      console.log('Sign out successful');
+      log('Sign out successful');
       setShowSignOutModal(false);
     } catch (error) {
-      console.error('Sign out error:', error);
+      logError('Sign out error:', error);
       setShowSignOutModal(false);
       showInfo('Error', 'Failed to sign out. Please try again.', 'error');
     } finally {
@@ -955,7 +957,7 @@ export default function ProfileScreen() {
   };
 
   const cancelSignOut = () => {
-    console.log('User cancelled sign out');
+    log('User cancelled sign out');
     setShowSignOutModal(false);
   };
 
@@ -1035,8 +1037,8 @@ export default function ProfileScreen() {
 
   const allServiceTypes = getAllServiceTypesWithDays();
 
-  console.log('Profile image URL:', imageUrl);
-  console.log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
+  log('Profile image URL:', imageUrl);
+  log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
 
   return (
     <View style={styles.container}>
@@ -1714,7 +1716,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={[styles.confirmModalButton, styles.confirmModalConfirmButton]}
                 onPress={async () => {
-                  console.log('User confirmed disable biometric');
+                  log('User confirmed disable biometric');
                   setShowBiometricDisableModal(false);
                   await clearBiometricCredentials();
                   setHasSavedCredentials(false);

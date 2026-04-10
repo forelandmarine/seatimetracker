@@ -23,6 +23,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { authenticatedDelete } from '@/utils/api';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 interface UserProfile {
   id: string;
   name: string;
@@ -419,17 +421,17 @@ export default function UserProfileScreen() {
   }, []);
 
   const loadData = async () => {
-    console.log('User viewing User Profile screen');
+    log('User viewing User Profile screen');
     try {
       setLoading(true);
       
       const profileData = await seaTimeApi.getUserProfile();
       
-      console.log('Profile loaded:', profileData.email);
+      log('Profile loaded:', profileData.email);
       
       setProfile(profileData);
     } catch (error: any) {
-      console.error('Failed to load profile data:', error);
+      logError('Failed to load profile data:', error);
       showFeedback('Error', error.message || 'Failed to load profile data', 'error');
     } finally {
       setLoading(false);
@@ -437,7 +439,7 @@ export default function UserProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    console.log('User tapped Edit Profile button');
+    log('User tapped Edit Profile button');
     if (profile) {
       setEditName(profile.name);
       setEditEmail(profile.email);
@@ -455,7 +457,7 @@ export default function UserProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    console.log('User saving profile changes');
+    log('User saving profile changes');
     try {
       const updates: any = {};
       
@@ -474,7 +476,7 @@ export default function UserProfileScreen() {
       const currentDepartment = profile?.department ? profile.department.charAt(0).toUpperCase() + profile.department.slice(1) : '';
       if (editDepartment !== currentDepartment) {
         updates.department = editDepartment ? editDepartment.toLowerCase() : null;
-        console.log('Department changed from', currentDepartment, 'to', editDepartment, '(backend value:', updates.department, ')');
+        log('Department changed from', currentDepartment, 'to', editDepartment, '(backend value:', updates.department, ')');
       }
       
       if (Object.keys(updates).length === 0) {
@@ -482,32 +484,32 @@ export default function UserProfileScreen() {
         return;
       }
       
-      console.log('Updating profile with:', updates);
+      log('Updating profile with:', updates);
       const updatedProfile = await seaTimeApi.updateUserProfile(updates);
-      console.log('Profile updated successfully');
+      log('Profile updated successfully');
       setProfile(updatedProfile);
       setEditModalVisible(false);
       
       // If department was changed, trigger global refresh to update all screens
       if (updates.department !== undefined) {
-        console.log('Department was changed, triggering global refresh to update all screens');
+        log('Department was changed, triggering global refresh to update all screens');
         triggerRefresh();
       }
       
       showFeedback('Success', 'Profile updated successfully', 'success');
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
+      logError('Failed to update profile:', error);
       showFeedback('Error', error.message || 'Failed to update profile', 'error');
     }
   };
 
   const handleChangeProfilePicture = () => {
-    console.log('User tapped Change Profile Picture button');
+    log('User tapped Change Profile Picture button');
     setImagePickerModalVisible(true);
   };
 
   const handlePickFromLibrary = async () => {
-    console.log('User chose to pick from photo library');
+    log('User chose to pick from photo library');
     setImagePickerModalVisible(false);
     
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -525,13 +527,13 @@ export default function UserProfileScreen() {
     
     if (!result.canceled && result.assets[0]) {
       const imageUri = result.assets[0].uri;
-      console.log('Image selected from library:', imageUri);
+      log('Image selected from library:', imageUri);
       await uploadImage(imageUri);
     }
   };
 
   const handleTakePhoto = async () => {
-    console.log('User chose to take a photo');
+    log('User chose to take a photo');
     setImagePickerModalVisible(false);
     
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -548,7 +550,7 @@ export default function UserProfileScreen() {
     
     if (!result.canceled && result.assets[0]) {
       const imageUri = result.assets[0].uri;
-      console.log('Photo taken:', imageUri);
+      log('Photo taken:', imageUri);
       await uploadImage(imageUri);
     }
   };
@@ -556,16 +558,16 @@ export default function UserProfileScreen() {
   const uploadImage = async (imageUri: string) => {
     setUploading(true);
     try {
-      console.log('Uploading image:', imageUri);
+      log('Uploading image:', imageUri);
       const response = await seaTimeApi.uploadProfileImage(imageUri);
-      console.log('Profile image uploaded:', response.imageUrl);
+      log('Profile image uploaded:', response.imageUrl);
       
       const updatedProfile = await seaTimeApi.getUserProfile();
       setProfile(updatedProfile);
       
       showFeedback('Success', 'Profile picture updated successfully', 'success');
     } catch (error: any) {
-      console.error('Failed to upload profile image:', error);
+      logError('Failed to upload profile image:', error);
       showFeedback('Error', error.message || 'Failed to upload profile picture', 'error');
     } finally {
       setUploading(false);
@@ -573,18 +575,18 @@ export default function UserProfileScreen() {
   };
 
   const handleSignOut = () => {
-    console.log('User tapped Sign Out button');
+    log('User tapped Sign Out button');
     showConfirm(
       'Sign Out',
       'Are you sure you want to sign out?',
       async () => {
-        console.log('User confirmed sign out, executing sign out...');
+        log('User confirmed sign out, executing sign out...');
         try {
           await signOut();
-          console.log('Sign out completed successfully, navigating to auth screen');
+          log('Sign out completed successfully, navigating to auth screen');
           router.replace('/auth');
         } catch (error: any) {
-          console.error('Sign out failed with error:', error);
+          logError('Sign out failed with error:', error);
           showFeedback('Error', error.message || 'Failed to sign out. Please try again.', 'error');
         }
       }
@@ -592,31 +594,31 @@ export default function UserProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
-    console.log('User tapped Delete Account button');
+    log('User tapped Delete Account button');
     setShowDeleteAccountModal(true);
   };
 
   const confirmDeleteAccount = async () => {
-    console.log('User confirmed account deletion in modal');
+    log('User confirmed account deletion in modal');
     setDeletingAccount(true);
     try {
-      console.log('[API] Requesting DELETE /api/users/me...');
+      log('[API] Requesting DELETE /api/users/me...');
       await authenticatedDelete('/api/users/me');
-      console.log('Account deleted successfully (204 No Content)');
+      log('Account deleted successfully (204 No Content)');
       setShowDeleteAccountModal(false);
       
       // Sign out locally - session is already invalidated on server
       try {
         await signOut();
-        console.log('User signed out after account deletion');
+        log('User signed out after account deletion');
         router.replace('/auth');
       } catch (signOutError) {
         // Ignore sign out errors - account is already deleted
-        console.warn('Sign out after deletion failed (expected):', signOutError);
+        warn('Sign out after deletion failed (expected):', signOutError);
         router.replace('/auth');
       }
     } catch (error: any) {
-      console.error('Account deletion error:', error);
+      logError('Account deletion error:', error);
       setShowDeleteAccountModal(false);
       showFeedback('Deletion Failed', `Failed to delete account. ${error?.message || 'Please try again or contact support if the issue persists.'}`, 'error');
     } finally {
@@ -625,7 +627,7 @@ export default function UserProfileScreen() {
   };
 
   const cancelDeleteAccount = () => {
-    console.log('User cancelled account deletion');
+    log('User cancelled account deletion');
     setShowDeleteAccountModal(false);
   };
 
@@ -684,7 +686,7 @@ export default function UserProfileScreen() {
             ) : (() => {
               // Construct full image URL from relative path
               const imageUrl = profile?.imageUrl || (profile?.image ? `${seaTimeApi.API_BASE_URL}/${profile.image}` : null);
-              console.log('User profile image URL:', imageUrl);
+              log('User profile image URL:', imageUrl);
               return imageUrl ? (
                 <Image source={{ uri: imageUrl }} style={styles.profileImage} />
               ) : (
@@ -919,7 +921,7 @@ export default function UserProfileScreen() {
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonSecondary]}
                   onPress={() => {
-                    console.log('User cancelled confirmation');
+                    log('User cancelled confirmation');
                     setConfirmModal(prev => ({ ...prev, visible: false }));
                   }}
                 >

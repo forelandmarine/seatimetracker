@@ -5,6 +5,8 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import { scheduleDailySeaTimeReviewNotification, registerForPushNotificationsAsync } from '@/utils/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 
+import { log, warn, error as logError } from '@/utils/log';
+
 /**
  * Hook to manage notification scheduling and permissions
  * Automatically schedules daily notifications based on user's backend schedule
@@ -31,38 +33,38 @@ export function useNotifications() {
 
     const setupNotifications = async () => {
       try {
-        console.log('[useNotifications] Setting up notifications for user:', user.id);
+        log('[useNotifications] Setting up notifications for user:', user.id);
 
         // Request notification permissions
         const hasPermission = await registerForPushNotificationsAsync();
         if (!hasPermission) {
-          console.warn('[useNotifications] Notification permissions not granted');
+          warn('[useNotifications] Notification permissions not granted');
           return;
         }
 
-        console.log('[useNotifications] Notification permissions granted');
+        log('[useNotifications] Notification permissions granted');
 
         // Fetch user's notification schedule from backend
         const schedule = await seaTimeApi.getNotificationSchedule();
-        console.log('[useNotifications] Notification schedule:', schedule);
+        log('[useNotifications] Notification schedule:', schedule);
 
         // If notifications are active, schedule them locally
         if (schedule.is_active) {
           const scheduledTime = schedule.scheduled_time || '18:00';
-          console.log('[useNotifications] Scheduling daily notification at', scheduledTime);
+          log('[useNotifications] Scheduling daily notification at', scheduledTime);
 
           const notificationId = await scheduleDailySeaTimeReviewNotification(scheduledTime);
           if (notificationId) {
-            console.log('[useNotifications] Daily notification scheduled successfully:', notificationId);
+            log('[useNotifications] Daily notification scheduled successfully:', notificationId);
             hasScheduledRef.current = true;
           } else {
-            console.warn('[useNotifications] Failed to schedule daily notification');
+            warn('[useNotifications] Failed to schedule daily notification');
           }
         } else {
-          console.log('[useNotifications] Notifications are disabled in user settings');
+          log('[useNotifications] Notifications are disabled in user settings');
         }
       } catch (error) {
-        console.error('[useNotifications] Error setting up notifications:', error);
+        logError('[useNotifications] Error setting up notifications:', error);
       }
     };
 

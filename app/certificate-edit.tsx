@@ -17,6 +17,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
+import { error as logError } from '@/utils/log';
+
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
   Certificate,
@@ -63,7 +65,7 @@ export default function CertificateEditScreen() {
           setNotes(cert.notes || '');
         }
       } catch (e) {
-        console.error('[CertEdit] Failed to load:', e);
+        logError('[CertEdit] Failed to load:', e);
       } finally {
         setLoading(false);
       }
@@ -93,7 +95,7 @@ export default function CertificateEditScreen() {
       }
       router.back();
     } catch (e: any) {
-      console.error('[CertEdit] Save failed:', e);
+      logError('[CertEdit] Save failed:', e);
       Alert.alert('Error', e?.message || 'Failed to save certificate');
     } finally {
       setSaving(false);
