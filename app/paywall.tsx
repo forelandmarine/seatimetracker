@@ -50,6 +50,7 @@ export default function PaywallScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const [offeringsLoading, setOfferingsLoading] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const waitingForRedeemRef = useRef(false);
 
@@ -80,14 +81,24 @@ export default function PaywallScreen() {
     return () => subscription.remove();
   }, []);
 
-  // FIX 2: Removed checkSubscriptionStatus() call on mount.
-  // Subscription status is managed by SubscriptionContext — calling it here
-  // can flip isSubscribed → false mid-session and re-trigger vessel deactivation.
+  // Refresh offerings on mount if they haven't loaded yet (race condition
+  // after login — SubscriptionContext may not have fetched them before the
+  // paywall renders).
   useEffect(() => {
     console.log('[Paywall] Paywall screen mounted');
     console.log('[Paywall] Available packages:', availablePackages.length);
     console.log('[Paywall] Is loading:', isLoading);
     console.log('[Paywall] Is subscribed:', isSubscribed);
+
+    if (availablePackages.length === 0 && !isLoading) {
+      console.log('[Paywall] No packages available on mount — refreshing offerings');
+      setOfferingsLoading(true);
+      refreshOfferings()
+        .catch((err: any) => {
+          console.error('[Paywall] Failed to refresh offerings on mount:', err?.message);
+        })
+        .finally(() => setOfferingsLoading(false));
+    }
   }, []);
 
   // Redirect if already subscribed
@@ -109,18 +120,14 @@ export default function PaywallScreen() {
       return;
     }
 
-    // Find the package for the selected plan
+    // Find the package for the selected plan — try exact product ID, then
+    // RevenueCat package type, then fall back to first available.
     const targetProductId = PRODUCT_IDS[selectedPlan];
-    let packageToPurchase = availablePackages.find(
-      (pkg) => pkg.product.identifier === targetProductId
-    );
-
-    // If the selected plan isn't available, fall back to whatever IS available
-    if (!packageToPurchase) {
-      packageToPurchase =
-        availablePackages.find((pkg) => pkg.product.identifier === PRODUCT_IDS.monthly) ||
-        availablePackages[0];
-    }
+    const targetPackageType = selectedPlan === 'annual' ? 'ANNUAL' : 'MONTHLY';
+    let packageToPurchase =
+      availablePackages.find((pkg) => pkg.product.identifier === targetProductId) ||
+      availablePackages.find((pkg) => pkg.packageType === targetPackageType) ||
+      availablePackages[0];
 
     if (!packageToPurchase) {
       console.error('[Paywall] No valid subscription product found');
@@ -280,27 +287,28 @@ export default function PaywallScreen() {
     );
   }
 
-  // Get the monthly package for display
-  const annualPackage = availablePackages.find(
-    (pkg) => pkg.product.identifier === PRODUCT_IDS.annual
-  );
-  const monthlyPackage = availablePackages.find(pkg =>
-    pkg.product.identifier === PRODUCT_IDS.monthly
-  );
+  // Log all available packages for debugging product ID mismatches
+  console.log('[Paywall] Available packages:', availablePackages.map(p => ({
+    id: p.product.identifier,
+    type: p.packageType,
+    price: p.product.priceString,
+    introPrice: p.product.introPrice?.priceString || null,
+  })));
 
-  // Extract price from App Store (StoreKit compliance)
-  // priceString automatically includes the user's local currency from their App Store region
-  // Examples: "$4.99" (US), "£4.99" (UK), "€4.99" (EU), "¥500" (Japan)
-  const priceText = monthlyPackage?.product.priceString || 'Price unavailable';
-  const productTitle = monthlyPackage?.product.title || 'SeaTime Tracker Pro';
-  const productDescription = monthlyPackage?.product.description || 'Monthly subscription';
-  
-  // Log price information for debugging
-  console.log('[Paywall] Price display:', {
-    priceString: monthlyPackage?.product.priceString,
-    currencyCode: monthlyPackage?.product.currencyCode,
-    price: monthlyPackage?.product.price,
-    productId: monthlyPackage?.product.identifier,
+  // Find packages — try exact product ID match first, then fall back to
+  // RevenueCat package type (ANNUAL / MONTHLY) so the paywall still works
+  // even if product IDs don't exactly match the config.
+  const annualPackage =
+    availablePackages.find((pkg) => pkg.product.identifier === PRODUCT_IDS.annual) ||
+    availablePackages.find((pkg) => pkg.packageType === 'ANNUAL');
+  const monthlyPackage =
+    availablePackages.find((pkg) => pkg.product.identifier === PRODUCT_IDS.monthly) ||
+    availablePackages.find((pkg) => pkg.packageType === 'MONTHLY');
+
+  console.log('[Paywall] Resolved packages:', {
+    annual: annualPackage?.product.identifier || 'NOT FOUND',
+    monthly: monthlyPackage?.product.identifier || 'NOT FOUND',
+    lookingFor: PRODUCT_IDS,
   });
 
   return (
@@ -494,15 +502,34 @@ export default function PaywallScreen() {
           {/* Setup Notice - Only show if no packages available */}
           {availablePackages.length === 0 && (
             <View style={styles.setupNotice}>
-              <IconSymbol
-                ios_icon_name="exclamationmark.triangle.fill"
-                android_material_icon_name="warning"
-                size={20}
-                color={colors.warning}
-              />
+              {offeringsLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <IconSymbol
+                  ios_icon_name="exclamationmark.triangle.fill"
+                  android_material_icon_name="warning"
+                  size={20}
+                  color={colors.warning}
+                />
+              )}
               <Text style={[styles.setupNoticeText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-                Subscription is temporarily unavailable. Please try again later.
+                {offeringsLoading
+                  ? 'Loading subscription options...'
+                  : 'Subscription is temporarily unavailable. Please try again.'}
               </Text>
+              {!offeringsLoading && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setOfferingsLoading(true);
+                    refreshOfferings()
+                      .catch(() => {})
+                      .finally(() => setOfferingsLoading(false));
+                  }}
+                  style={{ marginLeft: 8 }}
+                >
+                  <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>Retry</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
