@@ -103,12 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+      const headers = { 'Authorization': `Bearer ${token}` };
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/auth/user`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-          signal: controller.signal,
-        });
+        // Fire auth + profile in parallel — saves 2-4s vs sequential
+        const [response, profileResponse] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/auth/user`, { headers, signal: controller.signal }),
+          fetch(`${BACKEND_URL}/api/profile`, { headers, signal: controller.signal }).catch(() => null),
+        ]);
 
         clearTimeout(timeoutId);
 
@@ -116,32 +118,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await response.json();
           log('[Auth] User authenticated:', data.user.email);
 
-          // Fetch user profile to get department info and test subscription flag
-          try {
-            const profileController = new AbortController();
-            const profileTimeoutId = setTimeout(() => profileController.abort(), API_TIMEOUT);
-
-            const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-              signal: profileController.signal,
+          // Merge profile data if the parallel fetch succeeded
+          if (profileResponse?.ok) {
+            const profileData = await profileResponse.json();
+            setUser({
+              ...data.user,
+              department: profileData.department,
+              hasDepartment: !!profileData.department,
+              testSubscriptionActive: profileData.testSubscriptionActive || false,
             });
-
-            clearTimeout(profileTimeoutId);
-
-            if (profileResponse.ok) {
-              const profileData = await profileResponse.json();
-              setUser({
-                ...data.user,
-                department: profileData.department,
-                hasDepartment: !!profileData.department,
-                testSubscriptionActive: profileData.testSubscriptionActive || false,
-              });
-            } else {
-              warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
-              setUser(data.user);
-            }
-          } catch (profileError) {
-            warn('[Auth] Failed to fetch profile:', profileError);
+          } else {
+            if (profileResponse) warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
             setUser(data.user);
           }
         } else {

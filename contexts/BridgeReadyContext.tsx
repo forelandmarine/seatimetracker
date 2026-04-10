@@ -26,21 +26,14 @@ export function BridgeReadyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     log('[BridgeReady] Initializing, platform:', Platform.OS);
 
-    const initializeBridge = async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        await new Promise(resolve => {
-          InteractionManager.runAfterInteractions(() => resolve(undefined));
-        });
+    const initializeBridge = () => {
+      // InteractionManager alone is sufficient — the 100ms sleep was an
+      // unnecessary startup penalty (~300-500ms with interaction scheduling).
+      InteractionManager.runAfterInteractions(() => {
         log('[BridgeReady] Ready');
         setIsBridgeReady(true);
         setIsInitializing(false);
-      } catch (err) {
-        logError('[BridgeReady] Init error:', err);
-        // Even on error, mark as ready to prevent app from hanging
-        setIsBridgeReady(true);
-        setIsInitializing(false);
-      }
+      });
     };
 
     initializeBridge();

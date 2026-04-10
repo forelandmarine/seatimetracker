@@ -178,38 +178,28 @@ export default function SeaTimeScreen() {
       
       setVessels(vesselsData || []);
       log('[Home] Vessels loaded - Active:', vesselsData.filter(v => v.is_active).length, 'Historic:', vesselsData.filter(v => !v.is_active).length);
-      
-      // Persist active vessel to AsyncStorage for survival across app restarts
+
+      // Show vessels immediately — location loads in background
       const newActiveVessel = vesselsData.find(v => v.is_active);
       if (newActiveVessel) {
-        try {
-          await AsyncStorage.setItem(ACTIVE_VESSEL_CACHE_KEY, JSON.stringify({
-            vesselId: newActiveVessel.id,
-            vesselName: newActiveVessel.vessel_name,
-            mmsi: newActiveVessel.mmsi,
-            isActive: true,
-            lastUpdated: new Date().toISOString(),
-          }));
-          log('[Home] Active vessel persisted to AsyncStorage (iOS):', newActiveVessel.vessel_name);
-        } catch (cacheError) {
-          logError('[Home] Failed to persist active vessel cache:', cacheError);
-        }
+        // Persist + load location in background (non-blocking)
+        AsyncStorage.setItem(ACTIVE_VESSEL_CACHE_KEY, JSON.stringify({
+          vesselId: newActiveVessel.id,
+          vesselName: newActiveVessel.vessel_name,
+          mmsi: newActiveVessel.mmsi,
+          isActive: true,
+          lastUpdated: new Date().toISOString(),
+        })).catch((cacheError) => logError('[Home] Failed to persist active vessel cache:', cacheError));
 
-        log('[Home] Found active vessel, loading location with FORCE refresh:', newActiveVessel.vessel_name);
-        try {
-          await loadActiveVesselLocation(newActiveVessel.id, true);
-        } catch (locationError: any) {
+        log('[Home] Found active vessel, loading location in background:', newActiveVessel.vessel_name);
+        loadActiveVesselLocation(newActiveVessel.id, true).catch((locationError: any) => {
           logError('[Home] Failed to load vessel location (non-critical):', locationError);
           setActiveVesselLocation(null);
-        }
+        });
       } else {
         log('[Home] No active vessel found, clearing location and cache');
         setActiveVesselLocation(null);
-        try {
-          await AsyncStorage.removeItem(ACTIVE_VESSEL_CACHE_KEY);
-        } catch (cacheError) {
-          logError('[Home] Failed to clear active vessel cache:', cacheError);
-        }
+        AsyncStorage.removeItem(ACTIVE_VESSEL_CACHE_KEY).catch(() => {});
       }
     } catch (error: any) {
       logError('[Home] Failed to load data:', error);

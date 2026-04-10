@@ -185,31 +185,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         // account switches and re-initialise for the new user.
         setInitializedForUserId(user?.id ?? null);
 
-        // Fetch available packages
-        try {
-          const offerings = await Purchases.getOfferings();
+        // Check subscription status first — this gates the UI, so it's the
+        // critical path. Offerings are only needed on the paywall screen and
+        // can load in the background without blocking app startup.
+        await checkSubscriptionStatusInternal();
 
-          if (offerings.current) {
-            if (offerings.current.availablePackages.length > 0) {
+        // Fetch available packages in background (non-blocking)
+        Purchases.getOfferings()
+          .then((offerings) => {
+            if (offerings.current && offerings.current.availablePackages.length > 0) {
               log('[Subscription] Found', offerings.current.availablePackages.length, 'packages in offering:', offerings.current.identifier);
               setAvailablePackages(offerings.current.availablePackages);
             } else {
-              warn('[Subscription] Current offering has 0 packages');
-              setAvailablePackages([]);
+              warn('[Subscription] No current offering or 0 packages');
             }
-          } else {
-            warn('[Subscription] No current offering found');
-            setAvailablePackages([]);
-          }
-        } catch (offeringsError: any) {
-          logError('[Subscription] Failed to fetch offerings:', offeringsError?.message);
-
-          // Don't set error - allow app to continue
-          setAvailablePackages([]);
-        }
-
-        // Check initial subscription status
-        await checkSubscriptionStatusInternal();
+          })
+          .catch((offeringsError: any) => {
+            logError('[Subscription] Failed to fetch offerings (non-critical):', offeringsError?.message);
+          });
 
       } catch (initError: any) {
         logError('[Subscription] SDK initialization failed:', initError?.message);

@@ -10,7 +10,7 @@ import { BACKEND_URL } from '@/utils/api';
 import { log, error } from '@/utils/log';
 import { isRetryableCode, CLIENT_ERROR_CODES } from '@/utils/errorCodes';
 
-const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 3 retries: 1s, 2s, 4s
+const RETRY_DELAYS_MS = [500, 1500]; // 2 retries: 0.5s, 1.5s — fail faster to reduce perceived loading time
 
 /**
  * Determines whether an error is retryable (server/network) vs. a definitive
