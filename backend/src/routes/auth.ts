@@ -1206,6 +1206,7 @@ export function register(app: App, fastify: FastifyInstance) {
               resetCodeId: { type: 'string', description: 'ID of the reset code record (for testing)' },
             },
           },
+          400: { type: 'object', properties: { error: { type: 'string' } } },
           404: { type: 'object', properties: { error: { type: 'string' } } },
           500: { type: 'object', properties: { error: { type: 'string' } } },
         },
@@ -1262,14 +1263,24 @@ export function register(app: App, fastify: FastifyInstance) {
           // Development/testing mode: log the code to console for manual testing
           app.logger.warn(
             { userId: user.id, email, resetCode, expiresAt: expiresAt.toISOString() },
-            'RESEND_API_KEY not configured - password reset code logged to console for development. Set RESEND_API_KEY environment variable for production email sending.'
+            'RESEND_API_KEY not configured - cannot send password reset email. Set RESEND_API_KEY environment variable for production email sending.'
           );
+          return reply.code(400).send({
+            error: 'Failed to send password reset email. Please try again later.',
+          });
         } else {
           // Production mode: send email via Resend
+          const fromAddress = 'SeaTime Tracker <noreply@seatime.com>';
+
+          app.logger.info(
+            { userId: user.id, email, from: fromAddress, resetId },
+            'Attempting to send password reset email via Resend'
+          );
+
           try {
             const resend = new Resend(resendApiKey);
             const { data, error: emailError } = await resend.emails.send({
-              from: 'SeaTime Tracker <noreply@seatime.com>',
+              from: fromAddress,
               to: email,
               subject: 'SeaTime Tracker - Password Reset Code',
               html: `
@@ -1318,22 +1329,47 @@ export function register(app: App, fastify: FastifyInstance) {
 
             if (emailError) {
               app.logger.error(
-                { userId: user.id, email, emailError: emailError.message },
-                'Failed to send password reset email - user should still receive success response'
+                {
+                  userId: user.id,
+                  email,
+                  from: fromAddress,
+                  resetId,
+                  resendError: emailError.message,
+                },
+                'Resend returned an error sending password reset email — check API key validity and domain verification for noreply@seatime.com'
               );
-              // Still return success to prevent email enumeration attacks
-            } else {
-              app.logger.info(
-                { userId: user.id, email, resetId, emailId: data?.id },
-                'Password reset email sent successfully'
-              );
+              return reply.code(400).send({
+                error: 'Failed to send password reset email. Please try again later.',
+              });
             }
-          } catch (emailError) {
-            app.logger.error(
-              { userId: user.id, email, emailError: emailError instanceof Error ? emailError.message : String(emailError) },
-              'Failed to send password reset email - user should still receive success response'
+
+            app.logger.info(
+              { userId: user.id, email, from: fromAddress, resetId, emailId: data?.id },
+              'Password reset email sent successfully'
             );
-            // Still return success to prevent email enumeration attacks
+          } catch (emailSendError) {
+            const errMessage = emailSendError instanceof Error ? emailSendError.message : String(emailSendError);
+            const errStack = emailSendError instanceof Error ? emailSendError.stack : undefined;
+            const errCause = emailSendError instanceof Error && (emailSendError as NodeJS.ErrnoException).cause
+              ? String((emailSendError as NodeJS.ErrnoException).cause)
+              : undefined;
+
+            app.logger.error(
+              {
+                userId: user.id,
+                email,
+                from: fromAddress,
+                resetId,
+                resendError: errMessage,
+                stack: errStack,
+                cause: errCause,
+              },
+              'Exception thrown while sending password reset email via Resend — check RESEND_API_KEY validity and domain verification for noreply@seatime.com'
+            );
+
+            return reply.code(400).send({
+              error: 'Failed to send password reset email. Please try again later.',
+            });
           }
         }
 
