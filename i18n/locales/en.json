@@ -177,11 +177,77 @@
     "preferences": "PREFERENCES",
     "language": "Language",
     "growTheCrew": "GROW THE CREW",
-    "referACaptain": "Refer a captain",
+    "referAFriend": "Refer a friend",
     "support": "SUPPORT",
     "aboutAndHelp": "About & help",
     "contactSupport": "Contact support",
     "signOut": "Sign out"
+  },
+  "navigation": {
+    "vesselDetails": "Vessel Details",
+    "editProfile": "Edit Profile",
+    "aisCheckSchedule": "AIS Check Schedule",
+    "settings": "Settings",
+    "certificates": "Certificates",
+    "language": "Language",
+    "mcaRequirements": "MCA Requirements",
+    "reports": "Reports",
+    "notificationSettings": "Notification Settings",
+    "resetPassword": "Reset Password",
+    "upgrade": "Upgrade",
+    "verifyIdentity": "Verify Identity",
+    "referAFriend": "Refer a friend",
+    "addSeaTime": "Add Sea Time",
+    "editSeaTime": "Edit Sea Time",
+    "selectPathway": "Select Pathway",
+    "manualTracking": "Manual GPS Tracking",
+    "about": "About & Help",
+    "signature": "Signature"
+  },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "warning": "This action cannot be undone!",
+    "confirmation": "Are you absolutely sure you want to delete your account? This will permanently delete:",
+    "itemVessels": "All your vessels",
+    "itemEntries": "All sea time entries",
+    "itemReports": "All reports and data",
+    "deleting": "Deleting...",
+    "failed": "Deletion Failed"
+  },
+  "refer": {
+    "title": "Refer a friend",
+    "heading": "Invite a friend",
+    "subtitle": "Share SeaTime Tracker with a friend. When they sign up using your code, you'll both get a bonus.",
+    "yourCode": "Your referral code",
+    "friendsReferred": "{{count}} friend(s) referred so far",
+    "shareInvite": "Share invite",
+    "bonusDays": "{{count}} bonus days",
+    "bonusBody": "Applied automatically to your next subscription renewal.",
+    "gotCode": "Got a code from a friend?",
+    "enterCode": "Enter referral code",
+    "redeemCode": "Redeem code",
+    "codeRedeemed": "Code redeemed",
+    "codeRedeemedMessage": "Thanks! You both got 30 free days. The bonus is applied to your next subscription renewal.",
+    "couldNotRedeem": "Could not redeem",
+    "unableToLoad": "Unable to load referral info.",
+    "shareMessage": "I'm using SeaTime Tracker to log my sea time automatically via AIS. Try it free using my code: {{code}}"
+  },
+  "certificates": {
+    "title": "Certificates",
+    "addCertificate": "Add certificate",
+    "editCertificate": "Edit certificate",
+    "noCertificates": "No certificates yet",
+    "expired": "Expired",
+    "expiringSoon": "Expiring soon",
+    "valid": "Valid"
+  },
+  "signOut": {
+    "title": "Sign Out",
+    "confirmation": "Are you sure you want to sign out?"
+  },
+  "department": {
+    "deck": "Deck Department",
+    "engineering": "Engineering Department"
   },
   "serviceTypes": {
     "actual_sea_service": "Actual Sea Service",

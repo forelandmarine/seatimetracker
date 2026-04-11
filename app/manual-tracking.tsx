@@ -21,7 +21,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -47,6 +47,7 @@ interface Vessel {
 
 export default function ManualTrackingScreen() {
   const router = useRouter();
+  const { vesselId: paramVesselId } = useLocalSearchParams<{ vesselId?: string }>();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
@@ -62,8 +63,13 @@ export default function ManualTrackingScreen() {
       try {
         const data = await seaTimeApi.getVessels();
         setVessels(data || []);
-        const active = (data || []).find((v: any) => v.is_active);
-        if (active) setSelectedVesselId(active.id);
+        // Pre-select vessel from query param, else fall back to active vessel
+        if (paramVesselId) {
+          setSelectedVesselId(paramVesselId);
+        } else {
+          const active = (data || []).find((v: any) => v.is_active);
+          if (active) setSelectedVesselId(active.id);
+        }
       } catch (err) {
         logError('[ManualTracking] Failed to load vessels:', err);
       }

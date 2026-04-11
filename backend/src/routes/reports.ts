@@ -158,15 +158,23 @@ export function register(app: App, fastify: FastifyInstance) {
       'Date',
       'Vessel Name',
       'MMSI',
+      'IMO Number',
       'Flag',
       'Official Number',
       'Vessel Type',
       'Length (metres)',
       'Gross Tonnes',
+      'ITC Tonnage',
       'Start Time',
       'End Time',
       'Sea Days',
       'Service Type',
+      'Rank',
+      'Date Joined',
+      'Date Left',
+      'Trade Area',
+      'Bridge Watch Hours',
+      'Engine Watch Hours',
       'Status',
       'Notes',
     ];
@@ -174,15 +182,23 @@ export function register(app: App, fastify: FastifyInstance) {
       new Date(entry.start_time).toISOString().split('T')[0],
       entry.vessel?.vessel_name || '',
       entry.vessel?.mmsi || '',
+      entry.vessel?.imo_number || '',
       entry.vessel?.flag || '',
       entry.vessel?.official_number || '',
       entry.vessel?.type || '',
       entry.vessel?.length_metres || '',
       entry.vessel?.gross_tonnes || '',
+      entry.vessel?.tonnage_itc || '',
       new Date(entry.start_time).toISOString(),
       entry.end_time ? new Date(entry.end_time).toISOString() : '',
       entry.sea_days || 0,
       entry.service_type || 'actual_sea_service',
+      entry.rank || '',
+      entry.date_joined || '',
+      entry.date_left || '',
+      entry.trade_area || '',
+      entry.bridge_watch_hours || '',
+      entry.engine_watch_hours || '',
       entry.status,
       entry.notes || '',
     ]);
@@ -201,16 +217,24 @@ export function register(app: App, fastify: FastifyInstance) {
       'End Date',
       'Vessel Name',
       'MMSI',
+      'IMO Number',
       'Flag',
       'Official Number',
       'Vessel Type',
       'Length (metres)',
       'Gross Tonnes',
+      'ITC Tonnage',
       'Start Position',
       'End Position',
       'Distance (nm)',
       'Sea Days',
       'Service Type',
+      'Rank',
+      'Date Joined',
+      'Date Left',
+      'Trade Area',
+      'Bridge Watch Hours',
+      'Engine Watch Hours',
       'Notes',
     ];
 
@@ -251,16 +275,24 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.end_time ? formatDate(entry.end_time) : '', // End date
         entry.vessel?.vessel_name || '',
         entry.vessel?.mmsi || '',
+        entry.vessel?.imo_number || '',
         entry.vessel?.flag || '',
         entry.vessel?.official_number || '',
         entry.vessel?.type || '',
         entry.vessel?.length_metres || '',
         entry.vessel?.gross_tonnes || '',
+        entry.vessel?.tonnage_itc || '',
         startPosition,
         endPosition,
         distance,
         entry.sea_days || 0,
         formatServiceType(entry.service_type),
+        entry.rank || '',
+        entry.date_joined ? formatDate(entry.date_joined) : '',
+        entry.date_left ? formatDate(entry.date_left) : '',
+        entry.trade_area || '',
+        entry.bridge_watch_hours || '',
+        entry.engine_watch_hours || '',
         entry.notes || '',
       ];
     });
@@ -272,7 +304,53 @@ export function register(app: App, fastify: FastifyInstance) {
       ),
     ];
 
-    // Combine both sections with header and blank rows between them
+    // SECTION 3: Leave Periods
+    const leavePeriods = await app.db.select()
+      .from(schema.leave_periods)
+      .where(eq(schema.leave_periods.user_id, userId));
+
+    const csvVessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
+
+    const leaveHeaders = [
+      'Start Date',
+      'End Date',
+      'Vessel',
+      'Reason',
+      'Notes',
+    ];
+
+    const formatLeaveReason = (reason: string | null): string => {
+      const map: { [key: string]: string } = {
+        'annual_leave': 'Annual Leave',
+        'sick_leave': 'Sick Leave',
+        'personal': 'Personal',
+        'training': 'Training',
+        'other': 'Other',
+      };
+      return map[reason || ''] || reason || '';
+    };
+
+    const leaveRows = leavePeriods
+      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      .map((lp) => {
+        const vessel = csvVessels.find((v) => v.id === lp.vessel_id);
+        return [
+          formatDate(lp.start_date),
+          formatDate(lp.end_date),
+          vessel?.vessel_name || '',
+          formatLeaveReason(lp.reason),
+          lp.notes || '',
+        ];
+      });
+
+    const leaveSection = [
+      leaveHeaders.map((h) => `"${h}"`).join(','),
+      ...leaveRows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ),
+    ];
+
+    // Combine all sections with header and blank rows between them
     const csv = [
       'SeaTime Tracker',
       'Digital Sea Time Logbook',
@@ -283,6 +361,11 @@ export function register(app: App, fastify: FastifyInstance) {
       `"DETAILED VOYAGE RECORDS"`,
       '',
       ...voyageSection,
+      '',
+      '',
+      `"LEAVE PERIODS"`,
+      '',
+      ...leaveSection,
     ].join('\n');
 
     app.logger.info(
@@ -741,6 +824,11 @@ export function register(app: App, fastify: FastifyInstance) {
     // Get user's vessels only
     const allVessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
 
+    // Fetch leave periods for the user
+    const pdfLeavePeriods = await app.db.select()
+      .from(schema.leave_periods)
+      .where(eq(schema.leave_periods.user_id, userId));
+
     // --- Helpers ---
     const formatDate = (date: Date | string) => {
       const d = typeof date === 'string' ? new Date(date) : date;
@@ -874,6 +962,16 @@ export function register(app: App, fastify: FastifyInstance) {
     if ((userProfile as any).nationality) rightY = drawDetail('Nationality', (userProfile as any).nationality, rightColX, rightY);
     if (userProfile.srb_no) rightY = drawDetail('SRB number', userProfile.srb_no, rightColX, rightY);
     if (userProfile.pya_membership_no) rightY = drawDetail('PYA membership', userProfile.pya_membership_no, rightColX, rightY);
+    if ((userProfile as any).maritime_authority) {
+      const authorityLabels: { [key: string]: string } = {
+        'mca': 'MCA (UK)',
+        'uscg': 'USCG (USA)',
+        'amsa': 'AMSA (Australia)',
+        'mnz': 'MNZ (New Zealand)',
+      };
+      const authorityValue = authorityLabels[(userProfile as any).maritime_authority] || (userProfile as any).maritime_authority;
+      rightY = drawDetail('Maritime Authority', authorityValue, rightColX, rightY);
+    }
 
     doc.y = Math.max(leftY, rightY) + 5;
 
@@ -915,12 +1013,14 @@ export function register(app: App, fastify: FastifyInstance) {
         // Build particulars
         const particulars: Array<[string, string]> = [];
         if (vessel.mmsi) particulars.push(['MMSI', vessel.mmsi]);
+        if (vessel.imo_number) particulars.push(['IMO Number', vessel.imo_number]);
         if (vessel.callsign) particulars.push(['Callsign', vessel.callsign]);
         if (vessel.flag) particulars.push(['Flag', vessel.flag]);
         if (vessel.official_number) particulars.push(['Official No.', vessel.official_number]);
         if (vessel.type) particulars.push(['Type', vessel.type]);
         if (vessel.length_metres) particulars.push(['Length', `${vessel.length_metres}m`]);
         if (vessel.gross_tonnes) particulars.push(['Gross Tonnes', String(vessel.gross_tonnes)]);
+        if (vessel.tonnage_itc) particulars.push(['ITC Tonnage', String(vessel.tonnage_itc)]);
 
         // Calculate service types for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};
@@ -984,6 +1084,37 @@ export function register(app: App, fastify: FastifyInstance) {
           doc.y = rowY + 16;
         });
 
+        // Watchkeeping hours for this vessel
+        let vesselBridgeHours = 0;
+        let vesselEngineHours = 0;
+        vesselEntries.forEach((entry) => {
+          if (entry.bridge_watch_hours) vesselBridgeHours += parseFloat(String(entry.bridge_watch_hours));
+          if (entry.engine_watch_hours) vesselEngineHours += parseFloat(String(entry.engine_watch_hours));
+        });
+        if (vesselBridgeHours > 0 || vesselEngineHours > 0) {
+          const wkY = Math.round(doc.y);
+          doc.font('NunitoSans-SemiBold').fontSize(7.5).fillColor(STEEL_BLUE);
+          doc.text('WATCHKEEPING HOURS', ML, wkY, { characterSpacing: 1 });
+          doc.y = wkY + 14;
+
+          if (vesselBridgeHours > 0) {
+            const bY = Math.round(doc.y);
+            doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+            doc.text('Bridge Watch', ML + 10, bY, { width: 350 });
+            doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+            doc.text(`${vesselBridgeHours.toFixed(1)}h`, 0, bY, { width: PW - MR, align: 'right' });
+            doc.y = bY + 16;
+          }
+          if (vesselEngineHours > 0) {
+            const eY = Math.round(doc.y);
+            doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+            doc.text('Engine Watch', ML + 10, eY, { width: 350 });
+            doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+            doc.text(`${vesselEngineHours.toFixed(1)}h`, 0, eY, { width: PW - MR, align: 'right' });
+            doc.y = eY + 16;
+          }
+        }
+
         // Vessel subtotal
         doc.y += 3;
         let vesselDays = 0;
@@ -1032,6 +1163,74 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.text(def.desc, ML, doc.y, { width: CW });
       doc.moveDown(0.4);
     });
+
+    // ============================================================
+    // LEAVE PERIODS
+    // ============================================================
+    if (pdfLeavePeriods.length > 0) {
+      const formatLeaveReasonPdf = (reason: string | null): string => {
+        const map: { [key: string]: string } = {
+          'annual_leave': 'Annual Leave',
+          'sick_leave': 'Sick Leave',
+          'personal': 'Personal',
+          'training': 'Training',
+          'other': 'Other',
+        };
+        return map[reason || ''] || reason || '';
+      };
+
+      ensureSpace(80);
+      doc.moveDown(0.3);
+      doc.strokeColor(BORDER).lineWidth(0.5);
+      doc.moveTo(ML, doc.y).lineTo(PW - MR, doc.y).stroke();
+      doc.y += 12;
+
+      doc.font('NunitoSans-SemiBold').fontSize(8).fillColor(STEEL_BLUE);
+      doc.text('LEAVE PERIODS', ML, doc.y, { characterSpacing: 2 });
+      doc.moveDown(0.5);
+
+      // Table header
+      const lpColWidths = [90, 90, 130, 100, CW - 410];
+      const lpHeaders = ['From', 'To', 'Vessel', 'Reason', 'Notes'];
+
+      const lpHeaderY = Math.round(doc.y);
+      doc.fillColor(LIGHT_BG).rect(ML, lpHeaderY - 2, CW, 16).fill();
+      doc.font('NunitoSans-SemiBold').fontSize(7.5).fillColor(STEEL_BLUE);
+      let lpX = ML;
+      lpHeaders.forEach((header, i) => {
+        doc.text(header.toUpperCase(), lpX + 4, lpHeaderY, { width: lpColWidths[i], characterSpacing: 0.5 });
+        lpX += lpColWidths[i];
+      });
+      doc.y = lpHeaderY + 18;
+
+      // Sort by start_date
+      const sortedLeavePeriods = [...pdfLeavePeriods].sort(
+        (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+      );
+
+      sortedLeavePeriods.forEach((lp) => {
+        ensureSpace(20);
+        const rowY = Math.round(doc.y);
+        const vessel = allVessels.find((v) => v.id === lp.vessel_id);
+
+        doc.font('NunitoSans').fontSize(8.5).fillColor(DEEP_NAVY);
+        let x = ML;
+        const cells = [
+          formatDate(lp.start_date),
+          formatDate(lp.end_date),
+          vessel?.vessel_name || '--',
+          formatLeaveReasonPdf(lp.reason),
+          lp.notes || '',
+        ];
+        cells.forEach((cell, i) => {
+          doc.text(cell, x + 4, rowY, { width: lpColWidths[i] - 8 });
+          x += lpColWidths[i];
+        });
+        doc.y = rowY + 16;
+      });
+
+      doc.moveDown(0.3);
+    }
 
     // ============================================================
     // DECLARATION block — required for testimonial submissions

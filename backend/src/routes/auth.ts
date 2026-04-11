@@ -1596,41 +1596,4 @@ export function register(app: App, fastify: FastifyInstance) {
     }
   );
 
-  // DELETE /api/users/me - Delete the authenticated user's account and all data
-  fastify.delete('/api/users/me', async (request, reply) => {
-    const userId = await extractUserIdFromRequest(request, app);
-    if (!userId) {
-      return reply.code(401).send({ error: 'Authentication required' });
-    }
-
-    app.logger.info({ userId }, 'Account deletion requested');
-
-    try {
-      // Delete in dependency order (children first)
-      // Vessels cascade-delete sea_time_entries, ais_checks, ais_debug_logs, scheduled_tasks, ais_query_timestamps
-      await app.db.delete(schema.notification_schedules).where(eq(schema.notification_schedules.user_id, userId));
-      await app.db.delete(schema.certificates).where(eq(schema.certificates.user_id, userId));
-
-      // Get user's vessels and delete them (cascades to entries, checks, etc.)
-      const userVessels = await app.db
-        .select({ id: schema.vessels.id })
-        .from(schema.vessels)
-        .where(eq(schema.vessels.user_id, userId));
-
-      for (const v of userVessels) {
-        await app.db.delete(schema.vessels).where(eq(schema.vessels.id, v.id));
-      }
-
-      // Delete auth records
-      await app.db.delete(authSchema.session).where(eq(authSchema.session.userId, userId));
-      await app.db.delete(authSchema.account).where(eq(authSchema.account.userId, userId));
-      await app.db.delete(authSchema.user).where(eq(authSchema.user.id, userId));
-
-      app.logger.info({ userId }, 'Account and all associated data deleted');
-      return reply.code(204).send();
-    } catch (error) {
-      app.logger.error({ err: error, userId }, 'Account deletion failed');
-      return reply.code(500).send({ error: 'Failed to delete account' });
-    }
-  });
 }

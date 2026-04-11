@@ -22,6 +22,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  listCertificates,
+  daysUntilExpiry,
+  expiryStatus,
+  CERTIFICATE_TYPE_LABELS,
+  type Certificate,
+} from '@/utils/certificatesApi';
 
 import { log, warn, error as logError } from '@/utils/log';
 import { useTranslation } from 'react-i18next';
@@ -405,6 +412,7 @@ export default function ProfileScreen() {
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showDefinitions, setShowDefinitions] = useState(false);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -489,16 +497,26 @@ export default function ProfileScreen() {
     }
   }, []);
 
+  const loadCertificates = useCallback(async () => {
+    try {
+      const certs = await listCertificates();
+      setCertificates(certs);
+    } catch (err) {
+      logError('Failed to load certificates:', err);
+    }
+  }, []);
+
   useEffect(() => {
     log('ProfileScreen (iOS): Initial mount, loading data in parallel');
     Promise.all([
       loadProfile(),
       loadSummary(),
       loadVessels(),
+      loadCertificates(),
     ]).catch(error => {
       logError('Failed to load profile data:', error);
     });
-  }, [loadProfile, loadSummary, loadVessels]);
+  }, [loadProfile, loadSummary, loadVessels, loadCertificates]);
 
   useEffect(() => {
     if (refreshTrigger > 0) {
@@ -507,11 +525,12 @@ export default function ProfileScreen() {
         loadProfile(),
         loadSummary(),
         loadVessels(),
+        loadCertificates(),
       ]).catch(error => {
         logError('Failed to refresh profile data:', error);
       });
     }
-  }, [refreshTrigger, loadProfile, loadSummary, loadVessels]);
+  }, [refreshTrigger, loadProfile, loadSummary, loadVessels, loadCertificates]);
 
   const handleRefresh = useCallback(async () => {
     log('User pulled to refresh profile screen');
@@ -521,13 +540,14 @@ export default function ProfileScreen() {
         loadProfile(),
         loadSummary(),
         loadVessels(),
+        loadCertificates(),
       ]);
     } catch (error) {
       logError('Failed to refresh profile data:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [loadProfile, loadSummary, loadVessels]);
+  }, [loadProfile, loadSummary, loadVessels, loadCertificates]);
 
   const handleVesselPress = (vesselName: string) => {
     log('User tapped vessel:', vesselName);
@@ -815,10 +835,108 @@ export default function ProfileScreen() {
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.departmentBadgeText}>
-                  {profile.department.toLowerCase() === 'deck' ? 'Deck Department' : 'Engineering Department'}
+                  {profile.department.toLowerCase() === 'deck' ? t('department.deck') : t('department.engineering')}
                 </Text>
               </View>
             )}
+          </View>
+
+          {/* Certificates quick-access card */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              onPress={() => router.push('/certificates')}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: isDark ? colors.cardBackground : colors.card,
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                backgroundColor: colors.primary + '15',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 14,
+              }}>
+                <IconSymbol
+                  ios_icon_name="doc.text.fill"
+                  android_material_icon_name="article"
+                  size={22}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: isDark ? colors.text : colors.textLight,
+                  marginBottom: 2,
+                }}>
+                  {t('certificates.title')}
+                </Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+                }}>
+                  {(() => {
+                    if (certificates.length === 0) return t('certificates.noCertificates');
+                    const expiring = certificates.filter(c => {
+                      const s = expiryStatus(c);
+                      return s === 'expired' || s === 'soon';
+                    });
+                    if (expiring.length > 0) {
+                      const expired = expiring.filter(c => expiryStatus(c) === 'expired').length;
+                      const soon = expiring.filter(c => expiryStatus(c) === 'soon').length;
+                      const parts: string[] = [];
+                      if (expired > 0) parts.push(`${expired} ${t('certificates.expired').toLowerCase()}`);
+                      if (soon > 0) parts.push(`${soon} ${t('certificates.expiringSoon').toLowerCase()}`);
+                      return `${certificates.length} certificates - ${parts.join(', ')}`;
+                    }
+                    return `${certificates.length} certificates`;
+                  })()}
+                </Text>
+              </View>
+              {(() => {
+                const hasExpired = certificates.some(c => expiryStatus(c) === 'expired');
+                const hasSoon = certificates.some(c => expiryStatus(c) === 'soon');
+                if (hasExpired) {
+                  return (
+                    <View style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: colors.error,
+                      marginRight: 8,
+                    }} />
+                  );
+                }
+                if (hasSoon) {
+                  return (
+                    <View style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: colors.warning,
+                      marginRight: 8,
+                    }} />
+                  );
+                }
+                return null;
+              })()}
+              <IconSymbol
+                ios_icon_name="chevron.right"
+                android_material_icon_name="arrow-forward"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
           </View>
 
           {!loadingSummary && summary && summary.entries_by_vessel.length > 0 && (
@@ -935,7 +1053,7 @@ export default function ProfileScreen() {
                   const serviceDays = serviceEntry.total_days;
                   const isLast = index === allServiceTypes.length - 1;
                   const formattedType = formatServiceType(serviceEntry.service_type);
-                  
+
                   return (
                     <View
                       key={index}
@@ -951,6 +1069,88 @@ export default function ProfileScreen() {
               </View>
             </View>
           )}
+
+          {/* Certification Progress Tracker */}
+          {!loadingSummary && summary && profile.department && (() => {
+            const dept = profile.department.toLowerCase();
+            const seagoingDays = allServiceTypes.find(s => s.service_type === 'actual_sea_service')?.total_days ?? 0;
+            const watchkeepingDays = allServiceTypes.find(s => s.service_type === 'watchkeeping_service')?.total_days ?? 0;
+            const additionalDays =
+              (allServiceTypes.find(s => s.service_type === 'standby_service')?.total_days ?? 0) +
+              (allServiceTypes.find(s => s.service_type === 'yard_service')?.total_days ?? 0);
+
+            const isEngineering = dept === 'engineering';
+            const certTitle = isEngineering
+              ? 'EOOW (SV) <9,000 kW, <3,000 GT'
+              : 'OOW (Deck) <3,000 GT';
+
+            // Engineering: MSN 1904 Experienced Seafarer Route (section 4.4)
+            // - 24 months onboard with 6 months seagoing (entry)
+            // - 11 months additional seagoing post-registration, 6 months watchkeeping/UMS
+            // Deck: MSN 1858 OOW Yachts <3000 GT
+            // - 250 days seagoing, 115 days additional
+            const requirements = isEngineering
+              ? [
+                  { label: 'Seagoing Service', current: seagoingDays, required: 240 },
+                  { label: 'Watchkeeping / UMS', current: watchkeepingDays, required: 180 },
+                ]
+              : [
+                  { label: 'Seagoing Service', current: seagoingDays, required: 250 },
+                  { label: 'Additional Service', current: additionalDays, required: 115 },
+                ];
+
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Certification Progress</Text>
+                <View style={styles.card}>
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: isDark ? colors.text : colors.textLight,
+                    marginBottom: 14,
+                  }}>
+                    {certTitle}
+                  </Text>
+                  {requirements.map((req, index) => {
+                    const pct = Math.min(req.current / req.required, 1);
+                    const isLast = index === requirements.length - 1;
+                    return (
+                      <View key={req.label} style={{ marginBottom: isLast ? 0 : 14 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <Text style={{
+                            fontSize: 14,
+                            color: isDark ? colors.text : colors.textLight,
+                          }}>
+                            {req.label}
+                          </Text>
+                          <Text style={{
+                            fontSize: 14,
+                            fontWeight: '600',
+                            color: pct >= 1 ? colors.success : colors.primary,
+                          }}>
+                            {req.current}/{req.required} days
+                          </Text>
+                        </View>
+                        <View style={{
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                          overflow: 'hidden',
+                        }}>
+                          <View style={{
+                            height: '100%',
+                            width: `${Math.round(pct * 100)}%`,
+                            backgroundColor: pct >= 1 ? colors.success : colors.primary,
+                            borderRadius: 4,
+                          }} />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })()}
 
           {profile.department && (
             <View style={styles.section}>

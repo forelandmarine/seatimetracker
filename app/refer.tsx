@@ -15,6 +15,7 @@ import { Stack, useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { authFetch } from '@/utils/api';
+import { useTranslation } from 'react-i18next';
 
 import { error as logError } from '@/utils/log';
 
@@ -23,8 +24,10 @@ export default function ReferScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [code, setCode] = useState('');
   const [count, setCount] = useState(0);
   const [shareUrl, setShareUrl] = useState('');
@@ -33,6 +36,7 @@ export default function ReferScreen() {
   const [redeeming, setRedeeming] = useState(false);
 
   const refresh = async () => {
+    setLoadError(false);
     try {
       const [refRes, creditsRes] = await Promise.all([
         authFetch('/api/referral'),
@@ -46,6 +50,7 @@ export default function ReferScreen() {
       setBonusDays(credits.bonus_days || 0);
     } catch (err) {
       logError('[Refer] Failed to load:', err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -78,11 +83,11 @@ export default function ReferScreen() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to redeem');
       }
-      Alert.alert('Code redeemed', 'Thanks! You both got 30 free days. The bonus is applied to your next subscription renewal.');
+      Alert.alert(t('refer.codeRedeemed'), t('refer.codeRedeemedMessage'));
       setRedeemCode('');
       refresh();
     } catch (err: any) {
-      Alert.alert('Could not redeem', err?.message || 'Please check the code and try again.');
+      Alert.alert(t('refer.couldNotRedeem'), err?.message || t('common.retry'));
     } finally {
       setRedeeming(false);
     }
@@ -92,7 +97,7 @@ export default function ReferScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Refer a captain',
+          title: t('refer.title'),
           headerStyle: { backgroundColor: isDark ? colors.background : colors.backgroundLight },
           headerTitleStyle: { color: isDark ? colors.text : colors.textLight },
           headerTintColor: colors.primary,
@@ -106,22 +111,28 @@ export default function ReferScreen() {
             size={64}
             color={colors.primary}
           />
-          <Text style={styles.title}>Invite a fellow captain</Text>
+          <Text style={styles.title}>{t('refer.heading')}</Text>
           <Text style={styles.subtitle}>
-            Share SeaTime Tracker with crew you've worked with. When they sign up using your code,
-            you'll both get a bonus.
+            {t('refer.subtitle')}
           </Text>
         </View>
 
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        ) : loadError ? (
+          <View style={{ alignItems: 'center', marginTop: 40 }}>
+            <Text style={[styles.intro, { marginBottom: 16 }]}>{t('refer.unableToLoad')}</Text>
+            <TouchableOpacity style={styles.shareButton} onPress={refresh}>
+              <Text style={styles.shareButtonText}>{t('common.retry')}</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
             <View style={styles.codeCard}>
-              <Text style={styles.label}>Your referral code</Text>
+              <Text style={styles.label}>{t('refer.yourCode')}</Text>
               <Text style={styles.code}>{code || '-'}</Text>
               <Text style={styles.statText}>
-                {count} captain{count === 1 ? '' : 's'} referred so far
+                {t('refer.friendsReferred', { count })}
               </Text>
               <TouchableOpacity style={styles.shareButton} onPress={handleShare} disabled={!code}>
                 <IconSymbol
@@ -130,7 +141,7 @@ export default function ReferScreen() {
                   size={20}
                   color="#FFFFFF"
                 />
-                <Text style={styles.shareButtonText}>Share invite</Text>
+                <Text style={styles.shareButtonText}>{t('refer.shareInvite')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -143,9 +154,9 @@ export default function ReferScreen() {
                   color={colors.success}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.bonusTitle}>{bonusDays} bonus days</Text>
+                  <Text style={styles.bonusTitle}>{t('refer.bonusDays', { count: bonusDays })}</Text>
                   <Text style={styles.bonusBody}>
-                    Applied automatically to your next subscription renewal.
+                    {t('refer.bonusBody')}
                   </Text>
                 </View>
               </View>
@@ -154,10 +165,10 @@ export default function ReferScreen() {
             <View style={styles.divider} />
 
             <View style={styles.redeemCard}>
-              <Text style={styles.label}>Got a code from a captain?</Text>
+              <Text style={styles.label}>{t('refer.gotCode')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter referral code"
+                placeholder={t('refer.enterCode')}
                 placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 value={redeemCode}
                 onChangeText={(t) => setRedeemCode(t.toUpperCase())}
@@ -173,7 +184,7 @@ export default function ReferScreen() {
                 {redeeming ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.redeemButtonText}>Redeem code</Text>
+                  <Text style={styles.redeemButtonText}>{t('refer.redeemCode')}</Text>
                 )}
               </TouchableOpacity>
             </View>

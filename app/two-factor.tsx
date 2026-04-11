@@ -151,7 +151,7 @@ export default function TwoFactorScreen() {
       >
         {/* Icon */}
         <View style={styles.iconContainer}>
-          <Text style={styles.iconText}>🔐</Text>
+          <Text style={styles.iconText}>Verify</Text>
         </View>
 
         {/* Header */}

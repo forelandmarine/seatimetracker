@@ -13,6 +13,17 @@ import {
   VALID_SERVICE_TYPES,
 } from "../utils/seaTime.js";
 
+const VALID_TRADE_AREAS = ['unlimited', 'near_coastal', 'coastal', 'inland'] as const;
+const VALID_RANKS = ['master', 'chief_officer', 'second_officer', 'third_officer', 'oow', 'chief_engineer', 'second_engineer', 'eto', 'cadet', 'rating'] as const;
+
+function isValidTradeArea(value: any): boolean {
+  return value === null || (typeof value === 'string' && (VALID_TRADE_AREAS as readonly string[]).includes(value));
+}
+
+function isValidRank(value: any): boolean {
+  return value === null || (typeof value === 'string' && (VALID_RANKS as readonly string[]).includes(value));
+}
+
 // Helper function to check if another entry exists for the same calendar day
 async function checkEntryExistsForDay(app: App, userId: string, calendarDay: string, excludeEntryId?: string): Promise<boolean> {
   // Get all entries for the user for this calendar day
@@ -73,6 +84,18 @@ function transformSeaTimeEntryForResponse(entry: any) {
     additional_watchkeeping_hours = parseFloat(String(entry.additional_watchkeeping_hours));
   }
 
+  // Parse bridge_watch_hours if present
+  let bridge_watch_hours = null;
+  if (entry.bridge_watch_hours) {
+    bridge_watch_hours = parseFloat(String(entry.bridge_watch_hours));
+  }
+
+  // Parse engine_watch_hours if present
+  let engine_watch_hours = null;
+  if (entry.engine_watch_hours) {
+    engine_watch_hours = parseFloat(String(entry.engine_watch_hours));
+  }
+
   return {
     id: entry.id,
     vessel_id: entry.vessel_id,
@@ -92,6 +115,13 @@ function transformSeaTimeEntryForResponse(entry: any) {
     watchkeeping_hours: watchkeeping_hours,
     additional_watchkeeping_hours: additional_watchkeeping_hours,
     is_stationary: entry.is_stationary || null,
+    rank: entry.rank || null,
+    date_joined: entry.date_joined || null,
+    date_left: entry.date_left || null,
+    trade_area: entry.trade_area || null,
+    bridge_watch_hours: bridge_watch_hours,
+    engine_watch_hours: engine_watch_hours,
+    certificate_id: entry.certificate_id || null,
     created_at: entry.created_at.toISOString ? entry.created_at.toISOString() : entry.created_at,
     vessel: entry.vessel ? transformVesselForResponse(entry.vessel) : null,
   };
@@ -268,6 +298,13 @@ export function register(app: App, fastify: FastifyInstance) {
       additional_watchkeeping_hours: entry.additional_watchkeeping_hours ? parseFloat(String(entry.additional_watchkeeping_hours)) : null,
       is_stationary: entry.is_stationary || null,
       distance_nm: distance_nm,
+      rank: entry.rank || null,
+      date_joined: entry.date_joined || null,
+      date_left: entry.date_left || null,
+      trade_area: entry.trade_area || null,
+      bridge_watch_hours: entry.bridge_watch_hours ? parseFloat(String(entry.bridge_watch_hours)) : null,
+      engine_watch_hours: entry.engine_watch_hours ? parseFloat(String(entry.engine_watch_hours)) : null,
+      certificate_id: entry.certificate_id || null,
       user_id: entry.user_id || null,
       created_at: entry.created_at.toISOString(),
     });
@@ -559,7 +596,7 @@ export function register(app: App, fastify: FastifyInstance) {
   });
 
   // PUT /api/sea-time/:id/confirm - Confirm pending entry with optional notes and service_type
-  fastify.put<{ Params: { id: string }; Body: { notes?: string; service_type?: string } }>('/api/sea-time/:id/confirm', {
+  fastify.put<{ Params: { id: string }; Body: { notes?: string; service_type?: string; rank?: string | null; date_joined?: string | null; date_left?: string | null; trade_area?: string | null; bridge_watch_hours?: number | null; engine_watch_hours?: number | null; certificate_id?: string | null } }>('/api/sea-time/:id/confirm', {
     schema: {
       description: 'Confirm a pending sea time entry (requires authentication). Accepts optional notes and service_type.',
       tags: ['sea-time'],
@@ -573,6 +610,13 @@ export function register(app: App, fastify: FastifyInstance) {
         properties: {
           notes: { type: 'string', description: 'Optional notes' },
           service_type: { type: 'string', description: 'Service type (actual_sea_service, watchkeeping_service, standby_service, yard_service, service_in_port)' },
+          rank: { type: ['string', 'null'], description: 'Officer rank/capacity' },
+          date_joined: { type: ['string', 'null'], description: 'Date joined vessel (YYYY-MM-DD)' },
+          date_left: { type: ['string', 'null'], description: 'Date left vessel (YYYY-MM-DD)' },
+          trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
+          bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
+          engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
       response: {
@@ -590,12 +634,22 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     const { id } = request.params;
-    const { notes, service_type } = request.body;
+    const { notes, service_type, rank, date_joined, date_left, trade_area, bridge_watch_hours, engine_watch_hours, certificate_id } = request.body;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
       app.logger.warn({ userId, entryId: id, service_type }, 'Invalid service type provided');
       return reply.code(400).send({ error: `Invalid service_type. Must be one of: ${VALID_SERVICE_TYPES.join(', ')}` });
+    }
+
+    // Validate rank if provided
+    if (rank !== undefined && !isValidRank(rank)) {
+      return reply.code(400).send({ error: `Invalid rank. Must be one of: ${VALID_RANKS.join(', ')}` });
+    }
+
+    // Validate trade_area if provided
+    if (trade_area !== undefined && !isValidTradeArea(trade_area)) {
+      return reply.code(400).send({ error: `Invalid trade_area. Must be one of: ${VALID_TRADE_AREAS.join(', ')}` });
     }
 
     app.logger.info({ userId, entryId: id }, `Confirming sea time entry: ${id}`);
@@ -640,16 +694,25 @@ export function register(app: App, fastify: FastifyInstance) {
     // The scheduler now creates multiple entries (every 2 hours) when movement is detected
     app.logger.debug({ userId, entryId: id }, 'Confirming entry - multiple entries per calendar day are now allowed');
 
+    const confirmUpdateData: any = {
+      end_time,
+      duration_hours: String(duration_hours),
+      sea_days: calculated_sea_days,
+      status: 'confirmed',
+      service_type: service_type || current_entry.service_type || 'actual_sea_service',
+      notes: notes || current_entry.notes,
+    };
+    if (rank !== undefined) confirmUpdateData.rank = rank;
+    if (date_joined !== undefined) confirmUpdateData.date_joined = date_joined;
+    if (date_left !== undefined) confirmUpdateData.date_left = date_left;
+    if (trade_area !== undefined) confirmUpdateData.trade_area = trade_area;
+    if (bridge_watch_hours !== undefined) confirmUpdateData.bridge_watch_hours = bridge_watch_hours !== null ? String(bridge_watch_hours) : null;
+    if (engine_watch_hours !== undefined) confirmUpdateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
+    if (certificate_id !== undefined) confirmUpdateData.certificate_id = certificate_id;
+
     const [updated] = await app.db
       .update(schema.sea_time_entries)
-      .set({
-        end_time,
-        duration_hours: String(duration_hours),
-        sea_days: calculated_sea_days,
-        status: 'confirmed',
-        service_type: service_type || current_entry.service_type || 'actual_sea_service',
-        notes: notes || current_entry.notes,
-      })
+      .set(confirmUpdateData)
       .where(eq(schema.sea_time_entries.id, id))
       .returning();
 
@@ -667,7 +730,68 @@ export function register(app: App, fastify: FastifyInstance) {
       `Sea time entry confirmed: ${duration_hours} hours, ${calculated_sea_days} sea day(s)`
     );
 
-    return reply.code(200).send(transformSeaTimeEntryForResponse(updated));
+    // Check for standby/yard service warnings
+    const effectiveServiceType = service_type || current_entry.service_type || 'actual_sea_service';
+    const warnings: string[] = [];
+
+    if (effectiveServiceType === 'standby_service') {
+      // Check consecutive standby days for this vessel/user
+      const standbyEntries = await app.db.query.sea_time_entries.findMany({
+        where: and(
+          eq(schema.sea_time_entries.user_id, userId),
+          eq(schema.sea_time_entries.vessel_id, current_entry.vessel_id),
+          eq(schema.sea_time_entries.service_type, 'standby_service'),
+        ),
+        orderBy: desc(schema.sea_time_entries.start_time),
+      });
+
+      // Count consecutive days of standby ending at the current entry
+      let consecutiveDays = 0;
+      const sortedByDate = standbyEntries.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+      let lastDate: string | null = null;
+      for (const e of sortedByDate) {
+        const day = getCalendarDay(new Date(e.start_time));
+        if (lastDate === null) {
+          consecutiveDays = 1;
+          lastDate = day;
+        } else {
+          const prevDate = new Date(lastDate);
+          prevDate.setDate(prevDate.getDate() - 1);
+          const expectedDay = prevDate.toISOString().split('T')[0];
+          if (day === expectedDay) {
+            consecutiveDays++;
+            lastDate = day;
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (consecutiveDays > 14) {
+        warnings.push(`This creates ${consecutiveDays} consecutive days of standby service for this vessel, exceeding the 14-day guideline.`);
+      }
+    }
+
+    if (effectiveServiceType === 'yard_service') {
+      // Check total yard days for this user
+      const yardEntries = await app.db.query.sea_time_entries.findMany({
+        where: and(
+          eq(schema.sea_time_entries.user_id, userId),
+          eq(schema.sea_time_entries.service_type, 'yard_service'),
+        ),
+      });
+      const totalYardDays = yardEntries.reduce((sum, e) => sum + (e.sea_days || 0), 0);
+      if (totalYardDays > 90) {
+        warnings.push(`Total yard service days (${totalYardDays}) exceeds the 90-day guideline.`);
+      }
+    }
+
+    const response: any = transformSeaTimeEntryForResponse(updated);
+    if (warnings.length > 0) {
+      response.warnings = warnings;
+    }
+
+    return reply.code(200).send(response);
   });
 
   // PUT /api/sea-time/:id - Update sea time entry
@@ -684,10 +808,17 @@ export function register(app: App, fastify: FastifyInstance) {
       from_port?: string | null;
       to_port?: string | null;
       cargo_type?: string | null;
+      rank?: string | null;
+      date_joined?: string | null;
+      date_left?: string | null;
+      trade_area?: string | null;
+      bridge_watch_hours?: number | null;
+      engine_watch_hours?: number | null;
+      certificate_id?: string | null;
     };
   }>('/api/sea-time/:id', {
     schema: {
-      description: 'Update a sea time entry (requires authentication). Allows updating sea_days, notes, service_type, position, and voyage details.',
+      description: 'Update a sea time entry (requires authentication). Allows updating sea_days, notes, service_type, position, voyage details, rank, trade area, watch hours, and certificate.',
       tags: ['sea-time'],
       params: {
         type: 'object',
@@ -707,6 +838,13 @@ export function register(app: App, fastify: FastifyInstance) {
           from_port: { type: ['string', 'null'] },
           to_port: { type: ['string', 'null'] },
           cargo_type: { type: ['string', 'null'] },
+          rank: { type: ['string', 'null'], description: 'Officer rank/capacity' },
+          date_joined: { type: ['string', 'null'], description: 'Date joined vessel (YYYY-MM-DD)' },
+          date_left: { type: ['string', 'null'], description: 'Date left vessel (YYYY-MM-DD)' },
+          trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
+          bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
+          engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
       response: {
@@ -735,12 +873,29 @@ export function register(app: App, fastify: FastifyInstance) {
       from_port,
       to_port,
       cargo_type,
+      rank,
+      date_joined,
+      date_left,
+      trade_area,
+      bridge_watch_hours,
+      engine_watch_hours,
+      certificate_id,
     } = request.body;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
       app.logger.warn({ userId, entryId: id, service_type }, 'Invalid service type provided');
       return reply.code(400).send({ error: `Invalid service_type. Must be one of: ${VALID_SERVICE_TYPES.join(', ')}` });
+    }
+
+    // Validate rank if provided
+    if (rank !== undefined && !isValidRank(rank)) {
+      return reply.code(400).send({ error: `Invalid rank. Must be one of: ${VALID_RANKS.join(', ')}` });
+    }
+
+    // Validate trade_area if provided
+    if (trade_area !== undefined && !isValidTradeArea(trade_area)) {
+      return reply.code(400).send({ error: `Invalid trade_area. Must be one of: ${VALID_TRADE_AREAS.join(', ')}` });
     }
 
     app.logger.info({ userId, entryId: id, sea_days, notes, service_type }, 'Updating sea time entry');
@@ -796,6 +951,27 @@ export function register(app: App, fastify: FastifyInstance) {
     if (cargo_type !== undefined) {
       updateData.cargo_type = cargo_type;
     }
+    if (rank !== undefined) {
+      updateData.rank = rank;
+    }
+    if (date_joined !== undefined) {
+      updateData.date_joined = date_joined;
+    }
+    if (date_left !== undefined) {
+      updateData.date_left = date_left;
+    }
+    if (trade_area !== undefined) {
+      updateData.trade_area = trade_area;
+    }
+    if (bridge_watch_hours !== undefined) {
+      updateData.bridge_watch_hours = bridge_watch_hours !== null ? String(bridge_watch_hours) : null;
+    }
+    if (engine_watch_hours !== undefined) {
+      updateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
+    }
+    if (certificate_id !== undefined) {
+      updateData.certificate_id = certificate_id;
+    }
 
     // If no fields to update, return the current entry
     if (Object.keys(updateData).length === 0) {
@@ -819,7 +995,65 @@ export function register(app: App, fastify: FastifyInstance) {
       `Sea time entry updated successfully`
     );
 
-    return reply.code(200).send(transformSeaTimeEntryForResponse(updated));
+    // Check for standby/yard service warnings
+    const effectiveServiceType = updated.service_type || 'actual_sea_service';
+    const updateWarnings: string[] = [];
+
+    if (effectiveServiceType === 'standby_service') {
+      const standbyEntries = await app.db.query.sea_time_entries.findMany({
+        where: and(
+          eq(schema.sea_time_entries.user_id, userId),
+          eq(schema.sea_time_entries.vessel_id, current_entry.vessel_id),
+          eq(schema.sea_time_entries.service_type, 'standby_service'),
+        ),
+        orderBy: desc(schema.sea_time_entries.start_time),
+      });
+
+      let consecutiveDays = 0;
+      const sortedByDate = standbyEntries.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+      let lastDate: string | null = null;
+      for (const e of sortedByDate) {
+        const day = getCalendarDay(new Date(e.start_time));
+        if (lastDate === null) {
+          consecutiveDays = 1;
+          lastDate = day;
+        } else {
+          const prevDate = new Date(lastDate);
+          prevDate.setDate(prevDate.getDate() - 1);
+          const expectedDay = prevDate.toISOString().split('T')[0];
+          if (day === expectedDay) {
+            consecutiveDays++;
+            lastDate = day;
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (consecutiveDays > 14) {
+        updateWarnings.push(`This creates ${consecutiveDays} consecutive days of standby service for this vessel, exceeding the 14-day guideline.`);
+      }
+    }
+
+    if (effectiveServiceType === 'yard_service') {
+      const yardEntries = await app.db.query.sea_time_entries.findMany({
+        where: and(
+          eq(schema.sea_time_entries.user_id, userId),
+          eq(schema.sea_time_entries.service_type, 'yard_service'),
+        ),
+      });
+      const totalYardDays = yardEntries.reduce((sum, e) => sum + (e.sea_days || 0), 0);
+      if (totalYardDays > 90) {
+        updateWarnings.push(`Total yard service days (${totalYardDays}) exceeds the 90-day guideline.`);
+      }
+    }
+
+    const updateResponse: any = transformSeaTimeEntryForResponse(updated);
+    if (updateWarnings.length > 0) {
+      updateResponse.warnings = updateWarnings;
+    }
+
+    return reply.code(200).send(updateResponse);
   });
 
   // PUT /api/sea-time/:id/reject - Reject pending entry with optional notes
@@ -1560,6 +1794,13 @@ export function register(app: App, fastify: FastifyInstance) {
       start_longitude?: number;
       end_latitude?: number;
       end_longitude?: number;
+      rank?: string | null;
+      date_joined?: string | null;
+      date_left?: string | null;
+      trade_area?: string | null;
+      bridge_watch_hours?: number | null;
+      engine_watch_hours?: number | null;
+      certificate_id?: string | null;
     };
   }>('/api/logbook/manual-entry', {
     schema: {
@@ -1582,6 +1823,13 @@ export function register(app: App, fastify: FastifyInstance) {
           from_port: { type: ['string', 'null'] },
           to_port: { type: ['string', 'null'] },
           cargo_type: { type: ['string', 'null'] },
+          rank: { type: ['string', 'null'], description: 'Officer rank/capacity' },
+          date_joined: { type: ['string', 'null'], description: 'Date joined vessel (YYYY-MM-DD)' },
+          date_left: { type: ['string', 'null'], description: 'Date left vessel (YYYY-MM-DD)' },
+          trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
+          bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
+          engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
       response: {
@@ -1633,6 +1881,13 @@ export function register(app: App, fastify: FastifyInstance) {
       start_longitude: rawStartLng,
       end_latitude: rawEndLat,
       end_longitude: rawEndLng,
+      rank: rawRank,
+      date_joined: rawDateJoined,
+      date_left: rawDateLeft,
+      trade_area: rawTradeArea,
+      bridge_watch_hours: rawBridgeWatchHours,
+      engine_watch_hours: rawEngineWatchHours,
+      certificate_id: rawCertificateId,
     } = request.body as any;
     // Coerce null → undefined for downstream code that uses ?? defaults
     const end_time = rawEndTime ?? undefined;
@@ -1643,11 +1898,28 @@ export function register(app: App, fastify: FastifyInstance) {
     const start_longitude = rawStartLng ?? undefined;
     const end_latitude = rawEndLat ?? undefined;
     const end_longitude = rawEndLng ?? undefined;
+    const manualRank = rawRank ?? undefined;
+    const manualDateJoined = rawDateJoined ?? undefined;
+    const manualDateLeft = rawDateLeft ?? undefined;
+    const manualTradeArea = rawTradeArea ?? undefined;
+    const manualBridgeWatchHours = rawBridgeWatchHours ?? undefined;
+    const manualEngineWatchHours = rawEngineWatchHours ?? undefined;
+    const manualCertificateId = rawCertificateId ?? undefined;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
       app.logger.warn({ vessel_id, service_type }, 'Invalid service type provided for manual entry');
       return reply.code(400).send({ error: `Invalid service_type. Must be one of: ${VALID_SERVICE_TYPES.join(', ')}` });
+    }
+
+    // Validate rank if provided
+    if (manualRank !== undefined && !isValidRank(manualRank)) {
+      return reply.code(400).send({ error: `Invalid rank. Must be one of: ${VALID_RANKS.join(', ')}` });
+    }
+
+    // Validate trade_area if provided
+    if (manualTradeArea !== undefined && !isValidTradeArea(manualTradeArea)) {
+      return reply.code(400).send({ error: `Invalid trade_area. Must be one of: ${VALID_TRADE_AREAS.join(', ')}` });
     }
 
     app.logger.info(
@@ -1771,23 +2043,32 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Create the sea time entry (marked as confirmed for manually created entries)
     try {
+      const manualEntryValues: any = {
+        user_id: session.userId,
+        vessel_id,
+        start_time: startDate,
+        end_time: endDate,
+        duration_hours: calculated_duration_hours,
+        sea_days: calculated_sea_days,
+        status: 'confirmed', // Manually created entries are confirmed
+        service_type: service_type || 'actual_sea_service',
+        notes,
+        start_latitude: start_latitude ? String(start_latitude) : null,
+        start_longitude: start_longitude ? String(start_longitude) : null,
+        end_latitude: end_latitude ? String(end_latitude) : null,
+        end_longitude: end_longitude ? String(end_longitude) : null,
+      };
+      if (manualRank !== undefined) manualEntryValues.rank = manualRank;
+      if (manualDateJoined !== undefined) manualEntryValues.date_joined = manualDateJoined;
+      if (manualDateLeft !== undefined) manualEntryValues.date_left = manualDateLeft;
+      if (manualTradeArea !== undefined) manualEntryValues.trade_area = manualTradeArea;
+      if (manualBridgeWatchHours !== undefined) manualEntryValues.bridge_watch_hours = manualBridgeWatchHours !== null ? String(manualBridgeWatchHours) : null;
+      if (manualEngineWatchHours !== undefined) manualEntryValues.engine_watch_hours = manualEngineWatchHours !== null ? String(manualEngineWatchHours) : null;
+      if (manualCertificateId !== undefined) manualEntryValues.certificate_id = manualCertificateId;
+
       const [entry] = await app.db
         .insert(schema.sea_time_entries)
-        .values({
-          user_id: session.userId,
-          vessel_id,
-          start_time: startDate,
-          end_time: endDate,
-          duration_hours: calculated_duration_hours,
-          sea_days: calculated_sea_days,
-          status: 'confirmed', // Manually created entries are confirmed
-          service_type: service_type || 'actual_sea_service',
-          notes,
-          start_latitude: start_latitude ? String(start_latitude) : null,
-          start_longitude: start_longitude ? String(start_longitude) : null,
-          end_latitude: end_latitude ? String(end_latitude) : null,
-          end_longitude: end_longitude ? String(end_longitude) : null,
-        })
+        .values(manualEntryValues)
         .returning();
 
       app.logger.info(
@@ -1805,13 +2086,69 @@ export function register(app: App, fastify: FastifyInstance) {
         'Manual sea time entry created successfully'
       );
 
+      // Check for standby/yard service warnings
+      const manualServiceType = service_type || 'actual_sea_service';
+      const manualWarnings: string[] = [];
+
+      if (manualServiceType === 'standby_service') {
+        const standbyEntries = await app.db.query.sea_time_entries.findMany({
+          where: and(
+            eq(schema.sea_time_entries.user_id, session.userId),
+            eq(schema.sea_time_entries.vessel_id, vessel_id),
+            eq(schema.sea_time_entries.service_type, 'standby_service'),
+          ),
+          orderBy: desc(schema.sea_time_entries.start_time),
+        });
+
+        let consecutiveDays = 0;
+        const sortedByDate = standbyEntries.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+        let lastDate: string | null = null;
+        for (const e of sortedByDate) {
+          const day = getCalendarDay(new Date(e.start_time));
+          if (lastDate === null) {
+            consecutiveDays = 1;
+            lastDate = day;
+          } else {
+            const prevDate = new Date(lastDate);
+            prevDate.setDate(prevDate.getDate() - 1);
+            const expectedDay = prevDate.toISOString().split('T')[0];
+            if (day === expectedDay) {
+              consecutiveDays++;
+              lastDate = day;
+            } else {
+              break;
+            }
+          }
+        }
+
+        if (consecutiveDays > 14) {
+          manualWarnings.push(`This creates ${consecutiveDays} consecutive days of standby service for this vessel, exceeding the 14-day guideline.`);
+        }
+      }
+
+      if (manualServiceType === 'yard_service') {
+        const yardEntries = await app.db.query.sea_time_entries.findMany({
+          where: and(
+            eq(schema.sea_time_entries.user_id, session.userId),
+            eq(schema.sea_time_entries.service_type, 'yard_service'),
+          ),
+        });
+        const totalYardDays = yardEntries.reduce((sum, e) => sum + (e.sea_days || 0), 0);
+        if (totalYardDays > 90) {
+          manualWarnings.push(`Total yard service days (${totalYardDays}) exceeds the 90-day guideline.`);
+        }
+      }
+
       // Return entry with vessel details
-      const response = {
+      const response: any = transformSeaTimeEntryForResponse({
         ...entry,
         vessel: vessel[0],
-      };
+      });
+      if (manualWarnings.length > 0) {
+        response.warnings = manualWarnings;
+      }
 
-      return reply.code(201).send(transformSeaTimeEntryForResponse(response));
+      return reply.code(201).send(response);
     } catch (error) {
       app.logger.error({ err: error, vessel_id }, 'Failed to create manual sea time entry');
       return reply.code(400).send({ error: 'Failed to create sea time entry' });

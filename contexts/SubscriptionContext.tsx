@@ -24,7 +24,8 @@ const REVENUECAT_API_KEY_ANDROID = Constants.expoConfig?.extra?.revenueCatAndroi
 // Product & entitlement identifiers — read from app.json config so they can
 // change without a code update.
 const PRO_ENTITLEMENT_ID = Constants.expoConfig?.extra?.revenueCatEntitlementId || 'pro';
-const PRO_MONTHLY_PRODUCT_ID = 'com.subscription.monthly';
+const PRO_MONTHLY_PRODUCT_ID = Constants.expoConfig?.extra?.monthlyProductId || 'com.subscription.monthly';
+const PRO_ANNUAL_PRODUCT_ID = Constants.expoConfig?.extra?.annualProductId || 'com.subscription.annual';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
@@ -255,10 +256,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // Check for the specific "pro" entitlement (matches RevenueCat dashboard config)
       const hasProEntitlement = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
 
-      // Fallback: also check for the specific product ID in active subscriptions
-      const hasProMonthly = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID);
+      // Fallback: also check for specific product IDs in active subscriptions
+      const hasProProduct = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID)
+        || info.activeSubscriptions.includes(PRO_ANNUAL_PRODUCT_ID);
 
-      const subscribed = hasProEntitlement || hasProMonthly;
+      const subscribed = hasProEntitlement || hasProProduct;
 
       log('[Subscription] Subscription status determined:', subscribed);
 
@@ -340,8 +342,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       // Check if purchase was successful
       const hasActiveEntitlement = Object.keys(info.entitlements.active).length > 0;
-      const hasProMonthly = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID);
-      const subscribed = hasActiveEntitlement || hasProMonthly;
+      const hasProProduct = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID)
+        || info.activeSubscriptions.includes(PRO_ANNUAL_PRODUCT_ID);
+      const subscribed = hasActiveEntitlement || hasProProduct;
 
       log('[Subscription] Purchase completed, subscribed:', subscribed);
 
@@ -378,8 +381,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setCustomerInfo(info);
 
       const hasActiveEntitlement = Object.keys(info.entitlements.active).length > 0;
-      const hasProMonthly = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID);
-      const subscribed = hasActiveEntitlement || hasProMonthly;
+      const hasProProduct = info.activeSubscriptions.includes(PRO_MONTHLY_PRODUCT_ID)
+        || info.activeSubscriptions.includes(PRO_ANNUAL_PRODUCT_ID);
+      const subscribed = hasActiveEntitlement || hasProProduct;
 
       log('[Subscription] Restore completed, subscribed:', subscribed);
 

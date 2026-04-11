@@ -44,6 +44,35 @@ function isValidCertificateType(t: string): boolean {
   return ALLOWED_TYPES_SET.has(t);
 }
 
+/**
+ * Validate date relationships for a certificate.
+ * Returns { error, warning } — error means reject (400), warning is informational.
+ */
+function validateCertificateDates(
+  issuedDate: string | null | undefined,
+  expiryDate: string | null | undefined
+): { error?: string; warning?: string } {
+  if (issuedDate && expiryDate) {
+    const issued = new Date(issuedDate);
+    const expiry = new Date(expiryDate);
+    if (isNaN(issued.getTime()) || isNaN(expiry.getTime())) {
+      return { error: "Invalid date format for issued_date or expiry_date" };
+    }
+    if (issued >= expiry) {
+      return { error: "issued_date must be before expiry_date" };
+    }
+  }
+
+  if (issuedDate) {
+    const issued = new Date(issuedDate);
+    if (!isNaN(issued.getTime()) && issued > new Date()) {
+      return { warning: "issued_date is in the future" };
+    }
+  }
+
+  return {};
+}
+
 interface CertificateBody {
   certificate_type: string;
   certificate_number?: string | null;
@@ -121,6 +150,11 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({ error: "Invalid certificate_type" });
     }
 
+    const dateCheck = validateCertificateDates(body.issued_date, body.expiry_date);
+    if (dateCheck.error) {
+      return reply.code(400).send({ error: dateCheck.error });
+    }
+
     const [created] = await app.db
       .insert(schema.certificates)
       .values({
@@ -139,6 +173,9 @@ export function register(app: App, fastify: FastifyInstance) {
       { userId, certificateId: created.id, type: body.certificate_type },
       "Certificate created"
     );
+    if (dateCheck.warning) {
+      return reply.code(200).send({ ...created, warning: dateCheck.warning });
+    }
     return reply.code(200).send(created);
   });
 
@@ -188,6 +225,14 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(400).send({ error: "Invalid certificate_type" });
       }
 
+      // Resolve effective dates: use body value if provided, else fall back to existing record
+      const effectiveIssued = body.issued_date !== undefined ? body.issued_date : existing[0].issued_date;
+      const effectiveExpiry = body.expiry_date !== undefined ? body.expiry_date : existing[0].expiry_date;
+      const dateCheck = validateCertificateDates(effectiveIssued, effectiveExpiry);
+      if (dateCheck.error) {
+        return reply.code(400).send({ error: dateCheck.error });
+      }
+
       const updateData: any = { updated_at: new Date() };
       if (body.certificate_type !== undefined) updateData.certificate_type = body.certificate_type;
       if (body.certificate_number !== undefined) updateData.certificate_number = body.certificate_number;
@@ -203,6 +248,9 @@ export function register(app: App, fastify: FastifyInstance) {
         .where(eq(schema.certificates.id, id))
         .returning();
 
+      if (dateCheck.warning) {
+        return reply.code(200).send({ ...updated, warning: dateCheck.warning });
+      }
       return reply.code(200).send(updated);
     }
   );

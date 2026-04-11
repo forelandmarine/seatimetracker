@@ -201,13 +201,20 @@ export const authenticatedApiCall = async <T = any>(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    const method = options?.method || "GET";
+    const hasBody = options?.body !== undefined;
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${token}`,
+      ...options?.headers,
+    };
+    // Only set Content-Type for requests that carry a body
+    if (hasBody || (method !== "GET" && method !== "DELETE" && method !== "HEAD")) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        ...options?.headers,
-      },
+      headers,
       signal: options?.signal || controller.signal,
     });
 

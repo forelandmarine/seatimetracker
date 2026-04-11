@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n, { SUPPORTED_LANGUAGES, changeLanguage } from '@/i18n';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { useTranslation } from 'react-i18next';
 
 const LANGUAGE_STORAGE_KEY = 'seatime_language';
 
@@ -20,6 +21,7 @@ export default function LanguageScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(i18n.language || 'en');
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function LanguageScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Language',
+          title: t('navigation.language'),
           headerStyle: { backgroundColor: isDark ? colors.background : colors.backgroundLight },
           headerTitleStyle: { color: isDark ? colors.text : colors.textLight },
           headerTintColor: colors.primary,
@@ -48,8 +50,7 @@ export default function LanguageScreen() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Choose your preferred language. Onboarding, paywall, and navigation are fully translated.
-          Some detail screens will appear in English.
+          {t('settings.language')}
         </Text>
 
         {SUPPORTED_LANGUAGES.map((lang, index) => (

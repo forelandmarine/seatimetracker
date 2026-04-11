@@ -30,6 +30,7 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
               subscription_status: { type: ['string', 'null'] },
               subscription_expires_at: { type: ['string', 'null'] },
               subscription_product_id: { type: ['string', 'null'] },
@@ -123,6 +124,7 @@ export function register(app: App, fastify: FastifyInstance) {
         nationality: user.nationality || null,
         pya_membership_no: user.pya_membership_no || null,
         department: user.department || null,
+        maritime_authority: user.maritime_authority || null,
         subscription_status: user.subscription_status || null,
         subscription_expires_at: user.subscription_expires_at?.toISOString() || null,
         subscription_product_id: user.subscription_product_id || null,
@@ -135,7 +137,7 @@ export function register(app: App, fastify: FastifyInstance) {
     }
   );
 
-  // PUT /api/profile - Update user profile (name, email, maritime fields, and department)
+  // PUT /api/profile - Update user profile (name, email, maritime fields, department, and authority)
   fastify.put<{
     Body: {
       name?: string;
@@ -147,6 +149,7 @@ export function register(app: App, fastify: FastifyInstance) {
       nationality?: string;
       pya_membership_no?: string;
       department?: string;
+      maritime_authority?: string;
     };
   }>(
     '/api/profile',
@@ -166,6 +169,7 @@ export function register(app: App, fastify: FastifyInstance) {
             nationality: { type: 'string' },
             pya_membership_no: { type: 'string' },
             department: { type: 'string', enum: ['deck', 'engineering'], description: 'Department: deck or engineering' },
+            maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
           },
         },
         response: {
@@ -185,6 +189,7 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
               createdAt: { type: 'string' },
               updatedAt: { type: 'string' },
             },
@@ -196,9 +201,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department } = request.body;
+      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority } = request.body;
 
-      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department }, 'Profile update request');
+      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority }, 'Profile update request');
 
       // Get token from Authorization header
       const authHeader = request.headers.authorization;
@@ -247,8 +252,14 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(400).send({ error: 'Invalid department. Must be "deck" or "engineering"' });
       }
 
+      // Validate maritime_authority if provided
+      if (maritime_authority && !['mca', 'uscg', 'amsa', 'mnz'].includes(maritime_authority)) {
+        app.logger.warn({ userId: user.id, maritime_authority }, 'Invalid maritime authority provided');
+        return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", or "mnz"' });
+      }
+
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department;
+      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
@@ -275,6 +286,7 @@ export function register(app: App, fastify: FastifyInstance) {
           nationality: user.nationality || null,
           pya_membership_no: user.pya_membership_no || null,
           department: user.department || null,
+          maritime_authority: user.maritime_authority || null,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         });
@@ -304,6 +316,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (nationality !== undefined) updateData.nationality = nationality || null;
       if (pya_membership_no !== undefined) updateData.pya_membership_no = pya_membership_no || null;
       if (department !== undefined) updateData.department = department || null;
+      if (maritime_authority !== undefined) updateData.maritime_authority = maritime_authority || null;
 
       const [updatedUser] = await app.db
         .update(authSchema.user)
@@ -341,6 +354,7 @@ export function register(app: App, fastify: FastifyInstance) {
         nationality: updatedUser.nationality || null,
         pya_membership_no: updatedUser.pya_membership_no || null,
         department: updatedUser.department || null,
+        maritime_authority: updatedUser.maritime_authority || null,
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString(),
       });

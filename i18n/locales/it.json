@@ -31,7 +31,7 @@
     "password": "Password",
     "name": "Nome (Facoltativo)",
     "forgotPassword": "Password dimenticata?",
-    "alreadyHaveAccount": "Hai gia un account? Accedi",
+    "alreadyHaveAccount": "Hai già un account? Accedi",
     "needAccount": "Non hai un account? Registrati",
     "signInWithApple": "Accedi con Apple",
     "signInWithFaceId": "Accedi con Face ID",
@@ -55,7 +55,7 @@
     "slide2": {
       "label": "RAPPORTI CONFORMI MCA",
       "title": "Pronto per il CoC con un tocco.",
-      "body": "Esporta attestati di servizio marittimo nel formato richiesto dal MCA. PDF o CSV, firmati e pronti da presentare con la tua prossima richiesta di idoneita."
+      "body": "Esporta attestati di servizio marittimo nel formato richiesto dal MCA. PDF o CSV, firmati e pronti da presentare con la tua prossima richiesta di idoneità."
     },
     "slide3": {
       "label": "CREATO DA MARINAI",
@@ -94,7 +94,7 @@
     "noConfirmedEntries": "Ancora nessuna voce di tempo di mare confermata",
     "settings": "Impostazioni",
     "addSignature": "Aggiungere la tua firma?",
-    "signaturePrompt": "I rapporti sono piu credibili per i valutatori MCA quando sono firmati. Puoi aggiungere una firma ora o scaricare un rapporto non firmato.",
+    "signaturePrompt": "I rapporti sono più credibili per i valutatori MCA quando sono firmati. Puoi aggiungere una firma ora o scaricare un rapporto non firmato.",
     "downloadUnsigned": "Scarica senza firma",
     "addSignatureAction": "Aggiungi firma"
   },
@@ -133,7 +133,7 @@
     "aisStale": "I dati AIS sono obsoleti. Passa al tracciamento manuale",
     "noAisCoverage": "Nessuna copertura AIS. Usa il GPS del telefono",
     "position": "Posizione",
-    "speed": "Velocita",
+    "speed": "Velocità",
     "course": "Rotta",
     "heading": "Prua",
     "status": "Stato",
@@ -153,7 +153,7 @@
     "perYear": "all'anno",
     "bestValue": "MIGLIOR PREZZO",
     "saveSeventeen": "Risparmia ~17%",
-    "premiumFeatures": "Funzionalita Premium",
+    "premiumFeatures": "Funzionalità Premium",
     "feature1": "Tracciamento automatico delle navi",
     "feature2": "Registrazione facile del tempo di mare",
     "feature3": "Rapporti conformi MCA",
@@ -177,11 +177,77 @@
     "preferences": "PREFERENZE",
     "language": "Lingua",
     "growTheCrew": "ALLARGA L'EQUIPAGGIO",
-    "referACaptain": "Consiglia un capitano",
+    "referAFriend": "Consiglia un amico",
     "support": "SUPPORTO",
     "aboutAndHelp": "Informazioni e aiuto",
     "contactSupport": "Contatta il supporto",
     "signOut": "Esci"
+  },
+  "navigation": {
+    "vesselDetails": "Dettagli della nave",
+    "editProfile": "Modifica profilo",
+    "aisCheckSchedule": "Frequenza controllo AIS",
+    "settings": "Impostazioni",
+    "certificates": "Certificati",
+    "language": "Lingua",
+    "mcaRequirements": "Requisiti MCA",
+    "reports": "Rapporti",
+    "notificationSettings": "Impostazioni notifiche",
+    "resetPassword": "Reimposta password",
+    "upgrade": "Aggiorna",
+    "verifyIdentity": "Verifica identità",
+    "referAFriend": "Consiglia un amico",
+    "addSeaTime": "Aggiungi tempo di mare",
+    "editSeaTime": "Modifica tempo di mare",
+    "selectPathway": "Seleziona percorso",
+    "manualTracking": "Tracciamento GPS manuale",
+    "about": "Informazioni e aiuto",
+    "signature": "Firma"
+  },
+  "deleteAccount": {
+    "title": "Elimina account",
+    "warning": "Questa azione non può essere annullata!",
+    "confirmation": "Sei assolutamente sicuro di voler eliminare il tuo account? Verranno eliminati definitivamente:",
+    "itemVessels": "Tutte le tue navi",
+    "itemEntries": "Tutte le voci di tempo di mare",
+    "itemReports": "Tutti i rapporti e i dati",
+    "deleting": "Eliminazione in corso...",
+    "failed": "Eliminazione non riuscita"
+  },
+  "refer": {
+    "title": "Consiglia un amico",
+    "heading": "Invita un amico",
+    "subtitle": "Condividi SeaTime Tracker con un amico. Quando si registra usando il tuo codice, entrambi riceverete un bonus.",
+    "yourCode": "Il tuo codice di invito",
+    "friendsReferred": "{{count}} amico/i invitato/i finora",
+    "shareInvite": "Condividi invito",
+    "bonusDays": "{{count}} giorni bonus",
+    "bonusBody": "Applicato automaticamente al prossimo rinnovo dell'abbonamento.",
+    "gotCode": "Hai un codice da un amico?",
+    "enterCode": "Inserisci codice di invito",
+    "redeemCode": "Riscatta codice",
+    "codeRedeemed": "Codice riscattato",
+    "codeRedeemedMessage": "Grazie! Entrambi avete ottenuto 30 giorni gratuiti. Il bonus verrà applicato al prossimo rinnovo dell'abbonamento.",
+    "couldNotRedeem": "Impossibile riscattare",
+    "unableToLoad": "Impossibile caricare le informazioni sull'invito.",
+    "shareMessage": "Sto usando SeaTime Tracker per registrare il mio tempo di mare automaticamente tramite AIS. Provalo gratis con il mio codice: {{code}}"
+  },
+  "certificates": {
+    "title": "Certificati",
+    "addCertificate": "Aggiungi certificato",
+    "editCertificate": "Modifica certificato",
+    "noCertificates": "Nessun certificato ancora",
+    "expired": "Scaduto",
+    "expiringSoon": "In scadenza",
+    "valid": "Valido"
+  },
+  "signOut": {
+    "title": "Esci",
+    "confirmation": "Sei sicuro di voler uscire?"
+  },
+  "department": {
+    "deck": "Coperta",
+    "engineering": "Macchina"
   },
   "serviceTypes": {
     "actual_sea_service": "Servizio di mare effettivo",

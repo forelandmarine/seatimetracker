@@ -313,7 +313,7 @@ export default function AuthScreen() {
         {!BACKEND_URL && (
           <View style={styles.warningBanner}>
             <Text style={styles.warningText}>
-              ⚠️ Backend not configured. Authentication may not work.
+              Backend not configured. Authentication may not work.
             </Text>
           </View>
         )}

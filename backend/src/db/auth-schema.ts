@@ -13,6 +13,7 @@ export const user = pgTable("user", {
   nationality: text("nationality"), // User's nationality
   pya_membership_no: text("pya_membership_no"), // PYA membership number
   department: text("department"), // Department: 'deck' or 'engineering'
+  maritime_authority: text("maritime_authority"), // 'mca', 'uscg', 'amsa', 'mnz' — which authority user is applying to
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID

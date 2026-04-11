@@ -100,7 +100,7 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <View style={themedStyles.container}>
-          <Text style={themedStyles.title}>⚠️ App Crashed</Text>
+          <Text style={themedStyles.title}>App Crashed</Text>
           <Text style={themedStyles.message}>
             The app encountered an unexpected error and needs to restart.
           </Text>
@@ -116,7 +116,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
           {this.state.error && (
             <ScrollView style={themedStyles.errorDetails}>
-              <Text style={themedStyles.errorTitle}>🔍 Debug Info (Dev Only):</Text>
+              <Text style={themedStyles.errorTitle}>Debug Info (Dev Only):</Text>
 
               <Text style={themedStyles.errorLabel}>Platform:</Text>
               <Text style={themedStyles.errorText}>{Platform.OS}</Text>

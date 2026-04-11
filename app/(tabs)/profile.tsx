@@ -1072,7 +1072,7 @@ export default function ProfileScreen() {
             {profile.department && (
               <View style={styles.departmentBadge}>
                 <Text style={styles.departmentBadgeText}>
-                  {profile.department.toLowerCase() === 'deck' ? '⚓ Deck Department' : '⚙️ Engineering Department'}
+                  {profile.department.toLowerCase() === 'deck' ? 'Deck Department' : 'Engineering Department'}
                 </Text>
               </View>
             )}
@@ -1347,27 +1347,6 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => router.push('/manual-tracking')}
-              >
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="my-location"
-                  size={24}
-                  color={colors.primary}
-                  style={styles.menuItemIcon}
-                />
-                <Text style={styles.menuItemText}>Manual GPS tracking</Text>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="arrow-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.menuItemChevron}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
                 onPress={() => router.push('/signature')}
               >
                 <IconSymbol
@@ -1398,7 +1377,7 @@ export default function ProfileScreen() {
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>Refer a captain</Text>
+                <Text style={styles.menuItemText}>Refer a friend</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

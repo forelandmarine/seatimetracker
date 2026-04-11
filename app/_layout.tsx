@@ -12,6 +12,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { initSentry } from '@/utils/sentry';
+import { useTranslation } from 'react-i18next';
 import '@/i18n'; // Initialize i18next
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -22,6 +23,7 @@ initSentry();
 
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  const { t } = useTranslation();
 
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -88,36 +90,36 @@ function RootLayoutContent() {
         <Stack.Screen
           name="vessel/[id]"
           options={{
-            title: 'Vessel Details',
-            headerBackTitle: 'Back',
+            title: t('navigation.vesselDetails'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="user-profile"
           options={{
-            title: 'Edit Profile',
-            headerBackTitle: 'Back',
+            title: t('navigation.editProfile'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="scheduled-tasks"
           options={{
-            title: 'AIS Check Schedule',
-            headerBackTitle: 'Back',
+            title: t('navigation.aisCheckSchedule'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="settings"
           options={{
-            title: 'Settings',
-            headerBackTitle: 'Profile',
+            title: t('settings.title'),
+            headerBackTitle: t('tabs.profile'),
           }}
         />
         <Stack.Screen
           name="about"
           options={{
-            title: 'About',
-            headerBackTitle: 'Back',
+            title: t('navigation.about'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
@@ -129,92 +131,92 @@ function RootLayoutContent() {
         <Stack.Screen
           name="certificates"
           options={{
-            title: 'Certificates',
-            headerBackTitle: 'Back',
+            title: t('certificates.title'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="certificate-edit"
           options={{
-            title: 'Certificate',
-            headerBackTitle: 'Back',
+            title: t('certificates.title'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="manual-tracking"
           options={{
-            title: 'Manual tracking',
-            headerBackTitle: 'Back',
+            title: t('navigation.manualTracking'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="signature"
           options={{
-            title: 'Signature',
-            headerBackTitle: 'Cancel',
+            title: t('navigation.signature'),
+            headerBackTitle: t('common.cancel'),
           }}
         />
         <Stack.Screen
           name="refer"
           options={{
-            title: 'Refer a captain',
-            headerBackTitle: 'Back',
+            title: t('refer.title'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="language"
           options={{
-            title: 'Language',
-            headerBackTitle: 'Back',
+            title: t('navigation.language'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="mca-requirements"
           options={{
-            title: 'MCA Requirements',
-            headerBackTitle: 'Back',
+            title: t('navigation.mcaRequirements'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="select-pathway"
           options={{
-            title: 'Select Pathway',
-            headerBackTitle: 'Back',
+            title: t('navigation.selectPathway'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="reports"
           options={{
-            title: 'Reports',
-            headerBackTitle: 'Back',
+            title: t('navigation.reports'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="notification-settings"
           options={{
-            title: 'Notification Settings',
-            headerBackTitle: 'Back',
+            title: t('navigation.notificationSettings'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="forgot-password"
           options={{
-            title: 'Reset Password',
-            headerBackTitle: 'Back',
+            title: t('navigation.resetPassword'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="paywall"
           options={{
-            title: 'Upgrade',
-            headerBackTitle: 'Back',
+            title: t('navigation.upgrade'),
+            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
           name="two-factor"
           options={{
-            title: 'Verify Identity',
-            headerBackTitle: 'Back',
+            title: t('navigation.verifyIdentity'),
+            headerBackTitle: t('common.back'),
           }}
         />
       </Stack>

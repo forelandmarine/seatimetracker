@@ -801,7 +801,7 @@ export default function UserProfileScreen() {
           style={[styles.button, styles.secondaryButton]} 
           onPress={handleEditProfile}
         >
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>✏️ Edit Profile</Text>
+          <Text style={[styles.buttonText, styles.secondaryButtonText]}>Edit Profile</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -1065,7 +1065,7 @@ export default function UserProfileScreen() {
                     ]}
                     onPress={() => setEditDepartment('Deck')}
                   >
-                    <Text style={styles.departmentButtonText}>⚓ Deck</Text>
+                    <Text style={styles.departmentButtonText}>Deck</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
@@ -1076,7 +1076,7 @@ export default function UserProfileScreen() {
                     ]}
                     onPress={() => setEditDepartment('Engineering')}
                   >
-                    <Text style={styles.departmentButtonText}>⚙️ Engineering</Text>
+                    <Text style={styles.departmentButtonText}>Engineering</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -1114,7 +1114,7 @@ export default function UserProfileScreen() {
               <Text style={styles.modalTitle}>Delete Account</Text>
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>
-                  ⚠️ This action cannot be undone!
+                  This action cannot be undone!
                 </Text>
               </View>
               <Text style={{ fontSize: 16, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginBottom: 24, textAlign: 'center', lineHeight: 24 }}>

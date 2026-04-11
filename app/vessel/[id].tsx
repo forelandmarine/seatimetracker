@@ -38,6 +38,8 @@ interface Vessel {
   callsign?: string;
   engine_kilowatts?: number;
   engine_type?: string;
+  imo_number?: string;
+  tonnage_itc?: number;
 }
 
 interface SeaTimeEntry {
@@ -98,6 +100,8 @@ export default function VesselDetailScreen() {
   const [editedCallSign, setEditedCallSign] = useState('');
   const [editedEngineKilowatts, setEditedEngineKilowatts] = useState('');
   const [editedEngineType, setEditedEngineType] = useState('');
+  const [editedImoNumber, setEditedImoNumber] = useState('');
+  const [editedTonnageItc, setEditedTonnageItc] = useState('');
   const [checkingAIS, setCheckingAIS] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
 
@@ -197,6 +201,8 @@ export default function VesselDetailScreen() {
     setEditedCallSign(vessel.callsign || '');
     setEditedEngineKilowatts(vessel.engine_kilowatts?.toString() || '');
     setEditedEngineType(vessel.engine_type || '');
+    setEditedImoNumber(vessel.imo_number || '');
+    setEditedTonnageItc(vessel.tonnage_itc?.toString() || '');
     setEditModalVisible(true);
   };
 
@@ -215,6 +221,8 @@ export default function VesselDetailScreen() {
         callsign: editedCallSign.trim() || undefined,
         engine_kilowatts: editedEngineKilowatts ? parseFloat(editedEngineKilowatts) : undefined,
         engine_type: editedEngineType.trim() || undefined,
+        imo_number: editedImoNumber.trim() || undefined,
+        tonnage_itc: editedTonnageItc ? parseFloat(editedTonnageItc) : undefined,
       });
 
       setEditModalVisible(false);
@@ -601,6 +609,13 @@ export default function VesselDetailScreen() {
             </View>
           )}
 
+          {vessel.imo_number && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>IMO Number</Text>
+              <Text style={styles.detailValue}>{vessel.imo_number}</Text>
+            </View>
+          )}
+
           {vessel.flag && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Flag</Text>
@@ -633,6 +648,13 @@ export default function VesselDetailScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Gross Tonnes</Text>
               <Text style={styles.detailValue}>{vessel.gross_tonnes}</Text>
+            </View>
+          )}
+
+          {vessel.tonnage_itc && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>ITC Tonnage</Text>
+              <Text style={styles.detailValue}>{vessel.tonnage_itc}</Text>
             </View>
           )}
 
@@ -749,7 +771,7 @@ export default function VesselDetailScreen() {
             if (!aisIsStale) return null;
             return (
               <TouchableOpacity
-                onPress={() => router.push('/manual-tracking')}
+                onPress={() => router.push(`/manual-tracking?vesselId=${vessel.id}`)}
                 activeOpacity={0.7}
                 style={{
                   flexDirection: 'row',
@@ -771,10 +793,10 @@ export default function VesselDetailScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                    Track manually with phone GPS
+                    Log voyage with phone GPS
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    {aisData ? 'AIS data is stale — fall back to manual tracking' : 'No AIS coverage — use phone GPS instead'}
+                    {aisData ? 'AIS data is stale - use phone GPS to log this voyage' : 'No AIS coverage for this vessel'}
                   </Text>
                 </View>
                 <IconSymbol
@@ -1017,6 +1039,17 @@ export default function VesselDetailScreen() {
               </View>
 
               <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>IMO Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editedImoNumber}
+                  onChangeText={setEditedImoNumber}
+                  placeholder="IMO Number"
+                  placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Flag</Text>
                 <TextInput
                   style={styles.input}
@@ -1095,6 +1128,18 @@ export default function VesselDetailScreen() {
                   value={editedGrossTonnes}
                   onChangeText={setEditedGrossTonnes}
                   placeholder="Gross Tonnes"
+                  placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>ITC Tonnage</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editedTonnageItc}
+                  onChangeText={setEditedTonnageItc}
+                  placeholder="ITC Tonnage"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                   keyboardType="decimal-pad"
                 />

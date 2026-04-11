@@ -204,8 +204,8 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      showError('Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      showError('Password must be at least 8 characters');
       return;
     }
 

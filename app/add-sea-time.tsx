@@ -36,6 +36,29 @@ interface Vessel {
 
 type ServiceType = 'seagoing' | 'watchkeeping' | 'standby' | 'yard';
 
+type RankCapacity = 'master' | 'chief_officer' | 'second_officer' | 'third_officer' | 'oow' | 'chief_engineer' | 'second_engineer' | 'eto' | 'cadet' | 'rating';
+type TradeArea = 'unlimited' | 'near_coastal' | 'coastal' | 'inland';
+
+const RANK_OPTIONS: { value: RankCapacity; label: string }[] = [
+  { value: 'master', label: 'Master' },
+  { value: 'chief_officer', label: 'Chief Officer' },
+  { value: 'second_officer', label: '2nd Officer' },
+  { value: 'third_officer', label: '3rd Officer' },
+  { value: 'oow', label: 'OOW' },
+  { value: 'chief_engineer', label: 'Chief Engineer' },
+  { value: 'second_engineer', label: '2nd Engineer' },
+  { value: 'eto', label: 'ETO' },
+  { value: 'cadet', label: 'Cadet' },
+  { value: 'rating', label: 'Rating' },
+];
+
+const TRADE_AREA_OPTIONS: { value: TradeArea; label: string }[] = [
+  { value: 'unlimited', label: 'Unlimited' },
+  { value: 'near_coastal', label: 'Near Coastal' },
+  { value: 'coastal', label: 'Coastal' },
+  { value: 'inland', label: 'Inland' },
+];
+
 const createStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
@@ -333,6 +356,11 @@ export default function AddSeaTimeScreen() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType>('seagoing');
+  const [rankCapacity, setRankCapacity] = useState<RankCapacity | null>(null);
+  const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
+  const [watchkeepingHours, setWatchkeepingHours] = useState('');
+  const [showRankPicker, setShowRankPicker] = useState(false);
+  const [showTradeAreaPicker, setShowTradeAreaPicker] = useState(false);
   const [voyageFrom, setVoyageFrom] = useState('');
   const [voyageTo, setVoyageTo] = useState('');
   const [showVesselPicker, setShowVesselPicker] = useState(false);
@@ -567,6 +595,11 @@ export default function AddSeaTimeScreen() {
           end_latitude: toCoords.lat,
           end_longitude: toCoords.lon,
           service_type: backendServiceType,
+          rank_capacity: rankCapacity || null,
+          trade_area: tradeArea || null,
+          ...(backendServiceType === 'watchkeeping_service' && watchkeepingHours
+            ? { bridge_watch_hours: parseFloat(watchkeepingHours) }
+            : {}),
         }),
         signal: saveController.signal,
       });
@@ -778,6 +811,74 @@ export default function AddSeaTimeScreen() {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Rank / Capacity</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowRankPicker(true)}
+            >
+              <Text
+                style={
+                  rankCapacity
+                    ? styles.pickerButtonText
+                    : styles.pickerButtonPlaceholder
+                }
+              >
+                {rankCapacity
+                  ? RANK_OPTIONS.find(r => r.value === rankCapacity)?.label ?? rankCapacity
+                  : 'Select rank / capacity'}
+              </Text>
+              <IconSymbol
+                ios_icon_name="chevron.down"
+                android_material_icon_name="arrow-drop-down"
+                size={20}
+                color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Trade Area</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowTradeAreaPicker(true)}
+            >
+              <Text
+                style={
+                  tradeArea
+                    ? styles.pickerButtonText
+                    : styles.pickerButtonPlaceholder
+                }
+              >
+                {tradeArea
+                  ? TRADE_AREA_OPTIONS.find(t => t.value === tradeArea)?.label ?? tradeArea
+                  : 'Select trade area'}
+              </Text>
+              <IconSymbol
+                ios_icon_name="chevron.down"
+                android_material_icon_name="arrow-drop-down"
+                size={20}
+                color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {serviceType === 'watchkeeping' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Bridge Watch Hours</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter watch hours"
+                placeholderTextColor={
+                  isDark ? colors.textSecondary : colors.textSecondaryLight
+                }
+                value={watchkeepingHours}
+                onChangeText={setWatchkeepingHours}
+                keyboardType="numeric"
+              />
+            </View>
+          )}
+
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{vesselLabel}</Text>
             <TouchableOpacity
               style={styles.pickerButton}
@@ -983,6 +1084,98 @@ export default function AddSeaTimeScreen() {
                     <Text style={styles.emptyStateText}>{noVesselsSubtext}</Text>
                   </View>
                 )}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <Modal
+          visible={showRankPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowRankPicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowRankPicker(false)}
+          >
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Rank / Capacity</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowRankPicker(false)}
+                >
+                  <IconSymbol
+                    ios_icon_name="xmark"
+                    android_material_icon_name="close"
+                    size={24}
+                    color={isDark ? colors.text : colors.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalBody}>
+                {RANK_OPTIONS.map((option, index) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.vesselOption,
+                      index === RANK_OPTIONS.length - 1 && styles.vesselOptionLast,
+                    ]}
+                    onPress={() => {
+                      setRankCapacity(option.value);
+                      setShowRankPicker(false);
+                    }}
+                  >
+                    <Text style={styles.vesselOptionText}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <Modal
+          visible={showTradeAreaPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowTradeAreaPicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowTradeAreaPicker(false)}
+          >
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Trade Area</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowTradeAreaPicker(false)}
+                >
+                  <IconSymbol
+                    ios_icon_name="xmark"
+                    android_material_icon_name="close"
+                    size={24}
+                    color={isDark ? colors.text : colors.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalBody}>
+                {TRADE_AREA_OPTIONS.map((option, index) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.vesselOption,
+                      index === TRADE_AREA_OPTIONS.length - 1 && styles.vesselOptionLast,
+                    ]}
+                    onPress={() => {
+                      setTradeArea(option.value);
+                      setShowTradeAreaPicker(false);
+                    }}
+                  >
+                    <Text style={styles.vesselOptionText}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
               </ScrollView>
             </Pressable>
           </Pressable>

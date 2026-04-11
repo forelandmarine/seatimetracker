@@ -20,6 +20,15 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { log, error as logError } from '@/utils/log';
 
 type Department = 'Deck' | 'Engineering';
+type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+
+interface AuthorityOption {
+  value: MaritimeAuthority;
+  label: string;
+  subtitle: string;
+  icon_ios: string;
+  icon_android: string;
+}
 
 function createStyles(isDark: boolean) {
   return StyleSheet.create({
@@ -186,8 +195,16 @@ export default function SelectPathwayScreen() {
   const router = useRouter();
   const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
 
+  const [selectedAuthority, setSelectedAuthority] = useState<MaritimeAuthority | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const authorityOptions: AuthorityOption[] = [
+    { value: 'mca', label: 'MCA', subtitle: 'Maritime and Coastguard Agency', icon_ios: 'flag', icon_android: 'flag' },
+    { value: 'uscg', label: 'USCG', subtitle: 'United States Coast Guard', icon_ios: 'flag', icon_android: 'flag' },
+    { value: 'amsa', label: 'AMSA', subtitle: 'Australian Maritime Safety Authority', icon_ios: 'flag', icon_android: 'flag' },
+    { value: 'mnz', label: 'Maritime NZ', subtitle: 'Maritime New Zealand', icon_ios: 'flag', icon_android: 'flag' },
+  ];
 
   // CRITICAL: Check subscription status before allowing pathway selection
   // This ensures users cannot bypass the paywall by directly navigating to this screen
@@ -218,21 +235,25 @@ export default function SelectPathwayScreen() {
   };
 
   const handleContinue = async () => {
+    if (!selectedAuthority) {
+      Alert.alert('Selection Required', 'Please select your maritime authority to continue');
+      return;
+    }
     if (!selectedDepartment) {
-      Alert.alert('Selection Required', 'Please select your sea time pathway to continue');
+      Alert.alert('Selection Required', 'Please select your department to continue');
       return;
     }
 
-    log('User tapped Continue button with department:', selectedDepartment);
+    log('User tapped Continue button with authority:', selectedAuthority, 'department:', selectedDepartment);
     setSaving(true);
 
     try {
       // Convert to lowercase for backend
       const departmentLowercase = selectedDepartment.toLowerCase();
-      log('Sending department to backend:', departmentLowercase);
-      
-      await seaTimeApi.updateUserProfile({ department: departmentLowercase });
-      log('Department saved successfully:', departmentLowercase);
+      log('Sending department to backend:', departmentLowercase, 'authority:', selectedAuthority);
+
+      await seaTimeApi.updateUserProfile({ department: departmentLowercase, maritime_authority: selectedAuthority });
+      log('Department and authority saved successfully:', departmentLowercase, selectedAuthority);
       
       Alert.alert(
         'Pathway Selected',
@@ -290,10 +311,52 @@ export default function SelectPathwayScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Sea Time Pathway</Text>
           <Text style={styles.subtitle}>
-            Select the department that matches your role. This determines how your sea service is calculated according to MCA requirements.
+            Select your maritime authority and department. This determines how your sea service is calculated.
           </Text>
         </View>
 
+        <Text style={styles.sectionTitle}>Maritime Authority</Text>
+        <View style={{ marginBottom: 24 }}>
+          {authorityOptions.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.pathwayCard,
+                { padding: 16, marginBottom: 10 },
+                selectedAuthority === option.value && styles.pathwayCardSelected,
+              ]}
+              onPress={() => setSelectedAuthority(option.value)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.pathwayHeader}>
+                <View style={[styles.iconContainer, { width: 44, height: 44, borderRadius: 22, marginRight: 12 }]}>
+                  <IconSymbol
+                    ios_icon_name={option.icon_ios}
+                    android_material_icon_name={option.icon_android}
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.pathwayTitleContainer}>
+                  <Text style={[styles.pathwayTitle, { fontSize: 18, marginBottom: 2 }]}>{option.label}</Text>
+                  <Text style={styles.pathwaySubtitle}>{option.subtitle}</Text>
+                </View>
+                {selectedAuthority === option.value && (
+                  <View style={styles.checkmark}>
+                    <IconSymbol
+                      ios_icon_name="checkmark"
+                      android_material_icon_name="check"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>Department</Text>
         <TouchableOpacity
           style={[
             styles.pathwayCard,
@@ -352,15 +415,15 @@ export default function SelectPathwayScreen() {
           <Text style={styles.sectionTitle}>Suitable for:</Text>
           <View style={styles.requirementsList}>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>Deck Officers</Text>
             </View>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>OOW 3000 (Yachts) Certificate holders</Text>
             </View>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>Navigation and bridge watch roles</Text>
             </View>
           </View>
@@ -430,15 +493,15 @@ export default function SelectPathwayScreen() {
           <Text style={styles.sectionTitle}>Suitable for:</Text>
           <View style={styles.requirementsList}>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>Engineering Officers</Text>
             </View>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>SV Engineer OOW and Chief Engineer roles</Text>
             </View>
             <View style={styles.requirementItem}>
-              <Text style={styles.bullet}>✓</Text>
+              <Text style={styles.bullet}>-</Text>
               <Text style={styles.requirementText}>Engine room watch and UMS duties</Text>
             </View>
           </View>
@@ -446,19 +509,19 @@ export default function SelectPathwayScreen() {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            💡 Your pathway selection determines how your sea time is calculated for MCA testimonials. You can change this later in your profile settings if needed.
+            Your authority and pathway selection determines how your sea time is calculated for testimonials. You can change this later in your profile settings if needed.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.button, !selectedDepartment && styles.buttonDisabled]}
+          style={[styles.button, (!selectedDepartment || !selectedAuthority) && styles.buttonDisabled]}
           onPress={handleContinue}
-          disabled={!selectedDepartment || saving}
+          disabled={!selectedDepartment || !selectedAuthority || saving}
         >
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={[styles.buttonText, !selectedDepartment && styles.buttonTextDisabled]}>
+            <Text style={[styles.buttonText, (!selectedDepartment || !selectedAuthority) && styles.buttonTextDisabled]}>
               Continue
             </Text>
           )}

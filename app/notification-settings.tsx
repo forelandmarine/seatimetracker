@@ -333,7 +333,7 @@ export default function NotificationSettingsScreen() {
 
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
-                💡 You'll receive a daily notification at {schedule?.scheduled_time || '18:00'} to review any pending sea time entries.
+                You'll receive a daily notification at {schedule?.scheduled_time || '18:00'} to review any pending sea time entries.
                 {'\n\n'}
                 The notification will only be sent if you have pending entries that need confirmation.
                 {'\n\n'}

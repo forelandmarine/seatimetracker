@@ -596,7 +596,7 @@ export default function ReportsScreen() {
             {profile?.department && (
               <View style={styles.departmentBadge}>
                 <Text style={styles.departmentBadgeText}>
-                  {profile.department === 'deck' ? '⚓ Deck Department' : '⚙️ Engineering Department'}
+                  {profile.department === 'deck' ? 'Deck Department' : 'Engineering Department'}
                 </Text>
               </View>
             )}

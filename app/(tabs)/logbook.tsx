@@ -697,11 +697,11 @@ export default function LogbookScreen() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return '✓';
+        return 'Confirmed';
       case 'pending':
-        return '⏳';
+        return 'Pending';
       case 'rejected':
-        return '✗';
+        return 'Rejected';
       default:
         return '?';
     }
@@ -729,9 +729,9 @@ export default function LogbookScreen() {
 
   const formatSeaDay = (seaDays: number | null | undefined): string => {
     if (seaDays === 1) {
-      return '✓ Sea Day Qualified';
+      return 'Sea Day Qualified';
     } else if (seaDays === 0) {
-      return '✗ Not Qualified (< 4 hours)';
+      return 'Not Qualified (< 4 hours)';
     }
     return 'Pending Confirmation';
   };

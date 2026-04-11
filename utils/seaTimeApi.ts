@@ -199,6 +199,7 @@ export const updateUserProfile = async (updates: {
   nationality?: string | null;
   pya_membership_no?: string | null;
   department?: string | null;
+  maritime_authority?: string | null;
 }) => {
   const res = await authFetch('/api/profile', { method: 'PUT', body: updates });
   return res.json();
@@ -228,7 +229,9 @@ export const createVessel = async (
   gross_tonnes?: number,
   callsign?: string,
   engine_kilowatts?: number,
-  engine_type?: string
+  engine_type?: string,
+  imo_number?: string,
+  tonnage_itc?: number
 ) => {
   const body: any = { mmsi, vessel_name, is_active };
   if (flag) body.flag = flag;
@@ -239,6 +242,8 @@ export const createVessel = async (
   if (callsign) body.callsign = callsign;
   if (engine_kilowatts !== undefined) body.engine_kilowatts = engine_kilowatts;
   if (engine_type) body.engine_type = engine_type;
+  if (imo_number) body.imo_number = imo_number;
+  if (tonnage_itc !== undefined) body.tonnage_itc = tonnage_itc;
 
   try {
     const res = await authFetch('/api/vessels', { method: 'POST', body });
@@ -254,7 +259,7 @@ export const createVessel = async (
 
 export const updateVesselParticulars = async (
   vesselId: string,
-  updates: { vessel_name?: string; flag?: string; official_number?: string; type?: string; length_metres?: number; gross_tonnes?: number; callsign?: string; }
+  updates: { vessel_name?: string; imo_number?: string; flag?: string; official_number?: string; type?: string; length_metres?: number; gross_tonnes?: number; tonnage_itc?: number; callsign?: string; engine_kilowatts?: number; engine_type?: string; }
 ) => {
   const res = await authFetch(`/api/vessels/${vesselId}/particulars`, { method: 'PUT', body: updates });
   return normalizeVessel(await res.json());

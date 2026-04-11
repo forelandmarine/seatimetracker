@@ -26,8 +26,9 @@ import Constants from 'expo-constants';
 
 import { log, warn, error as logError } from '@/utils/log';
 
-// Read product IDs from app.json config — avoids hardcoding so they can
-// be changed in one place without touching component code.
+// Read product IDs and entitlement from app.json config — avoids hardcoding
+// so they can be changed in one place without touching component code.
+const PRO_ENTITLEMENT_ID = Constants.expoConfig?.extra?.revenueCatEntitlementId || 'pro';
 const PRODUCT_IDS_CONFIG = {
   monthly: Constants.expoConfig?.extra?.monthlyProductId || 'com.subscription.monthly',
   annual: Constants.expoConfig?.extra?.annualProductId || 'com.subscription.annual',
@@ -98,7 +99,7 @@ export default function PaywallScreen() {
         log('[Paywall] App returned to foreground after redeem — refreshing subscription status');
         try {
           const info = await Purchases.getCustomerInfo();
-          const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
+          const hasActiveEntitlement = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined || Object.keys(info.entitlements.active).length > 0;
           log('[Paywall] Post-redeem subscription check — active entitlements:', Object.keys(info.entitlements.active));
           if (hasActiveEntitlement) {
             log('[Paywall] Subscription active after redeem, navigating home');
@@ -221,7 +222,7 @@ export default function PaywallScreen() {
     try {
       const info = await restorePurchases();
       
-      const hasActiveEntitlement = info.entitlements.active['pro'] !== undefined || Object.keys(info.entitlements.active).length > 0;
+      const hasActiveEntitlement = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined || Object.keys(info.entitlements.active).length > 0;
       
       if (hasActiveEntitlement) {
         log('[Paywall] Purchases restored successfully');

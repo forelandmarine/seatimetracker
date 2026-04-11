@@ -124,7 +124,6 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />
-          <SettingsRow icon="location.fill" androidIcon="my-location" label={t('settings.manualGps')} onPress={() => router.push('/manual-tracking')} isDark={isDark} />
           <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isLast isDark={isDark} />
         </View>
 
@@ -135,7 +134,7 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{t('settings.growTheCrew')}</Text>
         <View style={styles.card}>
-          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referACaptain')} onPress={() => router.push('/refer')} isLast isDark={isDark} />
+          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referAFriend')} onPress={() => router.push('/refer')} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.support')}</Text>
@@ -159,9 +158,9 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.confirmModalContent}>
-            <Text style={styles.confirmModalTitle}>Sign Out</Text>
+            <Text style={styles.confirmModalTitle}>{t('signOut.title')}</Text>
             <Text style={styles.confirmModalMessage}>
-              Are you sure you want to sign out?
+              {t('signOut.confirmation')}
             </Text>
             <View style={styles.confirmModalButtons}>
               <TouchableOpacity
@@ -170,7 +169,7 @@ export default function SettingsScreen() {
                 disabled={signingOut}
               >
                 <Text style={[styles.confirmModalButtonText, { color: isDark ? colors.text : colors.textLight }]}>
-                  Cancel
+                  {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -182,7 +181,7 @@ export default function SettingsScreen() {
                   <ActivityIndicator color="#ffffff" size="small" />
                 ) : (
                   <Text style={[styles.confirmModalButtonText, { color: '#ffffff' }]}>
-                    Sign Out
+                    {t('signOut.title')}
                   </Text>
                 )}
               </TouchableOpacity>

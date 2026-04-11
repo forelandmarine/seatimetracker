@@ -6,12 +6,14 @@ export const vessels = pgTable('vessels', {
   user_id: text('user_id'), // User ownership - required for data sandboxing (nullable for backward compatibility with existing data)
   mmsi: text('mmsi').notNull(), // Removed global unique constraint to allow multiple users to track the same MMSI
   vessel_name: text('vessel_name').notNull(),
+  imo_number: text('imo_number'), // IMO number (required by most maritime authorities alongside MMSI)
   callsign: text('callsign'), // Radio callsign from AIS data
   flag: text('flag'),
   official_number: text('official_number'),
   type: text('type'), // 'Motor' or 'Sail'
   length_metres: decimal('length_metres', { precision: 8, scale: 2 }),
   gross_tonnes: decimal('gross_tonnes', { precision: 10, scale: 2 }),
+  tonnage_itc: decimal('tonnage_itc', { precision: 10, scale: 2 }), // International Tonnage Convention measurement (USCG)
   engine_kilowatts: decimal('engine_kilowatts', { precision: 10, scale: 2 }), // Engine power in kilowatts
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
   is_active: boolean('is_active').notNull().default(false),
@@ -46,6 +48,18 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   additional_watchkeeping_hours: decimal('additional_watchkeeping_hours', { precision: 10, scale: 2 }), // Additional watchkeeping at anchor/mooring (engineering only)
   is_stationary: boolean('is_stationary'), // Whether vessel is stationary (at anchor or moored) for this entry
   distance_nm: decimal('distance_nm', { precision: 10, scale: 2 }), // Distance traveled in nautical miles (calculated from start/end coordinates)
+  // Officer rank/capacity for this entry (e.g., Master, Chief Officer, OOW, Chief Engineer)
+  rank: text('rank'),
+  // Date joined / left vessel (distinct from voyage start/end - represents sign-on period)
+  date_joined: date('date_joined'),
+  date_left: date('date_left'),
+  // Trade area classification
+  trade_area: text('trade_area'), // 'unlimited', 'near_coastal', 'coastal', 'inland'
+  // Watchkeeping breakdown by watch type
+  bridge_watch_hours: decimal('bridge_watch_hours', { precision: 10, scale: 2 }), // Bridge/navigation watch hours (deck)
+  engine_watch_hours: decimal('engine_watch_hours', { precision: 10, scale: 2 }), // Engine room watch hours (engineering)
+  // Certificate held during this service period
+  certificate_id: uuid('certificate_id').references(() => certificates.id, { onDelete: 'set null' }),
   // Voyage detail fields (Sprint 6)
   from_port: text('from_port'),
   to_port: text('to_port'),
@@ -187,6 +201,21 @@ export const ais_query_timestampsRelations = relations(ais_query_timestamps, ({ 
     references: [vessels.id],
   }),
 }));
+
+// Leave periods — tracks time off during vessel service (required by MCA, USCG testimonial forms)
+export const leave_periods = pgTable('leave_periods', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  vessel_id: uuid('vessel_id').references(() => vessels.id, { onDelete: 'set null' }),
+  start_date: date('start_date').notNull(),
+  end_date: date('end_date').notNull(),
+  reason: text('reason'), // 'annual_leave', 'sick_leave', 'personal', 'training', 'other'
+  notes: text('notes'),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('leave_periods_user_id_idx').on(table.user_id),
+  index('leave_periods_vessel_id_idx').on(table.vessel_id),
+]);
 
 // Maritime certificates: STCW, ENG1, GMDSS, ECDIS, etc.
 // Tracks expiry dates so we can send reminders.

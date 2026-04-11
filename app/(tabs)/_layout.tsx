@@ -7,6 +7,7 @@ import { colors } from '@/styles/commonStyles';
 import { useColorScheme } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useTranslation } from 'react-i18next';
 
 import { log } from '@/utils/log';
 
@@ -16,6 +17,7 @@ export default function TabLayout() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed } = useSubscription();
+  const { t } = useTranslation();
 
   log('[TabLayout] Rendering tabs, user:', user?.email ?? 'unauthenticated');
 
@@ -73,7 +75,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(home)"
         options={{
-          title: 'Sea Time',
+          title: t('tabs.seaTime'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="sailboat.fill"
@@ -87,7 +89,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="logbook"
         options={{
-          title: 'Logbook',
+          title: t('tabs.logbook'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="book.closed.fill"
@@ -101,7 +103,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="confirmations"
         options={{
-          title: 'Review',
+          title: t('tabs.review'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="checkmark.circle.fill"
@@ -115,7 +117,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               ios_icon_name="person.crop.circle.fill"

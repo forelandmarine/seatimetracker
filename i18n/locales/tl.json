@@ -177,11 +177,77 @@
     "preferences": "MGA KAGUSTUHAN",
     "language": "Wika",
     "growTheCrew": "PALAKIHIN ANG TRIPULASYON",
-    "referACaptain": "Mag-refer ng kapitan",
+    "referAFriend": "Mag-refer ng kaibigan",
     "support": "SUPORTA",
     "aboutAndHelp": "Tungkol at tulong",
     "contactSupport": "Makipag-ugnayan sa suporta",
     "signOut": "Mag-sign out"
+  },
+  "navigation": {
+    "vesselDetails": "Mga Detalye ng Barko",
+    "editProfile": "I-edit ang Profile",
+    "aisCheckSchedule": "Iskedyul ng AIS Check",
+    "settings": "Mga Setting",
+    "certificates": "Mga Sertipiko",
+    "language": "Wika",
+    "mcaRequirements": "Mga Kinakailangan ng MCA",
+    "reports": "Mga Report",
+    "notificationSettings": "Mga Setting ng Notification",
+    "resetPassword": "I-reset ang Password",
+    "upgrade": "Mag-upgrade",
+    "verifyIdentity": "I-verify ang Pagkakakilanlan",
+    "referAFriend": "Mag-refer ng kaibigan",
+    "addSeaTime": "Magdagdag ng Sea Time",
+    "editSeaTime": "I-edit ang Sea Time",
+    "selectPathway": "Pumili ng Pathway",
+    "manualTracking": "Manu-manong GPS Tracking",
+    "about": "Tungkol at Tulong",
+    "signature": "Lagda"
+  },
+  "deleteAccount": {
+    "title": "Tanggalin ang Account",
+    "warning": "Hindi na maibabalik ang aksyong ito!",
+    "confirmation": "Sigurado ka bang gusto mong tanggalin ang iyong account? Permanenteng matatanggal ang:",
+    "itemVessels": "Lahat ng iyong barko",
+    "itemEntries": "Lahat ng sea time entry",
+    "itemReports": "Lahat ng report at data",
+    "deleting": "Tinatanggal...",
+    "failed": "Hindi Nagtagumpay ang Pagtanggal"
+  },
+  "refer": {
+    "title": "Mag-refer ng kaibigan",
+    "heading": "Mag-imbita ng kaibigan",
+    "subtitle": "Ibahagi ang SeaTime Tracker sa isang kaibigan. Kapag nag-sign up siya gamit ang iyong code, parehong makakakuha ng bonus.",
+    "yourCode": "Ang iyong referral code",
+    "friendsReferred": "{{count}} kaibigan ang na-refer",
+    "shareInvite": "Ibahagi ang imbitasyon",
+    "bonusDays": "{{count}} bonus na araw",
+    "bonusBody": "Awtomatikong ilalapat sa iyong susunod na pag-renew ng subscription.",
+    "gotCode": "May code ka mula sa kaibigan?",
+    "enterCode": "Ilagay ang referral code",
+    "redeemCode": "I-redeem ang code",
+    "codeRedeemed": "Na-redeem na ang code",
+    "codeRedeemedMessage": "Salamat! Parehong nakakuha ng 30 libreng araw. Ilalapat ang bonus sa iyong susunod na pag-renew ng subscription.",
+    "couldNotRedeem": "Hindi ma-redeem",
+    "unableToLoad": "Hindi ma-load ang impormasyon ng referral.",
+    "shareMessage": "Ginagamit ko ang SeaTime Tracker para awtomatikong i-log ang aking sea time sa pamamagitan ng AIS. Subukan mo nang libre gamit ang aking code: {{code}}"
+  },
+  "certificates": {
+    "title": "Mga Sertipiko",
+    "addCertificate": "Magdagdag ng sertipiko",
+    "editCertificate": "I-edit ang sertipiko",
+    "noCertificates": "Wala pang sertipiko",
+    "expired": "Nag-expire na",
+    "expiringSoon": "Malapit nang mag-expire",
+    "valid": "Balido"
+  },
+  "signOut": {
+    "title": "Mag-sign Out",
+    "confirmation": "Sigurado ka bang gusto mong mag-sign out?"
+  },
+  "department": {
+    "deck": "Departamento ng Deck",
+    "engineering": "Departamento ng Engineering"
   },
   "serviceTypes": {
     "actual_sea_service": "Aktwal na serbisyo sa dagat",
