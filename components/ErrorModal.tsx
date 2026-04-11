@@ -40,8 +40,18 @@ export default function ErrorModal({
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity style={[styles.button, styles.buttonPrimary, { width: '100%' }]} onPress={onDismiss}>
-              <Text style={styles.buttonText}>OK</Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: colors.primary,
+                borderRadius: 12,
+                paddingVertical: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+              }}
+              onPress={onDismiss}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>OK</Text>
             </TouchableOpacity>
           )}
         </View>
