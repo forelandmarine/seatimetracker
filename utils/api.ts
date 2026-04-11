@@ -322,6 +322,48 @@ export const authenticatedDelete = async <T = any>(endpoint: string, options?: R
 };
 
 /**
+ * Authenticated fetch that returns the raw Response object.
+ * Used by modules that need to inspect status codes or parse the body themselves
+ * (e.g. referrals, certificates).
+ */
+export const authFetch = async (
+  endpoint: string,
+  options?: { method?: string; body?: any; formData?: boolean },
+): Promise<Response> => {
+  if (!isBackendConfigured()) {
+    throw new Error("Backend URL not configured.");
+  }
+
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error("No authentication token found. Please sign in.");
+  }
+
+  const url = `${BACKEND_URL}${endpoint}`;
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${token}`,
+  };
+
+  let fetchBody: any = undefined;
+  if (options?.body !== undefined) {
+    if (options.formData) {
+      fetchBody = options.body;
+    } else {
+      headers["Content-Type"] = "application/json";
+      fetchBody = JSON.stringify(options.body);
+    }
+  }
+
+  const response = await fetch(url, {
+    method: options?.method || "GET",
+    headers,
+    body: fetchBody,
+  });
+
+  return response;
+};
+
+/**
  * Check if an error is a subscription-related error (403 with subscription codes)
  */
 export const isSubscriptionError = (error: any): boolean => {
