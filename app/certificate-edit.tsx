@@ -11,9 +11,11 @@ import {
   Alert,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
@@ -25,7 +27,7 @@ import {
   listCertificates,
   updateCertificate,
 } from '@/utils/certificatesApi';
-import { error as logError } from '@/utils/log';
+import { log, error as logError } from '@/utils/log';
 
 export default function CertificateEditScreen() {
   const router = useRouter();
@@ -48,6 +50,8 @@ export default function CertificateEditScreen() {
   const [issuedDate, setIssuedDate] = useState<Date | null>(null);
   const [expiryDate, setExpiryDate] = useState<Date | null>(null);
   const [notes, setNotes] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   useEffect(() => {
     if (!editId) return;
@@ -62,6 +66,7 @@ export default function CertificateEditScreen() {
           setIssuedDate(cert.issued_date ? new Date(cert.issued_date) : null);
           setExpiryDate(cert.expiry_date ? new Date(cert.expiry_date) : null);
           setNotes(cert.notes || '');
+          setImageUri(cert.image_url || null);
         }
       } catch (e) {
         logError('[CertEdit] Failed to load:', e);
@@ -85,6 +90,7 @@ export default function CertificateEditScreen() {
         issued_date: issuedDate ? issuedDate.toISOString().split('T')[0] : null,
         expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
         notes: notes || null,
+        image_url: imageUri || null,
       };
 
       if (editId) {
@@ -223,6 +229,29 @@ export default function CertificateEditScreen() {
           multiline
         />
 
+        <Text style={styles.label}>Certificate scan</Text>
+        {imageUri ? (
+          <View style={styles.imagePreviewContainer}>
+            <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
+            <View style={styles.imageActions}>
+              <TouchableOpacity style={styles.imageActionButton} onPress={() => setShowImagePicker(true)}>
+                <IconSymbol ios_icon_name="arrow.triangle.2.circlepath" android_material_icon_name="refresh" size={18} color={colors.primary} />
+                <Text style={styles.imageActionText}>Replace</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.imageActionButton} onPress={() => setImageUri(null)}>
+                <IconSymbol ios_icon_name="trash" android_material_icon_name="delete" size={18} color={colors.error} />
+                <Text style={[styles.imageActionText, { color: colors.error }]}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addImageButton} onPress={() => setShowImagePicker(true)}>
+            <IconSymbol ios_icon_name="camera.fill" android_material_icon_name="photo-camera" size={28} color={colors.primary} />
+            <Text style={styles.addImageText}>Add photo or scan</Text>
+            <Text style={styles.addImageHint}>Take a photo or choose from your library</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={[styles.saveButton, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>Save</Text>}
         </TouchableOpacity>
@@ -276,6 +305,80 @@ export default function CertificateEditScreen() {
           }}
         />
       )}
+
+      {/* Image picker modal */}
+      <Modal visible={showImagePicker} transparent animationType="fade" onRequestClose={() => setShowImagePicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { justifyContent: 'center' }]}>
+            <Text style={styles.modalTitle}>Add certificate scan</Text>
+
+            <TouchableOpacity
+              style={styles.imagePickerOption}
+              onPress={async () => {
+                setShowImagePicker(false);
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission needed', 'Camera access is required to take a photo.');
+                  return;
+                }
+                const result = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ['images'],
+                  quality: 0.7,
+                  base64: true,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const asset = result.assets[0];
+                  if (asset.base64) {
+                    setImageUri(`data:image/jpeg;base64,${asset.base64}`);
+                  } else {
+                    setImageUri(asset.uri);
+                  }
+                  log('[CertEdit] Photo captured');
+                }
+              }}
+            >
+              <IconSymbol ios_icon_name="camera.fill" android_material_icon_name="photo-camera" size={22} color={colors.primary} />
+              <Text style={styles.imagePickerOptionText}>Take photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.imagePickerOption}
+              onPress={async () => {
+                setShowImagePicker(false);
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission needed', 'Photo library access is required.');
+                  return;
+                }
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  quality: 0.7,
+                  base64: true,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const asset = result.assets[0];
+                  if (asset.base64) {
+                    setImageUri(`data:image/jpeg;base64,${asset.base64}`);
+                  } else {
+                    setImageUri(asset.uri);
+                  }
+                  log('[CertEdit] Image picked from library');
+                }
+              }}
+            >
+              <IconSymbol ios_icon_name="photo.fill" android_material_icon_name="photo-library" size={22} color={colors.primary} />
+              <Text style={styles.imagePickerOptionText}>Choose from library</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.imagePickerOption, { borderBottomWidth: 0, marginTop: 8 }]}
+              onPress={() => setShowImagePicker(false)}
+            >
+              <Text style={[styles.imagePickerOptionText, { color: colors.textSecondary, textAlign: 'center', flex: 1 }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -377,5 +480,66 @@ const createStyles = (isDark: boolean) =>
     typeOptionTextActive: {
       color: colors.primary,
       fontWeight: '600',
+    },
+    addImageButton: {
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
+      borderStyle: 'dashed',
+      padding: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    addImageText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    addImageHint: {
+      fontSize: 12,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+    },
+    imagePreviewContainer: {
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
+    },
+    imagePreview: {
+      width: '100%',
+      height: 250,
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+    },
+    imageActions: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: isDark ? colors.border : colors.borderLight,
+    },
+    imageActionButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+    },
+    imageActionText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    imagePickerOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.border : colors.borderLight,
+    },
+    imagePickerOptionText: {
+      fontSize: 16,
+      color: isDark ? colors.text : colors.textLight,
     },
   });
