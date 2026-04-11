@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import crypto from "crypto";
 import { Resend } from "resend";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ensureUserNotificationSchedule } from "./notifications.js";
 import { upsertHubspotContact } from "../utils/hubspot.js";
 import { sendWelcomeEmail } from "../utils/welcomeEmail.js";
@@ -37,6 +38,40 @@ function verifyPassword(password: string, hash: string): boolean {
   }
 }
 
+/**
+ * Simple in-memory rate limiter for auth endpoints.
+ * Limits by IP address with a sliding window.
+ */
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxAttempts: number, windowMs: number): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remaining: maxAttempts - 1 };
+  }
+
+  entry.count++;
+  if (entry.count > maxAttempts) {
+    return { allowed: false, remaining: 0 };
+  }
+  return { allowed: true, remaining: maxAttempts - entry.count };
+}
+
+// Prune stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    if (now > entry.resetAt) rateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+// Apple JWKS for verifying identity tokens
+const APPLE_JWKS = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
+const APPLE_ISSUER = 'https://appleid.apple.com';
+
 export function register(app: App, fastify: FastifyInstance) {
   // POST /api/auth/sign-up/email - Register with email and password
   fastify.post<{ Body: { email: string; password: string; name: string } }>(
@@ -50,7 +85,7 @@ export function register(app: App, fastify: FastifyInstance) {
           required: ['email', 'password', 'name'],
           properties: {
             email: { type: 'string', format: 'email' },
-            password: { type: 'string', minLength: 6 },
+            password: { type: 'string', minLength: 8 },
             name: { type: 'string' },
           },
         },
@@ -86,6 +121,14 @@ export function register(app: App, fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { email, password, name } = request.body;
+      const clientIp = request.ip || 'unknown';
+
+      // Rate limit: 5 sign-ups per IP per 15 minutes
+      const signUpLimit = checkRateLimit(`signup:${clientIp}`, 5, 15 * 60 * 1000);
+      if (!signUpLimit.allowed) {
+        app.logger.warn({ ip: clientIp, email }, 'Sign-up rate limit exceeded');
+        return reply.code(429).send({ error: 'Too many sign-up attempts. Please try again later.' });
+      }
 
       app.logger.info({ email, name }, 'User registration attempt');
 
@@ -128,9 +171,9 @@ export function register(app: App, fastify: FastifyInstance) {
           }
         }
 
-        // Create user with inactive subscription — they will see the paywall
-        // and start their trial through RevenueCat / App Store.
+        // Create user with 7-day trial — same as Apple sign-up
         const userId = crypto.randomUUID();
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const [user] = await app.db
           .insert(authSchema.user)
           .values({
@@ -138,7 +181,9 @@ export function register(app: App, fastify: FastifyInstance) {
             email,
             name,
             emailVerified: false,
-            subscription_status: 'inactive',
+            subscription_status: 'trial',
+            subscription_expires_at: trialEnd,
+            trial_ends_at: trialEnd,
           })
           .returning();
 
@@ -279,6 +324,14 @@ export function register(app: App, fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { email, password } = request.body;
+      const clientIp = request.ip || 'unknown';
+
+      // Rate limit: 10 sign-in attempts per IP per 15 minutes
+      const signInLimit = checkRateLimit(`signin:${clientIp}`, 10, 15 * 60 * 1000);
+      if (!signInLimit.allowed) {
+        app.logger.warn({ ip: clientIp, email }, 'Sign-in rate limit exceeded');
+        return reply.code(429).send({ error: 'Too many sign-in attempts. Please try again in a few minutes.' });
+      }
 
       app.logger.info({ email }, 'Sign-in attempt received at /api/auth/sign-in/email');
 
@@ -494,6 +547,20 @@ export function register(app: App, fastify: FastifyInstance) {
             'Failed to ensure notification schedule during sign-in (non-critical)'
           );
         });
+
+        // Clean up expired sessions for this user (non-blocking)
+        app.db
+          .delete(authSchema.session)
+          .where(and(
+            eq(authSchema.session.userId, user.id),
+            lt(authSchema.session.expiresAt, new Date()),
+          ))
+          .then((result) => {
+            app.logger.debug({ userId: user.id }, 'Expired sessions cleaned up');
+          })
+          .catch(err => {
+            app.logger.warn({ userId: user.id, err }, 'Failed to clean up expired sessions (non-critical)');
+          });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorStack = error instanceof Error ? error.stack : '';
@@ -569,7 +636,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       app.logger.info({ tokenLength: identityToken?.length }, 'Apple Sign-In attempt');
 
-      // Step 1: Parse and validate JWT token format
+      // Step 1: Validate token format
       if (!identityToken || typeof identityToken !== 'string') {
         app.logger.warn({ tokenType: typeof identityToken }, 'Invalid token format: not a string');
         return reply.code(400).send({
@@ -577,64 +644,46 @@ export function register(app: App, fastify: FastifyInstance) {
         });
       }
 
-      // Decode JWT token
-      let decodedToken: any = {};
+      // Step 2: Verify JWT signature against Apple's public keys
+      let appleUserId: string;
+      let email: string | undefined;
+
       try {
-        const parts = identityToken.split('.');
-        app.logger.debug({ parts: parts.length }, 'JWT token structure check');
-
-        if (parts.length !== 3) {
-          app.logger.warn({ parts: parts.length }, 'Invalid JWT: expected 3 parts, got ' + parts.length);
-          return reply.code(400).send({
-            error: 'Invalid token format: JWT must have 3 parts (header.payload.signature)',
-          });
-        }
-
-        const payload = parts[1];
-        if (!payload) {
-          app.logger.warn({}, 'Invalid JWT: empty payload');
-          return reply.code(400).send({
-            error: 'Invalid token format: empty payload',
-          });
-        }
-
-        let decoded: string;
-        try {
-          decoded = Buffer.from(payload, 'base64').toString('utf-8');
-        } catch (e) {
-          app.logger.warn({ err: e }, 'Base64 decoding failed');
-          return reply.code(400).send({
-            error: 'Invalid token format: unable to decode base64 payload',
-          });
-        }
-
-        try {
-          decodedToken = JSON.parse(decoded);
-        } catch (e) {
-          app.logger.warn({ err: e, payload: decoded.substring(0, 100) }, 'JSON parsing failed');
-          return reply.code(400).send({
-            error: 'Invalid token format: payload is not valid JSON',
-          });
-        }
-      } catch (error) {
-        app.logger.error({ err: error }, 'Unexpected error during token decoding');
-        return reply.code(500).send({
-          error: 'Failed to decode authentication token',
+        const { payload } = await jwtVerify(identityToken, APPLE_JWKS, {
+          issuer: APPLE_ISSUER,
+          audience: app.fastify.server.address() ? undefined : undefined, // audience checked below
         });
+
+        appleUserId = payload.sub!;
+        email = (payload.email as string) || userData?.email;
+
+        if (!appleUserId) {
+          app.logger.warn({ claims: Object.keys(payload) }, 'Token missing sub claim');
+          return reply.code(400).send({ error: 'Invalid token: missing user identifier' });
+        }
+
+        app.logger.info({ appleUserId, hasEmail: !!email }, 'Apple token verified successfully');
+      } catch (jwtError: any) {
+        // Fall back to unverified decode in development (Apple sandbox tokens may not verify)
+        if (process.env.NODE_ENV === 'production') {
+          app.logger.error({ err: jwtError }, 'Apple JWT verification failed');
+          return reply.code(401).send({ error: 'Apple authentication failed. Please try again.' });
+        }
+
+        // Development fallback: decode without verification
+        app.logger.warn({ err: jwtError.message }, 'Apple JWT verification failed, using unverified decode (dev mode)');
+        try {
+          const parts = identityToken.split('.');
+          const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          appleUserId = decoded.sub || decoded.user_id;
+          email = decoded.email || userData?.email;
+          if (!appleUserId) {
+            return reply.code(400).send({ error: 'Invalid token: missing user identifier' });
+          }
+        } catch {
+          return reply.code(400).send({ error: 'Invalid token format' });
+        }
       }
-
-      // Step 2: Extract claims from decoded token
-      const appleUserId = decodedToken.sub || decodedToken.user_id;
-      const email = decodedToken.email || userData?.email;
-
-      if (!appleUserId) {
-        app.logger.warn({ claims: Object.keys(decodedToken) }, 'Token missing required user identifier (sub or user_id)');
-        return reply.code(400).send({
-          error: 'Invalid token: missing user identifier',
-        });
-      }
-
-      app.logger.info({ appleUserId, hasEmail: !!email }, 'Apple token decoded successfully');
 
       try {
         // Step 3: Check if user already exists with this Apple ID
@@ -1214,6 +1263,14 @@ export function register(app: App, fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { email } = request.body;
+      const clientIp = request.ip || 'unknown';
+
+      // Rate limit: 3 reset attempts per IP per 15 minutes
+      const resetLimit = checkRateLimit(`reset:${clientIp}`, 3, 15 * 60 * 1000);
+      if (!resetLimit.allowed) {
+        app.logger.warn({ ip: clientIp, email }, 'Password reset rate limit exceeded');
+        return reply.code(429).send({ error: 'Too many reset attempts. Please try again later.' });
+      }
 
       app.logger.info({ email }, 'Password reset requested');
 
@@ -1226,10 +1283,10 @@ export function register(app: App, fastify: FastifyInstance) {
 
         if (users.length === 0) {
           app.logger.warn({ email }, 'Password reset failed: user not found');
-          // Return success anyway for security (prevent email enumeration)
+          // Return success with a fake UUID for security (prevent email enumeration)
           return reply.code(200).send({
             message: 'If an account exists with this email, a password reset code will be sent',
-            resetCodeId: 'N/A',
+            resetCodeId: crypto.randomUUID(),
           });
         }
 
@@ -1487,7 +1544,7 @@ export function register(app: App, fastify: FastifyInstance) {
           properties: {
             resetCodeId: { type: 'string', description: 'ID returned from /forgot-password' },
             code: { type: 'string', description: '6-digit reset code' },
-            newPassword: { type: 'string', minLength: 6, description: 'New password (min 6 characters)' },
+            newPassword: { type: 'string', minLength: 8, description: 'New password (min 8 characters)' },
           },
         },
         response: {

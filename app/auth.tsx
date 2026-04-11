@@ -132,7 +132,10 @@ export default function AuthScreen() {
       router.replace('/');
     } catch (error: any) {
       logError('[AuthScreen] Biometric sign in failed:', error);
-      showError(error.message || 'Biometric sign in failed');
+      // Clear stale biometric credentials on any error to prevent loops
+      await clearBiometricCredentials();
+      setHasSavedCredentials(false);
+      showError('Biometric sign in failed. Please sign in with your email and password to re-enable it.');
     } finally {
       setLoading(false);
     }
@@ -276,21 +279,25 @@ export default function AuthScreen() {
         return;
       }
       
-      let errorMsg = 'Unable to sign in with Apple';
-      
+      let errorMsg = 'Apple Sign In failed. Please try again.';
+      let isRetryable = true;
+
       if (error.code === 'ERR_INVALID_RESPONSE') {
         errorMsg = 'Invalid response from Apple. Please try again.';
-      } else if (error.message?.includes('Having trouble connecting')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
-      } else if (error.message?.includes('Network') || error.message?.includes('timed out')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
-      } else if (error.message?.includes('Server error')) {
-        errorMsg = 'Having trouble connecting. Please check your connection and try again.';
+      } else if (error.message?.includes('Apple authentication failed')) {
+        errorMsg = 'Apple Sign In could not be verified. Please try again.';
+      } else if (error.message?.includes('Having trouble connecting') || error.message?.includes('Network') || error.message?.includes('timed out')) {
+        errorMsg = 'Cannot reach the server. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Server error') || error.message?.includes('service error')) {
+        errorMsg = 'Our servers are temporarily unavailable. Please try again in a moment.';
+      } else if (error.message?.includes('Too many')) {
+        errorMsg = error.message;
+        isRetryable = false;
       } else if (error.message) {
         errorMsg = error.message;
       }
-      
-      showError(errorMsg, () => handleAppleSignIn());
+
+      showError(errorMsg, isRetryable ? () => handleAppleSignIn() : undefined);
     } finally {
       // Always reset loading state so the button is never permanently stuck
       setLoading(false);

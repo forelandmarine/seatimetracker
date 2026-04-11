@@ -393,7 +393,7 @@ export default function ForgotPasswordScreen() {
               <Text style={styles.label}>New Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Minimum 6 characters"
+                placeholder="Minimum 8 characters"
                 placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 value={newPassword}
                 onChangeText={setNewPassword}
