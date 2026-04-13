@@ -21,6 +21,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
@@ -34,6 +35,7 @@ export default function SignatureScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { t } = useTranslation();
   const styles = createStyles(isDark);
 
   const signatureRef = useRef<any>(null);
@@ -64,11 +66,11 @@ export default function SignatureScreen() {
       );
 
       Alert.alert('Signature saved', 'Your signature will appear on all PDF reports.', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (err) {
       logError('[Signature] Failed to save:', err);
-      Alert.alert('Error', 'Failed to save signature.');
+      Alert.alert(t('common.error'), 'Failed to save signature.');
     }
   };
 
@@ -109,7 +111,7 @@ export default function SignatureScreen() {
               printable signature line — print, sign, and scan as usual.
             </Text>
             <TouchableOpacity style={styles.dismissButton} onPress={() => router.back()}>
-              <Text style={styles.dismissButtonText}>OK</Text>
+              <Text style={styles.dismissButtonText}>{t('common.ok')}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>

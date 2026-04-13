@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -31,6 +32,7 @@ import ErrorModal from '@/components/ErrorModal';
 import { createAuthStyles } from '@/styles/authStyles';
 
 export default function AuthScreen() {
+  const { t } = useTranslation();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -337,7 +339,7 @@ export default function AuthScreen() {
             accessibilityLabel="Sign in with biometrics"
           >
             <Text style={styles.biometricButtonText}>
-              {Platform.OS === 'ios' ? 'Sign in with Face ID' : 'Sign in with Biometrics'}
+              {Platform.OS === 'ios' ? t('auth.signInWithFaceId') : 'Sign in with Biometrics'}
             </Text>
           </TouchableOpacity>
         )}
@@ -352,7 +354,7 @@ export default function AuthScreen() {
 
         {isSignUp && (
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Name (Optional)</Text>
+            <Text style={styles.label}>{t('auth.name')}</Text>
             <TextInput
               style={styles.input}
               placeholder="Your name"
@@ -365,10 +367,10 @@ export default function AuthScreen() {
         )}
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t('auth.email')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="your.email@example.com"
+            placeholder={t('auth.enterEmail')}
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={email}
             onChangeText={setEmail}
@@ -383,11 +385,11 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>{t('auth.password')}</Text>
           <TextInput
             ref={passwordRef}
             style={styles.input}
-            placeholder={isSignUp ? "Minimum 8 characters" : "Enter your password"}
+            placeholder={isSignUp ? t('auth.minPassword') : t('auth.enterPassword')}
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={password}
             onChangeText={setPassword}
@@ -411,8 +413,8 @@ export default function AuthScreen() {
             </View>
             <Text style={styles.checkboxLabel}>
               {biometricAvailable
-                ? `Remember me (enable ${Platform.OS === 'ios' ? 'Face ID' : 'biometric'} sign in)`
-                : 'Remember me (stay signed in)'}
+                ? t('auth.rememberMeBiometric')
+                : t('auth.rememberMe')}
             </Text>
           </TouchableOpacity>
         )}
@@ -426,7 +428,7 @@ export default function AuthScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.buttonText}>
-              {isSignUp ? 'Sign Up' : 'Sign In'}
+              {isSignUp ? t('auth.signUp') : t('auth.signIn')}
             </Text>
           )}
         </TouchableOpacity>
@@ -443,8 +445,8 @@ export default function AuthScreen() {
         >
           <Text style={styles.switchText}>
             {isSignUp
-              ? 'Already have an account? Sign In'
-              : "Don't have an account? Sign Up"}
+              ? t('auth.alreadyHaveAccount')
+              : t('auth.needAccount')}
           </Text>
         </TouchableOpacity>
 
@@ -453,7 +455,7 @@ export default function AuthScreen() {
             style={styles.forgotPasswordButton}
             onPress={() => router.push('/forgot-password')}
           >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
           </TouchableOpacity>
         )}
 
@@ -483,10 +485,10 @@ export default function AuthScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Your sea time data is private and secure.
+          {t('auth.secureData')}
         </Text>
         <Text style={styles.footerText}>
-          Compliant with iOS data handling regulations.
+          {t('auth.iosCompliant')}
         </Text>
       </View>
 

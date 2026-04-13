@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -125,6 +126,7 @@ export default function NotificationSettingsScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadSchedule();
@@ -138,7 +140,7 @@ export default function NotificationSettingsScreen() {
       setSchedule(data);
     } catch (error) {
       logError('[NotificationSettings] Failed to load schedule:', error);
-      Alert.alert('Error', 'Failed to load notification settings');
+      Alert.alert(t('common.error'), 'Failed to load notification settings');
     } finally {
       setLoading(false);
     }
@@ -166,7 +168,7 @@ export default function NotificationSettingsScreen() {
         const notificationId = await scheduleDailySeaTimeReviewNotification(scheduledTime);
         if (notificationId) {
           log('[NotificationSettings] Local notification scheduled:', notificationId);
-          Alert.alert('Success', `Daily notifications enabled at ${scheduledTime} local time`);
+          Alert.alert(t('common.success'), `Daily notifications enabled at ${scheduledTime} local time`);
         } else {
           warn('[NotificationSettings] Failed to schedule local notification');
           Alert.alert('Warning', 'Notifications enabled but local scheduling failed. Please check notification permissions.');
@@ -174,13 +176,13 @@ export default function NotificationSettingsScreen() {
       } else {
         log('[NotificationSettings] Canceling all local notifications');
         await cancelAllNotifications();
-        Alert.alert('Success', 'Daily notifications disabled');
+        Alert.alert(t('common.success'), 'Daily notifications disabled');
       }
     } catch (error) {
       logError('[NotificationSettings] Failed to toggle notifications:', error);
       // Roll back the switch to its previous state so UI matches server
       setSchedule(prev => prev ? { ...prev, is_active: !value } : null);
-      Alert.alert('Error', 'Failed to update notification settings. Please try again.');
+      Alert.alert(t('common.error'), 'Failed to update notification settings. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -228,10 +230,10 @@ export default function NotificationSettingsScreen() {
             }
           }
 
-          Alert.alert('Success', `Notification time updated to ${option.label}`);
+          Alert.alert(t('common.success'), `Notification time updated to ${option.label}`);
         } catch (error) {
           logError('[NotificationSettings] Failed to update time:', error);
-          Alert.alert('Error', 'Failed to update notification time');
+          Alert.alert(t('common.error'), 'Failed to update notification time');
         } finally {
           setUpdating(false);
         }
@@ -239,7 +241,7 @@ export default function NotificationSettingsScreen() {
     }));
 
     buttons.push({
-      text: 'Cancel',
+      text: t('common.cancel'),
       onPress: () => {},
     });
 
@@ -255,7 +257,7 @@ export default function NotificationSettingsScreen() {
     Alert.alert(
       'Change Timezone',
       'Your timezone is automatically detected from your device. To change it, update your device settings.',
-      [{ text: 'OK' }]
+      [{ text: t('common.ok') }]
     );
   };
 
@@ -266,7 +268,7 @@ export default function NotificationSettingsScreen() {
           options={{
             title: 'Notification Settings',
             headerShown: true,
-            headerBackTitle: 'Back',
+            headerBackTitle: t('common.back'),
             headerBackTitleVisible: true,
           }}
         />
@@ -286,7 +288,7 @@ export default function NotificationSettingsScreen() {
         options={{
           title: 'Notification Settings',
           headerShown: true,
-          headerBackTitle: 'Back',
+          headerBackTitle: t('common.back'),
           headerBackTitleVisible: true,
         }}
       />

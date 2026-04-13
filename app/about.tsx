@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import Constants from 'expo-constants';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -33,6 +34,7 @@ export default function AboutScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { t } = useTranslation();
   const styles = createStyles(isDark);
 
   const openLink = async (url: string) => {
@@ -160,7 +162,7 @@ export default function AboutScreen() {
               color={colors.primary}
               style={styles.menuItemIcon}
             />
-            <Text style={styles.menuItemText}>Contact Support</Text>
+            <Text style={styles.menuItemText}>{t('settings.contactSupport')}</Text>
             <IconSymbol
               ios_icon_name="chevron.right"
               android_material_icon_name="arrow-forward"

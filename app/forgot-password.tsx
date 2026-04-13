@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
 import { BACKEND_URL } from '@/utils/api';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -31,6 +32,7 @@ interface FeedbackModal {
 }
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [resetCode, setResetCode] = useState('');
@@ -51,7 +53,7 @@ export default function ForgotPasswordScreen() {
   const showError = (message: string) => {
     setFeedbackModal({
       visible: true,
-      title: 'Error',
+      title: t('common.error'),
       message,
       type: 'error',
     });
@@ -60,7 +62,7 @@ export default function ForgotPasswordScreen() {
   const showSuccess = (message: string, onConfirm?: () => void) => {
     setFeedbackModal({
       visible: true,
-      title: 'Success',
+      title: t('common.success'),
       message,
       type: 'success',
       onConfirm,
@@ -292,7 +294,7 @@ export default function ForgotPasswordScreen() {
         options={{
           title: 'Forgot Password',
           headerShown: true,
-          headerBackTitle: 'Back',
+          headerBackTitle: t('common.back'),
         }}
       />
       
@@ -319,10 +321,10 @@ export default function ForgotPasswordScreen() {
             </Text>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label}>{t('auth.email')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="your.email@example.com"
+                placeholder={t('auth.enterEmail')}
                 placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 value={email}
                 onChangeText={setEmail}
@@ -399,7 +401,7 @@ export default function ForgotPasswordScreen() {
               <Text style={styles.label}>New Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Minimum 8 characters"
+                placeholder={t('auth.minPassword')}
                 placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -447,7 +449,7 @@ export default function ForgotPasswordScreen() {
           }}
           disabled={loading}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -474,7 +476,7 @@ export default function ForgotPasswordScreen() {
               ]}
               onPress={closeFeedbackModal}
             >
-              <Text style={styles.modalButtonText}>OK</Text>
+              <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
             </TouchableOpacity>
           </View>
         </View>

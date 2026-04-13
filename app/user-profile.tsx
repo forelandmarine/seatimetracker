@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -376,6 +377,7 @@ export default function UserProfileScreen() {
   const styles = createStyles(isDark);
   const { user, signOut, triggerRefresh } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -432,7 +434,7 @@ export default function UserProfileScreen() {
       setProfile(profileData);
     } catch (error: any) {
       logError('Failed to load profile data:', error);
-      showFeedback('Error', error.message || 'Failed to load profile data', 'error');
+      showFeedback(t('common.error'), error.message || 'Failed to load profile data', 'error');
     } finally {
       setLoading(false);
     }
@@ -496,10 +498,10 @@ export default function UserProfileScreen() {
         triggerRefresh();
       }
       
-      showFeedback('Success', 'Profile updated successfully', 'success');
+      showFeedback(t('common.success'), 'Profile updated successfully', 'success');
     } catch (error: any) {
       logError('Failed to update profile:', error);
-      showFeedback('Error', error.message || 'Failed to update profile', 'error');
+      showFeedback(t('common.error'), error.message || 'Failed to update profile', 'error');
     }
   };
 
@@ -565,10 +567,10 @@ export default function UserProfileScreen() {
       const updatedProfile = await seaTimeApi.getUserProfile();
       setProfile(updatedProfile);
       
-      showFeedback('Success', 'Profile picture updated successfully', 'success');
+      showFeedback(t('common.success'), 'Profile picture updated successfully', 'success');
     } catch (error: any) {
       logError('Failed to upload profile image:', error);
-      showFeedback('Error', error.message || 'Failed to upload profile picture', 'error');
+      showFeedback(t('common.error'), error.message || 'Failed to upload profile picture', 'error');
     } finally {
       setUploading(false);
     }
@@ -577,8 +579,8 @@ export default function UserProfileScreen() {
   const handleSignOut = () => {
     log('User tapped Sign Out button');
     showConfirm(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      t('signOut.title'),
+      t('signOut.confirmation'),
       async () => {
         log('User confirmed sign out, executing sign out...');
         try {
@@ -587,7 +589,7 @@ export default function UserProfileScreen() {
           router.replace('/auth');
         } catch (error: any) {
           logError('Sign out failed with error:', error);
-          showFeedback('Error', error.message || 'Failed to sign out. Please try again.', 'error');
+          showFeedback(t('common.error'), error.message || 'Failed to sign out. Please try again.', 'error');
         }
       }
     );
@@ -620,7 +622,7 @@ export default function UserProfileScreen() {
     } catch (error: any) {
       logError('Account deletion error:', error);
       setShowDeleteAccountModal(false);
-      showFeedback('Deletion Failed', `Failed to delete account. ${error?.message || 'Please try again or contact support if the issue persists.'}`, 'error');
+      showFeedback(t('deleteAccount.failed'), `Failed to delete account. ${error?.message || 'Please try again or contact support if the issue persists.'}`, 'error');
     } finally {
       setDeletingAccount(false);
     }
@@ -654,7 +656,7 @@ export default function UserProfileScreen() {
           options={{
             title: 'User Profile',
             headerShown: true,
-            headerBackTitle: 'Back',
+            headerBackTitle: t('common.back'),
           }}
         />
         <View style={styles.container}>
@@ -673,7 +675,7 @@ export default function UserProfileScreen() {
         options={{
           title: 'User Profile',
           headerShown: true,
-          headerBackTitle: 'Back',
+          headerBackTitle: t('common.back'),
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -801,21 +803,21 @@ export default function UserProfileScreen() {
           style={[styles.button, styles.secondaryButton]} 
           onPress={handleEditProfile}
         >
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>Edit Profile</Text>
+          <Text style={[styles.buttonText, styles.secondaryButtonText]}>{t('settings.editProfile')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.button, styles.signOutButton]} 
           onPress={handleSignOut}
         >
-          <Text style={[styles.buttonText, styles.signOutButtonText]}>Sign Out</Text>
+          <Text style={[styles.buttonText, styles.signOutButtonText]}>{t('signOut.title')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.deleteAccountButton} 
           onPress={handleDeleteAccount}
         >
-          <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+          <Text style={styles.deleteAccountButtonText}>{t('deleteAccount.title')}</Text>
         </TouchableOpacity>
 
         {/* Image Picker Modal */}
@@ -860,7 +862,7 @@ export default function UserProfileScreen() {
                 onPress={() => setImagePickerModalVisible(false)}
               >
                 <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>
-                  Cancel
+                  {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -898,7 +900,7 @@ export default function UserProfileScreen() {
                   if (onConfirm) onConfirm();
                 }}
               >
-                <Text style={styles.modalButtonText}>OK</Text>
+                <Text style={styles.modalButtonText}>{t('common.ok')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -925,7 +927,7 @@ export default function UserProfileScreen() {
                     setConfirmModal(prev => ({ ...prev, visible: false }));
                   }}
                 >
-                  <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonPrimary, { backgroundColor: colors.error }]}
@@ -935,7 +937,7 @@ export default function UserProfileScreen() {
                     onConfirm();
                   }}
                 >
-                  <Text style={styles.modalButtonText}>Confirm</Text>
+                  <Text style={styles.modalButtonText}>{t('common.confirm')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -953,7 +955,7 @@ export default function UserProfileScreen() {
             style={styles.modalOverlay}
           >
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <Text style={styles.modalTitle}>{t('settings.editProfile')}</Text>
               
               <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={styles.modalScrollContent}>
                 <Text style={styles.profileLabel}>Full Name *</Text>
@@ -1087,15 +1089,15 @@ export default function UserProfileScreen() {
                   onPress={() => setEditModalVisible(false)}
                 >
                   <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>
-                    Cancel
+                    {t('common.cancel')}
                   </Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonPrimary]}
                   onPress={handleSaveProfile}
                 >
-                  <Text style={styles.modalButtonText}>Save</Text>
+                  <Text style={styles.modalButtonText}>{t('common.save')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1111,17 +1113,17 @@ export default function UserProfileScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { maxHeight: undefined }]}>
-              <Text style={styles.modalTitle}>Delete Account</Text>
+              <Text style={styles.modalTitle}>{t('deleteAccount.title')}</Text>
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>
-                  This action cannot be undone!
+                  {t('deleteAccount.warning')}
                 </Text>
               </View>
               <Text style={{ fontSize: 16, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginBottom: 24, textAlign: 'center', lineHeight: 24 }}>
-                Are you absolutely sure you want to delete your account? This will permanently delete:
-                {'\n\n'}• All your vessels
-                {'\n'}• All sea time entries
-                {'\n'}• All reports and data
+                {t('deleteAccount.confirmation')}
+                {'\n\n'}• {t('deleteAccount.itemVessels')}
+                {'\n'}• {t('deleteAccount.itemEntries')}
+                {'\n'}• {t('deleteAccount.itemReports')}
                 {'\n'}• Your profile information
                 {'\n\n'}This action is irreversible.
               </Text>
@@ -1132,7 +1134,7 @@ export default function UserProfileScreen() {
                   disabled={deletingAccount}
                 >
                   <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>
-                    Cancel
+                    {t('common.cancel')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1143,7 +1145,7 @@ export default function UserProfileScreen() {
                   {deletingAccount ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
-                    <Text style={styles.modalButtonText}>Delete</Text>
+                    <Text style={styles.modalButtonText}>{t('common.delete')}</Text>
                   )}
                 </TouchableOpacity>
               </View>
