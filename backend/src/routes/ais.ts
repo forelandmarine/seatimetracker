@@ -1209,6 +1209,25 @@ export function register(app: App, fastify: FastifyInstance) {
       `Stored AIS check: ${ais_check.id} for vessel ${vesselId} - is_moving: ${ais_data.is_moving}, speed: ${ais_data.speed_knots}, api_source: ${apiSource}`
     );
 
+    // Auto-fill blank vessel particulars from AIS data (non-blocking)
+    try {
+      const vesselRecord = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, vesselId));
+      if (vesselRecord.length > 0) {
+        const v = vesselRecord[0] as any;
+        const updates: Record<string, any> = {};
+        if (!v.callsign && ais_data.callsign) updates.callsign = ais_data.callsign;
+        if (!v.flag && ais_data.flag) updates.flag = ais_data.flag;
+        if (!v.type && ais_data.ship_type) updates.type = ais_data.ship_type;
+        if (!v.imo_number && ais_data.imo) updates.imo_number = String(ais_data.imo);
+        if (Object.keys(updates).length > 0) {
+          await app.db.update(schema.vessels).set(updates).where(eq(schema.vessels.id, vesselId));
+          app.logger.info({ vesselId, fields: Object.keys(updates) }, 'Auto-filled vessel particulars from AIS');
+        }
+      }
+    } catch (fillErr) {
+      app.logger.warn({ vesselId, err: fillErr }, 'Failed to auto-fill vessel particulars (non-critical)');
+    }
+
     // Update or insert the last query timestamp for rate limiting (per user per vessel)
     try {
       const existingTimestamp = await app.db

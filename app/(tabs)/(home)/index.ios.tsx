@@ -257,39 +257,26 @@ export default function SeaTimeScreen() {
     }
   };
 
+  const [addingVessel, setAddingVessel] = useState(false);
+
   const handleAddVessel = async () => {
-    // CRITICAL: Validate inputs to prevent crashes
     if (!newMMSI || !newMMSI.trim() || !newVesselName || !newVesselName.trim()) {
       Alert.alert('Error', 'Please enter both MMSI and vessel name');
       return;
     }
 
+    if (addingVessel) return; // Prevent double-tap
+    setAddingVessel(true);
+
+    const vesselNameTrimmed = newVesselName.trim();
+
     try {
-      const vesselNameTrimmed = newVesselName.trim();
-      log('[Home] User action: Creating new vessel:', { 
-        mmsi: newMMSI, 
-        name: vesselNameTrimmed,
-        callsign: newCallSign,
-        flag: newFlag,
-        official_number: newOfficialNumber,
-        vessel_type: newVesselType,
-        length_metres: newLengthMetres,
-        gross_tonnes: newGrossTonnes,
-        engine_kilowatts: newEngineKilowatts,
-        engine_type: newEngineType,
-        imo_number: newImoNumber
-      });
-      
-      // ALWAYS activate new vessels - this ensures they become the active tracked vessel
-      // with an attributed scheduled task created automatically by the backend
-      const shouldActivate = true;
-      
-      log('[Home] New vessel will be automatically activated and tracked');
-      
+      log('[Home] User action: Creating new vessel:', { mmsi: newMMSI, name: vesselNameTrimmed });
+
       const createdVessel = await seaTimeApi.createVessel(
-        newMMSI.trim(), 
-        vesselNameTrimmed, 
-        shouldActivate,
+        newMMSI.trim(),
+        vesselNameTrimmed,
+        true, // always activate
         newFlag.trim() || undefined,
         newOfficialNumber.trim() || undefined,
         newVesselType || undefined,
@@ -300,20 +287,10 @@ export default function SeaTimeScreen() {
         newEngineType.trim() || undefined,
         newImoNumber.trim() || undefined
       );
-      
+
       log('[Home] Vessel created successfully:', createdVessel.id);
-      
-      // Immediately capture the vessel's position by triggering an AIS check
-      log('[Home] Capturing initial position for new vessel...');
-      try {
-        await seaTimeApi.checkVesselAIS(createdVessel.id, true);
-        log('[Home] Initial position captured successfully');
-      } catch (aisError: any) {
-        logError('[Home] Failed to capture initial position:', aisError);
-        // Don't fail the whole operation if AIS check fails
-        // The scheduled task will pick it up on the next run
-      }
-      
+
+      // Close modal immediately and reset form
       setModalVisible(false);
       setNewMMSI('');
       setNewVesselName('');
@@ -326,14 +303,23 @@ export default function SeaTimeScreen() {
       setNewEngineKilowatts('');
       setNewEngineType('');
       setNewImoNumber('');
+
+      // Refresh data to show the new vessel
       await loadData();
-      
-      Alert.alert('Success', `${vesselNameTrimmed} has been added and is now being tracked`);
+
+      // Trigger initial AIS check in background (non-blocking)
+      seaTimeApi.checkVesselAIS(createdVessel.id, true).then(() => {
+        log('[Home] Initial AIS check completed, refreshing...');
+        loadData();
+      }).catch((aisError: any) => {
+        logError('[Home] Initial AIS check failed (non-critical):', aisError);
+      });
+
     } catch (error: any) {
       logError('[Home] Failed to add vessel:', error);
-      
-      // Display the error message from the API (which now includes user-friendly messages)
       Alert.alert('Error', error.message || 'Failed to add vessel. Please try again.');
+    } finally {
+      setAddingVessel(false);
     }
   };
 
@@ -999,8 +985,16 @@ export default function SeaTimeScreen() {
                   />
                 </View>
 
-                <TouchableOpacity style={styles.submitButton} onPress={handleAddVessel}>
-                  <Text style={styles.submitButtonText}>{t('home.addNewVessel')}</Text>
+                <TouchableOpacity
+                  style={[styles.submitButton, addingVessel && { opacity: 0.6 }]}
+                  onPress={handleAddVessel}
+                  disabled={addingVessel}
+                >
+                  {addingVessel ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>{t('home.addNewVessel')}</Text>
+                  )}
                 </TouchableOpacity>
               </ScrollView>
             </View>

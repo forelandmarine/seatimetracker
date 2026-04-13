@@ -16,6 +16,7 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -194,6 +195,9 @@ export default function SelectPathwayScreen() {
   const styles = createStyles(isDark);
   const router = useRouter();
   const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
+  const auth = useAuth();
+  const useAuthRef = React.useRef(auth);
+  useAuthRef.current = auth;
 
   const [selectedAuthority, setSelectedAuthority] = useState<MaritimeAuthority | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
@@ -254,20 +258,13 @@ export default function SelectPathwayScreen() {
 
       await seaTimeApi.updateUserProfile({ department: departmentLowercase, maritime_authority: selectedAuthority });
       log('Department and authority saved successfully:', departmentLowercase, selectedAuthority);
-      
-      Alert.alert(
-        'Pathway Selected',
-        `You have selected the ${selectedDepartment} pathway. You can change this later in your profile settings.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              log('Navigating to home screen');
-              router.replace('/(tabs)');
-            },
-          },
-        ]
-      );
+
+      // Refresh auth state so the tab layout guard sees the new department
+      const { checkAuth } = useAuthRef.current;
+      await checkAuth();
+
+      log('Navigating to home screen');
+      router.replace('/(tabs)');
     } catch (error: any) {
       logError('Failed to save department:', error);
       Alert.alert('Error', error.message || 'Failed to save your pathway selection. Please try again.');
