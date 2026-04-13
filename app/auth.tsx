@@ -116,13 +116,15 @@ export default function AuthScreen() {
       }
 
       // Resume session using the stored token.
-      const { setToken } = await import('@/utils/tokenStorage');
+      const { setToken, getToken } = await import('@/utils/tokenStorage');
       await setToken(storedToken, true);
       await checkAuth();
 
-      // If checkAuth succeeded the user is set; if token was expired we
-      // clear the stale biometric credentials so the user isn't stuck.
-      if (!user) {
+      // Verify the token was accepted by checking if it's still stored
+      // (checkAuth clears invalid tokens). Can't rely on `user` state here
+      // because React batches state updates.
+      const tokenAfterCheck = await getToken();
+      if (!tokenAfterCheck) {
         await clearBiometricCredentials();
         setHasSavedCredentials(false);
         showError('Your session has expired. Please sign in with email and password.');
@@ -370,7 +372,6 @@ export default function AuthScreen() {
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={email}
             onChangeText={setEmail}
-            onChange={(e) => setEmail(e.nativeEvent.text)}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
@@ -386,11 +387,10 @@ export default function AuthScreen() {
           <TextInput
             ref={passwordRef}
             style={styles.input}
-            placeholder={isSignUp ? "Minimum 6 characters" : "Enter your password"}
+            placeholder={isSignUp ? "Minimum 8 characters" : "Enter your password"}
             placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
             value={password}
             onChangeText={setPassword}
-            onChange={(e) => setPassword(e.nativeEvent.text)}
             secureTextEntry
             autoCapitalize="none"
             autoComplete={isSignUp ? 'password-new' : 'password'}

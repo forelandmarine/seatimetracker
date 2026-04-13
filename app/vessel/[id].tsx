@@ -111,7 +111,7 @@ export default function VesselDetailScreen() {
   // Update header title without remounting the native header (which breaks back gesture)
   useEffect(() => {
     if (vessel) {
-      navigation.setOptions({ title: vessel.vessel_name });
+      navigation.setOptions({ title: vessel.vessel_name, headerBackTitle: 'Back' });
     }
   }, [vessel, navigation]);
 
@@ -158,6 +158,26 @@ export default function VesselDetailScreen() {
             
             setAisData(transformedAisData);
             log('[VesselDetail] AIS data set successfully');
+
+            // Auto-fill blank vessel particulars from AIS data
+            const updates: Record<string, any> = {};
+            if (!currentVessel.callsign && aisLocation.callsign) updates.callsign = aisLocation.callsign;
+            if (!currentVessel.flag && aisLocation.flag) updates.flag = aisLocation.flag;
+            if (!currentVessel.type && aisLocation.vessel_type) updates.type = aisLocation.vessel_type;
+            if ((!currentVessel as any).imo_number && aisLocation.imo) updates.imo_number = aisLocation.imo;
+
+            if (Object.keys(updates).length > 0) {
+              log('[VesselDetail] Auto-filling vessel particulars from AIS:', Object.keys(updates));
+              try {
+                await seaTimeApi.updateVesselParticulars(currentVessel.id, updates);
+                // Reload vessel to pick up updated fields
+                const refreshed = await seaTimeApi.getVessels();
+                const updated = refreshed.find((v: Vessel) => v.id === vesselId);
+                if (updated) setVessel(updated);
+              } catch (fillErr) {
+                logError('[VesselDetail] Auto-fill failed (non-critical):', fillErr);
+              }
+            }
           } catch (aisError) {
             logError('[VesselDetail] Failed to fetch AIS location:', aisError);
             // Don't fail the whole load if AIS fetch fails

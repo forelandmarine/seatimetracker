@@ -111,7 +111,7 @@ export default function VesselDetailScreen() {
   // Update header title without remounting the native header (which breaks back gesture)
   useEffect(() => {
     if (vessel) {
-      navigation.setOptions({ title: vessel.vessel_name });
+      navigation.setOptions({ title: vessel.vessel_name, headerBackTitle: 'Back' });
     }
   }, [vessel, navigation]);
 

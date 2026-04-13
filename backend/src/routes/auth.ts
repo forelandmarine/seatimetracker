@@ -171,9 +171,9 @@ export function register(app: App, fastify: FastifyInstance) {
           }
         }
 
-        // Create user with 7-day trial — same as Apple sign-up
+        // Create user with inactive subscription — trial starts through
+        // RevenueCat / App Store on the paywall screen.
         const userId = crypto.randomUUID();
-        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const [user] = await app.db
           .insert(authSchema.user)
           .values({
@@ -181,9 +181,7 @@ export function register(app: App, fastify: FastifyInstance) {
             email,
             name,
             emailVerified: false,
-            subscription_status: 'trial',
-            subscription_expires_at: trialEnd,
-            trial_ends_at: trialEnd,
+            subscription_status: 'inactive',
           })
           .returning();
 
@@ -757,7 +755,6 @@ export function register(app: App, fastify: FastifyInstance) {
 
               app.logger.info({ appleUserId, email, name }, 'Creating new Apple user');
 
-              const appleTrialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
               const [newUser] = await app.db
                 .insert(authSchema.user)
                 .values({
@@ -765,9 +762,7 @@ export function register(app: App, fastify: FastifyInstance) {
                   email,
                   name,
                   emailVerified: true,
-                  subscription_status: 'trial',
-                  subscription_expires_at: appleTrialEnd,
-                  trial_ends_at: appleTrialEnd,
+                  subscription_status: 'inactive',
                 })
                 .returning();
 
@@ -806,7 +801,6 @@ export function register(app: App, fastify: FastifyInstance) {
 
             app.logger.info({ appleUserId, email: userEmail, name }, 'Creating new Apple user with generated email');
 
-            const appleGenTrialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
             const [newUser] = await app.db
               .insert(authSchema.user)
               .values({
@@ -814,9 +808,7 @@ export function register(app: App, fastify: FastifyInstance) {
                 email: userEmail,
                 name,
                 emailVerified: false,
-                subscription_status: 'trial',
-                subscription_expires_at: appleGenTrialEnd,
-                trial_ends_at: appleGenTrialEnd,
+                subscription_status: 'inactive',
               })
               .returning();
 

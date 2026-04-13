@@ -30,12 +30,6 @@ export default function TabLayout() {
       return;
     }
 
-    // If RevenueCat failed to load, fail open — do not redirect paying users to paywall
-    if (revenueCatFailed) {
-      log('[TabLayout] RevenueCat failed to load, failing open (allowing access)');
-      return;
-    }
-
     if (!isSubscribed) {
       log('[TabLayout] User not subscribed, redirecting to /paywall');
       router.replace('/paywall');
