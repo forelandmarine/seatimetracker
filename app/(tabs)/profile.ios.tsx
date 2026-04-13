@@ -1,5 +1,6 @@
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   View,
   Text,
@@ -788,6 +789,7 @@ export default function ProfileScreen() {
   log('User department:', userDepartment, '- Showing', filteredDefinitions.length, 'definitions');
 
   return (
+    <ErrorBoundary>
     <View style={styles.container}>
       <View style={styles.pageHeader}>
         <View style={styles.headerTitleContainer}>
@@ -1217,5 +1219,6 @@ export default function ProfileScreen() {
       </ScrollView>
 
     </View>
+    </ErrorBoundary>
   );
 }

@@ -1281,6 +1281,7 @@ export function register(app: App, fastify: FastifyInstance) {
       .where(
         and(
           eq(schema.sea_time_entries.vessel_id, vesselId),
+          eq(schema.sea_time_entries.user_id, userId),
           isNotNull(schema.sea_time_entries.start_time),
           eq(schema.sea_time_entries.status, 'pending')
         )

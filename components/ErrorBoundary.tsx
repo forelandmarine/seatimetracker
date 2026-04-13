@@ -80,11 +80,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleReset = () => {
     log('[ErrorBoundary] Resetting error boundary');
-    this.setState({
+    this.setState((prev: any) => ({
       hasError: false,
       error: null,
       errorInfo: null,
-    });
+      resetKey: (prev.resetKey || 0) + 1,
+    }));
   };
 
   render() {
@@ -160,7 +161,8 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    // Use resetKey to force remount children on reset (clears corrupt state)
+    return <React.Fragment key={this.state.resetKey || 0}>{this.props.children}</React.Fragment>;
   }
 }
 

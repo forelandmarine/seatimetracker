@@ -692,37 +692,37 @@ export function register(app: App, fastify: FastifyInstance) {
       `Activating vessel ${id} for user ${userId}, deactivating all other vessels`
     );
 
-    // Deactivate all other vessels for this user
-    await app.db
-      .update(schema.vessels)
-      .set({ is_active: false })
-      .where(eq(schema.vessels.user_id, userId));
+    // Use a transaction to ensure atomic activation (prevents two active vessels)
+    const activated = await app.db.transaction(async (tx) => {
+      // Deactivate all vessels for this user
+      await tx
+        .update(schema.vessels)
+        .set({ is_active: false })
+        .where(eq(schema.vessels.user_id, userId));
 
-    // Delete scheduled tasks for all other vessels
-    if (otherVesselIds.length > 0) {
-      await app.db
-        .delete(schema.scheduled_tasks)
-        .where(inArray(schema.scheduled_tasks.vessel_id, otherVesselIds));
-    }
+      // Delete scheduled tasks for deactivated vessels
+      if (otherVesselIds.length > 0) {
+        await tx
+          .delete(schema.scheduled_tasks)
+          .where(inArray(schema.scheduled_tasks.vessel_id, otherVesselIds));
+      }
+
+      // Activate the specified vessel
+      const [result] = await tx
+        .update(schema.vessels)
+        .set({ is_active: true })
+        .where(eq(schema.vessels.id, id))
+        .returning();
+
+      return result;
+    });
 
     app.logger.info(
-      { userId, deactivatedCount: otherVesselIds.length },
-      `Deactivated ${otherVesselIds.length} other vessels for user ${userId}`
+      { userId, vesselId: activated.id, vesselName: activated.vessel_name, deactivatedCount: otherVesselIds.length },
+      'Vessel activated successfully (transactional)'
     );
 
-    // Activate the specified vessel
-    const [activated] = await app.db
-      .update(schema.vessels)
-      .set({ is_active: true })
-      .where(eq(schema.vessels.id, id))
-      .returning();
-
-    app.logger.info(
-      { userId, vesselId: activated.id, vesselName: activated.vessel_name, is_active: true },
-      'Vessel activated successfully'
-    );
-
-    // Create scheduled task for activated vessel
+    // Create scheduled task for activated vessel (outside transaction - non-critical)
     await ensureScheduledTask(app, activated.id, userId);
 
     // Fetch initial AIS position immediately so user sees data right after activation

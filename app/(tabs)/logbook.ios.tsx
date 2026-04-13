@@ -957,7 +957,7 @@ export default function LogbookScreen() {
               {getEntriesForDate(selectedDate).length > 0 ? (
                 <React.Fragment>
                   {getEntriesForDate(selectedDate).map((entry) => {
-                    const daysDisplay = formatDays(entry.duration_hours);
+                    const daysDisplay = entry.sea_days != null ? `${entry.sea_days} ${entry.sea_days === 1 ? 'day' : 'days'}` : formatDays(entry.duration_hours);
                     
                     return (
                       <TouchableOpacity
@@ -1133,7 +1133,7 @@ export default function LogbookScreen() {
                         </View>
                         
                         {group.entries.map((entry) => {
-                          const entryDaysDisplay = formatDays(entry.duration_hours);
+                          const entryDaysDisplay = entry.sea_days != null ? `${entry.sea_days} ${entry.sea_days === 1 ? 'day' : 'days'}` : formatDays(entry.duration_hours);
                           
                           return (
                             <TouchableOpacity
@@ -1200,7 +1200,7 @@ export default function LogbookScreen() {
                 <React.Fragment>
                   <Text style={styles.sectionTitle}>Pending Review</Text>
                   {pendingEntries.map((entry) => {
-                    const pendingDaysDisplay = formatDays(entry.duration_hours);
+                    const pendingDaysDisplay = entry.sea_days != null ? `${entry.sea_days} ${entry.sea_days === 1 ? 'day' : 'days'}` : formatDays(entry.duration_hours);
                     
                     return (
                       <TouchableOpacity

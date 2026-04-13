@@ -673,6 +673,12 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(403).send({ error: 'Not authorized to confirm this entry' });
     }
 
+    // Guard: only pending entries can be confirmed
+    if (current_entry.status !== 'pending') {
+      app.logger.warn({ userId, entryId: id, status: current_entry.status }, 'Entry already processed');
+      return reply.code(409).send({ error: `Entry is already ${current_entry.status}` });
+    }
+
     // Set end_time to now and calculate sea_days based on duration
     const end_time = new Date();
 

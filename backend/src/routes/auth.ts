@@ -32,7 +32,7 @@ function verifyPassword(password: string, hash: string): boolean {
     }
     const iterations = parseInt(iterationsStr);
     const computedHash = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha256').toString('hex');
-    return computedHash === storedHash;
+    return crypto.timingSafeEqual(Buffer.from(computedHash, 'hex'), Buffer.from(storedHash, 'hex'));
   } catch (error) {
     return false;
   }
@@ -649,7 +649,7 @@ export function register(app: App, fastify: FastifyInstance) {
       try {
         const { payload } = await jwtVerify(identityToken, APPLE_JWKS, {
           issuer: APPLE_ISSUER,
-          audience: app.fastify.server.address() ? undefined : undefined, // audience checked below
+          audience: 'com.forelandmarine.seatimetracker',
         });
 
         appleUserId = payload.sub!;
@@ -1065,7 +1065,10 @@ export function register(app: App, fastify: FastifyInstance) {
     }
   );
 
-  // POST /api/auth/test-user - Create test user (no authentication required)
+  // POST /api/auth/test-user - Create test user (development only)
+  if (process.env.NODE_ENV === 'production') {
+    app.logger.info('Skipping test-user endpoint registration in production');
+  } else {
   fastify.post(
     '/api/auth/test-user',
     {
@@ -1224,6 +1227,7 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
   );
+  } // end test-user dev guard
 
   // POST /api/auth/forgot-password - Request password reset code
   fastify.post<{ Body: { email: string } }>(
@@ -1285,7 +1289,7 @@ export function register(app: App, fastify: FastifyInstance) {
         const user = users[0];
 
         // Generate reset code (6-digit numeric code)
-        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const resetCode = crypto.randomInt(100000, 1000000).toString();
 
         // Create verification entry with 15-minute expiry
         const resetId = crypto.randomUUID();
@@ -1466,6 +1470,12 @@ export function register(app: App, fastify: FastifyInstance) {
     async (request, reply) => {
       const { resetCodeId, code } = request.body;
 
+      // Rate limit: 5 verify attempts per resetCodeId per 15 minutes
+      const verifyLimit = checkRateLimit(`verify:${resetCodeId}`, 5, 15 * 60 * 1000);
+      if (!verifyLimit.allowed) {
+        return reply.code(429).send({ error: 'Too many verification attempts. Please request a new code.' });
+      }
+
       app.logger.info({ resetCodeId }, 'Password reset code verification attempted');
 
       try {
@@ -1632,13 +1642,16 @@ export function register(app: App, fastify: FastifyInstance) {
         const passwordHash = hashPassword(newPassword);
 
         if (accounts.length > 0) {
-          // Update existing password
+          // Update existing credential account password only (not Apple/social accounts)
           await app.db
             .update(authSchema.account)
             .set({
               password: passwordHash,
             })
-            .where(eq(authSchema.account.userId, userId));
+            .where(and(
+              eq(authSchema.account.userId, userId),
+              eq(authSchema.account.providerId, 'credential'),
+            ));
 
           app.logger.info({ userId, email: user.email }, 'Password updated');
         } else {
@@ -1662,7 +1675,12 @@ export function register(app: App, fastify: FastifyInstance) {
           .delete(authSchema.verification)
           .where(eq(authSchema.verification.id, resetCodeId));
 
-        app.logger.info({ userId, email: user.email, resetCodeId }, 'Password reset successful, reset code invalidated');
+        // Revoke all existing sessions - forces re-login on all devices
+        await app.db
+          .delete(authSchema.session)
+          .where(eq(authSchema.session.userId, userId));
+
+        app.logger.info({ userId, email: user.email, resetCodeId }, 'Password reset successful, all sessions revoked');
 
         return reply.code(200).send({
           message: 'Password reset successfully',
