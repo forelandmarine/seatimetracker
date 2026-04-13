@@ -103,7 +103,7 @@ export default function PaywallScreen() {
           log('[Paywall] Post-redeem subscription check — active entitlements:', Object.keys(info.entitlements.active));
           if (hasActiveEntitlement) {
             log('[Paywall] Subscription active after redeem, navigating home');
-            router.replace('/(tabs)/(home)');
+            router.replace('/');
           }
         } catch (err) {
           logError('[Paywall] Failed to refresh subscription after redeem:', err);
@@ -138,7 +138,7 @@ export default function PaywallScreen() {
   useEffect(() => {
     if (!isLoading && isSubscribed) {
       log('[Paywall] User is subscribed, redirecting to home');
-      router.replace('/(tabs)/(home)');
+      router.replace('/');
     }
   }, [isSubscribed, isLoading]);
 
@@ -186,7 +186,7 @@ export default function PaywallScreen() {
           [
             {
               text: 'Continue',
-              onPress: () => router.replace('/(tabs)/(home)'),
+              onPress: () => router.replace('/'),
             },
           ]
         );
@@ -232,7 +232,7 @@ export default function PaywallScreen() {
           [
             {
               text: 'Continue',
-              onPress: () => router.replace('/(tabs)/(home)'),
+              onPress: () => router.replace('/'),
             },
           ]
         );

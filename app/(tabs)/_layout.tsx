@@ -33,8 +33,15 @@ export default function TabLayout() {
     if (!isSubscribed) {
       log('[TabLayout] User not subscribed, redirecting to /paywall');
       router.replace('/paywall');
+      return;
     }
-  }, [user, isSubscribed, authLoading, subscriptionLoading, revenueCatFailed, router]);
+
+    const hasDepartment = Boolean((user as any)?.department || (user as any)?.hasDepartment);
+    if (!hasDepartment) {
+      log('[TabLayout] No department selected, redirecting to /select-pathway');
+      router.replace('/select-pathway');
+    }
+  }, [user, isSubscribed, authLoading, subscriptionLoading, router]);
 
   // Show loading spinner while auth/subscription state is being determined
   // to prevent a flash of authenticated content before guards can redirect
