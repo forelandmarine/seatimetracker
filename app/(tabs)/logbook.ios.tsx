@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -856,6 +857,7 @@ export default function LogbookScreen() {
   const totalDays = calculateTotalDays();
 
   return (
+    <ErrorBoundary>
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
@@ -1259,5 +1261,6 @@ export default function LogbookScreen() {
 
 
     </View>
+    </ErrorBoundary>
   );
 }

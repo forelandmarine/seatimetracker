@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lte, gte } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
@@ -91,6 +91,26 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({
         error: `Invalid reason. Must be one of: ${VALID_REASONS.join(", ")}`,
       });
+    }
+
+    // Check for overlapping leave periods
+    const overlapping = await app.db.select({ id: schema.leave_periods.id }).from(schema.leave_periods)
+      .where(and(
+        eq(schema.leave_periods.user_id, userId),
+        lte(schema.leave_periods.start_date, body.end_date),
+        gte(schema.leave_periods.end_date, body.start_date),
+      ));
+    if (overlapping.length > 0) {
+      return reply.code(409).send({ error: 'This leave period overlaps with an existing one' });
+    }
+
+    // Validate vessel ownership if provided
+    if (body.vessel_id) {
+      const vessels = await app.db.select({ id: schema.vessels.id }).from(schema.vessels)
+        .where(and(eq(schema.vessels.id, body.vessel_id), eq(schema.vessels.user_id, userId)));
+      if (vessels.length === 0) {
+        return reply.code(403).send({ error: 'Vessel does not belong to this user' });
+      }
     }
 
     const [created] = await app.db

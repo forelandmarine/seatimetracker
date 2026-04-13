@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { scheduleSeaTimeNotification } from '@/utils/notifications';
 import { colors } from '@/styles/commonStyles';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -421,6 +422,7 @@ export default function ConfirmationsScreen() {
   }
 
   return (
+    <ErrorBoundary>
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
@@ -685,6 +687,7 @@ export default function ConfirmationsScreen() {
         </View>
       </Modal>
     </View>
+    </ErrorBoundary>
   );
 }
 

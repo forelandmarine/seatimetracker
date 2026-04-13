@@ -13,6 +13,14 @@ import {
   VALID_SERVICE_TYPES,
 } from "../utils/seaTime.js";
 
+// Validate certificate belongs to the authenticated user
+async function validateCertificateOwnership(app: App, certificateId: string | null | undefined, userId: string): Promise<boolean> {
+  if (!certificateId) return true;
+  const certs = await app.db.select({ id: schema.certificates.id }).from(schema.certificates)
+    .where(and(eq(schema.certificates.id, certificateId), eq(schema.certificates.user_id, userId)));
+  return certs.length > 0;
+}
+
 const VALID_TRADE_AREAS = ['unlimited', 'near_coastal', 'coastal', 'inland'] as const;
 const VALID_RANKS = ['master', 'chief_officer', 'second_officer', 'third_officer', 'oow', 'chief_engineer', 'second_engineer', 'eto', 'cadet', 'rating'] as const;
 
@@ -25,21 +33,27 @@ function isValidRank(value: any): boolean {
 }
 
 // Helper function to check if another entry exists for the same calendar day
+// Uses SQL date range filter instead of loading all entries (performance fix)
 async function checkEntryExistsForDay(app: App, userId: string, calendarDay: string, excludeEntryId?: string): Promise<boolean> {
-  // Get all entries for the user for this calendar day
-  const entries = await app.db.query.sea_time_entries.findMany({
-    where: eq(schema.sea_time_entries.user_id, userId),
-  });
+  const dayStart = new Date(`${calendarDay}T00:00:00.000Z`);
+  const dayEnd = new Date(`${calendarDay}T23:59:59.999Z`);
 
-  // Filter by calendar day
-  for (const entry of entries) {
-    const entryDay = getCalendarDay(new Date(entry.start_time));
-    if (entryDay === calendarDay && (!excludeEntryId || entry.id !== excludeEntryId)) {
-      return true;
-    }
+  const conditions = [
+    eq(schema.sea_time_entries.user_id, userId),
+    gte(schema.sea_time_entries.start_time, dayStart),
+    lte(schema.sea_time_entries.start_time, dayEnd),
+  ];
+
+  const entries = await app.db
+    .select({ id: schema.sea_time_entries.id })
+    .from(schema.sea_time_entries)
+    .where(and(...conditions))
+    .limit(2);
+
+  if (excludeEntryId) {
+    return entries.some(e => e.id !== excludeEntryId);
   }
-
-  return false;
+  return entries.length > 0;
 }
 
 // Helper function to transform vessel object for API response
@@ -569,9 +583,8 @@ export function register(app: App, fastify: FastifyInstance) {
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
         gte(schema.sea_time_entries.created_at, cutoffTime),
-        // Filter for complete, MCA-compliant entries only
+        // Filter for complete entries (mca_compliant is set by AIS handler, duration_hours may be null)
         isNotNull(schema.sea_time_entries.end_time),
-        gte(schema.sea_time_entries.duration_hours, '4.0'),
         isNotNull(schema.sea_time_entries.start_latitude),
         isNotNull(schema.sea_time_entries.start_longitude),
         isNotNull(schema.sea_time_entries.end_latitude),
@@ -714,7 +727,12 @@ export function register(app: App, fastify: FastifyInstance) {
     if (trade_area !== undefined) confirmUpdateData.trade_area = trade_area;
     if (bridge_watch_hours !== undefined) confirmUpdateData.bridge_watch_hours = bridge_watch_hours !== null ? String(bridge_watch_hours) : null;
     if (engine_watch_hours !== undefined) confirmUpdateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
-    if (certificate_id !== undefined) confirmUpdateData.certificate_id = certificate_id;
+    if (certificate_id !== undefined) {
+      if (certificate_id && !(await validateCertificateOwnership(app, certificate_id, userId))) {
+        return reply.code(403).send({ error: 'Certificate does not belong to this user' });
+      }
+      confirmUpdateData.certificate_id = certificate_id;
+    }
 
     const [updated] = await app.db
       .update(schema.sea_time_entries)
@@ -976,6 +994,9 @@ export function register(app: App, fastify: FastifyInstance) {
       updateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
     }
     if (certificate_id !== undefined) {
+      if (certificate_id && !(await validateCertificateOwnership(app, certificate_id, userId))) {
+        return reply.code(403).send({ error: 'Certificate does not belong to this user' });
+      }
       updateData.certificate_id = certificate_id;
     }
 

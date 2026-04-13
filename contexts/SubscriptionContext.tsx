@@ -109,9 +109,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return backendSubscriptionActive;
     }
 
-    // Priority 4: Both RevenueCat and backend are unreachable — fail open
-    // so verified paying users are not locked out during an outage.
-    return true;
+    // Priority 4: Both RevenueCat and backend are unreachable.
+    // Only fail open if user was previously confirmed as subscribed (revenueCatSubscribed
+    // retains its last known value). For new users who have never subscribed,
+    // revenueCatSubscribed defaults to false, so they correctly see the paywall.
+    return revenueCatSubscribed;
   }, [user?.testSubscriptionActive, revenueCatSubscribed, initializationFailed, backendSubscriptionActive]);
 
   // FIX 1 (continued): Reset hasPausedTracking whenever subscription is confirmed active
