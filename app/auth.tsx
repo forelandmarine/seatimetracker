@@ -162,7 +162,7 @@ export default function AuthScreen() {
       return;
     }
 
-    if (isSignUp && password.length < 8) {
+    if (password.length < 8) {
       showError('Password must be at least 8 characters');
       return;
     }
@@ -464,17 +464,19 @@ export default function AuthScreen() {
         </View>
 
         {Platform.OS === 'ios' && (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={
-              isDark
-                ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-            }
-            cornerRadius={12}
-            style={styles.appleButton}
-            onPress={handleAppleSignIn}
-          />
+          <View pointerEvents={loading ? 'none' : 'auto'} style={loading ? { opacity: 0.5 } : undefined}>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={
+                isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
+              cornerRadius={12}
+              style={styles.appleButton}
+              onPress={handleAppleSignIn}
+            />
+          </View>
         )}
 
       </View>

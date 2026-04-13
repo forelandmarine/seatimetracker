@@ -181,7 +181,8 @@ function RootLayoutContent() {
           name="select-pathway"
           options={{
             title: t('navigation.selectPathway'),
-            headerBackTitle: t('common.back'),
+            headerBackVisible: false,
+            gestureEnabled: false,
           }}
         />
         <Stack.Screen

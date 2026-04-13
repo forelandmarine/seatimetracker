@@ -41,9 +41,9 @@ export default function TabLayout() {
     }
   }, [user, isSubscribed, authLoading, subscriptionLoading, router]);
 
-  // Show loading spinner while auth/subscription state is being determined
-  // to prevent a flash of authenticated content before guards can redirect
-  if (authLoading || subscriptionLoading) {
+  // Synchronous render guard: show spinner if user doesn't meet all criteria
+  const hasDepartmentForRender = Boolean((user as any)?.department || (user as any)?.hasDepartment);
+  if (authLoading || subscriptionLoading || !user || !isSubscribed || !hasDepartmentForRender) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000000' : '#FFFFFF' }}>
         <ActivityIndicator size="large" color={colors.primary} />

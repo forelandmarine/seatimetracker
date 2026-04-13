@@ -83,6 +83,12 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
     if (!BACKEND_URL) {
       showError('The app backend is not configured. Please ensure the backend URL is set in app.json.');
       return;

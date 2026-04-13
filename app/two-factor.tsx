@@ -39,10 +39,11 @@ export default function TwoFactorScreen() {
     setTimeout(() => inputRef.current?.focus(), 300);
   }, []);
 
-  const handleVerify = async () => {
-    log('[TwoFactor] Verify button pressed, code length:', code.length);
+  const handleVerify = async (codeOverride?: string) => {
+    const codeToVerify = codeOverride || code;
+    log('[TwoFactor] Verify triggered, code length:', codeToVerify.length);
 
-    if (code.length !== 6) {
+    if (codeToVerify.length !== 6) {
       setError('Please enter the full 6-digit code');
       return;
     }
@@ -52,7 +53,7 @@ export default function TwoFactorScreen() {
 
     try {
       log('[TwoFactor] Calling authClient.twoFactor.verifyOtp...');
-      const result = await authClient.twoFactor.verifyOtp({ code });
+      const result = await authClient.twoFactor.verifyOtp({ code: codeToVerify });
       if (result.error) {
         const msg = result.error.message || 'Verification failed';
         if (msg.toLowerCase().includes('expired')) {
@@ -192,8 +193,8 @@ export default function TwoFactorScreen() {
               log('[TwoFactor] OTP input changed, length:', cleaned.length);
               setCode(cleaned);
               if (cleaned.length === 6) {
-                // Small delay to let state update render before verify
-                setTimeout(() => handleVerify(), 100);
+                // Pass cleaned value directly to avoid stale closure
+                setTimeout(() => handleVerify(cleaned), 100);
               }
               setError('');
             }}

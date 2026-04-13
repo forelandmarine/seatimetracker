@@ -134,13 +134,14 @@ export default function PaywallScreen() {
     }
   }, []);
 
-  // Redirect if already subscribed
+  // Redirect if already subscribed (but not during active purchase/restore
+  // — let the success Alert show before navigating)
   useEffect(() => {
-    if (!isLoading && isSubscribed) {
+    if (!isLoading && isSubscribed && !purchasing && !restoring) {
       log('[Paywall] User is subscribed, redirecting to home');
       router.replace('/');
     }
-  }, [isSubscribed, isLoading]);
+  }, [isSubscribed, isLoading, purchasing, restoring]);
 
   const handlePurchase = async () => {
     if (availablePackages.length === 0) {

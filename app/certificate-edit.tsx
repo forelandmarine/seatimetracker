@@ -81,6 +81,13 @@ export default function CertificateEditScreen() {
 
   const handleSave = async () => {
     if (saving) return;
+
+    // Client-side date validation
+    if (issuedDate && expiryDate && issuedDate >= expiryDate) {
+      Alert.alert('Invalid Dates', 'Issued date must be before expiry date.');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {

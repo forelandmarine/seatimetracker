@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -395,7 +396,28 @@ export default function ReportsScreen() {
 
   const handleDownloadPDF = async () => {
     log('User tapped Download PDF Report');
-    
+
+    // Prompt for signature if not set (same as profile screen)
+    try {
+      const sig = await AsyncStorage.getItem('seatime_user_signature');
+      if (!sig) {
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Add your signature?',
+            'Reports look more credible when signed. Add a signature now or download unsigned.',
+            [
+              { text: 'Download unsigned', style: 'cancel', onPress: () => resolve(true) },
+              { text: 'Add signature', onPress: () => { router.push('/signature'); resolve(false); } },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) }
+          );
+        });
+        if (!proceed) return;
+      }
+    } catch (err) {
+      // Continue without signature check
+    }
+
     setDownloadingPDF(true);
     try {
       const pdfBlob = await seaTimeApi.downloadPDFReport();

@@ -657,9 +657,10 @@ export default function ProfileScreen() {
             log('Sharing not available, showing success alert');
             Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
           }
-        } catch (error) {
+        } catch (error: any) {
           logError('Error in FileReader onloadend:', error);
-          throw error;
+          Alert.alert('Download Failed', `Unable to save PDF report. ${error?.message || 'Please try again.'}`);
+          setDownloadingPDF(false);
         }
       };
       

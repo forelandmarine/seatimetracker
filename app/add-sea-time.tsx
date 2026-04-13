@@ -471,6 +471,11 @@ export default function AddSeaTimeScreen() {
 
       log('[AddSeaTimeScreen] Loaded vessels:', vesselsData.length);
       setVessels(vesselsData);
+      // Pre-select active vessel if none selected yet
+      if (!selectedVessel) {
+        const active = vesselsData.find((v: Vessel) => v.is_active);
+        if (active) setSelectedVessel(active);
+      }
       if (vesselsData.length === 0) {
         showFeedback('No Vessels', 'You need to add a vessel first before logging sea time.', 'error');
       }

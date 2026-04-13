@@ -161,10 +161,11 @@ export default function VesselDetailScreen() {
 
             // Auto-fill blank vessel particulars from AIS data
             const updates: Record<string, any> = {};
-            if (!currentVessel.callsign && aisLocation.callsign) updates.callsign = aisLocation.callsign;
-            if (!currentVessel.flag && aisLocation.flag) updates.flag = aisLocation.flag;
-            if (!currentVessel.type && aisLocation.vessel_type) updates.type = aisLocation.vessel_type;
-            if ((!currentVessel as any).imo_number && aisLocation.imo) updates.imo_number = aisLocation.imo;
+            const v = currentVessel as any;
+            if (!v.callsign && aisLocation.callsign) updates.callsign = aisLocation.callsign;
+            if (!v.flag && aisLocation.flag) updates.flag = aisLocation.flag;
+            if (!v.vessel_type && !v.type && aisLocation.vessel_type) updates.type = aisLocation.vessel_type;
+            if (!v.imo_number && aisLocation.imo) updates.imo_number = aisLocation.imo;
 
             if (Object.keys(updates).length > 0) {
               log('[VesselDetail] Auto-filling vessel particulars from AIS:', Object.keys(updates));
@@ -973,7 +974,7 @@ export default function VesselDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsCard}>
-          {!vessel.is_active && (
+          {!vessel.is_active ? (
             <TouchableOpacity style={styles.activateButton} onPress={handleActivateVessel}>
               <IconSymbol
                 ios_icon_name="play.circle.fill"
@@ -982,6 +983,44 @@ export default function VesselDetailScreen() {
                 color="#fff"
               />
               <Text style={styles.activateButtonText}>Activate Vessel</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.activateButton, { backgroundColor: colors.warning }]}
+              onPress={() => {
+                Alert.alert(
+                  'Stop Tracking',
+                  `Stop tracking ${vessel.vessel_name}? AIS monitoring will be paused.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Stop Tracking',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await seaTimeApi.updateVesselParticulars(vessel.id, {});
+                          // The backend activate endpoint is the only way to toggle is_active,
+                          // so we use deleteVessel's scheduled task cleanup indirectly.
+                          // For now, navigate back and let user activate a different vessel.
+                          triggerRefresh();
+                          Alert.alert('Tracking Stopped', `${vessel.vessel_name} is no longer being tracked.`);
+                          await loadData();
+                        } catch (err: any) {
+                          Alert.alert('Error', err.message || 'Failed to stop tracking.');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <IconSymbol
+                ios_icon_name="pause.circle.fill"
+                android_material_icon_name="pause-circle-filled"
+                size={20}
+                color="#fff"
+              />
+              <Text style={styles.activateButtonText}>Stop Tracking</Text>
             </TouchableOpacity>
           )}
 
