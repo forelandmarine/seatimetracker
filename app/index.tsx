@@ -56,9 +56,21 @@ export default function Index() {
   const isAuthenticated = Boolean(user);
   const hasDepartment = Boolean(user?.hasDepartment || (user as any)?.department);
 
-  log('[Index] Auth state - authenticated:', isAuthenticated, 'subscribed:', isSubscribed, 'hasDepartment:', hasDepartment);
+  log('[Index] Auth state - authenticated:', isAuthenticated, 'subscribed:', isSubscribed, 'hasDepartment:', hasDepartment, 'onboardingDone:', onboardingDone);
 
-  // Subscription loading — wait before deciding
+  // Step 1: Onboarding — show walkthrough before anything else for first-time users
+  if (onboardingDone === false) {
+    log('[Index] First time user, redirecting to /onboarding');
+    return <Redirect href="/onboarding" />;
+  }
+
+  // Step 2: Auth — not signed in → auth screen
+  if (!isAuthenticated) {
+    log('[Index] Not authenticated, redirecting to /auth');
+    return <Redirect href="/auth" />;
+  }
+
+  // Step 3: Subscription — wait for check to complete
   if (subscriptionLoading) {
     log('[Index] Subscription check in progress...');
     return (
@@ -69,33 +81,21 @@ export default function Index() {
     );
   }
 
-  // Authenticated users: check subscription gate then department
-  if (isAuthenticated) {
-    // Authenticated but NOT subscribed → paywall
-    // If RevenueCat failed to load, fail open so paying users are not blocked
-    if (!isSubscribed && !revenueCatFailed) {
-      log('[Index] Authenticated but not subscribed, redirecting to /paywall');
-      return <Redirect href="/paywall" />;
-    }
-
-    // Subscribed but no department → pathway selection
-    if (!hasDepartment) {
-      log('[Index] Subscribed but no department, redirecting to /select-pathway');
-      return <Redirect href="/select-pathway" />;
-    }
-
-    // Fully set up → main app
-    log('[Index] User fully set up, redirecting to /(tabs)');
-    return <Redirect href="/(tabs)" />;
+  // Step 4: Paywall — must subscribe to proceed
+  if (!isSubscribed) {
+    log('[Index] Authenticated but not subscribed, redirecting to /paywall');
+    return <Redirect href="/paywall" />;
   }
 
-  // Not authenticated → onboarding (first time) or auth
-  if (onboardingDone === false) {
-    log('[Index] Not authenticated, first time, redirecting to /onboarding');
-    return <Redirect href="/onboarding" />;
+  // Step 5: Pathway — must select department
+  if (!hasDepartment) {
+    log('[Index] Subscribed but no department, redirecting to /select-pathway');
+    return <Redirect href="/select-pathway" />;
   }
-  log('[Index] Not authenticated, redirecting to /auth');
-  return <Redirect href="/auth" />;
+
+  // Step 6: Main app
+  log('[Index] User fully set up, redirecting to /(tabs)');
+  return <Redirect href="/(tabs)" />;
 }
 
 const styles = StyleSheet.create({

@@ -18,10 +18,10 @@
     "refresh": "I-refresh"
   },
   "tabs": {
-    "seaTime": "Sea Time",
-    "logbook": "Logbook",
+    "seaTime": "Oras sa Dagat",
+    "logbook": "Talaan",
     "review": "Suriin",
-    "profile": "Profile"
+    "profile": "Aking Profile"
   },
   "auth": {
     "signIn": "Mag-sign in",
@@ -81,7 +81,7 @@
     "nextCertExpiring": "SUSUNOD NA SERTIPIKONG MAG-E-EXPIRE"
   },
   "profile": {
-    "title": "Profile",
+    "title": "Aking Profile",
     "subtitle": "Ang Iyong Sea Time Profile at mga Report",
     "downloadReports": "I-download ang mga report",
     "downloadPDF": "I-download ang PDF report",
@@ -99,7 +99,7 @@
     "addSignatureAction": "Magdagdag ng lagda"
   },
   "logbook": {
-    "title": "Logbook",
+    "title": "Talaan",
     "subtitle": "Ang Iyong Sea Time Logbook",
     "list": "Listahan",
     "calendar": "Kalendaryo",
@@ -125,7 +125,7 @@
   },
   "vessel": {
     "particulars": "Mga detalye ng barko",
-    "aisData": "AIS Data",
+    "aisData": "Datos ng AIS",
     "seaTimeSummary": "Buod ng sea time",
     "seaTimeEntries": "Mga sea time entry",
     "noAisData": "Walang available na AIS data. I-tap ang refresh upang suriin.",
@@ -135,8 +135,8 @@
     "position": "Posisyon",
     "speed": "Bilis",
     "course": "Kurso",
-    "heading": "Heading",
-    "status": "Status",
+    "heading": "Direksyon",
+    "status": "Kalagayan",
     "destination": "Destinasyon",
     "lastUpdate": "Huling update",
     "activate": "I-activate ang barko",
@@ -165,7 +165,7 @@
   },
   "settings": {
     "title": "Mga Setting",
-    "profile": "PROFILE",
+    "profile": "AKING PROFILE",
     "editProfile": "I-edit ang profile",
     "signatureForReports": "Lagda para sa mga report",
     "certificates": "MGA SERTIPIKO",

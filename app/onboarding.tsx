@@ -16,6 +16,7 @@ import { useRouter, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -78,8 +79,34 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
+  const { t } = useTranslation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Use translated slides
+  const translatedSlides: OnboardingSlide[] = [
+    {
+      iconName: 'sailboat.fill',
+      iconAndroid: 'sailing',
+      label: t('onboarding.slide1.label'),
+      title: t('onboarding.slide1.title'),
+      body: t('onboarding.slide1.body'),
+    },
+    {
+      iconName: 'doc.text.fill',
+      iconAndroid: 'description',
+      label: t('onboarding.slide2.label'),
+      title: t('onboarding.slide2.title'),
+      body: t('onboarding.slide2.body'),
+    },
+    {
+      iconName: 'building.2.fill',
+      iconAndroid: 'business',
+      label: t('onboarding.slide3.label'),
+      title: t('onboarding.slide3.title'),
+      body: t('onboarding.slide3.body'),
+    },
+  ];
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -94,7 +121,7 @@ export default function OnboardingScreen() {
   };
 
   const handleNext = () => {
-    if (currentSlide < slides.length - 1) {
+    if (currentSlide < translatedSlides.length - 1) {
       goToSlide(currentSlide + 1);
     } else {
       handleFinish();
@@ -117,7 +144,7 @@ export default function OnboardingScreen() {
         {/* Skip button */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={handleSkip} hitSlop={10}>
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -131,7 +158,7 @@ export default function OnboardingScreen() {
           scrollEventThrottle={16}
           style={styles.slidesContainer}
         >
-          {slides.map((slide, index) => (
+          {translatedSlides.map((slide, index) => (
             <View key={index} style={styles.slide}>
               <View style={styles.iconContainer}>
                 <IconSymbol
@@ -150,7 +177,7 @@ export default function OnboardingScreen() {
 
         {/* Pagination dots */}
         <View style={styles.pagination}>
-          {slides.map((_, index) => (
+          {translatedSlides.map((_, index) => (
             <TouchableOpacity
               key={index}
               style={[
@@ -167,7 +194,7 @@ export default function OnboardingScreen() {
         <View style={styles.actionContainer}>
           <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
             <Text style={styles.primaryButtonText}>
-              {currentSlide < slides.length - 1 ? 'Next' : 'Get started'}
+              {currentSlide < translatedSlides.length - 1 ? t('onboarding.next') : t('onboarding.getStarted')}
             </Text>
           </TouchableOpacity>
         </View>

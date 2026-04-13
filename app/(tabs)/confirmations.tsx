@@ -20,6 +20,7 @@ import {
 import { scheduleSeaTimeNotification } from '@/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 import { log, warn, error as logError } from '@/utils/log';
 
@@ -69,6 +70,7 @@ export default function ConfirmationsScreen() {
     confirmLabel?: string;
   }>({ visible: false, title: '', message: '', type: 'success' });
   const [pendingRejectId, setPendingRejectId] = useState<string | null>(null);
+  const { t } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -469,9 +471,9 @@ export default function ConfirmationsScreen() {
       const days = Math.floor(num / 24);
       const remainingHours = Math.round(num % 24);
       if (remainingHours === 0) {
-        return `${days} ${days === 1 ? 'day' : 'days'}`;
+        return `${days} ${days === 1 ? t('review.day') : t('review.days')}`;
       }
-      return `${days} ${days === 1 ? 'day' : 'days'}, ${remainingHours}h`;
+      return `${days} ${days === 1 ? t('review.day') : t('review.days')}, ${remainingHours}h`;
     }
     
     // If < 24 hours, express as hours
@@ -541,7 +543,7 @@ export default function ConfirmationsScreen() {
               resizeMode="contain"
             />
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Review Sea Time</Text>
+              <Text style={styles.headerTitle}>{t('review.title')}</Text>
               <Text style={styles.headerSubtitle}>
                 {entries.length} {entries.length === 1 ? 'entry' : 'entries'} pending confirmation
               </Text>
@@ -558,9 +560,9 @@ export default function ConfirmationsScreen() {
                 size={64}
                 color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
-              <Text style={styles.emptyText}>All caught up!</Text>
+              <Text style={styles.emptyText}>{t('review.noPending')}</Text>
               <Text style={styles.emptySubtext}>
-                No pending sea time entries to review
+                {t('review.noPendingHint')}
               </Text>
             </View>
           ) : (
