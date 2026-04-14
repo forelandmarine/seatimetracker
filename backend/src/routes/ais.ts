@@ -582,7 +582,7 @@ export async function fetchVesselAISDataWithFallback(
   logger.info(`[FALLBACK CHAIN] Starting AIS data fetch for MMSI ${mmsi}, trying: Datalastic → MyShipTracking → Base44`);
 
   const datalasticResult = await fetchVesselAISDataFromDatalastic(mmsi, DATALASTIC_API_KEY, logger);
-  if (datalasticResult && !datalasticResult.error && datalasticResult.latitude && datalasticResult.longitude) {
+  if (datalasticResult && !datalasticResult.error && datalasticResult.latitude != null && datalasticResult.longitude != null) {
     logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from Datalastic API for MMSI ${mmsi}`);
     if (vesselId && app && userId) {
       await logAPICall(app, vesselId, userId, mmsi, DATALASTIC_API_URL, new Date(), '200', JSON.stringify(datalasticResult), 'success', null, 'datalastic');
@@ -594,7 +594,7 @@ export async function fetchVesselAISDataWithFallback(
 
   // Try MyShipTracking second
   const myshipResult = await fetchVesselAISData(mmsi, MYSHIPTRACKING_API_KEY, logger, vesselId, app, extended, userId);
-  if (myshipResult && !myshipResult.error && myshipResult.latitude && myshipResult.longitude) {
+  if (myshipResult && !myshipResult.error && myshipResult.latitude != null && myshipResult.longitude != null) {
     logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from MyShipTracking API for MMSI ${mmsi}`);
     return { data: myshipResult, apiSource: 'myshiptracking' };
   }
@@ -603,7 +603,7 @@ export async function fetchVesselAISDataWithFallback(
 
   // Try Base44 last
   const base44Result = await fetchVesselAISDataFromBase44(mmsi, BASE44_API_KEY, logger);
-  if (base44Result && !base44Result.error && base44Result.latitude && base44Result.longitude) {
+  if (base44Result && !base44Result.error && base44Result.latitude != null && base44Result.longitude != null) {
     logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from Base44 API for MMSI ${mmsi}`);
     if (vesselId && app && userId) {
       await logAPICall(app, vesselId, userId, mmsi, BASE44_API_URL, new Date(), '200', JSON.stringify(base44Result), 'success', null, 'base44');
