@@ -487,24 +487,8 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Free tier: users without an active subscription can create 1 vessel.
     // Subscribers can create unlimited vessels.
-    if (!isSubscriptionActive) {
-      const FREE_VESSEL_LIMIT = 1;
-      const existingVessels = await app.db
-        .select()
-        .from(schema.vessels)
-        .where(eq(schema.vessels.user_id, userId));
-
-      if (existingVessels.length >= FREE_VESSEL_LIMIT) {
-        app.logger.warn(
-          { userId, subscriptionStatus, existingCount: existingVessels.length },
-          `Vessel creation denied: free tier limit (${FREE_VESSEL_LIMIT}) reached`
-        );
-        return reply.code(403).send({
-          error: `Free accounts can track ${FREE_VESSEL_LIMIT} vessel. Subscribe to add more.`,
-          code: 'free_tier_vessel_limit',
-        });
-      }
-    }
+    // No vessel limit - adding a new active vessel deactivates the current one
+    // (handled below when is_active=true)
 
     const {
       mmsi,

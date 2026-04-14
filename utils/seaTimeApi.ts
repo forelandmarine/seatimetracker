@@ -272,6 +272,10 @@ export const activateVessel = async (vesselId: string) => {
 
 export const deleteVessel = async (vesselId: string) => {
   const res = await authFetch(`/api/vessels/${vesselId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `Delete failed (${res.status})` }));
+    throw new Error(err.error || `Failed to delete vessel (${res.status})`);
+  }
   return res.json();
 };
 

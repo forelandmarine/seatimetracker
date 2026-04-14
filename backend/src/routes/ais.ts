@@ -7,6 +7,7 @@ import { extractUserIdFromRequest } from "../middleware/auth.js";
 import crypto from "crypto";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 import { lookupPort } from "../utils/portDatabase.js";
+import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTime.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -1299,6 +1300,8 @@ export function register(app: App, fastify: FastifyInstance) {
             user_id: userId,
             vessel_id: vesselId,
             start_time: check_time,
+            start_latitude: ais_data.latitude !== null ? String(ais_data.latitude) : null,
+            start_longitude: ais_data.longitude !== null ? String(ais_data.longitude) : null,
             status: 'pending',
           })
           .returning();
@@ -1314,6 +1317,7 @@ export function register(app: App, fastify: FastifyInstance) {
           .where(
             and(
               eq(schema.sea_time_entries.vessel_id, vesselId),
+              eq(schema.sea_time_entries.user_id, userId),
               eq(schema.sea_time_entries.status, 'pending'),
               isNotNull(schema.sea_time_entries.start_time)
             )
@@ -1343,11 +1347,30 @@ export function register(app: App, fastify: FastifyInstance) {
         const duration_ms = check_time.getTime() - start_time.getTime();
         const duration_hours = Math.round((duration_ms / (1000 * 60 * 60)) * 100) / 100;
 
+        // Calculate distance from start to end position
+        const startLat = open_entry[0].start_latitude ? parseFloat(String(open_entry[0].start_latitude)) : null;
+        const startLon = open_entry[0].start_longitude ? parseFloat(String(open_entry[0].start_longitude)) : null;
+        const endLat = ais_data.latitude;
+        const endLon = ais_data.longitude;
+        let distance_nm: string | null = null;
+        if (startLat !== null && startLon !== null && endLat !== null && endLon !== null) {
+          const d = calculateDistanceNauticalMiles(startLat, startLon, endLat, endLon);
+          distance_nm = String(Math.round(d * 100) / 100);
+        }
+
+        const sea_days = calculateSeaDays(duration_hours);
+        const mca_compliant = duration_hours >= 4;
+
         const [ended_entry] = await app.db
           .update(schema.sea_time_entries)
           .set({
             end_time: check_time,
             duration_hours: String(duration_hours),
+            end_latitude: endLat !== null ? String(endLat) : null,
+            end_longitude: endLon !== null ? String(endLon) : null,
+            distance_nm,
+            sea_days,
+            mca_compliant,
           })
           .where(eq(schema.sea_time_entries.id, open_entry[0].id))
           .returning();
