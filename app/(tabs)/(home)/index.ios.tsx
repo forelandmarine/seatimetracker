@@ -34,6 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { SkeletonVesselCard } from '@/components/SkeletonLoader';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -429,9 +430,9 @@ export default function SeaTimeScreen() {
   // Show loading for data
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>{t('common.loading')}</Text>
+      <View style={[styles.loadingContainer, { paddingHorizontal: 16, gap: 12, justifyContent: 'flex-start', paddingTop: insets.top + 80 }]}>
+        <SkeletonVesselCard />
+        <SkeletonVesselCard />
       </View>
     );
   }

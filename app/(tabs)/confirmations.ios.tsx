@@ -572,42 +572,30 @@ export default function ConfirmationsScreen() {
 
                   <View style={styles.entryActions}>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.confirmButton, isProcessing && styles.disabledButton]}
+                      style={[styles.actionButton, styles.confirmButton, { width: '100%' }, isProcessing && styles.disabledButton]}
                       onPress={() => handleConfirmEntry(entry)}
                       disabled={isProcessing}
                     >
                       {isProcessing ? (
-                        <ActivityIndicator size="small" color="#fff" />
+                        <ActivityIndicator size="small" color={colors.white} />
                       ) : (
                         <>
                           <IconSymbol
                             ios_icon_name="checkmark"
                             android_material_icon_name="check"
                             size={20}
-                            color="#fff"
+                            color={colors.white}
                           />
                           <Text style={styles.actionButtonText}>Confirm</Text>
                         </>
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.rejectButton, isProcessing && styles.disabledButton]}
+                      style={[{ paddingVertical: 12, alignItems: 'center' }, isProcessing && styles.disabledButton]}
                       onPress={() => handleRejectEntry(entry.id)}
                       disabled={isProcessing}
                     >
-                      {isProcessing ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <IconSymbol
-                            ios_icon_name="xmark"
-                            android_material_icon_name="close"
-                            size={20}
-                            color="#fff"
-                          />
-                          <Text style={styles.actionButtonText}>Reject</Text>
-                        </>
-                      )}
+                      <Text style={{ color: colors.error, fontSize: 14, fontWeight: '600' }}>Reject Entry</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -862,8 +850,9 @@ function createStyles(isDark: boolean, topInset: number) {
       flex: 1,
     },
     entryActions: {
-      flexDirection: 'row',
-      gap: 12,
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 4,
       padding: 16,
       borderTopWidth: 1,
       borderTopColor: isDark ? colors.border : colors.borderLight,

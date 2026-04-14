@@ -762,17 +762,22 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(403).send({ error: 'Not authorized to delete this vessel' });
     }
 
-    const [deleted] = await app.db
-      .delete(schema.vessels)
-      .where(eq(schema.vessels.id, id))
-      .returning();
+    try {
+      const [deleted] = await app.db
+        .delete(schema.vessels)
+        .where(eq(schema.vessels.id, id))
+        .returning();
 
-    app.logger.info(
-      { userId, vesselId: deleted.id, vesselName: deleted.vessel_name },
-      'Vessel deleted successfully'
-    );
+      app.logger.info(
+        { userId, vesselId: deleted.id, vesselName: deleted.vessel_name },
+        'Vessel deleted successfully'
+      );
 
-    return reply.code(200).send({ id: deleted.id });
+      return reply.code(200).send({ id: deleted.id });
+    } catch (deleteError: any) {
+      app.logger.error({ userId, vesselId: id, err: deleteError }, 'Vessel deletion failed');
+      return reply.code(500).send({ error: 'Failed to delete vessel. Please try again.' });
+    }
   });
 
   // PUT /api/vessels/:id - Update vessel details
