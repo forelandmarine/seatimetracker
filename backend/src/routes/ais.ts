@@ -279,13 +279,13 @@ async function fetchVesselAISDataFromDatalastic(
         return (data as any).vessel_name || (data as any).name;
       }
       if (field === 'latitude') {
-        return (data as any).latitude || (data as any).lat;
+        return (data as any).latitude ?? (data as any).lat;
       }
       if (field === 'longitude') {
-        return (data as any).longitude || (data as any).lon || (data as any).lng;
+        return (data as any).longitude ?? (data as any).lon ?? (data as any).lng;
       }
       if (field === 'speed') {
-        return (data as any).speed || (data as any).speed_knots;
+        return (data as any).speed ?? (data as any).speed_knots;
       }
       if (field === 'ship_type') {
         return (data as any).ship_type || (data as any).vessel_type;
@@ -303,12 +303,12 @@ async function fetchVesselAISDataFromDatalastic(
     // Extract vessel data
     const vesselMmsi = getValue('mmsi') ? String(getValue('mmsi')) : null;
     const imo = getValue('imo') ? String(getValue('imo')) : null;
-    const latitude = getValue('latitude') ? parseFloat(String(getValue('latitude'))) : null;
-    const longitude = getValue('longitude') ? parseFloat(String(getValue('longitude'))) : null;
+    const latitude = getValue('latitude') != null ? parseFloat(String(getValue('latitude'))) : null;
+    const longitude = getValue('longitude') != null ? parseFloat(String(getValue('longitude'))) : null;
     const name = getValue('name') ? String(getValue('name')) : null;
-    const speed = getValue('speed') ? parseFloat(String(getValue('speed'))) : null;
-    const course = getValue('course') ? parseFloat(String(getValue('course'))) : null;
-    const heading = getValue('heading') ? parseFloat(String(getValue('heading'))) : null;
+    const speed = getValue('speed') != null ? parseFloat(String(getValue('speed'))) : null;
+    const course = getValue('course') != null ? parseFloat(String(getValue('course'))) : null;
+    const heading = getValue('heading') != null ? parseFloat(String(getValue('heading'))) : null;
     const status = getValue('status') ? String(getValue('status')) : null;
     const destination = getValue('destination') ? String(getValue('destination')) : null;
     const eta = getValue('eta') ? String(getValue('eta')) : null;
@@ -481,12 +481,12 @@ async function fetchVesselAISDataFromBase44(
     // Extract vessel data
     const vesselMmsi = getValue('mmsi') ? String(getValue('mmsi')) : null;
     const imo = getValue('imo') ? String(getValue('imo')) : null;
-    const latitude = getValue('latitude') ? parseFloat(String(getValue('latitude'))) : null;
-    const longitude = getValue('longitude') ? parseFloat(String(getValue('longitude'))) : null;
+    const latitude = getValue('latitude') != null ? parseFloat(String(getValue('latitude'))) : null;
+    const longitude = getValue('longitude') != null ? parseFloat(String(getValue('longitude'))) : null;
     const name = getValue('name') ? String(getValue('name')) : null;
-    const speed = getValue('speed') ? parseFloat(String(getValue('speed'))) : null;
-    const course = getValue('course') ? parseFloat(String(getValue('course'))) : null;
-    const heading = getValue('heading') ? parseFloat(String(getValue('heading'))) : null;
+    const speed = getValue('speed') != null ? parseFloat(String(getValue('speed'))) : null;
+    const course = getValue('course') != null ? parseFloat(String(getValue('course'))) : null;
+    const heading = getValue('heading') != null ? parseFloat(String(getValue('heading'))) : null;
     const status = getValue('status') ? String(getValue('status')) : null;
     const destination = getValue('destination') ? String(getValue('destination')) : null;
     const eta = getValue('eta') ? String(getValue('eta')) : null;
@@ -882,12 +882,12 @@ export async function fetchVesselAISData(
     // Extract vessel data from response (handling both flat and nested structures)
     const vesselMmsi = getValue('mmsi') ? String(getValue('mmsi')) : null;
     const imo = getValue('imo') ? String(getValue('imo')) : null;
-    const latitude = getValue('latitude') ? parseFloat(String(getValue('latitude'))) : null;
-    const longitude = getValue('longitude') ? parseFloat(String(getValue('longitude'))) : null;
+    const latitude = getValue('latitude') != null ? parseFloat(String(getValue('latitude'))) : null;
+    const longitude = getValue('longitude') != null ? parseFloat(String(getValue('longitude'))) : null;
     const name = getValue('name') ? String(getValue('name')) : null;
-    const speed = getValue('speed') ? parseFloat(String(getValue('speed'))) : null;
-    const course = getValue('course') ? parseFloat(String(getValue('course'))) : null;
-    const heading = getValue('heading') ? parseFloat(String(getValue('heading'))) : null;
+    const speed = getValue('speed') != null ? parseFloat(String(getValue('speed'))) : null;
+    const course = getValue('course') != null ? parseFloat(String(getValue('course'))) : null;
+    const heading = getValue('heading') != null ? parseFloat(String(getValue('heading'))) : null;
     const status = getValue('status') ? String(getValue('status')) : null;
     const destination = getValue('destination') ? String(getValue('destination')) : null;
     const eta = getValue('eta') ? String(getValue('eta')) : null;
