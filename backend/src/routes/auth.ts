@@ -1641,8 +1641,11 @@ export function register(app: App, fastify: FastifyInstance) {
 
         const passwordHash = hashPassword(newPassword);
 
-        if (accounts.length > 0) {
-          // Update existing credential account password only (not Apple/social accounts)
+        // Check if user has a credential account
+        const hasCredentialAccount = accounts.some(a => a.providerId === 'credential');
+
+        if (hasCredentialAccount) {
+          // Update existing credential account password
           await app.db
             .update(authSchema.account)
             .set({

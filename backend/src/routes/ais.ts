@@ -1576,7 +1576,7 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     const checkId = crypto.randomUUID();
-    const is_moving = ais_data.speed_knots ? ais_data.speed_knots > 0 : false;
+    const is_moving = ais_data.speed_knots != null && ais_data.speed_knots > MOVING_SPEED_THRESHOLD;
     const friendlyDestination = lookupPort(ais_data.destination || null);
     const response = {
       check_id: checkId,
@@ -1631,6 +1631,11 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
+    const requestUserId = await extractUserIdFromRequest(request, app);
+    if (!requestUserId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
     const { vessel_id, interval_hours } = request.body;
 
     app.logger.info(`Scheduling AIS check for vessel ${vessel_id} with interval ${interval_hours} hours`);
@@ -1647,6 +1652,11 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     const userId = vessel[0].user_id;
+
+    // Verify ownership
+    if (userId !== requestUserId) {
+      return reply.code(403).send({ error: 'Not authorized to schedule checks for this vessel' });
+    }
 
     // Delete any existing scheduled tasks for this vessel
     await app.db
@@ -1869,6 +1879,11 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
+    const requestUserId = await extractUserIdFromRequest(request, app);
+    if (!requestUserId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
     const { taskId } = request.params;
     const { is_active } = request.body;
 
@@ -1883,6 +1898,11 @@ export function register(app: App, fastify: FastifyInstance) {
     if (existingTask.length === 0) {
       app.logger.warn(`Scheduled task not found: ${taskId}`);
       return reply.code(404).send({ error: 'Scheduled task not found' });
+    }
+
+    // Verify ownership
+    if (existingTask[0].user_id !== requestUserId) {
+      return reply.code(403).send({ error: 'Not authorized to modify this task' });
     }
 
     // Update task status

@@ -494,7 +494,7 @@ export default function EditSeaTimeScreen() {
       setEndLng(foundEntry.end_longitude != null ? String(foundEntry.end_longitude) : '');
 
       // Initialize compliance fields
-      if (foundEntry.rank_capacity) setRankCapacity(foundEntry.rank_capacity as RankCapacity);
+      if (foundEntry.rank || foundEntry.rank_capacity) setRankCapacity((foundEntry.rank || foundEntry.rank_capacity) as RankCapacity);
       if (foundEntry.trade_area) setTradeArea(foundEntry.trade_area as TradeArea);
       if (foundEntry.bridge_watch_hours != null) setWatchkeepingHours(String(foundEntry.bridge_watch_hours));
     } catch (error) {
@@ -565,7 +565,7 @@ export default function EditSeaTimeScreen() {
       const updatePayload: any = {
         notes: fullNotes || null,
         service_type: backendServiceType,
-        rank_capacity: rankCapacity || null,
+        rank: rankCapacity || null,
         trade_area: tradeArea || null,
         ...(backendServiceType === 'watchkeeping_service' && watchkeepingHours
           ? { bridge_watch_hours: parseFloat(watchkeepingHours) }

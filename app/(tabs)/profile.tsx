@@ -768,50 +768,31 @@ export default function ProfileScreen() {
         log('Mobile platform: Saving PDF to file system');
         const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        
+
         log('Converting blob to base64...');
-        const reader = new FileReader();
-        
-        reader.onerror = (error) => {
-          logError('FileReader error:', error);
-          throw new Error('Failed to read PDF data');
-        };
-        
-        reader.onloadend = async () => {
-          try {
-            log('Blob converted to base64, writing to file system...');
-            const base64data = reader.result as string;
-            const base64 = base64data.split(',')[1];
-            
-            await FileSystem.writeAsStringAsync(fileUri, base64, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            
-            log('PDF saved to:', fileUri);
-            
-            const fileInfo = await FileSystem.getInfoAsync(fileUri);
-            log('File info:', fileInfo);
-            
-            if (await Sharing.isAvailableAsync()) {
-              log('Sharing is available, opening share dialog...');
-              await Sharing.shareAsync(fileUri, {
-                mimeType: 'application/pdf',
-                dialogTitle: 'Save or Share PDF Report',
-                UTI: 'com.adobe.pdf',
-              });
-              log('Share dialog opened successfully');
-            } else {
-              log('Sharing not available, showing success modal');
-              showInfo('Success', `PDF report saved to:\n${fileUri}`, 'success');
-            }
-          } catch (error) {
-            logError('Error in FileReader onloadend:', error);
-            throw error;
-          }
-        };
-        
-        log('Starting FileReader...');
-        reader.readAsDataURL(pdfBlob);
+        const base64data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error('Failed to read PDF data'));
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(pdfBlob);
+        });
+
+        const base64 = base64data.split(',')[1];
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        log('PDF saved to:', fileUri);
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save or Share PDF Report',
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          showInfo('Success', `PDF report saved to:\n${fileUri}`, 'success');
+        }
       }
     } catch (error: any) {
       logError('Failed to download PDF report:', error);
@@ -892,7 +873,12 @@ export default function ProfileScreen() {
         showInfo('Success', 'Excel report downloaded successfully', 'success');
       } else {
         const arrayBuffer = await res.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
         const fileUri = `${FileSystem.documentDirectory}SeaTime_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
         await FileSystem.writeAsStringAsync(fileUri, base64, {
           encoding: FileSystem.EncodingType.Base64,

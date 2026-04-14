@@ -82,31 +82,31 @@ function transformSeaTimeEntryForResponse(entry: any) {
 
   // Parse detection_window_hours if present
   let detection_window_hours = null;
-  if (entry.detection_window_hours) {
+  if (entry.detection_window_hours != null) {
     detection_window_hours = parseFloat(String(entry.detection_window_hours));
   }
 
   // Parse watchkeeping_hours if present
   let watchkeeping_hours = null;
-  if (entry.watchkeeping_hours) {
+  if (entry.watchkeeping_hours != null) {
     watchkeeping_hours = parseFloat(String(entry.watchkeeping_hours));
   }
 
   // Parse additional_watchkeeping_hours if present
   let additional_watchkeeping_hours = null;
-  if (entry.additional_watchkeeping_hours) {
+  if (entry.additional_watchkeeping_hours != null) {
     additional_watchkeeping_hours = parseFloat(String(entry.additional_watchkeeping_hours));
   }
 
   // Parse bridge_watch_hours if present
   let bridge_watch_hours = null;
-  if (entry.bridge_watch_hours) {
+  if (entry.bridge_watch_hours != null) {
     bridge_watch_hours = parseFloat(String(entry.bridge_watch_hours));
   }
 
   // Parse engine_watch_hours if present
   let engine_watch_hours = null;
-  if (entry.engine_watch_hours) {
+  if (entry.engine_watch_hours != null) {
     engine_watch_hours = parseFloat(String(entry.engine_watch_hours));
   }
 
@@ -692,8 +692,8 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(409).send({ error: `Entry is already ${current_entry.status}` });
     }
 
-    // Set end_time to now and calculate sea_days based on duration
-    const end_time = new Date();
+    // Use existing end_time if already set by AIS scheduler, otherwise use now
+    const end_time = current_entry.end_time || new Date();
 
     // Calculate duration and sea_days
     const duration_hours = calculateDurationHours(current_entry.start_time, end_time);

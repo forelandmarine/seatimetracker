@@ -622,61 +622,36 @@ export default function ProfileScreen() {
       log('iOS platform: Saving PDF to file system');
       const fileName = `SeaTime_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      
+
       log('Converting blob to base64...');
-      const reader = new FileReader();
-      
-      reader.onerror = (error) => {
-        logError('FileReader error:', error);
-        throw new Error('Failed to read PDF data');
-      };
-      
-      reader.onloadend = async () => {
-        try {
-          log('Blob converted to base64, writing to file system...');
-          const base64data = reader.result as string;
-          const base64 = base64data.split(',')[1];
-          
-          await FileSystem.writeAsStringAsync(fileUri, base64, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          log('PDF saved to:', fileUri);
-          
-          const fileInfo = await FileSystem.getInfoAsync(fileUri);
-          log('File info:', fileInfo);
-          
-          if (await Sharing.isAvailableAsync()) {
-            log('Sharing is available, opening share dialog...');
-            await Sharing.shareAsync(fileUri, {
-              mimeType: 'application/pdf',
-              dialogTitle: 'Save or Share PDF Report',
-              UTI: 'com.adobe.pdf',
-            });
-            log('Share dialog opened successfully');
-          } else {
-            log('Sharing not available, showing success alert');
-            Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
-          }
-        } catch (error: any) {
-          logError('Error in FileReader onloadend:', error);
-          Alert.alert('Download Failed', `Unable to save PDF report. ${error?.message || 'Please try again.'}`);
-          setDownloadingPDF(false);
-        }
-      };
-      
-      log('Starting FileReader...');
-      reader.readAsDataURL(pdfBlob);
+      const base64data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Failed to read PDF data'));
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      const base64 = base64data.split(',')[1];
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      log('PDF saved to:', fileUri);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save or Share PDF Report',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Success', `PDF report saved to:\n${fileUri}`);
+      }
     } catch (error: any) {
       logError('Failed to download PDF report:', error);
-      logError('Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-      });
       Alert.alert(
-        'Download Failed', 
-        `Unable to download PDF report. ${error?.message || 'Please try again or contact support if the issue persists.'}`
+        'Download Failed',
+        `Unable to download PDF report. ${error?.message || 'Please try again.'}`
       );
     } finally {
       setDownloadingPDF(false);

@@ -206,14 +206,14 @@ export default function VesselDetailScreen() {
       log('[VesselDetail iOS] User action: Saving vessel particulars');
       await seaTimeApi.updateVesselParticulars(vessel.id, {
         vessel_name: editedVesselName.trim() || undefined,
-        flag: editedFlag.trim() || undefined,
-        official_number: editedOfficialNumber.trim() || undefined,
-        type: editedVesselType || undefined,
-        length_metres: editedLengthMetres ? parseFloat(editedLengthMetres) : undefined,
-        gross_tonnes: editedGrossTonnes ? parseFloat(editedGrossTonnes) : undefined,
-        callsign: editedCallSign.trim() || undefined,
-        engine_kilowatts: editedEngineKilowatts ? parseFloat(editedEngineKilowatts) : undefined,
-        engine_type: editedEngineType.trim() || undefined,
+        flag: editedFlag.trim() || null,
+        official_number: editedOfficialNumber.trim() || null,
+        type: editedVesselType || null,
+        length_metres: editedLengthMetres ? parseFloat(editedLengthMetres) : null,
+        gross_tonnes: editedGrossTonnes ? parseFloat(editedGrossTonnes) : null,
+        callsign: editedCallSign.trim() || null,
+        engine_kilowatts: editedEngineKilowatts ? parseFloat(editedEngineKilowatts) : null,
+        engine_type: editedEngineType.trim() || null,
       });
 
       setEditModalVisible(false);

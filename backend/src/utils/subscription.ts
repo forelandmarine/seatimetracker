@@ -77,7 +77,8 @@ export function formatSubscriptionStatus(
   const status = rawStatus || 'inactive';
 
   // Check trial status first
-  if (status === 'trial' && trialEndDate) {
+  if (status === 'trial') {
+    if (!trialEndDate) return 'trial'; // No end date = indefinite trial
     try {
       const trialEnd = new Date(trialEndDate);
       if (!isNaN(trialEnd.getTime()) && trialEnd > new Date()) {
@@ -89,7 +90,8 @@ export function formatSubscriptionStatus(
   }
 
   // Check active status
-  if (status === 'active' && expirationDate) {
+  if (status === 'active') {
+    if (!expirationDate) return 'active'; // No expiry = indefinite active
     try {
       const expiry = new Date(expirationDate);
       if (!isNaN(expiry.getTime()) && expiry > new Date()) {

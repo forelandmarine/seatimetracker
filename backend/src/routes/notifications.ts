@@ -46,9 +46,9 @@ function isSentToday(lastSent: Date | null): boolean {
   const sentDate = new Date(lastSent);
 
   return (
-    sentDate.getFullYear() === today.getFullYear() &&
-    sentDate.getMonth() === today.getMonth() &&
-    sentDate.getDate() === today.getDate()
+    sentDate.getUTCFullYear() === today.getUTCFullYear() &&
+    sentDate.getUTCMonth() === today.getUTCMonth() &&
+    sentDate.getUTCDate() === today.getUTCDate()
   );
 }
 

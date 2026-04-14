@@ -258,16 +258,20 @@ export default function SeaTimeScreen() {
     }
   };
 
+  const [addingVessel, setAddingVessel] = useState(false);
+
   const handleAddVessel = async () => {
+    if (addingVessel) return;
     // CRITICAL: Validate inputs to prevent crashes
     if (!newMMSI || !newMMSI.trim() || !newVesselName || !newVesselName.trim()) {
       Alert.alert('Error', 'Please enter both MMSI and vessel name');
       return;
     }
 
+    setAddingVessel(true);
     try {
       const vesselNameTrimmed = newVesselName.trim();
-      log('[Home] User action: Creating new vessel:', { 
+      log('[Home] User action: Creating new vessel:', {
         mmsi: newMMSI, 
         name: vesselNameTrimmed,
         callsign: newCallSign,
@@ -332,6 +336,8 @@ export default function SeaTimeScreen() {
       
       // Display the error message from the API (which now includes user-friendly messages)
       Alert.alert('Error', error.message || 'Failed to add vessel. Please try again.');
+    } finally {
+      setAddingVessel(false);
     }
   };
 

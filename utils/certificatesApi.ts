@@ -48,23 +48,36 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
 
 export const CERTIFICATE_TYPES = Object.keys(CERTIFICATE_TYPE_LABELS);
 
+async function ensureOk(res: Response): Promise<void> {
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let msg = `Request failed (${res.status})`;
+    try { const j = JSON.parse(text); if (j.error) msg = j.error; } catch {}
+    throw new Error(msg);
+  }
+}
+
 export async function listCertificates(): Promise<Certificate[]> {
   const res = await authFetch("/api/certificates");
+  await ensureOk(res);
   return res.json();
 }
 
 export async function createCertificate(input: CertificateInput): Promise<Certificate> {
   const res = await authFetch("/api/certificates", { method: "POST", body: input });
+  await ensureOk(res);
   return res.json();
 }
 
 export async function updateCertificate(id: string, input: Partial<CertificateInput>): Promise<Certificate> {
   const res = await authFetch(`/api/certificates/${id}`, { method: "PUT", body: input });
+  await ensureOk(res);
   return res.json();
 }
 
 export async function deleteCertificate(id: string): Promise<void> {
-  await authFetch(`/api/certificates/${id}`, { method: "DELETE" });
+  const res = await authFetch(`/api/certificates/${id}`, { method: "DELETE" });
+  await ensureOk(res);
 }
 
 /** Returns days until expiry. Negative if expired. Null if no expiry set. */

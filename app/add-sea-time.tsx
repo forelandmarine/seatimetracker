@@ -572,7 +572,7 @@ export default function AddSeaTimeScreen() {
           end_latitude: toCoords.lat,
           end_longitude: toCoords.lon,
           service_type: backendServiceType,
-          rank_capacity: rankCapacity || null,
+          rank: rankCapacity || null,
           trade_area: tradeArea || null,
           ...(backendServiceType === 'watchkeeping_service' && watchkeepingHours
             ? { bridge_watch_hours: parseFloat(watchkeepingHours) }
