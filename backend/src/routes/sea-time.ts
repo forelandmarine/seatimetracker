@@ -136,6 +136,8 @@ function transformSeaTimeEntryForResponse(entry: any) {
     bridge_watch_hours: bridge_watch_hours,
     engine_watch_hours: engine_watch_hours,
     certificate_id: entry.certificate_id || null,
+    from_port: entry.from_port || null,
+    to_port: entry.to_port || null,
     created_at: entry.created_at.toISOString ? entry.created_at.toISOString() : entry.created_at,
     vessel: entry.vessel ? transformVesselForResponse(entry.vessel) : null,
   };
@@ -319,6 +321,8 @@ export function register(app: App, fastify: FastifyInstance) {
       bridge_watch_hours: entry.bridge_watch_hours != null ? parseFloat(String(entry.bridge_watch_hours)) : null,
       engine_watch_hours: entry.engine_watch_hours != null ? parseFloat(String(entry.engine_watch_hours)) : null,
       certificate_id: entry.certificate_id || null,
+      from_port: entry.from_port || null,
+      to_port: entry.to_port || null,
       user_id: entry.user_id || null,
       created_at: entry.created_at.toISOString(),
     });

@@ -48,6 +48,7 @@ interface UserProfile {
   createdAt: string;
   updatedAt: string;
   department?: string | null;
+  maritime_authority?: string | null;
 }
 
 interface SeaTimeSummary {
@@ -803,18 +804,36 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.profileName}>{displayName}</Text>
             <Text style={styles.profileEmail}>{profile.email}</Text>
-            {profile.department && (
-              <View style={styles.departmentBadge}>
-                <IconSymbol
-                  ios_icon_name={profile.department.toLowerCase() === 'deck' ? 'sailboat.fill' : 'gearshape.2.fill'}
-                  android_material_icon_name={profile.department.toLowerCase() === 'deck' ? 'directions-boat' : 'settings'}
-                  size={14}
-                  color={colors.primary}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.departmentBadgeText}>
-                  {profile.department.toLowerCase() === 'deck' ? t('department.deck') : t('department.engineering')}
-                </Text>
+            {(profile.department || profile.maritime_authority) && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {profile.department && (
+                  <View style={styles.departmentBadge}>
+                    <IconSymbol
+                      ios_icon_name={profile.department.toLowerCase() === 'deck' ? 'sailboat.fill' : 'gearshape.2.fill'}
+                      android_material_icon_name={profile.department.toLowerCase() === 'deck' ? 'directions-boat' : 'settings'}
+                      size={14}
+                      color={colors.primary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.departmentBadgeText}>
+                      {profile.department.toLowerCase() === 'deck' ? t('department.deck') : t('department.engineering')}
+                    </Text>
+                  </View>
+                )}
+                {profile.maritime_authority && (
+                  <View style={styles.departmentBadge}>
+                    <IconSymbol
+                      ios_icon_name="building.columns.fill"
+                      android_material_icon_name="account-balance"
+                      size={14}
+                      color={colors.primary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.departmentBadgeText}>
+                      {profile.maritime_authority.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -864,7 +883,7 @@ export default function ProfileScreen() {
                   color: isDark ? colors.textSecondary : colors.textSecondaryLight,
                 }}>
                   {(() => {
-                    if (certificates.length === 0) return t('certificates.noCertificates');
+                    if (certificates.length === 0) return 'Upload your certificates now';
                     const expiring = certificates.filter(c => {
                       const s = expiryStatus(c);
                       return s === 'expired' || s === 'soon';

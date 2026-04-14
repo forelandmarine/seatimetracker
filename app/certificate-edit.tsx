@@ -16,6 +16,8 @@ import {
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
@@ -239,7 +241,14 @@ export default function CertificateEditScreen() {
         <Text style={styles.label}>Certificate scan</Text>
         {imageUri ? (
           <View style={styles.imagePreviewContainer}>
-            <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
+            {imageUri.startsWith('data:application/pdf') ? (
+              <View style={[styles.imagePreview, { alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1c1c1e' : '#f2f2f7' }]}>
+                <IconSymbol ios_icon_name="doc.fill" android_material_icon_name="description" size={48} color={colors.primary} />
+                <Text style={{ color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 8, fontSize: 14 }}>PDF attached</Text>
+              </View>
+            ) : (
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
+            )}
             <View style={styles.imageActions}>
               <TouchableOpacity style={styles.imageActionButton} onPress={() => setShowImagePicker(true)}>
                 <IconSymbol ios_icon_name="arrow.triangle.2.circlepath" android_material_icon_name="refresh" size={18} color={colors.primary} />
@@ -253,9 +262,9 @@ export default function CertificateEditScreen() {
           </View>
         ) : (
           <TouchableOpacity style={styles.addImageButton} onPress={() => setShowImagePicker(true)}>
-            <IconSymbol ios_icon_name="camera.fill" android_material_icon_name="photo-camera" size={28} color={colors.primary} />
-            <Text style={styles.addImageText}>Add photo or scan</Text>
-            <Text style={styles.addImageHint}>Take a photo or choose from your library</Text>
+            <IconSymbol ios_icon_name="doc.badge.plus" android_material_icon_name="note-add" size={28} color={colors.primary} />
+            <Text style={styles.addImageText}>Add photo, scan, or PDF</Text>
+            <Text style={styles.addImageHint}>Take a photo, choose from library, or upload a document</Text>
           </TouchableOpacity>
         )}
 
@@ -375,6 +384,34 @@ export default function CertificateEditScreen() {
             >
               <IconSymbol ios_icon_name="photo.fill" android_material_icon_name="photo-library" size={22} color={colors.primary} />
               <Text style={styles.imagePickerOptionText}>Choose from library</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.imagePickerOption}
+              onPress={async () => {
+                setShowImagePicker(false);
+                try {
+                  const result = await DocumentPicker.getDocumentAsync({
+                    type: ['application/pdf', 'image/*'],
+                    copyToCacheDirectory: true,
+                  });
+                  if (!result.canceled && result.assets?.[0]) {
+                    const asset = result.assets[0];
+                    const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+                      encoding: FileSystem.EncodingType.Base64,
+                    });
+                    const mimeType = asset.mimeType || (asset.name?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+                    setImageUri(`data:${mimeType};base64,${base64}`);
+                    log('[CertEdit] Document picked:', asset.name);
+                  }
+                } catch (err) {
+                  logError('[CertEdit] Document pick failed:', err);
+                  Alert.alert('Error', 'Failed to pick document');
+                }
+              }}
+            >
+              <IconSymbol ios_icon_name="doc.fill" android_material_icon_name="description" size={22} color={colors.primary} />
+              <Text style={styles.imagePickerOptionText}>Upload PDF or document</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

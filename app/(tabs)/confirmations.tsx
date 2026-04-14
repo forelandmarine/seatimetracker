@@ -674,6 +674,12 @@ export default function ConfirmationsScreen() {
                           </Text>
                         </View>
                       )}
+                      {entry.to_port && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Destination:</Text>
+                          <Text style={styles.detailValue}>{entry.to_port}</Text>
+                        </View>
+                      )}
                       {entry.notes && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Notes:</Text>

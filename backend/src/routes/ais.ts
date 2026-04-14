@@ -1356,7 +1356,8 @@ export function register(app: App, fastify: FastifyInstance) {
     if (ais_data.is_moving) {
       // Vessel is moving
       if (open_entry.length === 0) {
-        // Create a new pending sea time entry
+        // Create a new pending sea time entry with voyage port data if available
+        const friendlyDest = lookupPort(ais_data.destination) ?? ais_data.destination ?? null;
         const [new_entry] = await app.db
           .insert(schema.sea_time_entries)
           .values({
@@ -1365,6 +1366,7 @@ export function register(app: App, fastify: FastifyInstance) {
             start_time: check_time,
             start_latitude: ais_data.latitude !== null ? String(ais_data.latitude) : null,
             start_longitude: ais_data.longitude !== null ? String(ais_data.longitude) : null,
+            to_port: friendlyDest,
             status: 'pending',
           })
           .returning();
@@ -1424,6 +1426,9 @@ export function register(app: App, fastify: FastifyInstance) {
         const sea_days = calculateSeaDays(duration_hours);
         const mca_compliant = duration_hours >= 4;
 
+        // Resolve port names for the voyage
+        const endDest = lookupPort(ais_data.destination) ?? ais_data.destination ?? null;
+
         const [ended_entry] = await app.db
           .update(schema.sea_time_entries)
           .set({
@@ -1434,6 +1439,8 @@ export function register(app: App, fastify: FastifyInstance) {
             distance_nm,
             sea_days,
             mca_compliant,
+            // Update to_port with latest destination (may have changed during voyage)
+            ...(endDest ? { to_port: endDest } : {}),
           })
           .where(eq(schema.sea_time_entries.id, open_entry[0].id))
           .returning();

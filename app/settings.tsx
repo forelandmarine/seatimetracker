@@ -116,11 +116,6 @@ export default function SettingsScreen() {
           <SettingsRow icon="signature" androidIcon="draw" label={t('settings.signatureForReports')} onPress={() => router.push('/signature')} isLast isDark={isDark} />
         </View>
 
-        <Text style={styles.sectionTitle}>{t('settings.certificates')}</Text>
-        <View style={styles.card}>
-          <SettingsRow icon="doc.text.fill" androidIcon="article" label={t('settings.manageCertificates')} onPress={() => router.push('/certificates')} isLast isDark={isDark} />
-        </View>
-
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />

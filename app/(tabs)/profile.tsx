@@ -1321,7 +1321,12 @@ export default function ProfileScreen() {
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>Certificates</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.menuItemText}>Certificates</Text>
+                  <Text style={{ fontSize: 12, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 1 }}>
+                    Upload and manage your maritime certificates
+                  </Text>
+                </View>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
