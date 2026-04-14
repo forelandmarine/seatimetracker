@@ -1,0 +1,142 @@
+/**
+ * ISO 3166-1 alpha-2 country code → country name mapping.
+ * Focused on maritime flag states and common nationalities.
+ */
+const COUNTRIES: Record<string, string> = {
+  // Major flag states
+  MH: "Marshall Islands",
+  PA: "Panama",
+  LR: "Liberia",
+  BS: "Bahamas",
+  MT: "Malta",
+  HK: "Hong Kong",
+  SG: "Singapore",
+  CY: "Cyprus",
+  BM: "Bermuda",
+  KY: "Cayman Islands",
+  GI: "Gibraltar",
+  IM: "Isle of Man",
+  JE: "Jersey",
+  GG: "Guernsey",
+  VG: "British Virgin Islands",
+  AG: "Antigua & Barbuda",
+  VC: "St Vincent & Grenadines",
+  KN: "St Kitts & Nevis",
+
+  // Europe
+  GB: "United Kingdom",
+  FR: "France",
+  ES: "Spain",
+  IT: "Italy",
+  DE: "Germany",
+  NL: "Netherlands",
+  BE: "Belgium",
+  PT: "Portugal",
+  GR: "Greece",
+  HR: "Croatia",
+  ME: "Montenegro",
+  SI: "Slovenia",
+  MC: "Monaco",
+  NO: "Norway",
+  SE: "Sweden",
+  DK: "Denmark",
+  FI: "Finland",
+  IE: "Ireland",
+  PL: "Poland",
+  RO: "Romania",
+  BG: "Bulgaria",
+  LU: "Luxembourg",
+  AT: "Austria",
+  CH: "Switzerland",
+  IS: "Iceland",
+  TR: "Turkey",
+  RU: "Russia",
+  UA: "Ukraine",
+  EE: "Estonia",
+  LV: "Latvia",
+  LT: "Lithuania",
+
+  // Americas
+  US: "United States",
+  CA: "Canada",
+  MX: "Mexico",
+  BR: "Brazil",
+  AR: "Argentina",
+  CL: "Chile",
+  CO: "Colombia",
+  PE: "Peru",
+  EC: "Ecuador",
+  VE: "Venezuela",
+  CR: "Costa Rica",
+  CU: "Cuba",
+  JM: "Jamaica",
+  TT: "Trinidad & Tobago",
+  BB: "Barbados",
+  DO: "Dominican Republic",
+  HT: "Haiti",
+  PR: "Puerto Rico",
+  VI: "US Virgin Islands",
+
+  // Middle East & Gulf
+  AE: "United Arab Emirates",
+  SA: "Saudi Arabia",
+  QA: "Qatar",
+  BH: "Bahrain",
+  KW: "Kuwait",
+  OM: "Oman",
+  IL: "Israel",
+  JO: "Jordan",
+  LB: "Lebanon",
+
+  // Asia-Pacific
+  CN: "China",
+  JP: "Japan",
+  KR: "South Korea",
+  IN: "India",
+  AU: "Australia",
+  NZ: "New Zealand",
+  ID: "Indonesia",
+  MY: "Malaysia",
+  TH: "Thailand",
+  PH: "Philippines",
+  VN: "Vietnam",
+  TW: "Taiwan",
+  MM: "Myanmar",
+  BD: "Bangladesh",
+  LK: "Sri Lanka",
+  PK: "Pakistan",
+  FJ: "Fiji",
+  PG: "Papua New Guinea",
+
+  // Africa
+  ZA: "South Africa",
+  EG: "Egypt",
+  MA: "Morocco",
+  NG: "Nigeria",
+  KE: "Kenya",
+  TZ: "Tanzania",
+  GH: "Ghana",
+  MU: "Mauritius",
+  SC: "Seychelles",
+  MZ: "Mozambique",
+  TN: "Tunisia",
+  DZ: "Algeria",
+  LY: "Libya",
+  SN: "Senegal",
+  CI: "Ivory Coast",
+  CM: "Cameroon",
+  AO: "Angola",
+  NA: "Namibia",
+  MG: "Madagascar",
+  CV: "Cape Verde",
+};
+
+/**
+ * Convert ISO 2-letter country code to full country name.
+ * Returns the code itself if not found in the lookup table.
+ */
+export function countryName(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const upper = code.trim().toUpperCase();
+  return COUNTRIES[upper] || upper;
+}

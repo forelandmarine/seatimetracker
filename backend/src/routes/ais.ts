@@ -1203,7 +1203,7 @@ export function register(app: App, fastify: FastifyInstance) {
         course: ais_data.course !== null && ais_data.course !== undefined ? String(ais_data.course) : null,
         heading: ais_data.heading !== null && ais_data.heading !== undefined ? String(ais_data.heading) : null,
         nav_status: ais_data.status ?? null,
-        destination: ais_data.destination ?? null,
+        destination: lookupPort(ais_data.destination) ?? ais_data.destination ?? null,
         eta: ais_data.eta ?? null,
         api_source: apiSource,
       })

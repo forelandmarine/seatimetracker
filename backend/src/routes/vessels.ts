@@ -5,6 +5,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
 import { fetchVesselAISDataWithFallback } from "./ais.js";
+import { lookupPort } from "../utils/portDatabase.js";
 import { enrichHubspotContactWithVessel } from "../utils/hubspot.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
@@ -45,7 +46,7 @@ async function fetchAndStoreInitialAISCheck(
       course: ais_data.course !== null && ais_data.course !== undefined ? String(ais_data.course) : null,
       heading: ais_data.heading !== null && ais_data.heading !== undefined ? String(ais_data.heading) : null,
       nav_status: ais_data.status ?? null,
-      destination: ais_data.destination ?? null,
+      destination: lookupPort(ais_data.destination) ?? ais_data.destination ?? null,
       eta: ais_data.eta ?? null,
       api_source: apiSource,
     });

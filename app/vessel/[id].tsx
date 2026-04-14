@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
+import { countryName } from '@/utils/countryCodes';
 import {
   View,
   Text,
@@ -640,7 +641,7 @@ export default function VesselDetailScreen() {
           {vessel.flag && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Flag</Text>
-              <Text style={styles.detailValue}>{vessel.flag}</Text>
+              <Text style={styles.detailValue}>{countryName(vessel.flag)}</Text>
             </View>
           )}
 

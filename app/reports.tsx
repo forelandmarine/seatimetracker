@@ -15,6 +15,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
+import { countryName } from '@/utils/countryCodes';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -729,7 +730,7 @@ export default function ReportsScreen() {
                     {selectedVessel.flag && (
                       <View style={styles.particularRow}>
                         <Text style={styles.particularLabel}>Flag</Text>
-                        <Text style={styles.particularValue}>{selectedVessel.flag}</Text>
+                        <Text style={styles.particularValue}>{countryName(selectedVessel.flag)}</Text>
                       </View>
                     )}
                     {selectedVessel.official_number && (

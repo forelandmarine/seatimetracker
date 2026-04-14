@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import { countryName } from '@/utils/countryCodes';
 import {
   View,
   Text,
@@ -553,7 +554,7 @@ export default function VesselDetailScreen() {
           {vessel.flag && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Flag</Text>
-              <Text style={styles.detailValue}>{vessel.flag}</Text>
+              <Text style={styles.detailValue}>{countryName(vessel.flag)}</Text>
             </View>
           )}
 

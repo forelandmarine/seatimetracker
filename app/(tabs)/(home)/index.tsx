@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { countryName } from '@/utils/countryCodes';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -606,7 +607,7 @@ export default function SeaTimeScreen() {
                   {activeVessel.flag && (
                     <View style={styles.particularItem}>
                       <Text style={styles.particularLabel}>Flag</Text>
-                      <Text style={styles.particularValue}>{activeVessel.flag}</Text>
+                      <Text style={styles.particularValue}>{countryName(activeVessel.flag)}</Text>
                     </View>
                   )}
                   {activeVessel.vessel_type && (
@@ -804,7 +805,7 @@ export default function SeaTimeScreen() {
                           <Text style={styles.vesselDetail}>Call Sign: {vessel.callsign}</Text>
                         )}
                         {vessel.flag && (
-                          <Text style={styles.vesselDetail}>Flag: {vessel.flag}</Text>
+                          <Text style={styles.vesselDetail}>Flag: {countryName(vessel.flag)}</Text>
                         )}
                         {vessel.official_number && (
                           <Text style={styles.vesselDetail}>Official No.: {vessel.official_number}</Text>
