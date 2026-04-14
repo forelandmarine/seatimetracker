@@ -1323,7 +1323,7 @@ export function register(app: App, fastify: FastifyInstance) {
           });
         } else {
           // Production mode: send email via Resend
-          const fromAddress = 'SeaTime Tracker <noreply@seatime.com>';
+          const fromAddress = process.env.FROM_EMAIL || 'SeaTime Tracker <noreply@forelandmarine.com>';
 
           app.logger.info(
             { userId: user.id, email, from: fromAddress, resetId },
