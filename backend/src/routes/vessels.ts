@@ -4,7 +4,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
-import { fetchVesselAISDataWithFallback } from "./ais.js";
+import { fetchVesselAISDataWithFallback, fetchVesselSpecs } from "./ais.js";
 import { lookupPort } from "../utils/portDatabase.js";
 import { enrichHubspotContactWithVessel } from "../utils/hubspot.js";
 
@@ -51,18 +51,31 @@ async function fetchAndStoreInitialAISCheck(
       api_source: apiSource,
     });
 
-    // Update vessel with AIS-derived data (callsign, flag, type)
+    // Fetch detailed vessel specs from Datalastic /vessel_info
+    const specs = await fetchVesselSpecs(mmsi, app.logger);
+
+    // Update vessel with all available AIS data and specs
     const vesselUpdates: Record<string, any> = { updated_at: new Date() };
+    // From AIS position data
     if (ais_data.callsign) vesselUpdates.callsign = ais_data.callsign;
     if (ais_data.flag) vesselUpdates.flag = ais_data.flag;
     if (ais_data.ship_type) vesselUpdates.type = ais_data.ship_type;
+    // From vessel specs (fill in anything AIS didn't provide)
+    if (specs) {
+      if (!vesselUpdates.callsign && specs.callsign) vesselUpdates.callsign = specs.callsign;
+      if (!vesselUpdates.flag && specs.flag) vesselUpdates.flag = specs.flag;
+      if (!vesselUpdates.type && specs.type) vesselUpdates.type = specs.type;
+      if (specs.length_metres) vesselUpdates.length_metres = specs.length_metres;
+      if (specs.gross_tonnes) vesselUpdates.gross_tonnes = specs.gross_tonnes;
+      if (specs.imo_number) vesselUpdates.imo_number = specs.imo_number;
+    }
 
     if (Object.keys(vesselUpdates).length > 1) {
       await app.db
         .update(schema.vessels)
         .set(vesselUpdates)
         .where(eq(schema.vessels.id, vesselId));
-      app.logger.info({ vesselId, updates: Object.keys(vesselUpdates).filter(k => k !== 'updated_at') }, 'Vessel updated with AIS data on activation');
+      app.logger.info({ vesselId, updates: Object.keys(vesselUpdates).filter(k => k !== 'updated_at') }, 'Vessel updated with AIS data + specs on activation');
     }
 
     app.logger.info(
@@ -564,6 +577,32 @@ export function register(app: App, fastify: FastifyInstance) {
       { vesselId: vessel.id, userId, mmsi, vessel_name, callsign, is_active },
       'Vessel created successfully'
     );
+
+    // Auto-fill vessel particulars from Datalastic specs API
+    if (mmsi) {
+      try {
+        const specs = await fetchVesselSpecs(mmsi, app.logger);
+        if (specs) {
+          const specUpdates: Record<string, any> = { updated_at: new Date() };
+          if (!vessel.callsign && specs.callsign) specUpdates.callsign = specs.callsign;
+          if (!vessel.flag && specs.flag) specUpdates.flag = specs.flag;
+          if (!vessel.type && specs.type) specUpdates.type = specs.type;
+          if (!vessel.length_metres && specs.length_metres) specUpdates.length_metres = specs.length_metres;
+          if (!vessel.gross_tonnes && specs.gross_tonnes) specUpdates.gross_tonnes = specs.gross_tonnes;
+          if (!vessel.imo_number && specs.imo_number) specUpdates.imo_number = specs.imo_number;
+
+          if (Object.keys(specUpdates).length > 1) {
+            await app.db
+              .update(schema.vessels)
+              .set(specUpdates)
+              .where(eq(schema.vessels.id, vessel.id));
+            app.logger.info({ vesselId: vessel.id, updates: Object.keys(specUpdates).filter(k => k !== 'updated_at') }, 'Vessel auto-filled from Datalastic specs on creation');
+          }
+        }
+      } catch (err) {
+        app.logger.warn({ vesselId: vessel.id, err }, 'Failed to auto-fill vessel specs (non-critical)');
+      }
+    }
 
     // Create scheduled task if vessel is active
     let scheduledTaskFailed = false;

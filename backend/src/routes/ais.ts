@@ -13,6 +13,7 @@ const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
 const MYSHIPTRACKING_API_KEY = process.env.MYSHIPTRACKING_API_KEY || '';
 const DATALASTIC_API_URL = 'https://api.datalastic.com/api/v0/vessel';
+const DATALASTIC_INFO_URL = 'https://api.datalastic.com/api/v0/vessel_info';
 const DATALASTIC_API_KEY = process.env.DATALASTIC_API_KEY || '';
 const BASE44_API_URL = 'https://app.base44.com/api/apps/695fbc07612e977d62f60329/entities/Vessel';
 const BASE44_API_KEY = process.env.BASE44_API_KEY || '';
@@ -383,6 +384,65 @@ async function fetchVesselAISDataFromDatalastic(
     };
   } catch (error) {
     logger.error(`Error fetching vessel data from Datalastic for MMSI ${mmsi}: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Fetch vessel specifications from Datalastic's /vessel_info endpoint.
+ * Returns detailed specs: callsign, country_name, gross_tonnage, length, breadth, type, year_built, etc.
+ */
+export interface VesselSpecs {
+  callsign: string | null;
+  flag: string | null;
+  type: string | null;
+  length_metres: string | null;
+  gross_tonnes: string | null;
+  imo_number: string | null;
+  breadth: string | null;
+}
+
+export async function fetchVesselSpecs(
+  mmsi: string,
+  logger: any
+): Promise<VesselSpecs | null> {
+  try {
+    if (!DATALASTIC_API_KEY) {
+      logger.debug('Datalastic API key not configured, skipping vessel specs fetch');
+      return null;
+    }
+
+    const url = `${DATALASTIC_INFO_URL}?api-key=${DATALASTIC_API_KEY}&mmsi=${mmsi}`;
+    logger.info(`Fetching vessel specs from Datalastic for MMSI ${mmsi}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: timeoutSignal(AIS_FETCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      logger.warn(`Datalastic vessel_info returned ${response.status} for MMSI ${mmsi}`);
+      return null;
+    }
+
+    const raw = await response.json() as any;
+    const data = raw.data && typeof raw.data === 'object' ? raw.data : raw;
+
+    const specs: VesselSpecs = {
+      callsign: data.callsign || null,
+      flag: data.country_name || data.country_iso || null,
+      type: data.type_specific || data.type || null,
+      length_metres: data.length != null ? String(data.length) : null,
+      gross_tonnes: data.gross_tonnage != null ? String(data.gross_tonnage) : null,
+      imo_number: data.imo || null,
+      breadth: data.breadth != null ? String(data.breadth) : null,
+    };
+
+    logger.info({ mmsi, specs }, `Vessel specs retrieved from Datalastic for MMSI ${mmsi}`);
+    return specs;
+  } catch (error) {
+    logger.error(`Error fetching vessel specs from Datalastic for MMSI ${mmsi}: ${error}`);
     return null;
   }
 }
