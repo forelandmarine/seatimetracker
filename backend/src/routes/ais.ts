@@ -288,7 +288,10 @@ async function fetchVesselAISDataFromDatalastic(
         return (data as any).speed ?? (data as any).speed_knots;
       }
       if (field === 'ship_type') {
-        return (data as any).ship_type || (data as any).vessel_type;
+        return (data as any).ship_type || (data as any).vessel_type || (data as any).type_specific || (data as any).type;
+      }
+      if (field === 'flag') {
+        return (data as any).flag || (data as any).country_iso;
       }
       if (field === 'status') {
         return (data as any).status || (data as any).nav_status;

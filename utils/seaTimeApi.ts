@@ -132,7 +132,7 @@ const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): Promise
 
   const headers: HeadersInit = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!formData) headers['Content-Type'] = 'application/json';
+  if (!formData && body !== undefined) headers['Content-Type'] = 'application/json';
 
   // Timeout via AbortController — respects an external signal too
   const controller = new AbortController();
