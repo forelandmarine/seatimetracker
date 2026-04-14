@@ -151,6 +151,21 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
       },
     });
 
+    // Handle empty JSON body gracefully (e.g., DELETE with Content-Type: application/json)
+    fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+      const str = (body as string || '').trim();
+      if (!str) {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(str));
+      } catch (err: any) {
+        err.statusCode = 400;
+        done(err, undefined);
+      }
+    });
+
     // CORS preflight
     fastify.addHook('onRequest', async (request, reply) => {
       if (request.method === 'OPTIONS') {
