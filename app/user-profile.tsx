@@ -467,8 +467,10 @@ export default function UserProfileScreen() {
       if (editEmail !== profile?.email) updates.email = editEmail;
       if (editAddress !== (profile?.address || '')) updates.address = editAddress || null;
       if (editTelNo !== (profile?.tel_no || '')) updates.tel_no = editTelNo || null;
-      if (editDateOfBirth && editDateOfBirth.toISOString() !== profile?.date_of_birth) {
-        updates.date_of_birth = editDateOfBirth.toISOString().split('T')[0];
+      const currentDob = profile?.date_of_birth || null;
+      const newDob = editDateOfBirth ? editDateOfBirth.toISOString().split('T')[0] : null;
+      if (newDob !== currentDob) {
+        updates.date_of_birth = newDob;
       }
       if (editSrbNo !== (profile?.srb_no || '')) updates.srb_no = editSrbNo || null;
       if (editNationality !== (profile?.nationality || '')) updates.nationality = editNationality || null;

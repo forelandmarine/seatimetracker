@@ -216,7 +216,7 @@ const createStyles = (isDark: boolean) =>
     sectionTitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 10,
     },
     card: {

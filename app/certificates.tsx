@@ -95,7 +95,7 @@ export default function CertificatesScreen() {
       statusText = `Expires in ${days} day${days === 1 ? '' : 's'}`;
     } else if (status === 'ok') {
       statusColor = colors.success;
-      statusText = `Expires in ${days} days`;
+      statusText = `Expires in ${days} day${days === 1 ? '' : 's'}`;
     } else {
       statusText = 'No expiry set';
     }

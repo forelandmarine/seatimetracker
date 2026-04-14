@@ -567,9 +567,9 @@ export default function EditSeaTimeScreen() {
         service_type: backendServiceType,
         rank: rankCapacity || null,
         trade_area: tradeArea || null,
-        ...(backendServiceType === 'watchkeeping_service' && watchkeepingHours
-          ? { bridge_watch_hours: parseFloat(watchkeepingHours) }
-          : {}),
+        bridge_watch_hours: backendServiceType === 'watchkeeping_service' && watchkeepingHours
+          ? parseFloat(watchkeepingHours)
+          : null,
       };
       if (showPositionEditor) {
         const sLat = parseCoord(startLat);

@@ -74,6 +74,11 @@ export const apiCall = async <T = any>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  // If caller provides a signal, abort our controller when theirs fires too
+  if (options?.signal) {
+    options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -81,7 +86,7 @@ export const apiCall = async <T = any>(
         "Content-Type": "application/json",
         ...options?.headers,
       },
-      signal: options?.signal || controller.signal,
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);

@@ -28,7 +28,9 @@ function isTimeNowInTimezone(scheduledTime: string, timezone: string): boolean {
     // Allow 1 minute before and up to the scheduled minute
     const scheduledTotalMinutes = scheduledHours * 60 + scheduledMinutes;
     const currentTotalMinutes = currentHours * 60 + currentMinutes;
-    const diffMinutes = Math.abs(scheduledTotalMinutes - currentTotalMinutes);
+    let diffMinutes = Math.abs(scheduledTotalMinutes - currentTotalMinutes);
+    // Handle midnight wrap-around (e.g., scheduled 23:59, current 00:00)
+    if (diffMinutes > 720) diffMinutes = 1440 - diffMinutes;
 
     return diffMinutes <= 1; // Within 1 minute window
   } catch (error) {

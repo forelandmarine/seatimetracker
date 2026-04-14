@@ -220,7 +220,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
     sectionTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.text,
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 10,
     },
     disclosureRow: {

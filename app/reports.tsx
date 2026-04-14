@@ -744,13 +744,13 @@ export default function ReportsScreen() {
                         <Text style={styles.particularValue}>{selectedVessel.vessel_type}</Text>
                       </View>
                     )}
-                    {selectedVessel.length_metres && (
+                    {selectedVessel.length_metres != null && (
                       <View style={styles.particularRow}>
                         <Text style={styles.particularLabel}>Length</Text>
                         <Text style={styles.particularValue}>{selectedVessel.length_metres}m</Text>
                       </View>
                     )}
-                    {selectedVessel.gross_tonnes && (
+                    {selectedVessel.gross_tonnes != null && (
                       <View style={styles.particularRow}>
                         <Text style={styles.particularLabel}>Gross Tonnes</Text>
                         <Text style={styles.particularValue}>{selectedVessel.gross_tonnes}</Text>

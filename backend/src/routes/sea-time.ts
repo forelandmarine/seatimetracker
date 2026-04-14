@@ -1396,7 +1396,7 @@ export function register(app: App, fastify: FastifyInstance) {
       const testEntryExists = await checkEntryExistsForDay(app, vessel[0].user_id, testCalendarDay);
 
       if (testEntryExists) {
-        app.logger.warn({ vesselId: vessel.id, calendarDay: testCalendarDay }, 'Test entry: another entry exists for this calendar day');
+        app.logger.warn({ vesselId: vessel[0].id, calendarDay: testCalendarDay }, 'Test entry: another entry exists for this calendar day');
         return reply.code(400).send({
           error: `Cannot create test entry: You can only register one sea time period per day (00:00-23:59). Another entry exists for ${testCalendarDay}.`,
         });
@@ -1407,7 +1407,7 @@ export function register(app: App, fastify: FastifyInstance) {
         .insert(schema.sea_time_entries)
         .values({
           user_id: vessel[0].user_id,
-          vessel_id: vessel.id,
+          vessel_id: vessel[0].id,
           start_time: olderRecord.check_time,
           end_time: newestRecord.check_time,
           duration_hours: String(duration_hours),
@@ -1425,7 +1425,7 @@ export function register(app: App, fastify: FastifyInstance) {
         .returning();
 
       app.logger.info(
-        { entryId: new_entry.id, vesselId: vessel.id, vesselName: vessel.vessel_name, durationHours: duration_hours, seaDays: sea_days },
+        { entryId: new_entry.id, vesselId: vessel[0].id, vesselName: vessel[0].vessel_name, durationHours: duration_hours, seaDays: sea_days },
         `Test endpoint: Sea day entry created successfully`
       );
 
@@ -2359,7 +2359,7 @@ export function register(app: App, fastify: FastifyInstance) {
           .insert(schema.sea_time_entries)
           .values({
             user_id: userId,
-            vessel_id: vessel.id,
+            vessel_id: vessel[0].id,
             start_time: startTime,
             end_time: endTime,
             duration_hours: String(durationHours),

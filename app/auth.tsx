@@ -259,22 +259,7 @@ export default function AuthScreen() {
 
       log('[AuthScreen] Apple sign in successful, navigating to index');
       
-      try {
-        // Use setTimeout to ensure state updates complete before navigation
-        setTimeout(() => {
-          router.replace('/');
-        }, 100);
-      } catch (navError: any) {
-        logError('[AuthScreen] Navigation after Apple sign in failed:', navError);
-        // Fallback navigation attempt
-        setTimeout(() => {
-          try {
-            router.replace('/');
-          } catch (_retryError) {
-            // silently ignored — first error already logged
-          }
-        }, 500);
-      }
+      setTimeout(() => router.replace('/'), 100);
     } catch (error: any) {
       logError('[AuthScreen] Apple sign in failed:', error.message);
 
