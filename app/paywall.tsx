@@ -576,7 +576,7 @@ export default function PaywallScreen() {
               disabled={purchasing || restoring || (!annualPackage && !monthlyPackage)}
             >
               {purchasing ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={styles.primaryButtonText}>
                   {(!annualPackage && !monthlyPackage)
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    padding: 16,
     paddingTop: Platform.OS === 'ios' ? 100 : 60,
     paddingBottom: 40,
   },
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   pricingCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 32,
     marginBottom: 32,
     borderWidth: 2,
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   planBadgeText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 0.8,
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pricingBadgeText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 12,
     fontWeight: 'bold',
     letterSpacing: 1,
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
   },

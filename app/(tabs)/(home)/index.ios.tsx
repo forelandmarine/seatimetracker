@@ -26,7 +26,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { colors } from '@/styles/commonStyles';
+import { colors, withOpacity } from '@/styles/commonStyles';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import CartoMap from '@/components/CartoMap';
@@ -1066,10 +1066,10 @@ function createStyles(isDark: boolean, topInset: number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     historicHeader: {
-      marginBottom: 12,
+      marginBottom: 16,
     },
     sectionTitle: {
       fontSize: 20,
@@ -1089,7 +1089,7 @@ function createStyles(isDark: boolean, topInset: number) {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 12,
       padding: 16,
-      marginBottom: 12,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: isDark ? colors.border : colors.borderLight,
     },
@@ -1284,7 +1284,7 @@ function createStyles(isDark: boolean, topInset: number) {
       paddingHorizontal: 12,
     },
     vesselButtonText: {
-      color: '#fff',
+      color: colors.white,
       fontWeight: '600',
       fontSize: 14,
     },
@@ -1393,7 +1393,7 @@ function createStyles(isDark: boolean, topInset: number) {
       color: isDark ? colors.text : colors.textLight,
     },
     typeButtonTextActive: {
-      color: '#fff',
+      color: colors.white,
     },
     submitButton: {
       backgroundColor: colors.primary,
@@ -1403,7 +1403,7 @@ function createStyles(isDark: boolean, topInset: number) {
       marginTop: 12,
     },
     submitButtonText: {
-      color: '#fff',
+      color: colors.white,
       fontSize: 16,
       fontWeight: 'bold',
     },
@@ -1427,7 +1427,7 @@ function createStyles(isDark: boolean, topInset: number) {
     autoFillBanner: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primary + '15',
+      backgroundColor: withOpacity(colors.primary, 0.12),
       padding: 12,
       borderRadius: 8,
       marginBottom: 20,

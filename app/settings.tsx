@@ -178,9 +178,9 @@ export default function SettingsScreen() {
                 disabled={signingOut}
               >
                 {signingOut ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
+                  <ActivityIndicator color={colors.white} size="small" />
                 ) : (
-                  <Text style={[styles.confirmModalButtonText, { color: '#ffffff' }]}>
+                  <Text style={[styles.confirmModalButtonText, { color: colors.white }]}>
                     {t('signOut.title')}
                   </Text>
                 )}
@@ -246,7 +246,7 @@ const createStyles = (isDark: boolean) =>
       padding: 20,
     },
     confirmModalContent: {
-      backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
+      backgroundColor: isDark ? colors.cardBackground : colors.white,
       borderRadius: 16,
       padding: 24,
       width: '100%',
@@ -255,7 +255,7 @@ const createStyles = (isDark: boolean) =>
     confirmModalTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: isDark ? '#ffffff' : '#000000',
+      color: isDark ? colors.white : colors.black,
       marginBottom: 12,
       textAlign: 'center',
     },
@@ -273,7 +273,7 @@ const createStyles = (isDark: boolean) =>
     confirmModalButton: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 10,
+      borderRadius: 12,
       alignItems: 'center',
     },
     confirmModalCancelButton: {

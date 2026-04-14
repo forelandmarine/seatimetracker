@@ -178,7 +178,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       marginTop: 4,
     },
     content: {
-      padding: 20,
+      padding: 16,
     },
     profileSection: {
       alignItems: 'center',
@@ -202,23 +202,23 @@ const createStyles = (isDark: boolean, topInset: number) =>
     profileInitials: {
       fontSize: 36,
       fontWeight: 'bold',
-      color: '#ffffff',
+      color: colors.white,
     },
     profileName: {
       fontSize: 24,
       fontWeight: 'bold',
-      color: isDark ? colors.text : '#1a1a1a',
+      color: isDark ? colors.text : colors.textLight,
       marginBottom: 5,
     },
     profileEmail: {
       fontSize: 16,
-      color: isDark ? colors.textSecondary : '#666666',
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     section: {
-      marginBottom: 20,
+      marginBottom: 16,
     },
     sectionTitle: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '600',
       color: colors.text,
       marginBottom: 10,
@@ -325,7 +325,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       marginBottom: 10,
     },
     reportButtonText: {
-      color: '#ffffff',
+      color: colors.white,
       fontSize: 16,
       fontWeight: '600',
       marginLeft: 10,
@@ -371,7 +371,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     definitionCard: {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
-      borderRadius: 10,
+      borderRadius: 12,
       padding: 14,
       marginBottom: 10,
       borderWidth: 1,

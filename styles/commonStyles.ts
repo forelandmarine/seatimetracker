@@ -71,6 +71,21 @@ export const spacing = {
   lg: 20,
   xl: 24,
   xxl: 32,
+  contentPadding: 16,  // standard horizontal padding for scroll content
+  sectionGap: 16,      // vertical gap between sections
+};
+
+// Border radius scale — use consistently across all screens
+export const radius = {
+  sm: 8,   // badges, pills, small elements
+  md: 12,  // cards, inputs, buttons
+  lg: 16,  // modals, bottom sheets
+};
+
+// Opacity helper — use instead of string concatenation (e.g. colors.primary + '20')
+export const withOpacity = (hex: string, opacity: number): string => {
+  const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
+  return hex + alpha;
 };
 
 export const buttonStyles = StyleSheet.create({

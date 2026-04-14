@@ -132,10 +132,10 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     toggleTextActive: {
-      color: '#FFFFFF',
+      color: colors.white,
     },
     scrollContent: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 100,
     },
@@ -143,7 +143,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 10,
+      borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 10,
       marginBottom: 16,
@@ -158,9 +158,9 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     summaryCard: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 20,
-      marginBottom: 20,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
     },
@@ -256,7 +256,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
     statusText: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: colors.white,
     },
     entryRow: {
       flexDirection: 'row',
@@ -297,15 +297,15 @@ const createStyles = (isDark: boolean, topInset: number) =>
       paddingHorizontal: 40,
     },
     calendarContainer: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 20,
     },
     calendarCard: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 16,
-      marginBottom: 20,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
     },
@@ -328,9 +328,9 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     selectedDateCard: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 20,
-      marginBottom: 20,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
     },
@@ -356,10 +356,10 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     noDateSelectedContainer: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 32,
       alignItems: 'center',
-      marginBottom: 20,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
     },
@@ -497,7 +497,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: isDark ? colors.text : colors.textLight,
     },
     saveButtonText: {
-      color: '#FFFFFF',
+      color: colors.white,
     },
     vesselPickerContainer: {
       maxHeight: 200,
@@ -566,7 +566,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     serviceTypeTextActive: {
-      color: '#FFFFFF',
+      color: colors.white,
     },
     helperText: {
       fontSize: 12,
@@ -589,7 +589,7 @@ const createStyles = (isDark: boolean, topInset: number) =>
     },
     datePickerContainer: {
       backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 16,
       marginTop: 12,
     },

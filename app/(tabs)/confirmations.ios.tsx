@@ -826,7 +826,7 @@ function createStyles(isDark: boolean, topInset: number) {
       borderLeftWidth: 3,
       borderLeftColor: colors.warning,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       marginTop: 12,
       marginBottom: 12,
     },
@@ -874,7 +874,7 @@ function createStyles(isDark: boolean, topInset: number) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       gap: 8,
     },
     confirmButton: {
@@ -887,7 +887,7 @@ function createStyles(isDark: boolean, topInset: number) {
       opacity: 0.6,
     },
     actionButtonText: {
-      color: '#fff',
+      color: colors.white,
       fontSize: 16,
       fontWeight: '600',
     },
