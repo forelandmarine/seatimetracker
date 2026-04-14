@@ -1291,6 +1291,11 @@ export function register(app: App, fastify: FastifyInstance) {
         // Generate reset code (6-digit numeric code)
         const resetCode = crypto.randomInt(100000, 1000000).toString();
 
+        // Delete any previous reset codes for this user to avoid confusion
+        await app.db
+          .delete(authSchema.verification)
+          .where(eq(authSchema.verification.identifier, `password-reset:${user.id}`));
+
         // Create verification entry with 15-minute expiry
         const resetId = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
