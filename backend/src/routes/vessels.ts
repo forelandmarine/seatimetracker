@@ -101,6 +101,7 @@ async function ensureScheduledTask(app: App, vesselId: string, userId: string): 
       { err: error, vesselId, userId },
       `Failed to create scheduled task for vessel (user: ${userId})`
     );
+    throw error;
   }
 }
 
@@ -566,10 +567,10 @@ export function register(app: App, fastify: FastifyInstance) {
         flag,
         official_number,
         type,
-        length_metres: length_metres ? String(length_metres) : null,
-        gross_tonnes: gross_tonnes ? String(gross_tonnes) : null,
-        tonnage_itc: tonnage_itc ? String(tonnage_itc) : null,
-        engine_kilowatts: engine_kilowatts ? String(engine_kilowatts) : null,
+        length_metres: length_metres != null ? String(length_metres) : null,
+        gross_tonnes: gross_tonnes != null ? String(gross_tonnes) : null,
+        tonnage_itc: tonnage_itc != null ? String(tonnage_itc) : null,
+        engine_kilowatts: engine_kilowatts != null ? String(engine_kilowatts) : null,
         engine_type,
         is_active,
       })
@@ -581,8 +582,13 @@ export function register(app: App, fastify: FastifyInstance) {
     );
 
     // Create scheduled task if vessel is active
+    let scheduledTaskFailed = false;
     if (is_active) {
-      await ensureScheduledTask(app, vessel.id, userId);
+      try {
+        await ensureScheduledTask(app, vessel.id, userId);
+      } catch {
+        scheduledTaskFailed = true;
+      }
     }
 
     // Enrich HubSpot contact with vessel info (non-blocking, fire-and-forget)
@@ -595,7 +601,11 @@ export function register(app: App, fastify: FastifyInstance) {
       });
     }
 
-    return reply.code(201).send(transformVesselForResponse(vessel));
+    const response = transformVesselForResponse(vessel);
+    if (scheduledTaskFailed) {
+      (response as any).warning = 'Vessel created but automatic AIS tracking could not be started. Try deactivating and reactivating the vessel.';
+    }
+    return reply.code(201).send(response);
   });
 
   // PUT /api/vessels/:id/activate - Activate specified vessel and deactivate all others
@@ -706,13 +716,22 @@ export function register(app: App, fastify: FastifyInstance) {
       'Vessel activated successfully (transactional)'
     );
 
-    // Create scheduled task for activated vessel (outside transaction - non-critical)
-    await ensureScheduledTask(app, activated.id, userId);
+    // Create scheduled task for activated vessel
+    let scheduledTaskFailed = false;
+    try {
+      await ensureScheduledTask(app, activated.id, userId);
+    } catch {
+      scheduledTaskFailed = true;
+    }
 
     // Fetch initial AIS position immediately so user sees data right after activation
     await fetchAndStoreInitialAISCheck(app, activated.id, activated.mmsi, userId);
 
-    return reply.code(200).send(transformVesselForResponse(activated));
+    const response = transformVesselForResponse(activated);
+    if (scheduledTaskFailed) {
+      (response as any).warning = 'Vessel activated but automatic AIS tracking could not be started. Try deactivating and reactivating the vessel.';
+    }
+    return reply.code(200).send(response);
   });
 
   // DELETE /api/vessels/:id - Delete vessel (requires authentication and ownership)
@@ -896,10 +915,10 @@ export function register(app: App, fastify: FastifyInstance) {
     if (flag !== undefined) updateData.flag = flag;
     if (official_number !== undefined) updateData.official_number = official_number;
     if (type !== undefined) updateData.type = type;
-    if (length_metres !== undefined) updateData.length_metres = length_metres ? String(length_metres) : null;
-    if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes ? String(gross_tonnes) : null;
-    if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc ? String(tonnage_itc) : null;
-    if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts ? String(engine_kilowatts) : null;
+    if (length_metres !== undefined) updateData.length_metres = length_metres != null ? String(length_metres) : null;
+    if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes != null ? String(gross_tonnes) : null;
+    if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
+    if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts != null ? String(engine_kilowatts) : null;
     if (engine_type !== undefined) updateData.engine_type = engine_type || null;
 
     const [updated] = await app.db
@@ -1054,10 +1073,10 @@ export function register(app: App, fastify: FastifyInstance) {
       if (flag !== undefined) updateData.flag = flag;
       if (official_number !== undefined) updateData.official_number = official_number;
       if (type !== undefined) updateData.type = type;
-      if (length_metres !== undefined) updateData.length_metres = length_metres ? String(length_metres) : null;
-      if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes ? String(gross_tonnes) : null;
-      if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc ? String(tonnage_itc) : null;
-      if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts ? String(engine_kilowatts) : null;
+      if (length_metres !== undefined) updateData.length_metres = length_metres != null ? String(length_metres) : null;
+      if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes != null ? String(gross_tonnes) : null;
+      if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
+      if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts != null ? String(engine_kilowatts) : null;
       if (engine_type !== undefined) updateData.engine_type = engine_type;
 
       // Auto-fill blank fields from recent AIS data

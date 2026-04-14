@@ -38,7 +38,8 @@ export async function extractUserIdFromRequest(
 
     return session.userId;
   } catch (error) {
-    return null;
+    // Rethrow DB/infrastructure errors so callers can return 500 instead of 401
+    throw error;
   }
 }
 

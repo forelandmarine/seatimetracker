@@ -276,7 +276,9 @@ export const deleteVessel = async (vesselId: string) => {
     const err = await res.json().catch(() => ({ error: `Delete failed (${res.status})` }));
     throw new Error(err.error || `Failed to delete vessel (${res.status})`);
   }
-  return res.json();
+  // Handle 204 No Content (empty body) gracefully
+  if (res.status === 204) return {};
+  return res.json().catch(() => ({}));
 };
 
 export const getVesselSeaTime = async (vesselId: string) => {

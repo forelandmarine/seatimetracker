@@ -439,36 +439,8 @@ export default function AddSeaTimeScreen() {
         controller.abort();
       }, 15000);
 
-      const API_URL = seaTimeApi.API_BASE_URL;
-      const { getToken } = await import('@/utils/tokenStorage');
-      const token = await getToken();
-      log('[AddSeaTimeScreen] Token retrieved:', token ? 'exists' : 'null');
-
-      const response = await fetch(`${API_URL}/api/vessels`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        signal: controller.signal,
-      });
-
+      const vesselsData = await seaTimeApi.getVessels();
       clearTimeout(timeoutId);
-      log('[AddSeaTimeScreen] Vessels response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logError('[AddSeaTimeScreen] Failed to fetch vessels:', response.status, errorText);
-        throw new Error(`Failed to load vessels: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const rawVessels: any[] = Array.isArray(data) ? data : Array.isArray(data?.vessels) ? data.vessels : [];
-      const vesselsData = rawVessels
-        .filter(v => v && typeof v === 'object')
-        .map(v => ({ ...v, vessel_type: v.vessel_type || v.type || null }))
-        .filter((v): v is Vessel => v != null);
-
       log('[AddSeaTimeScreen] Loaded vessels:', vesselsData.length);
       setVessels(vesselsData);
       // Pre-select active vessel if none selected yet

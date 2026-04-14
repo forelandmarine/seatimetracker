@@ -187,11 +187,8 @@ export function register(app: App, fastify: FastifyInstance) {
       });
     } catch (error) {
       app.logger.error({ err: error, userId }, 'Error checking notification status');
-      return reply.code(200).send({
-        isDue: false,
-        lastSent: null,
-        scheduleId: null,
-        pendingEntriesCount: 0,
+      return reply.code(500).send({
+        error: 'Failed to check notification status',
       });
     }
   });

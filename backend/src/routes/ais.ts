@@ -1348,8 +1348,8 @@ export function register(app: App, fastify: FastifyInstance) {
         const duration_hours = Math.round((duration_ms / (1000 * 60 * 60)) * 100) / 100;
 
         // Calculate distance from start to end position
-        const startLat = open_entry[0].start_latitude ? parseFloat(String(open_entry[0].start_latitude)) : null;
-        const startLon = open_entry[0].start_longitude ? parseFloat(String(open_entry[0].start_longitude)) : null;
+        const startLat = open_entry[0].start_latitude != null ? parseFloat(String(open_entry[0].start_latitude)) : null;
+        const startLon = open_entry[0].start_longitude != null ? parseFloat(String(open_entry[0].start_longitude)) : null;
         const endLat = ais_data.latitude;
         const endLon = ais_data.longitude;
         let distance_nm: string | null = null;
@@ -1999,9 +1999,9 @@ export function register(app: App, fastify: FastifyInstance) {
       vessel_id: check.vessel_id,
       check_time: check.check_time.toISOString(),
       is_moving: check.is_moving,
-      speed_knots: check.speed_knots ? parseFloat(String(check.speed_knots)) : null,
-      latitude: check.latitude ? parseFloat(String(check.latitude)) : null,
-      longitude: check.longitude ? parseFloat(String(check.longitude)) : null,
+      speed_knots: check.speed_knots != null ? parseFloat(String(check.speed_knots)) : null,
+      latitude: check.latitude != null ? parseFloat(String(check.latitude)) : null,
+      longitude: check.longitude != null ? parseFloat(String(check.longitude)) : null,
       api_source: check.api_source || 'unknown',
     });
   });

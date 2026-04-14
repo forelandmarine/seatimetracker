@@ -219,7 +219,6 @@ export default function ConfirmationsScreen() {
       }
     } catch (error) {
       logError('[Confirmations] Failed to check for new entries:', error);
-      // Don't crash - just log the error
     }
   }, [loadData]);
 

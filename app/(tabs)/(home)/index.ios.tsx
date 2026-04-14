@@ -79,6 +79,7 @@ export default function SeaTimeScreen() {
   
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newVesselName, setNewVesselName] = useState('');
@@ -95,6 +96,8 @@ export default function SeaTimeScreen() {
   const [activeVesselLocation, setActiveVesselLocation] = useState<VesselLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [nextExpiringCert, setNextExpiringCert] = useState<Certificate | null>(null);
+  const isMountedRef = React.useRef(true);
+  React.useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark, insets.top);
@@ -120,25 +123,27 @@ export default function SeaTimeScreen() {
     try {
       setLocationLoading(true);
       log('[Home] Loading location for vessel:', vesselId, 'forceRefresh:', forceRefresh);
-      
+
       // First, get the current cached location
       const locationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+      if (!isMountedRef.current) return;
       setActiveVesselLocation({
         latitude: locationData.latitude,
         longitude: locationData.longitude,
         timestamp: locationData.timestamp,
       });
       log('[Home] Location loaded:', locationData.latitude, locationData.longitude, 'timestamp:', locationData.timestamp);
-      
+
       // If forceRefresh is true, trigger a fresh AIS check (no stale check - always fresh on good connection)
       if (forceRefresh) {
         log('[Home] Force refresh requested, triggering fresh AIS check for instant data');
         try {
-          // This will trigger a fresh API call to MyShipTracking
           await seaTimeApi.checkVesselAIS(vesselId, true);
-          
+          if (!isMountedRef.current) return;
+
           // Reload the location after the fresh check
           const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+          if (!isMountedRef.current) return;
           setActiveVesselLocation({
             latitude: freshLocationData.latitude,
             longitude: freshLocationData.longitude,
@@ -147,15 +152,13 @@ export default function SeaTimeScreen() {
           log('[Home] Fresh location loaded:', freshLocationData.latitude, freshLocationData.longitude, 'timestamp:', freshLocationData.timestamp);
         } catch (aisError: any) {
           logError('[Home] Failed to get fresh AIS data:', aisError);
-          // Keep the cached data, just log the error
         }
       }
     } catch (error: any) {
       logError('[Home] Failed to load vessel location:', error);
-      // Don't show alert for location errors, just log them
-      setActiveVesselLocation(null);
+      if (isMountedRef.current) setActiveVesselLocation(null);
     } finally {
-      setLocationLoading(false);
+      if (isMountedRef.current) setLocationLoading(false);
     }
   }, []);
 
@@ -178,10 +181,11 @@ export default function SeaTimeScreen() {
   const loadData = useCallback(async () => {
     try {
       log('[Home] Loading vessels (iOS)...');
+      setLoadError(null);
       void loadCertificates();
       const vesselsData = await seaTimeApi.getVessels();
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
-      
+
       setVessels(vesselsData || []);
       log('[Home] Vessels loaded - Active:', vesselsData.filter(v => v.is_active).length, 'Historic:', vesselsData.filter(v => !v.is_active).length);
 
@@ -209,7 +213,7 @@ export default function SeaTimeScreen() {
       }
     } catch (error: any) {
       logError('[Home] Failed to load data:', error);
-      logError('[Home] Error details:', error.message, error.name, error.stack);
+      setLoadError('Failed to load your vessels. Pull down to retry.');
       setVessels([]);
       setActiveVesselLocation(null);
     } finally {
@@ -253,6 +257,7 @@ export default function SeaTimeScreen() {
       }
     } catch (error: any) {
       logError('[Home iOS] Error during manual refresh:', error);
+      Alert.alert('Refresh failed', 'Could not refresh data. Check your connection and try again.');
     } finally {
       setRefreshing(false);
     }
@@ -433,6 +438,20 @@ export default function SeaTimeScreen() {
       <View style={[styles.loadingContainer, { paddingHorizontal: 16, gap: 12, justifyContent: 'flex-start', paddingTop: insets.top + 80 }]}>
         <SkeletonVesselCard />
         <SkeletonVesselCard />
+      </View>
+    );
+  }
+
+  if (loadError && vessels.length === 0) {
+    return (
+      <View style={[styles.loadingContainer, { paddingHorizontal: 24, justifyContent: 'center' }]}>
+        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>{loadError}</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          onPress={() => { setLoading(true); loadData(); }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }

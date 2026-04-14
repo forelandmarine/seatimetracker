@@ -1016,7 +1016,7 @@ async function handleSeaTimeEntries(
 
       // Calculate total distance from entry's original start position to current end position
       let totalDistance = 0;
-      if (existingEntryForDay.start_latitude && existingEntryForDay.start_longitude) {
+      if (existingEntryForDay.start_latitude != null && existingEntryForDay.start_longitude != null) {
         const startLat = parseFloat(String(existingEntryForDay.start_latitude));
         const startLng = parseFloat(String(existingEntryForDay.start_longitude));
         // Calculate distance from original start to current end
@@ -1059,7 +1059,7 @@ async function handleSeaTimeEntries(
           originalStartPosition: `(${existingEntryForDay.start_latitude}, ${existingEntryForDay.start_longitude})`,
           newEndTime: currentCheck.check_time.toISOString(),
           newEndPosition: `(${currentLat}, ${currentLng})`,
-          previousDurationHours: existingEntryForDay.duration_hours ? parseFloat(String(existingEntryForDay.duration_hours)) : 0,
+          previousDurationHours: existingEntryForDay.duration_hours != null ? parseFloat(String(existingEntryForDay.duration_hours)) : 0,
           newTotalDurationHours: totalDurationHours,
           mcaCompliant: isMCACompliant,
           totalDistanceNauticalMiles: totalDistance,

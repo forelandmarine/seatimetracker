@@ -186,19 +186,19 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.vessel?.flag || '',
       entry.vessel?.official_number || '',
       entry.vessel?.type || '',
-      entry.vessel?.length_metres || '',
-      entry.vessel?.gross_tonnes || '',
-      entry.vessel?.tonnage_itc || '',
+      entry.vessel?.length_metres ?? '',
+      entry.vessel?.gross_tonnes ?? '',
+      entry.vessel?.tonnage_itc ?? '',
       new Date(entry.start_time).toISOString(),
       entry.end_time ? new Date(entry.end_time).toISOString() : '',
-      entry.sea_days || 0,
+      entry.sea_days ?? 0,
       entry.service_type || 'actual_sea_service',
       entry.rank || '',
       entry.date_joined || '',
       entry.date_left || '',
       entry.trade_area || '',
-      entry.bridge_watch_hours || '',
-      entry.engine_watch_hours || '',
+      entry.bridge_watch_hours ?? '',
+      entry.engine_watch_hours ?? '',
       entry.status,
       entry.notes || '',
     ]);
@@ -279,20 +279,20 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.vessel?.flag || '',
         entry.vessel?.official_number || '',
         entry.vessel?.type || '',
-        entry.vessel?.length_metres || '',
-        entry.vessel?.gross_tonnes || '',
-        entry.vessel?.tonnage_itc || '',
+        entry.vessel?.length_metres ?? '',
+        entry.vessel?.gross_tonnes ?? '',
+        entry.vessel?.tonnage_itc ?? '',
         startPosition,
         endPosition,
         distance,
-        entry.sea_days || 0,
+        entry.sea_days ?? 0,
         formatServiceType(entry.service_type),
         entry.rank || '',
         entry.date_joined ? formatDate(entry.date_joined) : '',
         entry.date_left ? formatDate(entry.date_left) : '',
         entry.trade_area || '',
-        entry.bridge_watch_hours || '',
-        entry.engine_watch_hours || '',
+        entry.bridge_watch_hours ?? '',
+        entry.engine_watch_hours ?? '',
         entry.notes || '',
       ];
     });
@@ -650,17 +650,17 @@ export function register(app: App, fastify: FastifyInstance) {
           mmsi: e.vessel?.mmsi || '',
           flag: e.vessel?.flag || '',
           type: e.vessel?.type || '',
-          length: e.vessel?.length_metres || '',
-          gt: e.vessel?.gross_tonnes || '',
+          length: e.vessel?.length_metres ?? '',
+          gt: e.vessel?.gross_tonnes ?? '',
           serviceType: e.service_type || '',
-          days: e.sea_days || 0,
-          hours: e.duration_hours || '',
+          days: e.sea_days ?? 0,
+          hours: e.duration_hours ?? '',
           notes: e.notes || '',
         });
       });
 
       // Totals row
-      const totalDays = entries.reduce((sum: number, e: any) => sum + (e.sea_days || 0), 0);
+      const totalDays = entries.reduce((sum: number, e: any) => sum + (e.sea_days ?? 0), 0);
       sheet.addRow({});
       const totalRow = sheet.addRow({ vessel: 'TOTAL', days: totalDays });
       totalRow.font = { bold: true };

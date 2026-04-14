@@ -360,6 +360,10 @@ export const authFetch = async (
     body: fetchBody,
   });
 
+  if (response.status === 401) {
+    notifyUnauthorized();
+  }
+
   return response;
 };
 

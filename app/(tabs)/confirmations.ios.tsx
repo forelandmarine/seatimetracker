@@ -188,7 +188,7 @@ export default function ConfirmationsScreen() {
   };
 
   const confirmWithServiceType = async () => {
-    if (!selectedEntry) return;
+    if (!selectedEntry || processingEntryId) return;
 
     try {
       log('[Confirmations iOS] Confirming entry with service type:', selectedServiceType);

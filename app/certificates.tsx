@@ -34,16 +34,19 @@ export default function CertificatesScreen() {
 
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const data = await listCertificates();
       setCerts(Array.isArray(data) ? data : []);
     } catch (err) {
       logError('[Certificates] Failed to load:', err);
+      setLoadError('Failed to load certificates. Pull down to retry.');
       setCerts([]);
     } finally {
       setLoading(false);
@@ -137,6 +140,11 @@ export default function CertificatesScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : certs.length === 0 && loadError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Something went wrong</Text>
+            <Text style={styles.emptySubtitle}>{loadError}</Text>
           </View>
         ) : certs.length === 0 ? (
           <View style={styles.emptyState}>

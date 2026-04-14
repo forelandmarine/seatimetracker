@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback, useMemo } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import Purchases, {
   CustomerInfo,
   PurchasesPackage,
@@ -458,6 +458,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
               log('[Subscription] Tracking paused, vessels deactivated:', data.vesselsDeactivated);
               // Mark as done so we don't call again until subscription is re-confirmed active
               hasPausedTracking.current = true;
+              Alert.alert(
+                'Tracking Paused',
+                'Your subscription has expired and vessel tracking has been paused. Subscribe to resume automatic tracking.',
+              );
             }
           }
         } catch (pauseError: any) {

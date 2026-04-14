@@ -1,7 +1,7 @@
 
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useColorScheme } from 'react-native';
@@ -47,6 +47,9 @@ export default function TabLayout() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000000' : '#FFFFFF' }}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: isDark ? '#98989D' : '#8E8E93', marginTop: 12, fontSize: 14 }}>
+          {authLoading ? 'Checking account...' : subscriptionLoading ? 'Verifying subscription...' : 'Loading...'}
+        </Text>
       </View>
     );
   }
