@@ -268,6 +268,7 @@ export default function SelectPathwayScreen() {
     } catch (error: any) {
       logError('Failed to save department:', error);
       Alert.alert('Error', error.message || 'Failed to save your pathway selection. Please try again.');
+    } finally {
       setSaving(false);
     }
   };

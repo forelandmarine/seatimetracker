@@ -7,6 +7,7 @@ import { clearBiometricCredentials } from '@/utils/biometricAuth';
 import { useBridgeReady } from './BridgeReadyContext';
 import { withAuthRetry, warmUpServer } from '@/utils/authRetry';
 import * as tokenStorage from '@/utils/tokenStorage';
+import Purchases from 'react-native-purchases';
 import { log, warn, error } from '@/utils/log';
 
 // Reasonable timeouts
@@ -419,6 +420,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await tokenStorage.removeToken();
       await clearBiometricCredentials();
+
+      // Log out of RevenueCat so the next sign-in gets a fresh customer identity
+      try {
+        await Purchases.logOut();
+        log('[Auth] RevenueCat logged out');
+      } catch (_rcErr) {
+        // RevenueCat may not be initialized — safe to ignore
+      }
 
     } catch (err) {
       error('[Auth] Sign out cleanup error:', err);

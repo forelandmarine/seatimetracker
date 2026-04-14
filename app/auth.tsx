@@ -146,6 +146,7 @@ export default function AuthScreen() {
   };
 
   const handleEmailAuth = async () => {
+    if (loading) return;
     log('[AuthScreen] Email auth started, mode:', isSignUp ? 'Sign Up' : 'Sign In');
 
     if (!BACKEND_URL) {
@@ -175,21 +176,19 @@ export default function AuthScreen() {
       if (isSignUp) {
         await signUp(email, password, name || 'User');
       } else {
-        // Pass rememberMe to signIn — when true the token is persisted to SecureStore
-        // (survives app restarts); when false it is kept in memory only.
         await signIn(email, password, rememberMe);
+      }
 
-        // Save session token for biometric sign-in when rememberMe is checked
-        if (rememberMe && biometricAvailable) {
-          try {
-            const token = await getToken();
-            if (token) {
-              await saveBiometricCredentials(email, token);
-              setHasSavedCredentials(true);
-            }
-          } catch (_bioError) {
-            // non-fatal — biometric save failed silently
+      // Save session token for biometric sign-in (both sign-up and sign-in)
+      if (rememberMe && biometricAvailable) {
+        try {
+          const token = await getToken();
+          if (token) {
+            await saveBiometricCredentials(email, token);
+            setHasSavedCredentials(true);
           }
+        } catch (_bioError) {
+          // non-fatal — biometric save failed silently
         }
       }
 
@@ -225,6 +224,7 @@ export default function AuthScreen() {
   };
 
   const handleAppleSignIn = async () => {
+    if (loading) return;
     try {
       const isAvailable = await AppleAuthentication.isAvailableAsync();
 

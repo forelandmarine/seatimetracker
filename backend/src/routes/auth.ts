@@ -120,7 +120,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { email, password, name } = request.body;
+      const { email: rawEmail, password, name } = request.body;
+      const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
       // Rate limit: 5 sign-ups per IP per 15 minutes
@@ -261,16 +262,14 @@ export function register(app: App, fastify: FastifyInstance) {
         });
       } catch (error: any) {
         const errMsg = error?.message || String(error);
-        const errStack = error?.stack || '';
-        const errCause = error?.cause ? String(error.cause) : '';
-        app.logger.error(
-          { err: error, errMsg, errStack, errCause, email },
-          'Registration error: ' + errMsg
-        );
-        return reply.code(400).send({
-          error: 'Failed to register user',
-          detail: errMsg,
-        });
+        app.logger.error({ err: error, email }, 'Registration error: ' + errMsg);
+
+        // Unique constraint violation = email already taken (race condition)
+        if (errMsg.includes('unique') || errMsg.includes('duplicate') || error?.code === '23505') {
+          return reply.code(409).send({ error: 'An account with this email already exists. Please sign in instead.' });
+        }
+
+        return reply.code(500).send({ error: 'Registration failed. Please try again.' });
       }
     }
   );
@@ -321,7 +320,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { email, password } = request.body;
+      const { email: rawEmail, password } = request.body;
+      const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
       // Rate limit: 10 sign-in attempts per IP per 15 minutes
@@ -645,6 +645,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Step 2: Verify JWT signature against Apple's public keys
       let appleUserId: string;
       let email: string | undefined;
+      let appleEmailVerified = false;
 
       try {
         const { payload } = await jwtVerify(identityToken, APPLE_JWKS, {
@@ -653,7 +654,8 @@ export function register(app: App, fastify: FastifyInstance) {
         });
 
         appleUserId = payload.sub!;
-        email = (payload.email as string) || userData?.email;
+        email = ((payload.email as string) || userData?.email)?.trim().toLowerCase();
+        appleEmailVerified = (payload as any).email_verified === true || (payload as any).email_verified === 'true';
 
         if (!appleUserId) {
           app.logger.warn({ claims: Object.keys(payload) }, 'Token missing sub claim');
@@ -715,17 +717,19 @@ export function register(app: App, fastify: FastifyInstance) {
           app.logger.info({ userId: user.id, appleUserId }, 'Existing Apple user authenticated');
         } else {
           // No existing Apple account - check if user exists by email
-          if (email) {
-            app.logger.debug({ email }, 'Looking up existing user by email');
+          // SECURITY: Only link if the Apple JWT confirms email_verified is true.
+          // Otherwise an attacker could create an Apple ID with someone else's email.
+          if (email && appleEmailVerified) {
+            app.logger.debug({ email }, 'Looking up existing user by verified email');
             const existingUsers = await app.db
               .select()
               .from(authSchema.user)
-              .where(eq(authSchema.user.email, email));
+              .where(eq(authSchema.user.email, email.toLowerCase()));
 
             if (existingUsers.length > 0) {
-              // User exists with this email - link Apple account
+              // User exists with this verified email - link Apple account
               user = existingUsers[0];
-              app.logger.info({ userId: user.id, appleUserId, email }, 'Found existing user by email');
+              app.logger.info({ userId: user.id, appleUserId, email }, 'Found existing user by verified email');
 
               // Create account linked to Apple ID for this user
               const accountId = crypto.randomUUID();
@@ -738,7 +742,7 @@ export function register(app: App, fastify: FastifyInstance) {
                   accountId: appleUserId,
                 });
 
-              app.logger.info({ userId: user.id, appleUserId }, 'Apple account linked to existing user');
+              app.logger.info({ userId: user.id, appleUserId }, 'Apple account linked to existing user (email verified by Apple)');
             } else {
               // User doesn't exist - create new user
               isNewUser = true;
@@ -1258,7 +1262,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { email } = request.body;
+      const { email: rawEmail } = request.body;
+      const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
       // Rate limit: 3 reset attempts per IP per 15 minutes
@@ -1577,6 +1582,12 @@ export function register(app: App, fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { resetCodeId, code, newPassword } = request.body;
+
+      // Rate limit: 5 attempts per resetCodeId per 15 minutes
+      const resetLimit = checkRateLimit(`resetpw:${resetCodeId}`, 5, 15 * 60 * 1000);
+      if (!resetLimit.allowed) {
+        return reply.code(429).send({ error: 'Too many reset attempts. Please request a new code.' });
+      }
 
       app.logger.info({ resetCodeId }, 'Password reset attempted');
 

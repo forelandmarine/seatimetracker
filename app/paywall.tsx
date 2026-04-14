@@ -49,7 +49,7 @@ export default function PaywallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   
   const {
     isSubscribed,
@@ -297,12 +297,15 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleClose = () => {
-    // Always go to /auth — authenticated users will be redirected through the
-    // normal index → subscription → tabs flow. Going to /(tabs) while unsubscribed
-    // would immediately redirect back to paywall, creating a soft-lock.
-    log('[Paywall] User tapped X button, navigating to /auth');
-    router.replace('/auth');
+  const handleClose = async () => {
+    // Sign out to clear auth state, then go to auth screen.
+    // Without sign-out, the user loops: /auth → auto-detect auth → / → /paywall.
+    log('[Paywall] User tapped X button, signing out and navigating to /auth');
+    try {
+      await signOut();
+    } catch {
+      // signOut already navigates to /auth internally
+    }
   };
 
   if (isLoading) {
