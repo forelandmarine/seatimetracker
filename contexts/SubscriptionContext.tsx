@@ -228,25 +228,45 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user?.id, isInitialized, initializedForUserId]);
 
-  // Internal function to check subscription status
-  // Sync subscription state with the backend. Fire-and-forget; failures are non-critical.
-  const syncWithBackend = async (customerId: string) => {
-    if (!isAuthenticated || !BACKEND_URL) return;
-    try {
-      const token = await getAuthToken();
-      if (!token) return;
-      const res = await fetch(`${BACKEND_URL}/api/subscription/sync`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.synced === false) warn('[Subscription] Backend sync failed (non-critical):', data.error);
+  // Sync subscription state with the backend. Retries up to 3 times.
+  const syncWithBackend = async (customerId: string, retries = 3): Promise<boolean> => {
+    if (!isAuthenticated || !BACKEND_URL) return false;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          // Token not ready yet — wait briefly and retry
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 1000 * attempt));
+            continue;
+          }
+          logError('[Subscription] Backend sync failed: no auth token after retries');
+          return false;
+        }
+        const res = await fetch(`${BACKEND_URL}/api/subscription/sync`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.synced !== false) {
+            log('[Subscription] Backend sync succeeded on attempt', attempt);
+            return true;
+          }
+          warn('[Subscription] Backend sync returned synced=false:', data.error);
+        } else {
+          warn('[Subscription] Backend sync HTTP', res.status, 'on attempt', attempt);
+        }
+      } catch (e) {
+        logError('[Subscription] Backend sync attempt', attempt, 'failed:', e);
       }
-    } catch (e) {
-      logError('[Subscription] Failed to sync with backend (non-critical):', e);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
+    logError('[Subscription] Backend sync failed after', retries, 'attempts');
+    return false;
   };
 
   const checkSubscriptionStatusInternal = async () => {
@@ -268,7 +288,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       setRevenueCatSubscribed(subscribed);
 
-      syncWithBackend(info.originalAppUserId);
+      await syncWithBackend(info.originalAppUserId);
 
       setIsLoading(false);
       // Mark status as confirmed — pause-tracking effect may now run safely.
@@ -352,7 +372,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       setRevenueCatSubscribed(subscribed);
 
-      syncWithBackend(info.originalAppUserId);
+      await syncWithBackend(info.originalAppUserId);
 
       return { customerInfo: info, success: subscribed };
     } catch (purchaseError: any) {
@@ -391,7 +411,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       setRevenueCatSubscribed(subscribed);
 
-      syncWithBackend(info.originalAppUserId);
+      await syncWithBackend(info.originalAppUserId);
 
       return info;
     } catch (restoreError: any) {

@@ -161,7 +161,7 @@ function verifyRevenueCatSignature(
 /**
  * Fetch subscription data from RevenueCat API
  */
-function fetchRevenueCatSubscription(
+export function fetchRevenueCatSubscription(
   customerId: string
 ): Promise<{
   active: boolean;
@@ -176,7 +176,7 @@ function fetchRevenueCatSubscription(
       return;
     }
 
-    const url = `https://api.revenuecat.com/v1/customers/${customerId}`;
+    const url = `https://api.revenuecat.com/v1/subscribers/${customerId}`;
 
     try {
       const urlObj = new URL(url);
@@ -201,9 +201,9 @@ function fetchRevenueCatSubscription(
           try {
             const response = JSON.parse(data);
 
-            if (res.statusCode === 200 && response.customer) {
-              const entitlements = response.customer.subscriptions || {};
-              const subscriptions = Object.values(entitlements) as any[];
+            if (res.statusCode === 200 && response.subscriber) {
+              const subs = response.subscriber.subscriptions || {};
+              const subscriptions = Object.values(subs) as any[];
 
               // Get the most recent active subscription
               const activeSubscription = subscriptions.find(
@@ -651,16 +651,7 @@ export function register(app: App, fastify: FastifyInstance): void {
               type: "object",
               required: ["type", "app_user_id"],
               properties: {
-                type: {
-                  type: "string",
-                  enum: [
-                    "INITIAL_PURCHASE",
-                    "RENEWAL",
-                    "CANCELLATION",
-                    "EXPIRATION",
-                    "UNCANCELLATION",
-                  ],
-                },
+                type: { type: "string" },
                 app_user_id: { type: "string" },
                 properties: { type: "object" },
               },
@@ -679,11 +670,17 @@ export function register(app: App, fastify: FastifyInstance): void {
       },
     },
     async (request, reply) => {
-      const signature = request.headers["x-revenuecat-signature"] as string | undefined;
+      // Verify webhook signature if secret is configured
+      if (REVENUECAT_WEBHOOK_SECRET) {
+        const signature = request.headers["x-revenuecat-authorization"] as string | undefined
+          || request.headers["x-revenuecat-signature"] as string | undefined;
 
-      if (!verifyRevenueCatSignature(JSON.stringify(request.body), signature)) {
-        app.logger.warn({ signature }, "Invalid RevenueCat webhook signature");
-        return reply.code(401).send({ error: "Unauthorized" });
+        if (!verifyRevenueCatSignature(JSON.stringify(request.body), signature)) {
+          app.logger.warn({ signature }, "Invalid RevenueCat webhook signature");
+          return reply.code(401).send({ error: "Unauthorized" });
+        }
+      } else {
+        app.logger.warn({}, "REVENUECAT_WEBHOOK_SECRET not configured — accepting webhook without signature verification");
       }
 
       const { event } = request.body;
@@ -709,14 +706,20 @@ export function register(app: App, fastify: FastifyInstance): void {
 
         const user = users[0];
 
+        // Extract expiry from event properties if available
+        const expiresAtMs = event.properties?.expiration_at_ms || event.properties?.expires_date;
+        const expiresAt = expiresAtMs ? new Date(typeof expiresAtMs === 'number' ? expiresAtMs : parseInt(expiresAtMs)) : null;
+
         // Handle different event types
         switch (event.type) {
           case "INITIAL_PURCHASE":
           case "RENEWAL":
           case "UNCANCELLATION":
+          case "PRODUCT_CHANGE":
+          case "SUBSCRIPTION_EXTENDED":
             // Subscription is now active
             app.logger.info(
-              { userId: user.id, eventType: event.type },
+              { userId: user.id, eventType: event.type, expiresAt },
               "Subscription activated via RevenueCat"
             );
 
@@ -725,6 +728,7 @@ export function register(app: App, fastify: FastifyInstance): void {
               .set({
                 subscription_status: "active",
                 subscription_platform: event.properties?.platform || "ios",
+                subscription_expires_at: expiresAt,
                 updatedAt: new Date(),
               })
               .where(eq(authSchema.user.id, user.id));
@@ -732,16 +736,17 @@ export function register(app: App, fastify: FastifyInstance): void {
             break;
 
           case "CANCELLATION":
-            // Subscription cancelled but still active until expiration
+            // Cancelled but still active until period ends — keep status active
             app.logger.info(
-              { userId: user.id },
-              "Subscription cancelled via RevenueCat"
+              { userId: user.id, expiresAt },
+              "Subscription cancelled (still active until expiry) via RevenueCat"
             );
 
+            // Only set expiry so the scheduler knows when to actually expire
             await app.db
               .update(authSchema.user)
               .set({
-                subscription_status: "inactive",
+                subscription_expires_at: expiresAt,
                 updatedAt: new Date(),
               })
               .where(eq(authSchema.user.id, user.id));
@@ -749,7 +754,7 @@ export function register(app: App, fastify: FastifyInstance): void {
             break;
 
           case "EXPIRATION":
-            // Subscription expired
+            // Subscription actually expired
             app.logger.info(
               { userId: user.id },
               "Subscription expired via RevenueCat"
@@ -759,15 +764,23 @@ export function register(app: App, fastify: FastifyInstance): void {
               .update(authSchema.user)
               .set({
                 subscription_status: "expired",
+                subscription_expires_at: expiresAt || new Date(),
                 updatedAt: new Date(),
               })
               .where(eq(authSchema.user.id, user.id));
 
             break;
 
+          case "BILLING_ISSUE":
+            app.logger.warn(
+              { userId: user.id },
+              "Billing issue detected — keeping active (grace period)"
+            );
+            break;
+
           default:
-            app.logger.debug(
-              { eventType: event.type },
+            app.logger.info(
+              { eventType: event.type, userId: user.id },
               "Unhandled RevenueCat event type"
             );
         }

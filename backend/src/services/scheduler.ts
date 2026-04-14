@@ -5,6 +5,7 @@ import type { App } from '../index.js';
 import { fetchVesselAISDataWithFallback } from '../routes/ais.js';
 import { processNotificationSchedules } from '../routes/notifications.js';
 import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
+import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
@@ -200,23 +201,67 @@ async function runSchedulerIteration(app: App): Promise<void> {
       return !checkSubscriptionActive(u.subscription_status, u.subscription_expires_at);
     });
 
-    // Skip vessels with inactive subscriptions — do NOT deactivate or delete tasks.
-    // Subscription may renew shortly (e.g. billing retry, App Store delay).
-    // Tracking state should persist so it resumes automatically on renewal.
+    // Re-verify inactive subscriptions with RevenueCat as a backstop.
+    // This catches cases where the frontend sync failed or webhooks were missed.
     if (inactiveSubscriptionTasks.length > 0) {
-      app.logger.info(
-        {
-          skippedTaskCount: inactiveSubscriptionTasks.length,
-          tasks: inactiveSubscriptionTasks.map(({ task, vessel, user }) => ({
-            taskId: task.id,
-            vesselId: vessel.id,
-            vesselName: vessel.vessel_name,
-            userId: vessel.user_id,
-            subscriptionStatus: (user as any).subscription_status || 'inactive',
-          })),
-        },
-        `Skipping ${inactiveSubscriptionTasks.length} task(s) due to inactive subscription (vessels remain active for auto-resume)`
-      );
+      for (const { task, vessel, user } of inactiveSubscriptionTasks) {
+        const u = user as any;
+        const customerId = u.revenuecat_customer_id || u.id;
+        try {
+          const rcData = await fetchRevenueCatSubscription(customerId);
+          if (rcData?.active) {
+            // RevenueCat says active — update the DB and move to active list
+            await app.db
+              .update(authSchema.user)
+              .set({
+                subscription_status: rcData.trialEndsAt && rcData.trialEndsAt > new Date() ? 'trial' : 'active',
+                subscription_expires_at: rcData.expiresAt,
+                subscription_product_id: rcData.productId,
+                revenuecat_customer_id: customerId,
+                updatedAt: new Date(),
+              })
+              .where(eq(authSchema.user.id, u.id));
+
+            app.logger.info(
+              { userId: u.id, vesselId: vessel.id, customerId },
+              'Scheduler re-sync: subscription confirmed active via RevenueCat — resuming AIS checks'
+            );
+            activeSubscriptionTasks.push({ task, vessel, user });
+          } else {
+            app.logger.debug(
+              { userId: u.id, vesselId: vessel.id, status: u.subscription_status },
+              'Scheduler re-sync: subscription still inactive in RevenueCat'
+            );
+          }
+        } catch (rcErr) {
+          app.logger.debug(
+            { userId: u.id, err: rcErr },
+            'Scheduler re-sync: failed to verify with RevenueCat, skipping'
+          );
+        }
+      }
+
+      // Recalculate inactive after re-sync
+      const stillInactive = inactiveSubscriptionTasks.filter(({ user }) => {
+        const u = user as any;
+        return !activeSubscriptionTasks.some(a => (a.user as any).id === u.id);
+      });
+
+      if (stillInactive.length > 0) {
+        app.logger.info(
+          {
+            skippedTaskCount: stillInactive.length,
+            tasks: stillInactive.map(({ task, vessel, user }) => ({
+              taskId: task.id,
+              vesselId: vessel.id,
+              vesselName: vessel.vessel_name,
+              userId: vessel.user_id,
+              subscriptionStatus: (user as any).subscription_status || 'inactive',
+            })),
+          },
+          `Skipping ${stillInactive.length} task(s) due to inactive subscription (vessels remain active for auto-resume)`
+        );
+      }
     }
 
     // Log which vessels are being checked
