@@ -194,7 +194,7 @@ export default function SelectPathwayScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
-  const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, paywallDismissed } = useSubscription();
   const auth = useAuth();
   const useAuthRef = React.useRef(auth);
   useAuthRef.current = auth;
@@ -223,9 +223,8 @@ export default function SelectPathwayScreen() {
     
     // CRITICAL: If not subscribed, redirect to paywall immediately
     // This is a MANDATORY gate - no exceptions
-    if (!isSubscribed) {
-      log('[SelectPathway] ⚠️⚠️⚠️ USER NOT SUBSCRIBED - BLOCKING ACCESS ⚠️⚠️⚠️');
-      log('[SelectPathway] Redirecting to paywall - user must subscribe before selecting pathway');
+    if (!isSubscribed && !paywallDismissed) {
+      log('[SelectPathway] User not subscribed, redirecting to paywall');
       router.replace('/paywall');
       return;
     }
@@ -284,10 +283,7 @@ export default function SelectPathwayScreen() {
     );
   }
 
-  // CRITICAL: If not subscribed after loading completes, show nothing
-  // The useEffect will redirect to paywall
-  if (!isSubscribed) {
-    log('[SelectPathway] Not subscribed, blocking UI render');
+  if (!isSubscribed && !paywallDismissed) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />

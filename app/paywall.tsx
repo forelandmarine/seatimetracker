@@ -20,7 +20,6 @@ import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { useAuth } from '@/contexts/AuthContext';
 import Purchases from 'react-native-purchases';
 import Constants from 'expo-constants';
 
@@ -49,8 +48,6 @@ export default function PaywallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { user, signOut } = useAuth();
-  
   const {
     isSubscribed,
     isLoading,
@@ -58,6 +55,8 @@ export default function PaywallScreen() {
     purchasePackage,
     restorePurchases,
     refreshOfferings,
+    hasActiveTrial,
+    dismissPaywall,
     error: subscriptionError,
   } = useSubscription();
 
@@ -297,15 +296,12 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleClose = async () => {
-    // Sign out to clear auth state, then go to auth screen.
-    // Without sign-out, the user loops: /auth → auto-detect auth → / → /paywall.
-    log('[Paywall] User tapped X button, signing out and navigating to /auth');
-    try {
-      await signOut();
-    } catch {
-      // signOut already navigates to /auth internally
-    }
+  const handleClose = () => {
+    // Let the user browse the app without subscribing this session.
+    // The paywall will reappear on next app launch.
+    log('[Paywall] User tapped X button, dismissing paywall');
+    dismissPaywall();
+    router.replace('/');
   };
 
   if (isLoading) {
@@ -352,21 +348,23 @@ export default function PaywallScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView edges={['bottom']} style={[styles.container, { backgroundColor: isDark ? colors.background : colors.backgroundLight }]}>
-        {/* X Button - Top Right */}
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={handleClose}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityLabel="Close"
-          accessibilityRole="button"
-        >
-          <IconSymbol
-            ios_icon_name="xmark"
-            android_material_icon_name="close"
-            size={24}
-            color={isDark ? colors.text : colors.textLight}
-          />
-        </TouchableOpacity>
+        {/* X Button - Top Right (only visible during active trial) */}
+        {hasActiveTrial && (
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+          >
+            <IconSymbol
+              ios_icon_name="xmark"
+              android_material_icon_name="close"
+              size={24}
+              color={isDark ? colors.text : colors.textLight}
+            />
+          </TouchableOpacity>
+        )}
 
         <ScrollView
           style={styles.scrollView}

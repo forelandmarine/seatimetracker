@@ -20,6 +20,7 @@ interface User {
   hasDepartment?: boolean;
   department?: string;
   testSubscriptionActive?: boolean;
+  trialEndsAt?: string | null;
 }
 
 interface AuthContextType {
@@ -127,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               department: profileData.department,
               hasDepartment: !!profileData.department,
               testSubscriptionActive: profileData.testSubscriptionActive || false,
+              trialEndsAt: profileData.trial_ends_at || null,
             });
           } else {
             if (profileResponse) warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
@@ -311,6 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               department: profileData.department,
               hasDepartment: !!profileData.department,
               testSubscriptionActive: profileData.testSubscriptionActive || false,
+              trialEndsAt: profileData.trial_ends_at || null,
             });
           }
         } catch (profileError) {

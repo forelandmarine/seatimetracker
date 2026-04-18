@@ -31,6 +31,9 @@ interface SubscriptionContextType {
   isSubscribed: boolean;
   isLoading: boolean;
   revenueCatFailed: boolean;
+  paywallDismissed: boolean;
+  hasActiveTrial: boolean;
+  dismissPaywall: () => void;
   customerInfo: CustomerInfo | null;
   availablePackages: PurchasesPackage[];
   purchasePackage: (pkg: PurchasesPackage) => Promise<{ customerInfo: CustomerInfo; success: boolean }>;
@@ -55,6 +58,22 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // Track the last user ID we initialised for, so we can re-initialise on
   // account switch (sign out → sign in with a different account).
   const [initializedForUserId, setInitializedForUserId] = useState<string | null>(null);
+
+  // Session-only flag: user dismissed the paywall during an active trial.
+  // Lets them use the app until next restart. Resets when they subscribe.
+  const [paywallDismissed, setPaywallDismissed] = useState(false);
+
+  // Only allow dismissing the paywall if the user has an active trial
+  const hasActiveTrial = useMemo(() => {
+    if (!user?.trialEndsAt) return false;
+    return new Date(user.trialEndsAt) > new Date();
+  }, [user?.trialEndsAt]);
+
+  const dismissPaywall = useCallback(() => {
+    if (hasActiveTrial) {
+      setPaywallDismissed(true);
+    }
+  }, [hasActiveTrial]);
 
   // FIX 1: Idempotency guard — pause-tracking should fire at most once per
   // confirmed lapsed-subscription event. Reset when subscription becomes active.
@@ -118,9 +137,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // FIX 1 (continued): Reset hasPausedTracking whenever subscription is confirmed active
   // so the guard can fire again if they later lapse.
+  // Also clear the paywall dismissed flag — no longer needed.
   useEffect(() => {
     if (isSubscribed) {
       hasPausedTracking.current = false;
+      setPaywallDismissed(false);
     }
   }, [isSubscribed]);
 
@@ -499,6 +520,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         isSubscribed,
         isLoading,
         revenueCatFailed: initializationFailed,
+        paywallDismissed,
+        hasActiveTrial,
+        dismissPaywall,
         customerInfo,
         availablePackages,
         purchasePackage,

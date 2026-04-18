@@ -16,7 +16,7 @@ export default function TabLayout() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed, paywallDismissed } = useSubscription();
   const { t } = useTranslation();
 
   log('[TabLayout] Rendering tabs, user:', user?.email ?? 'unauthenticated');
@@ -30,7 +30,7 @@ export default function TabLayout() {
       return;
     }
 
-    if (!isSubscribed) {
+    if (!isSubscribed && !paywallDismissed) {
       log('[TabLayout] User not subscribed, redirecting to /paywall');
       router.replace('/paywall');
       return;
@@ -41,12 +41,12 @@ export default function TabLayout() {
       log('[TabLayout] No department selected, redirecting to /select-pathway');
       router.replace('/select-pathway');
     }
-  }, [user, isSubscribed, authLoading, subscriptionLoading, router]);
+  }, [user, isSubscribed, paywallDismissed, authLoading, subscriptionLoading, router]);
 
   // Synchronous render guard: show spinner if user doesn't meet all criteria
   // Prevents tabs from flashing before the useEffect redirect fires
   const hasDepartmentForRender = Boolean((user as any)?.department || (user as any)?.hasDepartment);
-  if (authLoading || subscriptionLoading || !user || !isSubscribed || !hasDepartmentForRender) {
+  if (authLoading || subscriptionLoading || !user || (!isSubscribed && !paywallDismissed) || !hasDepartmentForRender) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000000' : '#FFFFFF' }}>
         <ActivityIndicator size="large" color={colors.primary} />

@@ -12,7 +12,7 @@ import { log, error as logError } from '@/utils/log';
 export default function Index() {
   // CRITICAL: Call useAuth and useSubscription at the top level - NEVER conditionally
   const authContext = useAuth();
-  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed, paywallDismissed } = useSubscription();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
@@ -81,8 +81,8 @@ export default function Index() {
     );
   }
 
-  // Step 4: Paywall — must subscribe to proceed
-  if (!isSubscribed) {
+  // Step 4: Paywall — show paywall unless user already dismissed it this session
+  if (!isSubscribed && !paywallDismissed) {
     log('[Index] Authenticated but not subscribed, redirecting to /paywall');
     return <Redirect href="/paywall" />;
   }
