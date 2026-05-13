@@ -22,6 +22,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { log, error as logError } from '@/utils/log';
+import { recordPdfExported } from '@/utils/reviewPrompt';
 
 interface UserProfile {
   id: string;
@@ -454,6 +455,7 @@ export default function ReportsScreen() {
           } else {
             Alert.alert('Success', 'PDF report saved to device');
           }
+          recordPdfExported();
         };
       }
     } catch (error: any) {
