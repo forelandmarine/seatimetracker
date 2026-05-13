@@ -586,7 +586,10 @@ export default function SeaTimeScreen() {
                 {locationLoading ? (
                   <View style={styles.locationSection}>
                     <Text style={styles.locationSectionTitle}>Position</Text>
-                    <Text style={styles.vesselLocation}>Loading location...</Text>
+                    <View style={styles.locationLoadingRow}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={styles.vesselLocation}>Loading location…</Text>
+                    </View>
                   </View>
                 ) : activeVesselLocation && (activeVesselLocation.latitude !== null || activeVesselLocation.longitude !== null) ? (
                   (() => {
@@ -643,17 +646,21 @@ export default function SeaTimeScreen() {
                 </View>
               ) : (
                 <View style={styles.mapPlaceholder}>
-                  <IconSymbol
-                    ios_icon_name="map"
-                    android_material_icon_name="map"
-                    size={48}
-                    color={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                  />
+                  {locationLoading ? (
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  ) : (
+                    <IconSymbol
+                      ios_icon_name="map"
+                      android_material_icon_name="map"
+                      size={48}
+                      color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    />
+                  )}
                   <Text style={styles.mapPlaceholderText}>
-                    {locationLoading ? 'Loading position...' : 'No position data available'}
+                    {locationLoading ? 'Loading position…' : 'No position data available'}
                   </Text>
                   <Text style={styles.mapPlaceholderSubtext}>
-                    {locationLoading ? 'Please wait' : 'Check AIS to update vessel location'}
+                    {locationLoading ? 'Fetching latest AIS data' : 'Check AIS to update vessel location'}
                   </Text>
                 </View>
               )}
@@ -1202,6 +1209,12 @@ function createStyles(isDark: boolean, topInset: number) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       marginBottom: 8,
+    },
+    locationLoadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 2,
     },
     locationGrid: {
       flexDirection: 'row',
