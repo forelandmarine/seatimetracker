@@ -41,7 +41,8 @@
     "enterPassword": "Inserisci la tua password",
     "minPassword": "Minimo 8 caratteri",
     "secureData": "I tuoi dati di tempo di mare sono privati e protetti.",
-    "iosCompliant": "Conforme alle normative di gestione dati iOS."
+    "iosCompliant": "Conforme alle normative di gestione dati iOS.",
+    "androidCompliant": "Conforme alle normative di gestione dati Android."
   },
   "onboarding": {
     "skip": "Salta",

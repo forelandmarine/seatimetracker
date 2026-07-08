@@ -41,7 +41,8 @@
     "enterPassword": "Entrez votre mot de passe",
     "minPassword": "Minimum 8 caractères",
     "secureData": "Vos données de temps de mer sont privées et sécurisées.",
-    "iosCompliant": "Conforme aux réglementations de traitement des données iOS."
+    "iosCompliant": "Conforme aux réglementations de traitement des données iOS.",
+    "androidCompliant": "Conforme aux réglementations de traitement des données Android."
   },
   "onboarding": {
     "skip": "Passer",

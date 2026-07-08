@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SeaTime Tracker",
-    "slug": "seatimetracker",
+    "slug": "seatime-tracker",
     "owner": "forelandmarine",
     "version": "1.4.5",
     "orientation": "portrait",
@@ -72,7 +72,7 @@
       "backendUrl": "https://seatimetracker-production.up.railway.app",
       "sentryDsn": "https://62abbc44897700fa8d33c1118b11b252@o4511190956834816.ingest.de.sentry.io/4511190958145616",
       "revenueCatIosApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
-      "revenueCatAndroidApiKey": "appl_JGAVizuUPjFzvacGxciCepqaqAJ",
+      "revenueCatAndroidApiKey": "goog_hzivnbEIiJNcsaLINUIyiVycAMK",
       "revenueCatEntitlementId": "pro",
       "appStoreSharedSecret": "daaa18da0b174e11bc04fe1871e11608",
       "eas": {

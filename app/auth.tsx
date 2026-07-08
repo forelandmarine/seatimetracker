@@ -473,7 +473,7 @@ export default function AuthScreen() {
           {t('auth.secureData')}
         </Text>
         <Text style={styles.footerText}>
-          {t('auth.iosCompliant')}
+          {t(Platform.OS === 'ios' ? 'auth.iosCompliant' : 'auth.androidCompliant')}
         </Text>
       </View>
 

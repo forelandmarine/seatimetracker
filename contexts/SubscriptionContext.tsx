@@ -19,7 +19,7 @@ const isProduction = !isDevelopment && !isTestFlight;
 
 // RevenueCat API Keys - Read from app.json extra config
 const REVENUECAT_API_KEY_IOS = Constants.expoConfig?.extra?.revenueCatIosApiKey || 'appl_JGAVizuUPjFzvacGxciCepqaqAJ';
-const REVENUECAT_API_KEY_ANDROID = Constants.expoConfig?.extra?.revenueCatAndroidApiKey || 'appl_JGAVizuUPjFzvacGxciCepqaqAJ';
+const REVENUECAT_API_KEY_ANDROID = Constants.expoConfig?.extra?.revenueCatAndroidApiKey || 'goog_hzivnbEIiJNcsaLINUIyiVycAMK';
 
 // Product & entitlement identifiers — read from app.json config so they can
 // change without a code update.

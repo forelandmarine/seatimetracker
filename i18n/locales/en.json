@@ -41,7 +41,8 @@
     "enterPassword": "Enter your password",
     "minPassword": "Minimum 8 characters",
     "secureData": "Your sea time data is private and secure.",
-    "iosCompliant": "Compliant with iOS data handling regulations."
+    "iosCompliant": "Compliant with iOS data handling regulations.",
+    "androidCompliant": "Compliant with Android data handling regulations."
   },
   "onboarding": {
     "skip": "Skip",

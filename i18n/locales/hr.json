@@ -41,7 +41,8 @@
     "enterPassword": "Unesite svoju lozinku",
     "minPassword": "Najmanje 8 znakova",
     "secureData": "Vaši podaci o pomorskom stažu su privatni i sigurni.",
-    "iosCompliant": "U skladu s iOS propisima o rukovanju podacima."
+    "iosCompliant": "U skladu s iOS propisima o rukovanju podacima.",
+    "androidCompliant": "U skladu s Android propisima o rukovanju podacima."
   },
   "onboarding": {
     "skip": "Preskoči",

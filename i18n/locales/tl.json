@@ -41,7 +41,8 @@
     "enterPassword": "Ilagay ang iyong password",
     "minPassword": "Hindi bababa sa 8 character",
     "secureData": "Ang iyong sea time data ay pribado at ligtas.",
-    "iosCompliant": "Sumusunod sa mga regulasyon ng iOS sa pangangasiwa ng data."
+    "iosCompliant": "Sumusunod sa mga regulasyon ng iOS sa pangangasiwa ng data.",
+    "androidCompliant": "Sumusunod sa mga regulasyon ng Android sa pangangasiwa ng data."
   },
   "onboarding": {
     "skip": "Laktawan",
