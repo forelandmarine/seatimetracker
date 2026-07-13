@@ -56,10 +56,10 @@ export async function getBiometricType(): Promise<string> {
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
 
     if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-      return 'Face ID';
+      return Platform.OS === 'ios' ? 'Face ID' : 'Face Unlock';
     }
     if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-      return 'Fingerprint';
+      return Platform.OS === 'ios' ? 'Touch ID' : 'Fingerprint';
     }
     if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
       return 'Iris';

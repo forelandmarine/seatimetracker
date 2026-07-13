@@ -113,7 +113,7 @@ export default function AuthScreen() {
       if (!storedToken || !looksLikeToken) {
         await clearBiometricCredentials();
         setHasSavedCredentials(false);
-        showError('Please sign in with your email and password to re-enable Face ID.');
+        showError(Platform.OS === 'ios' ? 'Please sign in with your email and password to re-enable Face ID.' : 'Please sign in with your email and password to re-enable biometric sign-in.');
         return;
       }
 
@@ -398,7 +398,7 @@ export default function AuthScreen() {
             </View>
             <Text style={styles.checkboxLabel}>
               {biometricAvailable
-                ? t('auth.rememberMeBiometric')
+                ? (Platform.OS === 'ios' ? t('auth.rememberMeBiometric') : 'Remember me (enable biometric sign in)')
                 : t('auth.rememberMe')}
             </Text>
           </TouchableOpacity>

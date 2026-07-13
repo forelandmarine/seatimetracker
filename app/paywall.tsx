@@ -240,7 +240,7 @@ export default function PaywallScreen() {
         log('[Paywall] No active purchases found');
         Alert.alert(
           'No Purchases Found',
-          'No active subscriptions were found for this Apple ID. If you believe this is an error, please contact support.',
+          `No active subscriptions were found for this ${Platform.OS === 'ios' ? 'Apple ID' : 'Google Play account'}. If you believe this is an error, please contact support.`,
           [{ text: 'OK' }]
         );
       }
@@ -257,11 +257,14 @@ export default function PaywallScreen() {
   };
 
   const handleTerms = () => {
-    const termsUrl = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+    // Apple requires linking its standard EULA on iOS; Android links Foreland's own terms.
+    const termsUrl = Platform.OS === 'ios'
+      ? 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
+      : 'https://forelandmarine.com/terms';
     log('[Paywall] Opening Terms of Service:', termsUrl);
     Linking.openURL(termsUrl).catch(err => {
       logError('[Paywall] Failed to open Terms URL:', err);
-      Alert.alert('Error', 'Unable to open Terms of Service. Please visit apple.com/legal/internet-services/itunes/dev/stdeula/');
+      Alert.alert('Error', `Unable to open Terms of Service. Please visit ${termsUrl}`);
     });
   };
 
@@ -476,16 +479,16 @@ export default function PaywallScreen() {
             )}
           </View>
 
-          {/* Subscription terms (App Store requirement) */}
+          {/* Subscription terms (App Store / Play Store requirement) */}
           <View style={styles.subscriptionTerms}>
             <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
               • Subscription automatically renews unless cancelled
             </Text>
             <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-              • Cancel anytime in App Store settings
+              {`• Cancel anytime in ${Platform.OS === 'ios' ? 'App Store' : 'Google Play'} settings`}
             </Text>
             <Text style={[styles.termsText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-              • Payment charged to Apple ID at confirmation
+              {`• Payment charged to your ${Platform.OS === 'ios' ? 'Apple ID' : 'Google Play account'} at confirmation`}
             </Text>
           </View>
 
@@ -494,13 +497,13 @@ export default function PaywallScreen() {
             <Text style={[styles.featuresTitle, { color: isDark ? colors.text : colors.textLight }]}>
               Premium Features
             </Text>
-            {[
+            {([
               { icon: 'check-circle', text: 'Automatic Vessel Tracking' },
               { icon: 'check-circle', text: 'Easy Sea Time Recording' },
               { icon: 'check-circle', text: 'MCA-Compliant Reports' },
               { icon: 'check-circle', text: 'Cloud Sync & Backup' },
               { icon: 'check-circle', text: 'Smart Notifications' },
-            ].map((feature, index) => (
+            ] as const).map((feature, index) => (
               <View key={index} style={styles.featureRow}>
                 <IconSymbol
                   ios_icon_name="checkmark.circle.fill"
@@ -591,7 +594,7 @@ export default function PaywallScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Restore Purchases Button (App Store requirement) */}
+            {/* Restore Purchases Button (App Store / Play Store requirement) */}
             <TouchableOpacity
               style={styles.restoreButton}
               onPress={handleRestore}
@@ -624,16 +627,21 @@ export default function PaywallScreen() {
               </View>
             )}
 
-            {/* Legal Links (App Store requirement) */}
+            {/* Legal Links — Privacy Policy on all platforms; Terms of Service is
+                iOS-only (Apple requires the EULA link; Google Play does not) */}
             <View style={styles.legalLinks}>
-              <TouchableOpacity onPress={handleTerms} style={styles.legalButton}>
-                <Text style={[styles.legalLinkText, { color: colors.primary }]}>
-                  Terms of Service
-                </Text>
-              </TouchableOpacity>
-              <Text style={[styles.legalSeparator, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-                •
-              </Text>
+              {Platform.OS === 'ios' && (
+                <>
+                  <TouchableOpacity onPress={handleTerms} style={styles.legalButton}>
+                    <Text style={[styles.legalLinkText, { color: colors.primary }]}>
+                      Terms of Service
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.legalSeparator, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+                    •
+                  </Text>
+                </>
+              )}
               <TouchableOpacity onPress={handlePrivacy} style={styles.legalButton}>
                 <Text style={[styles.legalLinkText, { color: colors.primary }]}>
                   Privacy Policy
@@ -641,9 +649,9 @@ export default function PaywallScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Subscription Disclaimer (App Store requirement) */}
+            {/* Subscription Disclaimer (App Store / Play Store requirement) */}
             <Text style={[styles.disclaimerText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
-              Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase.
+              {`Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings on ${Platform.OS === 'ios' ? 'the App Store' : 'Google Play'} after purchase.`}
             </Text>
           </View>
         </ScrollView>

@@ -93,7 +93,7 @@ export default function ManualTrackingScreen() {
       if (!Location) {
         Alert.alert(
           'Location not available',
-          'expo-location is not installed in this build. Manual GPS tracking will be available in the next TestFlight release.'
+          'Manual GPS tracking will be available in a future update.'
         );
         return null;
       }
