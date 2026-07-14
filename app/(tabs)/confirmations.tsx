@@ -48,6 +48,8 @@ interface SeaTimeEntry {
   service_type?: string | null;
   mca_compliant?: boolean | null;
   detection_window_hours?: number | string | null;
+  from_port?: string | null;
+  to_port?: string | null;
 }
 
 type ServiceType = 'actual_sea_service' | 'watchkeeping_service';
@@ -776,7 +778,7 @@ export default function ConfirmationsScreen() {
             ) : (
               <TouchableOpacity
                 style={[styles.modalButton, {
-                  backgroundColor: feedbackModal.type === 'success' ? colors.success : colors.error,
+                  backgroundColor: feedbackModal.type === 'success' ? colors.successDark : colors.error,
                 }]}
                 onPress={closeFeedbackModal}
               >

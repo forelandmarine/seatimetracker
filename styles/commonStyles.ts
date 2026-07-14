@@ -22,7 +22,8 @@ export const colors = {
   textSecondaryLight: '#5A6C7D', // Muted text (light mode)
 
   // Status Colors
-  success: '#00C853',           // Green for confirmed
+  success: '#00C853',           // Green for confirmed (badges/icons on light bg)
+  successDark: '#007A33',       // Darker green for filled buttons (readable white text)
   warning: '#FFB300',           // Amber for pending
   error: '#D32F2F',             // Red for rejected/danger
   danger: '#D32F2F',

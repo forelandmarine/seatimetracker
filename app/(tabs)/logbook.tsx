@@ -966,7 +966,7 @@ export default function LogbookScreen() {
                           ]}
                         >
                           <Text style={styles.statusText}>
-                            {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
+                            {entry.status.toUpperCase()}
                           </Text>
                         </View>
                       </View>
@@ -1144,7 +1144,7 @@ export default function LogbookScreen() {
                                 ]}
                               >
                                 <Text style={styles.statusText}>
-                                  {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
+                                  {entry.status.toUpperCase()}
                                 </Text>
                               </View>
                             </View>
@@ -1243,7 +1243,7 @@ export default function LogbookScreen() {
                           ]}
                         >
                           <Text style={styles.statusText}>
-                            {getStatusIcon(entry.status)} {entry.status.toUpperCase()}
+                            {entry.status.toUpperCase()}
                           </Text>
                         </View>
                       </View>

@@ -16,6 +16,8 @@ export const vessels = pgTable('vessels', {
   tonnage_itc: decimal('tonnage_itc', { precision: 10, scale: 2 }), // International Tonnage Convention measurement (USCG)
   engine_kilowatts: decimal('engine_kilowatts', { precision: 10, scale: 2 }), // Engine power in kilowatts
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
+  is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
+  is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   is_active: boolean('is_active').notNull().default(false),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
@@ -55,6 +57,10 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   date_left: date('date_left'),
   // Trade area classification
   trade_area: text('trade_area'), // 'unlimited', 'near_coastal', 'coastal', 'inland'
+  // CTV/workboat expansion: finer AIS-derived area classification (see areaClassification.ts)
+  area_category: text('area_category'), // 'A'|'B'|'C'|'D'|'limited_coastal'|'within_60nm'|'within_150nm'|'beyond_150nm'
+  is_tidal: boolean('is_tidal'), // Tidal waters (needed for RYA mileage split + BML QST)
+  dual_capacity: boolean('dual_capacity'), // Served dual deck+engine capacity — counts at 50%
   // Watchkeeping breakdown by watch type
   bridge_watch_hours: decimal('bridge_watch_hours', { precision: 10, scale: 2 }), // Bridge/navigation watch hours (deck)
   engine_watch_hours: decimal('engine_watch_hours', { precision: 10, scale: 2 }), // Engine room watch hours (engineering)
