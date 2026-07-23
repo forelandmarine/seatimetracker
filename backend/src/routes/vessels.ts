@@ -757,6 +757,90 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send(response);
   });
 
+  // PUT /api/vessels/:id/deactivate - Stop tracking a vessel (requires authentication and ownership)
+  fastify.put<{ Params: { id: string } }>('/api/vessels/:id/deactivate', {
+    schema: {
+      description: 'Deactivate a vessel and stop its AIS tracking (requires authentication)',
+      tags: ['vessels'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            mmsi: { type: 'string' },
+            vessel_name: { type: 'string' },
+            imo_number: { type: ['string', 'null'] },
+            callsign: { type: ['string', 'null'] },
+            flag: { type: ['string', 'null'] },
+            official_number: { type: ['string', 'null'] },
+            vessel_type: { type: ['string', 'null'] },
+            length_metres: { type: ['string', 'null'] },
+            gross_tonnes: { type: ['string', 'null'] },
+            tonnage_itc: { type: ['string', 'null'] },
+            is_active: { type: 'boolean' },
+            created_at: { type: 'string' },
+            updated_at: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      app.logger.warn({}, 'Vessel deactivation requested without authentication');
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
+    const { id } = request.params;
+
+    const vessel = await app.db
+      .select()
+      .from(schema.vessels)
+      .where(eq(schema.vessels.id, id));
+
+    if (vessel.length === 0) {
+      app.logger.warn({ userId, vesselId: id }, 'Vessel not found for deactivation');
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+
+    if (vessel[0].user_id !== userId) {
+      app.logger.warn({ userId, vesselId: id }, 'Unauthorized vessel deactivation attempt');
+      return reply.code(403).send({ error: 'Not authorized to deactivate this vessel' });
+    }
+
+    app.logger.info({ userId, vesselId: id }, `Deactivating vessel ${id} for user ${userId}`);
+
+    // Atomically clear the active flag and remove its scheduled AIS task
+    const deactivated = await app.db.transaction(async (tx) => {
+      await tx
+        .delete(schema.scheduled_tasks)
+        .where(eq(schema.scheduled_tasks.vessel_id, id));
+
+      const [result] = await tx
+        .update(schema.vessels)
+        .set({ is_active: false })
+        .where(eq(schema.vessels.id, id))
+        .returning();
+
+      return result;
+    });
+
+    app.logger.info(
+      { userId, vesselId: deactivated.id, vesselName: deactivated.vessel_name },
+      'Vessel deactivated successfully — AIS tracking stopped'
+    );
+
+    return reply.code(200).send(transformVesselForResponse(deactivated));
+  });
+
   // DELETE /api/vessels/:id - Delete vessel (requires authentication and ownership)
   fastify.delete<{ Params: { id: string } }>('/api/vessels/:id', {
     schema: {
