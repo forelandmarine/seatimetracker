@@ -38,3 +38,4 @@ pnpm-lock.yaml
 agent_activity/
 *.sqlite
 agent_chat_context.sqlite
+pc-service-account.json

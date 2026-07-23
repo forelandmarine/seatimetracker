@@ -26,6 +26,7 @@ import CartoMap from '@/components/CartoMap';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { countryName } from '@/utils/countryCodes';
 
@@ -71,7 +72,8 @@ export default function SeaTimeScreen() {
   // This must be called before any early returns or conditions
   const { refreshTrigger } = useAuth();
   const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
-  
+  const { t } = useTranslation();
+
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -448,7 +450,7 @@ export default function SeaTimeScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -467,8 +469,8 @@ export default function SeaTimeScreen() {
     );
   }
 
-  const headerTitleText = 'SeaTime Tracker';
-  const headerSubtitleText = 'Your AIS Tracking Companion';
+  const headerTitleText = t('home.title');
+  const headerSubtitleText = t('home.subtitle');
   const logoSource = isDark 
     ? require('@/assets/images/c13cbd51-c2f7-489f-bbbb-6b28094d9b2b.png')
     : require('@/assets/images/8044436c-d8cf-489e-bf5f-7a7114b33cc0.png');
@@ -556,7 +558,7 @@ export default function SeaTimeScreen() {
         {/* Active Vessel Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Active Vessel</Text>
+            <Text style={styles.sectionTitle}>{t('home.activeVessel')}</Text>
             <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
               <IconSymbol
                 ios_icon_name="plus.circle.fill"
@@ -575,11 +577,11 @@ export default function SeaTimeScreen() {
                 size={64}
                 color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
-              <Text style={styles.emptyText}>No active vessel</Text>
+              <Text style={styles.emptyText}>{t('home.noActiveVessel')}</Text>
               <Text style={styles.emptySubtext}>
-                {historicVessels.length > 0 
-                  ? 'Tap a vessel below to view details and activate it'
-                  : 'Tap the + button to add your first vessel'}
+                {historicVessels.length > 0
+                  ? t('home.tapToActivate')
+                  : t('home.addFirstVessel')}
               </Text>
             </View>
           ) : (
@@ -590,11 +592,11 @@ export default function SeaTimeScreen() {
               >
                 <View style={styles.activeVesselBadge}>
                   <View style={styles.activeIndicatorPulse} />
-                  <Text style={styles.activeVesselBadgeText}>TRACKING</Text>
+                  <Text style={styles.activeVesselBadgeText}>{t('home.tracking')}</Text>
                 </View>
                 
                 <Text style={styles.vesselName}>{activeVessel.vessel_name}</Text>
-                <Text style={styles.vesselMmsi}>MMSI: {activeVessel.mmsi}</Text>
+                <Text style={styles.vesselMmsi}>{t('home.mmsi')}: {activeVessel.mmsi}</Text>
                 
                 {/* Vessel Particulars in 2-column grid - now includes call sign */}
                 <View style={styles.vesselParticularsGrid}>
@@ -774,11 +776,11 @@ export default function SeaTimeScreen() {
         {/* Historic Vessels Section - Always show */}
         <View style={styles.section}>
           <View style={styles.historicHeader}>
-            <Text style={styles.sectionTitle}>Historic Vessels</Text>
+            <Text style={styles.sectionTitle}>{t('home.historicVessels')}</Text>
             <Text style={styles.sectionSubtitle}>
-              {historicVessels.length > 0 
+              {historicVessels.length > 0
                 ? 'Tap a vessel to view its history and activate it for tracking'
-                : 'No historic vessels'}
+                : t('home.noHistoricVessels')}
             </Text>
           </View>
           {historicVessels.length === 0 ? (
@@ -789,9 +791,9 @@ export default function SeaTimeScreen() {
                 size={48}
                 color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
-              <Text style={styles.emptyHistoricText}>No historic vessels</Text>
+              <Text style={styles.emptyHistoricText}>{t('home.noHistoricVessels')}</Text>
               <Text style={styles.emptySubtext}>
-                Vessels you&apos;ve previously tracked will appear here
+                {t('home.historicSubtext')}
               </Text>
             </View>
           ) : (
@@ -804,7 +806,7 @@ export default function SeaTimeScreen() {
                   <View style={styles.vesselHeader}>
                     <View style={styles.vesselInfo}>
                       <Text style={styles.vesselName}>{vessel.vessel_name}</Text>
-                      <Text style={styles.vesselMmsi}>MMSI: {vessel.mmsi}</Text>
+                      <Text style={styles.vesselMmsi}>{t('home.mmsi')}: {vessel.mmsi}</Text>
                       
                       {/* Vessel Particulars for historic vessels */}
                       <View style={styles.vesselParticulars}>
@@ -858,7 +860,7 @@ export default function SeaTimeScreen() {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add New Vessel</Text>
+                <Text style={styles.modalTitle}>{t('home.addNewVessel')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <IconSymbol
                     ios_icon_name="xmark.circle.fill"
@@ -885,12 +887,12 @@ export default function SeaTimeScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.autoFillText}>
-                    Optional fields will be auto-filled from AIS data when available
+                    {t('home.autoFillHint')}
                   </Text>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Vessel Name *</Text>
+                  <Text style={styles.inputLabel}>{t('home.vesselName')} *</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="e.g., MV Serenity"

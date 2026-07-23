@@ -3,7 +3,7 @@
     "name": "SeaTime Tracker",
     "slug": "seatime-tracker",
     "owner": "forelandmarine",
-    "version": "1.4.5",
+    "version": "1.4.6",
     "orientation": "portrait",
     "icon": "./assets/images/brandmark-design-1024x1024.png",
     "scheme": "seatimetracker",
@@ -33,7 +33,7 @@
         "monochromeImage": "./assets/images/adaptive-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 11,
+      "versionCode": 12,
       "package": "com.forelandmarine.seatimetracker",
       "permissions": [
         "android.permission.CAMERA",

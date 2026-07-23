@@ -24,6 +24,7 @@ import { getRequirementTitles } from '@/constants/mcaRequirements';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { log, error as logError } from '@/utils/log';
+import { useTranslation } from 'react-i18next';
 
 interface Vessel {
   id: string;
@@ -598,6 +599,7 @@ export default function LogbookScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [entries, setEntries] = useState<SeaTimeEntry[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
@@ -740,11 +742,11 @@ export default function LogbookScreen() {
     if (!serviceType) return '';
     
     const typeMap: { [key: string]: string } = {
-      'actual_sea_service': 'Actual Sea Service',
-      'watchkeeping_service': 'Watchkeeping Service',
-      'standby_service': 'Stand-by Service',
-      'yard_service': 'Yard Service',
-      'service_in_port': 'Service in Port',
+      'actual_sea_service': t('serviceTypes.actual_sea_service'),
+      'watchkeeping_service': t('serviceTypes.watchkeeping_service'),
+      'standby_service': t('serviceTypes.standby_service'),
+      'yard_service': t('serviceTypes.yard_service'),
+      'service_in_port': t('serviceTypes.service_in_port'),
     };
     
     return typeMap[serviceType] || serviceType;
@@ -836,7 +838,7 @@ export default function LogbookScreen() {
             />
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                Logbook
+                {t('logbook.title')}
               </Text>
               <Text style={styles.headerSubtitle}>Loading your sea time records...</Text>
             </View>
@@ -859,9 +861,9 @@ export default function LogbookScreen() {
           />
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-              Logbook
+              {t('logbook.title')}
             </Text>
-            <Text style={styles.headerSubtitle}>Your Sea Time Logbook</Text>
+            <Text style={styles.headerSubtitle}>{t('logbook.subtitle')}</Text>
           </View>
         </View>
         
@@ -876,7 +878,7 @@ export default function LogbookScreen() {
               }}
             >
               <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-                List
+                {t('logbook.list')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -887,7 +889,7 @@ export default function LogbookScreen() {
               }}
             >
               <Text style={[styles.toggleText, viewMode === 'calendar' && styles.toggleTextActive]}>
-                Calendar
+                {t('logbook.calendar')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1075,7 +1077,7 @@ export default function LogbookScreen() {
                 size={64}
                 color={isDark ? colors.textSecondary : colors.textSecondaryLight}
               />
-              <Text style={styles.emptyText}>No sea time entries yet</Text>
+              <Text style={styles.emptyText}>{t('logbook.noEntries')}</Text>
               <Text style={styles.emptySubtext}>
                 Tap the + button to add a sea time entry. Remember: 4+ hours underway = 1 sea day
               </Text>
@@ -1083,24 +1085,24 @@ export default function LogbookScreen() {
           ) : (
             <React.Fragment>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Summary</Text>
+                <Text style={styles.summaryTitle}>{t('logbook.summary')}</Text>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Total Sea Days</Text>
                   <Text style={styles.summaryValue}>{totalSeaDays}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Confirmed Entries</Text>
+                  <Text style={styles.summaryLabel}>{t('logbook.confirmedEntries')}</Text>
                   <Text style={styles.summaryValue}>{confirmedEntries.length}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Pending Review</Text>
+                  <Text style={styles.summaryLabel}>{t('logbook.pendingReview')}</Text>
                   <Text style={styles.summaryValue}>{pendingEntries.length}</Text>
                 </View>
               </View>
 
               {confirmedEntries.length > 0 && (
                 <React.Fragment>
-                  <Text style={styles.sectionTitle}>Sea Time Records by Vessel</Text>
+                  <Text style={styles.sectionTitle}>{t('logbook.byVessel')}</Text>
                   {Object.entries(groupedByVessel).map(([vesselId, group]) => {
                     const vesselTotalSeaDays = group.entries.reduce(
                       (sum, entry) => sum + (entry.sea_days ?? 0),
@@ -1222,7 +1224,7 @@ export default function LogbookScreen() {
 
               {pendingEntries.length > 0 && (
                 <React.Fragment>
-                  <Text style={styles.sectionTitle}>Pending Review</Text>
+                  <Text style={styles.sectionTitle}>{t('logbook.pendingReview')}</Text>
                   {pendingEntries.map((entry) => (
                     <TouchableOpacity
                       key={entry.id}
@@ -1288,7 +1290,7 @@ export default function LogbookScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxWidth: 340 }]}>
             <Text style={[styles.modalTitle, { fontSize: 20, marginBottom: 12, textAlign: 'center', color: isDark ? colors.text : colors.textLight }]}>
-              Error
+              {t('common.error')}
             </Text>
             <Text style={[styles.modalSubtitle, { textAlign: 'center', marginBottom: 24, color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
               {errorModal.message}
@@ -1299,7 +1301,7 @@ export default function LogbookScreen() {
               style={[styles.modalButton, styles.saveButton, { flex: undefined, width: '100%' }]}
               onPress={() => setErrorModal({ visible: false, message: '' })}
             >
-              <Text style={[styles.modalButtonText, styles.saveButtonText]}>OK</Text>
+              <Text style={[styles.modalButtonText, styles.saveButtonText]}>{t('common.ok')}</Text>
             </TouchableOpacity>
           </View>
         </View>
