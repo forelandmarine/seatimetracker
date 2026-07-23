@@ -1294,7 +1294,9 @@ export default function LogbookScreen() {
               {errorModal.message}
             </Text>
             <TouchableOpacity
-              style={[styles.modalButton, styles.saveButton]}
+              // flex:undefined + full width: modalButton's `flex: 1` is for the
+              // modalButtons row; standalone it collapses height and hides the label.
+              style={[styles.modalButton, styles.saveButton, { flex: undefined, width: '100%' }]}
               onPress={() => setErrorModal({ visible: false, message: '' })}
             >
               <Text style={[styles.modalButtonText, styles.saveButtonText]}>OK</Text>

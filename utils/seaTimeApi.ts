@@ -270,6 +270,11 @@ export const activateVessel = async (vesselId: string) => {
   return normalizeVessel(await res.json());
 };
 
+export const deactivateVessel = async (vesselId: string) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/deactivate`, { method: 'PUT', body: {} });
+  return normalizeVessel(await res.json());
+};
+
 export const deleteVessel = async (vesselId: string) => {
   const res = await authFetch(`/api/vessels/${vesselId}`, { method: 'DELETE' });
   if (!res.ok) {

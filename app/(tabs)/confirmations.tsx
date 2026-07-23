@@ -776,14 +776,18 @@ export default function ConfirmationsScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <TouchableOpacity
-                style={[styles.modalButton, {
-                  backgroundColor: feedbackModal.type === 'success' ? colors.successDark : colors.error,
-                }]}
-                onPress={closeFeedbackModal}
-              >
-                <Text style={[styles.modalButtonText, styles.saveButtonText]}>OK</Text>
-              </TouchableOpacity>
+              // Wrap in the row container so modalButton's `flex: 1` sizes width (not height);
+              // standalone, flex:1 collapses the content height and the label never renders.
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, {
+                    backgroundColor: feedbackModal.type === 'success' ? colors.successDark : colors.error,
+                  }]}
+                  onPress={closeFeedbackModal}
+                >
+                  <Text style={[styles.modalButtonText, styles.saveButtonText]}>OK</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>

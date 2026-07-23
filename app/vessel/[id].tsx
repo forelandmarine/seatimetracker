@@ -999,13 +999,11 @@ export default function VesselDetailScreen() {
                       style: 'destructive',
                       onPress: async () => {
                         try {
-                          await seaTimeApi.updateVesselParticulars(vessel.id, {});
-                          // The backend activate endpoint is the only way to toggle is_active,
-                          // so we use deleteVessel's scheduled task cleanup indirectly.
-                          // For now, navigate back and let user activate a different vessel.
+                          // Actually clears is_active and removes the scheduled AIS task.
+                          await seaTimeApi.deactivateVessel(vessel.id);
                           triggerRefresh();
-                          Alert.alert('Tracking Stopped', `${vessel.vessel_name} is no longer being tracked.`);
                           await loadData();
+                          Alert.alert('Tracking Stopped', `${vessel.vessel_name} is no longer being tracked.`);
                         } catch (err: any) {
                           Alert.alert('Error', err.message || 'Failed to stop tracking.');
                         }

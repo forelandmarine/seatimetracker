@@ -860,7 +860,9 @@ export default function UserProfileScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSecondary, { marginTop: 12 }]}
+                // flex:undefined + full width: modalButton's `flex: 1` is for row layouts;
+                // standalone it collapses height and the label never renders.
+                style={[styles.modalButton, styles.modalButtonSecondary, { marginTop: 12, flex: undefined, width: '100%' }]}
                 onPress={() => setImagePickerModalVisible(false)}
               >
                 <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>
@@ -895,6 +897,9 @@ export default function UserProfileScreen() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary, {
                   backgroundColor: feedbackModal.type === 'error' ? colors.error : colors.primary,
+                  // standalone in a column modal — see note above
+                  flex: undefined,
+                  width: '100%',
                 }]}
                 onPress={() => {
                   const onConfirm = feedbackModal.onConfirm;
