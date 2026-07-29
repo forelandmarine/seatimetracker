@@ -10,6 +10,12 @@ import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
+// When a task is skipped because its owner's subscription has lapsed, push its
+// next_run out by this many hours instead of leaving it perpetually due. Without
+// this the scheduler re-selects the task every minute and re-queries RevenueCat
+// every minute for a user who has already lapsed. 12h still auto-resumes
+// promptly if the user renews.
+const INACTIVE_RECHECK_HOURS = 12;
 
 // Track which users have received drip emails (in-memory cache; resets on restart
 // but the database createdAt window prevents double-sends across restarts).
@@ -261,6 +267,39 @@ async function runSchedulerIteration(app: App): Promise<void> {
           },
           `Skipping ${stillInactive.length} task(s) due to inactive subscription (vessels remain active for auto-resume)`
         );
+
+        // Throttle skipped tasks: advance next_run so we don't re-select them
+        // (and re-hit RevenueCat) every minute. They still auto-resume within
+        // INACTIVE_RECHECK_HOURS if the user renews. Also reconcile the stale
+        // subscription_status label to 'expired' where the expiry has genuinely
+        // passed, so the stored status matches reality.
+        const reconciledUserIds = new Set<string>();
+        for (const { task, user } of stillInactive) {
+          await updateScheduledTaskNextRun(app, task.id, String(INACTIVE_RECHECK_HOURS), null);
+
+          const u = user as any;
+          const expiresAt = u.subscription_expires_at ? new Date(u.subscription_expires_at) : null;
+          const isPastExpiry = expiresAt != null && !isNaN(expiresAt.getTime()) && expiresAt <= now;
+          if (
+            isPastExpiry &&
+            (u.subscription_status === 'active' || u.subscription_status === 'trial') &&
+            !reconciledUserIds.has(u.id)
+          ) {
+            reconciledUserIds.add(u.id);
+            try {
+              await app.db
+                .update(authSchema.user)
+                .set({ subscription_status: 'expired', updatedAt: new Date() })
+                .where(eq(authSchema.user.id, u.id));
+              app.logger.info(
+                { userId: u.id, previousStatus: u.subscription_status, expiredAt: expiresAt.toISOString() },
+                'Reconciled stale subscription_status to expired (expiry already passed, RevenueCat confirms lapsed)'
+              );
+            } catch (reconcileErr) {
+              app.logger.warn({ err: reconcileErr, userId: u.id }, 'Failed to reconcile subscription_status to expired (non-critical)');
+            }
+          }
+        }
       }
     }
 
