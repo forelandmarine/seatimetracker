@@ -4,12 +4,30 @@ import {
   calculateSeaDays,
   calendarDaysCovered,
   countDistinctSeaDays,
+  qualifyingSeaDays,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
 } from "../src/utils/seaTime";
 
 const d = (s: string) => new Date(s);
+
+// Build an 8-hour (qualifying) entry on a given UTC date with a service type.
+const day = (date: string, service_type = "actual_sea_service") => ({
+  start_time: `${date}T08:00:00Z`,
+  end_time: `${date}T16:00:00Z`,
+  service_type,
+});
+// N sequential daily entries starting at a base date, of a given type.
+const days = (startISO: string, n: number, service_type = "actual_sea_service") => {
+  const out = [];
+  const base = new Date(`${startISO}T00:00:00Z`);
+  for (let i = 0; i < n; i++) {
+    const dt = new Date(base.getTime() + i * 86400000).toISOString().slice(0, 10);
+    out.push(day(dt, service_type));
+  }
+  return out;
+};
 
 // ---------------------------------------------------------------------------
 // calculateDurationHours
@@ -131,6 +149,62 @@ describe("countDistinctSeaDays", () => {
     expect(countDistinctSeaDays([
       { start_time: "2025-06-01T08:00:00Z", end_time: "2025-06-01T10:00:00Z" },
     ])).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// qualifyingSeaDays — MSN 1858 crediting caps
+// ---------------------------------------------------------------------------
+describe("qualifyingSeaDays", () => {
+  test("all actual service counts in full", () => {
+    const r = qualifyingSeaDays(days("2025-01-01", 250, "actual_sea_service"));
+    expect(r.actual).toBe(250);
+    expect(r.qualifying_total).toBe(250);
+  });
+
+  test("watchkeeping counts as actual service", () => {
+    const r = qualifyingSeaDays(days("2025-01-01", 10, "watchkeeping_service"));
+    expect(r.actual).toBe(10);
+    expect(r.qualifying_total).toBe(10);
+  });
+
+  test("caps yard service at 90 days", () => {
+    const r = qualifyingSeaDays([
+      ...days("2025-01-01", 300, "actual_sea_service"),
+      ...days("2026-01-01", 120, "yard_service"),
+    ]);
+    expect(r.yard).toBe(120);
+    expect(r.yard_credited).toBe(90);
+    expect(r.qualifying_total).toBe(390); // 300 actual + 90 yard
+  });
+
+  test("stand-by is counted in full (its structure limits are left to the assessor)", () => {
+    const r = qualifyingSeaDays([
+      ...days("2025-01-01", 10, "actual_sea_service"),
+      ...days("2026-01-01", 20, "standby_service"),
+    ]);
+    expect(r.standby).toBe(20);
+    expect(r.qualifying_total).toBe(30); // 10 actual + 20 standby, not capped
+  });
+
+  test("service in port is excluded from qualifying total", () => {
+    const r = qualifyingSeaDays([
+      ...days("2025-01-01", 10, "actual_sea_service"),
+      ...days("2026-01-01", 30, "service_in_port"),
+    ]);
+    expect(r.port).toBe(30);
+    expect(r.qualifying_total).toBe(10);
+  });
+
+  test("a calendar day counts once, at its most valuable classification", () => {
+    // Same date logged as both actual and yard -> counts as actual only.
+    const r = qualifyingSeaDays([
+      day("2025-01-01", "actual_sea_service"),
+      day("2025-01-01", "yard_service"),
+    ]);
+    expect(r.actual).toBe(1);
+    expect(r.yard).toBe(0);
+    expect(r.qualifying_total).toBe(1);
   });
 });
 

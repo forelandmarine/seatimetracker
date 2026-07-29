@@ -6,7 +6,7 @@ import type { App } from "../index.js";
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { countDistinctSeaDays } from "../utils/seaTime.js";
+import { countDistinctSeaDays, qualifyingSeaDays } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -396,6 +396,17 @@ export function register(app: App, fastify: FastifyInstance) {
           type: 'object',
           properties: {
             total_days: { type: 'number' },
+            sea_service: {
+              type: 'object',
+              properties: {
+                actual: { type: 'number' },
+                standby: { type: 'number' },
+                yard: { type: 'number' },
+                port: { type: 'number' },
+                yard_credited: { type: 'number' },
+                qualifying_total: { type: 'number' },
+              },
+            },
             entries_by_vessel: {
               type: 'array',
               items: {
@@ -469,11 +480,13 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Total sea days = distinct calendar days across confirmed entries.
-    // Counting distinct days (rather than summing each entry's sea_days) both
-    // credits multi-day entries correctly and dedupes overlapping entries so
-    // the same date is never counted twice.
-    const total_days = countDistinctSeaDays(entries as any);
+    // Total qualifying sea service: yard service capped at 90 days (MSN 1858)
+    // and service in port excluded (not sea service). Stand-by is counted in
+    // full; its certificate-structure limits are left to the assessor. Days are
+    // deduplicated across service types so a calendar date is only counted once.
+    // `total_days` is this figure; `sea_service` exposes the breakdown behind it.
+    const breakdown = qualifyingSeaDays(entries as any);
+    const total_days = breakdown.qualifying_total;
 
     // Group by vessel, counting distinct days within each vessel.
     const vesselGroups: { [key: string]: any[] } = {};
@@ -529,6 +542,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     return reply.code(200).send({
       total_days,
+      sea_service: breakdown,
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
@@ -643,12 +657,11 @@ export function register(app: App, fastify: FastifyInstance) {
         });
       });
 
-      // Totals row. Count distinct calendar days so overlapping entries
-      // (e.g. an auto entry that overlaps a manual sign-on period) are not
-      // double-counted.
-      const totalDays = countDistinctSeaDays(entries as any);
+      // Totals row: qualifying sea service (yard <= 90 days, port excluded,
+      // stand-by in full, days deduplicated), matching /api/reports/summary.
+      const totalDays = qualifyingSeaDays(entries as any).qualifying_total;
       sheet.addRow({});
-      const totalRow = sheet.addRow({ vessel: 'TOTAL', days: totalDays });
+      const totalRow = sheet.addRow({ vessel: 'TOTAL (qualifying sea service)', days: totalDays });
       totalRow.font = { bold: true };
 
       const buffer = await workbook.xlsx.writeBuffer();
