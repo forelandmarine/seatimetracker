@@ -2,10 +2,14 @@ import { describe, test, expect } from "bun:test";
 import {
   calculateDurationHours,
   calculateSeaDays,
+  calendarDaysCovered,
+  countDistinctSeaDays,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
 } from "../src/utils/seaTime";
+
+const d = (s: string) => new Date(s);
 
 // ---------------------------------------------------------------------------
 // calculateDurationHours
@@ -55,31 +59,78 @@ describe("calculateDurationHours", () => {
 });
 
 // ---------------------------------------------------------------------------
-// calculateSeaDays — MCA 4-hour threshold
+// calculateSeaDays — one day per calendar date, MCA 4-hour threshold
 // ---------------------------------------------------------------------------
 describe("calculateSeaDays", () => {
-  test("returns 0 for 0 hours", () => {
-    expect(calculateSeaDays(0)).toBe(0);
+  test("returns 0 for identical timestamps", () => {
+    const t = d("2025-06-01T08:00:00Z");
+    expect(calculateSeaDays(t, t)).toBe(0);
   });
 
-  test("returns 0 for 3.99 hours (just under threshold)", () => {
-    expect(calculateSeaDays(3.99)).toBe(0);
+  test("returns 0 just under the 4-hour threshold", () => {
+    expect(calculateSeaDays(d("2025-06-01T08:00:00Z"), d("2025-06-01T11:59:00Z"))).toBe(0);
   });
 
-  test("returns 1 for exactly 4 hours (boundary)", () => {
-    expect(calculateSeaDays(4)).toBe(1);
+  test("returns 1 for exactly 4 hours within one day", () => {
+    expect(calculateSeaDays(d("2025-06-01T08:00:00Z"), d("2025-06-01T12:00:00Z"))).toBe(1);
   });
 
-  test("returns 1 for 4.01 hours (just over threshold)", () => {
-    expect(calculateSeaDays(4.01)).toBe(1);
+  test("returns 1 for a long single-day passage", () => {
+    expect(calculateSeaDays(d("2025-06-01T02:00:00Z"), d("2025-06-01T22:00:00Z"))).toBe(1);
   });
 
-  test("returns 1 for 24 hours", () => {
-    expect(calculateSeaDays(24)).toBe(1);
+  test("counts each calendar day of a multi-day passage", () => {
+    // 18 Jul 07:45 → 25 Jul 06:45 touches 8 calendar dates
+    expect(calculateSeaDays(d("2026-07-18T07:45:00Z"), d("2026-07-25T06:45:00Z"))).toBe(8);
   });
 
-  test("returns 0 for negative hours", () => {
-    expect(calculateSeaDays(-1)).toBe(0);
+  test("counts a 93-day passage as 93 days, not 1", () => {
+    expect(calculateSeaDays(d("2025-01-14T00:00:00Z"), d("2025-04-17T00:00:00Z"))).toBe(94);
+  });
+
+  test("returns 0 for reversed timestamps", () => {
+    expect(calculateSeaDays(d("2025-06-02T08:00:00Z"), d("2025-06-01T08:00:00Z"))).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calendarDaysCovered
+// ---------------------------------------------------------------------------
+describe("calendarDaysCovered", () => {
+  test("single day", () => {
+    expect(calendarDaysCovered(d("2025-06-01T02:00:00Z"), d("2025-06-01T20:00:00Z")))
+      .toEqual(["2025-06-01"]);
+  });
+
+  test("inclusive of both ends across midnight", () => {
+    expect(calendarDaysCovered(d("2025-06-01T22:00:00Z"), d("2025-06-03T01:00:00Z")))
+      .toEqual(["2025-06-01", "2025-06-02", "2025-06-03"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// countDistinctSeaDays — dedupe overlaps
+// ---------------------------------------------------------------------------
+describe("countDistinctSeaDays", () => {
+  test("sums non-overlapping entries", () => {
+    expect(countDistinctSeaDays([
+      { start_time: "2025-06-01T08:00:00Z", end_time: "2025-06-01T18:00:00Z" },
+      { start_time: "2025-06-03T08:00:00Z", end_time: "2025-06-03T18:00:00Z" },
+    ])).toBe(2);
+  });
+
+  test("does not double-count overlapping calendar days", () => {
+    // 17–19 auto entry overlapping an 18–25 manual block = 9 distinct days
+    expect(countDistinctSeaDays([
+      { start_time: "2026-07-17T12:00:00Z", end_time: "2026-07-19T09:00:00Z" },
+      { start_time: "2026-07-18T07:45:00Z", end_time: "2026-07-25T06:45:00Z" },
+    ])).toBe(9);
+  });
+
+  test("ignores sub-4-hour entries", () => {
+    expect(countDistinctSeaDays([
+      { start_time: "2025-06-01T08:00:00Z", end_time: "2025-06-01T10:00:00Z" },
+    ])).toBe(0);
   });
 });
 

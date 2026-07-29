@@ -10,9 +10,58 @@ export function calculateDurationHours(startTime: Date, endTime: Date): number {
   return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
 }
 
-/** 1 sea day if duration >= 4 hours, else 0 (MCA 4-hour rule). */
-export function calculateSeaDays(durationHours: number): number {
-  return durationHours >= 4 ? 1 : 0;
+/**
+ * Number of qualifying sea days for a single service period.
+ *
+ * The MCA counts one sea day for each calendar day on which qualifying service
+ * is performed, and never more than one per calendar day. A continuous voyage
+ * therefore earns one day for every distinct calendar date it spans, not a
+ * single day for the whole passage. Returns 0 if the whole period is under the
+ * 4-hour threshold.
+ *
+ * Note: to avoid double-counting when two entries overlap, a running total
+ * across multiple entries should be computed with countDistinctSeaDays rather
+ * than by summing this per-entry value.
+ */
+export function calculateSeaDays(startTime: Date, endTime: Date): number {
+  const durationHours = calculateDurationHours(startTime, endTime);
+  if (durationHours < 4) return 0;
+  return calendarDaysCovered(startTime, endTime).length;
+}
+
+/** UTC calendar dates (YYYY-MM-DD) a period touches, inclusive of both ends. */
+export function calendarDaysCovered(startTime: Date, endTime: Date): string[] {
+  const days: string[] = [];
+  if (endTime.getTime() < startTime.getTime()) return days;
+  const cursor = new Date(Date.UTC(
+    startTime.getUTCFullYear(), startTime.getUTCMonth(), startTime.getUTCDate()
+  ));
+  const last = Date.UTC(endTime.getUTCFullYear(), endTime.getUTCMonth(), endTime.getUTCDate());
+  while (cursor.getTime() <= last) {
+    days.push(getCalendarDay(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+}
+
+/**
+ * Distinct sea days across many entries, deduplicating overlapping calendar
+ * days so the same date is never counted twice. Each entry only counts if it
+ * meets the 4-hour threshold. Pass entries that already qualify (e.g. confirmed).
+ */
+export function countDistinctSeaDays(
+  entries: Array<{ start_time: Date | string; end_time: Date | string | null }>
+): number {
+  const days = new Set<string>();
+  for (const e of entries) {
+    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+    const end = e.end_time == null
+      ? start
+      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+    if (calculateDurationHours(start, end) < 4) continue;
+    for (const d of calendarDaysCovered(start, end)) days.add(d);
+  }
+  return days.size;
 }
 
 /** Valid service types. */

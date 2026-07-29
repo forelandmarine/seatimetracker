@@ -1423,7 +1423,7 @@ export function register(app: App, fastify: FastifyInstance) {
           distance_nm = String(Math.round(d * 100) / 100);
         }
 
-        const sea_days = calculateSeaDays(duration_hours);
+        const sea_days = calculateSeaDays(start_time, check_time);
         const mca_compliant = duration_hours >= 4;
 
         // Resolve port names for the voyage

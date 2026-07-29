@@ -14,6 +14,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { countDistinctSeaDays } from "../utils/seaTime.js";
 import crypto from "crypto";
 
 function generateSlug(name: string): string {
@@ -69,19 +70,25 @@ export function register(app: App, fastify: FastifyInstance) {
       .where(eq(schema.sea_time_entries.user_id, user.id));
 
     const confirmed = entries.filter((e: any) => e.status === "confirmed");
-    const totalDays = confirmed.reduce((sum: number, e: any) => sum + (e.sea_days || 0), 0);
+    // Distinct calendar days, so multi-day entries count fully and overlaps
+    // are not double-counted.
+    const totalDays = countDistinctSeaDays(confirmed as any);
 
     const vessels = await app.db
       .select()
       .from(schema.vessels)
       .where(eq(schema.vessels.user_id, user.id));
 
-    const vesselsByDays: Record<string, number> = {};
+    const vesselGroups: Record<string, any[]> = {};
     confirmed.forEach((e: any) => {
       const v = vessels.find((vv: any) => vv.id === e.vessel_id);
       const name = v?.vessel_name || "Unknown";
-      vesselsByDays[name] = (vesselsByDays[name] || 0) + (e.sea_days || 0);
+      (vesselGroups[name] ||= []).push(e);
     });
+    const vesselsByDays: Record<string, number> = {};
+    for (const [name, group] of Object.entries(vesselGroups)) {
+      vesselsByDays[name] = countDistinctSeaDays(group as any);
+    }
 
     // Sanitized response — NEVER include email, address, tel etc.
     return reply.code(200).send({
