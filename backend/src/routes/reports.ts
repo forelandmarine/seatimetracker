@@ -6,6 +6,7 @@ import type { App } from "../index.js";
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { countDistinctSeaDays } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -468,68 +469,51 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Calculate total days (sum of sea_days column - each entry is 0 or 1)
-    let total_days = 0;
-    entries.forEach((entry) => {
-      if (entry.sea_days) {
-        total_days += entry.sea_days;
-      }
-    });
+    // Total sea days = distinct calendar days across confirmed entries.
+    // Counting distinct days (rather than summing each entry's sea_days) both
+    // credits multi-day entries correctly and dedupes overlapping entries so
+    // the same date is never counted twice.
+    const total_days = countDistinctSeaDays(entries as any);
 
-    // Group by vessel - return as array
-    const vesselMap: { [key: string]: number } = {};
+    // Group by vessel, counting distinct days within each vessel.
+    const vesselGroups: { [key: string]: any[] } = {};
     entries.forEach((entry) => {
       const vessel_name = entry.vessel?.vessel_name || 'Unknown';
-      if (!vesselMap[vessel_name]) {
-        vesselMap[vessel_name] = 0;
-      }
-      if (entry.sea_days) {
-        vesselMap[vessel_name] += entry.sea_days;
-      }
+      (vesselGroups[vessel_name] ||= []).push(entry);
     });
 
-    const entries_by_vessel = Object.entries(vesselMap)
-      .map(([vessel_name, total_days]) => ({
+    const entries_by_vessel = Object.entries(vesselGroups)
+      .map(([vessel_name, group]) => ({
         vessel_name,
-        total_days,
+        total_days: countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
-    // Group by month - return as array
-    const monthMap: { [key: string]: number } = {};
+    // Group by month (bucketed by the entry's start month).
+    const monthGroups: { [key: string]: any[] } = {};
     entries.forEach((entry) => {
       const month = new Date(entry.start_time).toISOString().slice(0, 7); // YYYY-MM format
-      if (!monthMap[month]) {
-        monthMap[month] = 0;
-      }
-      if (entry.sea_days) {
-        monthMap[month] += entry.sea_days;
-      }
+      (monthGroups[month] ||= []).push(entry);
     });
 
-    const entries_by_month = Object.entries(monthMap)
-      .map(([month, total_days]) => ({
+    const entries_by_month = Object.entries(monthGroups)
+      .map(([month, group]) => ({
         month,
-        total_days,
+        total_days: countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => a.month.localeCompare(b.month)); // Sort by month ascending
 
-    // Group by service type
-    const serviceTypeMap: { [key: string]: number } = {};
+    // Group by service type.
+    const serviceTypeGroups: { [key: string]: any[] } = {};
     entries.forEach((entry) => {
       const service_type = entry.service_type || 'actual_sea_service';
-      if (!serviceTypeMap[service_type]) {
-        serviceTypeMap[service_type] = 0;
-      }
-      if (entry.sea_days) {
-        serviceTypeMap[service_type] += entry.sea_days;
-      }
+      (serviceTypeGroups[service_type] ||= []).push(entry);
     });
 
-    const entries_by_service_type = Object.entries(serviceTypeMap)
-      .map(([service_type, total_days]) => ({
+    const entries_by_service_type = Object.entries(serviceTypeGroups)
+      .map(([service_type, group]) => ({
         service_type,
-        total_days,
+        total_days: countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
@@ -659,8 +643,10 @@ export function register(app: App, fastify: FastifyInstance) {
         });
       });
 
-      // Totals row
-      const totalDays = entries.reduce((sum: number, e: any) => sum + (e.sea_days ?? 0), 0);
+      // Totals row. Count distinct calendar days so overlapping entries
+      // (e.g. an auto entry that overlaps a manual sign-on period) are not
+      // double-counted.
+      const totalDays = countDistinctSeaDays(entries as any);
       sheet.addRow({});
       const totalRow = sheet.addRow({ vessel: 'TOTAL', days: totalDays });
       totalRow.font = { bold: true };

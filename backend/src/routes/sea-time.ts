@@ -711,7 +711,7 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'Sea time duration cannot be 0 hours. Cannot confirm entry with 0 hours.' });
     }
 
-    const calculated_sea_days = calculateSeaDays(duration_hours);
+    const calculated_sea_days = calculateSeaDays(current_entry.start_time, end_time);
 
     // Note: Calendar day restriction has been removed to allow multiple entries per day as vessels move throughout the day
     // The scheduler now creates multiple entries (every 2 hours) when movement is detected
@@ -1353,7 +1353,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Calculate duration in hours and sea_days
       const duration_ms = newestRecord.check_time.getTime() - olderRecord.check_time.getTime();
       const duration_hours = Math.round((duration_ms / (1000 * 60 * 60)) * 100) / 100;
-      const sea_days = calculateSeaDays(duration_hours);
+      const sea_days = calculateSeaDays(olderRecord.check_time, newestRecord.check_time);
 
       // Calculate distance traveled using Haversine formula
       const EARTH_RADIUS_NM = 3440.065;
@@ -1575,7 +1575,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry1End.setHours(18, 30, 0, 0);
 
       const entry1Duration = calculateDurationHours(entry1Start, entry1End);
-      const entry1SeaDays = calculateSeaDays(entry1Duration);
+      const entry1SeaDays = calculateSeaDays(entry1Start, entry1End);
       const entry1StartLat = 50.9097;
       const entry1StartLng = -1.4044;
       const entry1EndLat = 50.7964;
@@ -1615,7 +1615,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry2End.setHours(16, 45, 0, 0);
 
       const entry2Duration = calculateDurationHours(entry2Start, entry2End);
-      const entry2SeaDays = calculateSeaDays(entry2Duration);
+      const entry2SeaDays = calculateSeaDays(entry2Start, entry2End);
       const entry2StartLat = 50.7964;
       const entry2StartLng = -1.1089;
       const entry2EndLat = 50.8429;
@@ -1655,7 +1655,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry3End.setHours(19, 15, 0, 0);
 
       const entry3Duration = calculateDurationHours(entry3Start, entry3End);
-      const entry3SeaDays = calculateSeaDays(entry3Duration);
+      const entry3SeaDays = calculateSeaDays(entry3Start, entry3End);
       const entry3StartLat = 50.8429;
       const entry3StartLng = -1.2981;
       const entry3EndLat = 50.6929;
@@ -2043,7 +2043,7 @@ export function register(app: App, fastify: FastifyInstance) {
         }
 
         calculated_duration_hours = String(duration_hours);
-        calculated_sea_days = calculateSeaDays(duration_hours);
+        calculated_sea_days = calculateSeaDays(startDate, endDate);
 
         app.logger.info({ vessel_id, durationHours: duration_hours, seaDays: calculated_sea_days }, 'Sea time duration calculated');
       } catch (error) {
@@ -2353,7 +2353,7 @@ export function register(app: App, fastify: FastifyInstance) {
         const endTime = new Date(startTime.getTime() + durationHours * 60 * 60 * 1000);
 
         // Calculate sea_days
-        const sea_days = calculateSeaDays(durationHours);
+        const sea_days = calculateSeaDays(startTime, endTime);
 
         // Mix of confirmed (3) and pending (1) status
         const status = i < 3 ? 'confirmed' : 'pending';
