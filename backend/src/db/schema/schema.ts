@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex, date } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex, date, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const vessels = pgTable('vessels', {
@@ -61,6 +61,8 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   area_category: text('area_category'), // 'A'|'B'|'C'|'D'|'limited_coastal'|'within_60nm'|'within_150nm'|'beyond_150nm'
   is_tidal: boolean('is_tidal'), // Tidal waters (needed for RYA mileage split + BML QST)
   dual_capacity: boolean('dual_capacity'), // Served dual deck+engine capacity — counts at 50%
+  is_categorised_water: boolean('is_categorised_water'), // Any classified fix fell in MSN 1837 categorised waters (A–D)
+  qualifying_service: jsonb('qualifying_service'), // Engine output: per-pathway qualifying result keyed by pathway id (see utils/pathways/). Reserved — written by the qualifying-service engine, indicative until MCA/TSN determination.
   // Watchkeeping breakdown by watch type
   bridge_watch_hours: decimal('bridge_watch_hours', { precision: 10, scale: 2 }), // Bridge/navigation watch hours (deck)
   engine_watch_hours: decimal('engine_watch_hours', { precision: 10, scale: 2 }), // Engine room watch hours (engineering)
@@ -97,6 +99,11 @@ export const ais_checks = pgTable('ais_checks', {
   destination: text('destination'), // Reported destination
   eta: text('eta'), // Estimated time of arrival (raw string from AIS)
   api_source: text('api_source').default('myshiptracking'), // Track which API provided the data
+  // CTV/workboat expansion (COMMERCIAL_PATHWAYS_ENABLED): per-fix AIS-derived classification.
+  // All nullable — legacy rows and flag-off ingestion leave these null.
+  area_category: text('area_category'), // MSN 1837 categorised water at this fix: 'A'|'B'|'C'|'D' (null = at sea / not categorised)
+  is_tidal: boolean('is_tidal'), // Whether this fix is in tidal waters
+  season: text('season'), // Season used for the categorised-waters limit at this fix: 'summer'|'winter'
   created_at: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('ais_checks_user_id_idx').on(table.user_id),
