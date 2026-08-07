@@ -7,6 +7,7 @@ import { processNotificationSchedules } from '../routes/notifications.js';
 import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
 import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
+import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -500,6 +501,9 @@ async function processScheduledTask(
   let ais_check: typeof schema.ais_checks.$inferSelect | null = null;
   let insertError: Error | null = null;
 
+  // CTV/workboat prep — flag-gated, null-safe, never throws (returns {} when off).
+  const seaArea = classifyFixForStorage(ais_data.latitude, ais_data.longitude, check_time);
+
   try {
     const insertResult = await app.db
       .insert(schema.ais_checks)
@@ -517,6 +521,7 @@ async function processScheduledTask(
         destination: ais_data.destination ?? null,
         eta: ais_data.eta ?? null,
         api_source: apiSource,
+        ...seaArea,
       })
       .returning();
 

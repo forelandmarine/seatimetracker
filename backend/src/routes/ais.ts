@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 import { lookupPort } from "../utils/portDatabase.js";
 import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTime.js";
+import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -1250,6 +1251,8 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Store the AIS check result
     const check_time = new Date();
+    // CTV/workboat prep — flag-gated, null-safe, never throws (returns {} when off).
+    const seaArea = classifyFixForStorage(ais_data.latitude, ais_data.longitude, check_time);
     const [ais_check] = await app.db
       .insert(schema.ais_checks)
       .values({
@@ -1266,6 +1269,7 @@ export function register(app: App, fastify: FastifyInstance) {
         destination: lookupPort(ais_data.destination) ?? ais_data.destination ?? null,
         eta: ais_data.eta ?? null,
         api_source: apiSource,
+        ...seaArea,
       })
       .returning();
 
