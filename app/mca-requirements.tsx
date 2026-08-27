@@ -296,7 +296,13 @@ export default function CertificationRequirementsScreen() {
 
   const groups = useMemo(() => groupRequirementsByCategory(filtered), [filtered]);
 
-  const effectiveTargetId = targetId ?? getDefaultTargetId(authority, department) ?? null;
+  // Only honour a saved target that belongs to this pathway; a leftover from a
+  // previous authority falls back to the pathway default.
+  const savedTargetIsInPathway =
+    !!targetId && requirements.some((req) => req.id === targetId);
+  const effectiveTargetId = savedTargetIsInPathway
+    ? targetId
+    : getDefaultTargetId(authority, department) ?? null;
 
   const handleSetTarget = useCallback(
     async (requirement: MCARequirement) => {

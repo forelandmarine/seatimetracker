@@ -255,7 +255,13 @@ export default function SelectPathwayScreen() {
       const departmentLowercase = selectedDepartment.toLowerCase();
       log('Sending department to backend:', departmentLowercase, 'authority:', selectedAuthority);
 
-      await seaTimeApi.updateUserProfile({ department: departmentLowercase, maritime_authority: selectedAuthority });
+      // Clear any saved target: a credential from the previous pathway is not
+      // valid under the new one.
+      await seaTimeApi.updateUserProfile({
+        department: departmentLowercase,
+        maritime_authority: selectedAuthority,
+        target_certification: null,
+      });
       log('Department and authority saved successfully:', departmentLowercase, selectedAuthority);
 
       // Refresh auth state so the tab layout guard sees the new department

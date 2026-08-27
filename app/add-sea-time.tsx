@@ -497,10 +497,13 @@ export default function AddSeaTimeScreen() {
 
   const handleViewMCARequirements = () => {
     log('[AddSeaTimeScreen] User tapped requirements link, pathway:', pathway);
-    const query = pathway.authority
-      ? `department=${pathway.department}&authority=${pathway.authority}`
-      : `department=${pathway.department}`;
-    router.push(`/mca-requirements?${query}`);
+    router.push({
+      pathname: '/mca-requirements',
+      params: {
+        department: pathway.department,
+        ...(pathway.authority ? { authority: pathway.authority } : {}),
+      },
+    });
   };
 
   const parseLatLong = (text: string): { lat: number | null; lon: number | null } => {

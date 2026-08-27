@@ -1095,10 +1095,15 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   isDark={isDark}
                   onChangeTarget={() =>
-                    router.push(
-                      `/mca-requirements?department=${profile.department?.toLowerCase() ?? 'deck'}` +
-                        (profile.maritime_authority ? `&authority=${profile.maritime_authority}` : ''),
-                    )
+                    router.push({
+                      pathname: '/mca-requirements',
+                      params: {
+                        department: profile.department?.toLowerCase() ?? 'deck',
+                        ...(profile.maritime_authority
+                          ? { authority: profile.maritime_authority }
+                          : {}),
+                      },
+                    })
                   }
                 />
               </View>

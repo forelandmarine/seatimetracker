@@ -86,9 +86,15 @@ export function CertificationProgress({
     department?.toLowerCase() === 'engineering' ? 'engineering' : 'deck';
   const resolvedAuthority: MaritimeAuthority = authority ?? 'mca';
 
+  // A saved target can belong to a pathway the user has since changed away
+  // from, so it is only used when it resolves inside the current one.
   const requirement: MCARequirement | undefined = useMemo(() => {
-    const id = targetId || getDefaultTargetId(resolvedAuthority, dept);
-    return id ? getRequirementByIdForPathway(id, resolvedAuthority, dept) : undefined;
+    const saved = targetId
+      ? getRequirementByIdForPathway(targetId, resolvedAuthority, dept)
+      : undefined;
+    if (saved) return saved;
+    const fallbackId = getDefaultTargetId(resolvedAuthority, dept);
+    return fallbackId ? getRequirementByIdForPathway(fallbackId, resolvedAuthority, dept) : undefined;
   }, [targetId, resolvedAuthority, dept]);
 
   const isUSCG = resolvedAuthority === 'uscg';
