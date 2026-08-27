@@ -6,7 +6,7 @@ import type { App } from "../index.js";
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { countDistinctSeaDays, qualifyingSeaDays } from "../utils/seaTime.js";
+import { countDistinctSeaDays, qualifyingSeaDays, uscgCreditableDays } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -407,6 +407,16 @@ export function register(app: App, fastify: FastifyInstance) {
                 qualifying_total: { type: 'number' },
               },
             },
+            uscg_service: {
+              type: 'object',
+              properties: {
+                creditable: { type: 'number' },
+                standby: { type: 'number' },
+                yard: { type: 'number' },
+                port: { type: 'number' },
+                short_of_eight_hours: { type: 'number' },
+              },
+            },
             entries_by_vessel: {
               type: 'array',
               items: {
@@ -488,6 +498,12 @@ export function register(app: App, fastify: FastifyInstance) {
     const breakdown = qualifyingSeaDays(entries as any);
     const total_days = breakdown.qualifying_total;
 
+    // USCG applicants need the same entries counted under 46 CFR 10.107 rules:
+    // an 8-hour working day, with yard and port time not treated as sea
+    // service. Returned alongside the MCA figure so the client can show the
+    // one that matches the user's chosen authority.
+    const uscg_service = uscgCreditableDays(entries as any);
+
     // Group by vessel, counting distinct days within each vessel.
     const vesselGroups: { [key: string]: any[] } = {};
     entries.forEach((entry) => {
@@ -543,6 +559,7 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send({
       total_days,
       sea_service: breakdown,
+      uscg_service,
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
