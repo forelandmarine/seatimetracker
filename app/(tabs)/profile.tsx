@@ -1,5 +1,8 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
+import { CertificationProgress } from '@/components/CertificationProgress';
+import type { MaritimeAuthority } from '@/constants/mcaRequirements';
+import { USCG_SERVICE_DEFINITIONS } from '@/constants/mcaRequirements';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -45,10 +48,19 @@ interface UserProfile {
   createdAt: string;
   updatedAt: string;
   department?: string | null;
+  maritime_authority?: MaritimeAuthority | null;
+  target_certification?: string | null;
 }
 
 interface SeaTimeSummary {
   total_days: number;
+  uscg_service?: {
+    creditable: number;
+    standby: number;
+    yard: number;
+    port: number;
+    short_of_eight_hours: number;
+  } | null;
   entries_by_vessel: {
     vessel_name: string;
     total_days: number;
@@ -1018,7 +1030,11 @@ export default function ProfileScreen() {
   const totalDays = summary ? summary.total_days : 0;
 
   const userDepartment = profile?.department?.toLowerCase();
-  const filteredDefinitions = SEA_DAY_DEFINITIONS.filter(
+  // The shipped definitions describe the MCA yacht rules (MSN 1858 / 1904), so
+  // a USCG applicant gets the 46 CFR ones instead.
+  const isUSCGPathway = profile?.maritime_authority === 'uscg';
+  const definitionSource = isUSCGPathway ? USCG_SERVICE_DEFINITIONS : SEA_DAY_DEFINITIONS;
+  const filteredDefinitions = definitionSource.filter(
     (def) => (def.department === 'both' || def.department === userDepartment) && def.title !== 'Administrative Rules'
   );
 
@@ -1233,14 +1249,43 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {/* Certification Progress Tracker */}
+          {!loadingSummary && summary && profile.department && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Certification Progress</Text>
+              <View style={styles.card}>
+                <CertificationProgress
+                  authority={profile.maritime_authority ?? null}
+                  department={profile.department}
+                  targetId={profile.target_certification ?? null}
+                  serviceTypes={allServiceTypes}
+                  uscgService={summary.uscg_service ?? null}
+                  isDark={isDark}
+                  onChangeTarget={() =>
+                    router.push(
+                      `/mca-requirements?department=${profile.department?.toLowerCase() ?? 'deck'}` +
+                        (profile.maritime_authority ? `&authority=${profile.maritime_authority}` : ''),
+                    )
+                  }
+                />
+              </View>
+            </View>
+          )}
+
           {profile.department && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                {profile.department.toLowerCase() === 'deck' ? 'Deck Department - Sea Service Definitions (MSN 1858)' : 'Engineering Department - Sea Service Definitions (MSN 1904)'}
+                {isUSCGPathway
+                  ? `${profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} Department - USCG Service Definitions (46 CFR)`
+                  : profile.department.toLowerCase() === 'deck'
+                    ? 'Deck Department - Sea Service Definitions (MSN 1858)'
+                    : 'Engineering Department - Sea Service Definitions (MSN 1904)'}
               </Text>
               <View style={styles.infoBox}>
                 <Text style={styles.infoText}>
-                  These definitions ensure your sea time records are compliant with MCA regulations for {profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers. All data capture in this app follows these standards.
+                  {isUSCGPathway
+                    ? `How the Coast Guard counts service toward a ${profile.department.toLowerCase() === 'deck' ? 'deck' : 'engineer'} endorsement, under 46 CFR parts 10 and 11. Your logged time is counted on these rules.`
+                    : `These definitions ensure your sea time records are compliant with MCA regulations for ${profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers. All data capture in this app follows these standards.`}
                 </Text>
               </View>
               {filteredDefinitions.map((definition, index) => (

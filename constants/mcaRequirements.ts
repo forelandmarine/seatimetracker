@@ -2478,3 +2478,65 @@ export const getDefaultTargetId = (
   if (preferred && list.some((req) => req.id === preferred)) return preferred;
   return list[0]?.id;
 };
+
+export interface ServiceDefinition {
+  title: string;
+  description: string;
+  department: 'deck' | 'engineering' | 'both';
+}
+
+/**
+ * How the Coast Guard counts service, for the definitions panel. The MCA yacht
+ * definitions the app ships (MSN 1858 / MSN 1904) do not apply to a USCG
+ * applicant, so a USCG user is shown these instead.
+ */
+export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
+  {
+    title: 'A Day of Service',
+    description:
+      '8 hours of watchstanding or day-working, not counting overtime. On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days, which an evaluator applies to your application (46 CFR 10.107).',
+    department: 'both',
+  },
+  {
+    title: 'Months and Years',
+    description:
+      'A month is 30 days and a year is 360 days. Every day figure in the requirements list is converted on that basis (46 CFR 10.107).',
+    department: 'both',
+  },
+  {
+    title: 'Service',
+    description:
+      'The time, in days, you are assigned to work aboard. Yard periods and time in port are not sea service, and on a MODU time ashore during crew rotation is excluded.',
+    department: 'both',
+  },
+  {
+    title: 'Route Credit',
+    description:
+      'Toward an ocean, near-coastal or STCW endorsement, Great Lakes service credits day for day up to the full requirement, and other inland navigable waters credit day for day for up to 50 percent of it (46 CFR 11.211).',
+    department: 'both',
+  },
+  {
+    title: 'Tonnage',
+    description:
+      'A vessel measured only under the Convention (ITC) scheme is credited as Gross Register Tonnage (46 CFR 11.211(h)). Endorsements under 200 GRT are issued at 25, 50, 100 or 200 GRT based on the tonnage your service was gained on (46 CFR 11.422).',
+    department: 'deck',
+  },
+  {
+    title: 'Propulsion Power',
+    description:
+      'Engineer endorsements carry a propulsion power limitation unless at least half the qualifying service was on vessels of 4,000 HP / 3,000 kW or more (46 CFR 11.503).',
+    department: 'engineering',
+  },
+  {
+    title: 'Towing and ATB Service',
+    description:
+      'Service as Master or Mate (Pilot) of Towing Vessels, and service on articulated or dual mode integrated tug barges of 1,600 GRT / 3,000 GT or more, credits two days for one toward unlimited endorsements, for up to 50 percent of the required large-vessel service (46 CFR 11.211).',
+    department: 'deck',
+  },
+  {
+    title: 'Documenting Your Service',
+    description:
+      'Sea service is submitted on a sea service letter or Form CG-719S, showing the vessel name and official number, the dates served, the capacity, the tonnage or propulsion power, and the route.',
+    department: 'both',
+  },
+];
