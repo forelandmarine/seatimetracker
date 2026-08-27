@@ -166,6 +166,13 @@ export function CertificationProgress({
         </Text>
       )}
 
+      {rows.length === 0 && (
+        <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
+          Day-by-day progress is not available for this pathway yet. Open the requirements list
+          to see the service this endorsement asks for.
+        </Text>
+      )}
+
       {rows.map((row, index) => {
         const pct = row.required > 0 ? Math.min(row.current / row.required, 1) : 0;
         const isLast = index === rows.length - 1 && checkpoints.length === 0;
