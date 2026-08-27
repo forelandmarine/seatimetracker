@@ -591,6 +591,11 @@ export default function ProfileScreen() {
       const data = await seaTimeApi.getUserProfile();
       log('User profile loaded successfully:', data?.email);
       setProfile(data);
+      // Default the report template to the user's own authority. A USCG
+      // applicant needs a sea service letter, not an MCA testimonial.
+      if (data?.maritime_authority && ['mca', 'uscg', 'mnz', 'amsa'].includes(data.maritime_authority)) {
+        setReportTemplate(data.maritime_authority);
+      }
       setLoading(false);
       setLoadError(false);
     } catch (error: any) {
