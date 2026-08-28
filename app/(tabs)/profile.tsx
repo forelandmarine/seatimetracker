@@ -56,10 +56,12 @@ interface SeaTimeSummary {
   total_days: number;
   uscg_service?: {
     creditable: number;
+    provisional: number;
+    short_of_standard_day: number;
+    below_minimum: number;
     standby: number;
     yard: number;
     port: number;
-    short_of_eight_hours: number;
   } | null;
   entries_by_vessel: {
     vessel_name: string;

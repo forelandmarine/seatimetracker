@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "12",
+      "buildNumber": "13",
       "bundleIdentifier": "com.forelandmarine.seatimetracker",
       "appleTeamId": "43GZCFFPR9",
       "usesAppleSignIn": true,
@@ -33,7 +33,7 @@
         "monochromeImage": "./assets/images/adaptive-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 13,
+      "versionCode": 14,
       "package": "com.forelandmarine.seatimetracker",
       "permissions": [
         "android.permission.CAMERA",

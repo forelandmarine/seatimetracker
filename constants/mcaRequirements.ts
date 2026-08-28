@@ -2494,7 +2494,19 @@ export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
   {
     title: 'A Day of Service',
     description:
-      '8 hours of watchstanding or day-working, not counting overtime. On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days, which an evaluator applies to your application (46 CFR 10.107).',
+      '8 hours of watchstanding or day-working, not counting overtime (46 CFR 10.107). On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days, which an evaluator applies to your application.',
+    department: 'both',
+  },
+  {
+    title: 'Shorter Days on Small Vessels',
+    description:
+      'On vessels of less than 100 GRT a day is still taken as 8 hours unless the Coast Guard decides the vessel\u2019s operating schedule makes that inappropriate, and it can never be treated as less than 4 hours (46 CFR 10.107). The app counts your 4 to 8 hour days on small vessels separately, because whether they credit is the OCMI\u2019s decision rather than a calculation.',
+    department: 'both',
+  },
+  {
+    title: 'Days on a MODU',
+    description:
+      'A day of service on a mobile offshore drilling unit is a minimum of 4 hours, with no extra credit for more than 8 (46 CFR 10.107 and 11.211). The app has no way to tell a MODU from any other vessel, so raise MODU service with the National Maritime Center directly.',
     department: 'both',
   },
   {

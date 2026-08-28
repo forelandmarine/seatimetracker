@@ -372,7 +372,9 @@ export default function CertificationRequirementsScreen() {
             {authority === 'uscg' && (
               <Text style={styles.footnote}>
                 Service is shown in creditable days. Under 46 CFR 10.107 a day is 8 hours of
-                watchstanding or day-working, a month is 30 days and a year is 360 days.
+                watchstanding or day-working, a month is 30 days and a year is 360 days. On
+                vessels under 100 GRT a shorter day, never less than 4 hours, can count if the
+                Coast Guard accepts the operating schedule.
               </Text>
             )}
           </View>

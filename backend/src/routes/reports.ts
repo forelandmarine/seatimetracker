@@ -411,10 +411,12 @@ export function register(app: App, fastify: FastifyInstance) {
               type: 'object',
               properties: {
                 creditable: { type: 'number' },
+                provisional: { type: 'number' },
+                short_of_standard_day: { type: 'number' },
+                below_minimum: { type: 'number' },
                 standby: { type: 'number' },
                 yard: { type: 'number' },
                 port: { type: 'number' },
-                short_of_eight_hours: { type: 'number' },
               },
             },
             entries_by_vessel: {

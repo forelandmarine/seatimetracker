@@ -15,11 +15,17 @@ export interface ServiceTypeDays {
 }
 
 export interface USCGServiceSummary {
+  /** Days meeting the full 8-hour day of 46 CFR 10.107. */
   creditable: number;
+  /** 4 to 8 hour days on a vessel under 100 GRT, creditable at the OCMI's discretion. */
+  provisional: number;
+  /** 4 to 8 hour days on a vessel of 100 GRT or more, or of unknown tonnage. */
+  short_of_standard_day: number;
+  /** Days under 4 hours, not creditable on any reading. */
+  below_minimum: number;
   standby: number;
   yard: number;
   port: number;
-  short_of_eight_hours: number;
 }
 
 interface ProgressRow {
@@ -246,17 +252,54 @@ export function CertificationProgress({
       )}
 
       {isUSCG && uscgService && (
-        <Text style={{ fontSize: 12, color: mutedColor, marginTop: 14, lineHeight: 17 }}>
-          Counted under 46 CFR 10.107: a day is 8 hours of watchstanding or day-working.
-          {uscgService.short_of_eight_hours > 0
-            ? ` ${uscgService.short_of_eight_hours} logged ${
-                uscgService.short_of_eight_hours === 1 ? 'day is' : 'days are'
-              } under 8 hours and not counted here.`
-            : ''}
-          {uscgService.yard + uscgService.port + uscgService.standby > 0
-            ? ` Yard, port and stand-by time is kept in your logbook but is not USCG sea service.`
-            : ''}
-        </Text>
+        <View style={{ marginTop: 14 }}>
+          {uscgService.provisional > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: 12,
+                paddingTop: 10,
+                borderTopWidth: 1,
+                borderTopColor: trackColor,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 13, color: mutedColor, flex: 1 }}>
+                Awaiting a Coast Guard determination
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: mutedColor }}>
+                +{uscgService.provisional} days
+              </Text>
+            </View>
+          )}
+
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted under 46 CFR 10.107: a day is 8 hours of watchstanding or day-working,
+            excluding overtime.
+            {uscgService.provisional > 0
+              ? ` ${uscgService.provisional} ${
+                  uscgService.provisional === 1 ? 'day of' : 'days of'
+                } 4 to 8 hours on vessels under 100 GRT sit outside that total. They count only if the Coast Guard accepts that your operating schedule makes the 8-hour day inappropriate, which is the OCMI's call, not ours.`
+              : ''}
+            {uscgService.short_of_standard_day > 0
+              ? ` ${uscgService.short_of_standard_day} ${
+                  uscgService.short_of_standard_day === 1 ? 'day is' : 'days are'
+                } 4 to 8 hours on a vessel of 100 GRT or more, or one whose tonnage you have not recorded. Adding the tonnage may move ${
+                  uscgService.short_of_standard_day === 1 ? 'it' : 'them'
+                } into the line above.`
+              : ''}
+            {uscgService.below_minimum > 0
+              ? ` ${uscgService.below_minimum} ${
+                  uscgService.below_minimum === 1 ? 'day is' : 'days are'
+                } under 4 hours, which is below the floor in any reading.`
+              : ''}
+            {uscgService.yard + uscgService.port + uscgService.standby > 0
+              ? ' Yard, port and stand-by time stays in your logbook but is not USCG sea service.'
+              : ''}
+            {' On a vessel authorised to run two watches, a 12-hour day may count as 1.5 days. That depends on the vessel\u2019s authorisation, so it is never applied here.'}
+          </Text>
+        </View>
       )}
     </View>
   );
