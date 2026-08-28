@@ -18,6 +18,8 @@ import { colors } from '@/styles/commonStyles';
 import { countryName } from '@/utils/countryCodes';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { IconSymbol } from '@/components/IconSymbol';
+import { USCG_SERVICE_DEFINITIONS } from '@/constants/mcaRequirements';
+import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
@@ -29,6 +31,7 @@ interface UserProfile {
   name: string;
   email: string;
   department?: string | null;
+  maritime_authority?: MaritimeAuthority | null;
 }
 
 interface SeaTimeSummary {
@@ -514,7 +517,11 @@ export default function ReportsScreen() {
   };
 
   const userDepartment = profile?.department?.toLowerCase();
-  const filteredDefinitions = SEA_DAY_DEFINITIONS.filter(
+  // The shipped definitions describe the MCA yacht rules, so a USCG applicant
+  // gets the 46 CFR ones instead.
+  const definitionSource =
+    profile?.maritime_authority === 'uscg' ? USCG_SERVICE_DEFINITIONS : SEA_DAY_DEFINITIONS;
+  const filteredDefinitions = definitionSource.filter(
     (def) => def.department === 'both' || def.department === userDepartment
   );
 

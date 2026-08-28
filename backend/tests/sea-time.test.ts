@@ -5,6 +5,9 @@ import {
   calendarDaysCovered,
   countDistinctSeaDays,
   qualifyingSeaDays,
+  uscgCreditableDays,
+  USCG_DAYS_PER_MONTH,
+  USCG_DAYS_PER_YEAR,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
@@ -299,5 +302,97 @@ describe("isValidServiceType", () => {
     expect(isValidServiceType(undefined)).toBe(false);
     expect(isValidServiceType(42)).toBe(false);
     expect(isValidServiceType({})).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// uscgCreditableDays — 46 CFR 10.107 / 11.211
+// ---------------------------------------------------------------------------
+describe("uscgCreditableDays", () => {
+  // A 4-hour entry on a given UTC date: qualifies under the MCA rule, not USCG.
+  const shortDay = (date: string, service_type = "actual_sea_service") => ({
+    start_time: `${date}T08:00:00Z`,
+    end_time: `${date}T12:00:00Z`,
+    service_type,
+  });
+
+  test("counts an 8-hour day", () => {
+    expect(uscgCreditableDays([day("2025-06-01")]).creditable).toBe(1);
+  });
+
+  test("does not count a day under 8 hours", () => {
+    const result = uscgCreditableDays([shortDay("2025-06-01")]);
+    expect(result.creditable).toBe(0);
+    expect(result.short_of_eight_hours).toBe(1);
+  });
+
+  test("a 4-hour day counts for the MCA but not the USCG", () => {
+    const entries = [shortDay("2025-06-01")];
+    expect(qualifyingSeaDays(entries).qualifying_total).toBe(1);
+    expect(uscgCreditableDays(entries).creditable).toBe(0);
+  });
+
+  test("counts watchkeeping service as sea service", () => {
+    expect(uscgCreditableDays([day("2025-06-01", "watchkeeping_service")].concat()).creditable).toBe(1);
+  });
+
+  test("does not credit yard, port or stand-by time", () => {
+    const result = uscgCreditableDays([
+      day("2025-06-01", "yard_service"),
+      day("2025-06-02", "service_in_port"),
+      day("2025-06-03", "standby_service"),
+    ]);
+    expect(result.creditable).toBe(0);
+    expect(result.yard).toBe(1);
+    expect(result.port).toBe(1);
+    expect(result.standby).toBe(1);
+  });
+
+  test("yard service is not capped and rolled in the way the MCA total does it", () => {
+    const yard = days("2025-01-01", 120, "yard_service");
+    expect(qualifyingSeaDays(yard).qualifying_total).toBe(90); // MSN 1858 cap
+    expect(uscgCreditableDays(yard).creditable).toBe(0);
+  });
+
+  test("deduplicates overlapping calendar days", () => {
+    const result = uscgCreditableDays([
+      { start_time: "2025-06-01T00:00:00Z", end_time: "2025-06-01T10:00:00Z", service_type: "actual_sea_service" },
+      { start_time: "2025-06-01T12:00:00Z", end_time: "2025-06-01T23:00:00Z", service_type: "watchkeeping_service" },
+    ]);
+    expect(result.creditable).toBe(1);
+  });
+
+  test("a day credited as sea service is not also counted as yard or port", () => {
+    const result = uscgCreditableDays([
+      day("2025-06-01", "actual_sea_service"),
+      day("2025-06-01", "yard_service"),
+      day("2025-06-01", "service_in_port"),
+    ]);
+    expect(result.creditable).toBe(1);
+    expect(result.yard).toBe(0);
+    expect(result.port).toBe(0);
+  });
+
+  test("counts every calendar day of a continuous passage", () => {
+    const result = uscgCreditableDays([
+      { start_time: "2025-06-01T06:00:00Z", end_time: "2025-06-05T18:00:00Z", service_type: "actual_sea_service" },
+    ]);
+    expect(result.creditable).toBe(5);
+  });
+
+  test("360 days of service reaches the 720-day (2 year) 200-ton Master target in two years", () => {
+    const twoYears = days("2025-01-01", 720);
+    expect(uscgCreditableDays(twoYears).creditable).toBe(720);
+    expect(USCG_DAYS_PER_YEAR * 2).toBe(720);
+    expect(USCG_DAYS_PER_MONTH * 24).toBe(720);
+  });
+
+  test("returns zeroes for no entries", () => {
+    const result = uscgCreditableDays([]);
+    expect(result.creditable).toBe(0);
+    expect(result.standby).toBe(0);
+    expect(result.yard).toBe(0);
+    expect(result.port).toBe(0);
+    expect(result.short_of_eight_hours).toBe(0);
   });
 });

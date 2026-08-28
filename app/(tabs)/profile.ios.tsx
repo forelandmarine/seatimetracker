@@ -15,6 +15,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
+import { CertificationProgress } from '@/components/CertificationProgress';
+import type { MaritimeAuthority } from '@/constants/mcaRequirements';
+import { USCG_SERVICE_DEFINITIONS } from '@/constants/mcaRequirements';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@/styles/commonStyles';
 import { useRouter } from 'expo-router';
@@ -48,11 +51,19 @@ interface UserProfile {
   createdAt: string;
   updatedAt: string;
   department?: string | null;
-  maritime_authority?: string | null;
+  maritime_authority?: MaritimeAuthority | null;
+  target_certification?: string | null;
 }
 
 interface SeaTimeSummary {
   total_days: number;
+  uscg_service?: {
+    creditable: number;
+    standby: number;
+    yard: number;
+    port: number;
+    short_of_eight_hours: number;
+  } | null;
   entries_by_vessel: {
     vessel_name: string;
     total_days: number;
@@ -755,7 +766,11 @@ export default function ProfileScreen() {
   const totalDays = summary ? summary.total_days : 0;
 
   const userDepartment = profile?.department?.toLowerCase();
-  const filteredDefinitions = SEA_DAY_DEFINITIONS.filter(
+  // The shipped definitions describe the MCA yacht rules (MSN 1858 / 1904), so
+  // a USCG applicant gets the 46 CFR ones instead.
+  const isUSCGPathway = profile?.maritime_authority === 'uscg';
+  const definitionSource = isUSCGPathway ? USCG_SERVICE_DEFINITIONS : SEA_DAY_DEFINITIONS;
+  const filteredDefinitions = definitionSource.filter(
     (def) => (def.department === 'both' || def.department === userDepartment) && def.title !== 'Administrative Rules'
   );
 
@@ -1068,86 +1083,32 @@ export default function ProfileScreen() {
           )}
 
           {/* Certification Progress Tracker */}
-          {!loadingSummary && summary && profile.department && (() => {
-            const dept = profile.department.toLowerCase();
-            const seagoingDays = allServiceTypes.find(s => s.service_type === 'actual_sea_service')?.total_days ?? 0;
-            const watchkeepingDays = allServiceTypes.find(s => s.service_type === 'watchkeeping_service')?.total_days ?? 0;
-            const additionalDays =
-              (allServiceTypes.find(s => s.service_type === 'standby_service')?.total_days ?? 0) +
-              (allServiceTypes.find(s => s.service_type === 'yard_service')?.total_days ?? 0);
-
-            const isEngineering = dept === 'engineering';
-            const certTitle = isEngineering
-              ? 'EOOW (SV) <9,000 kW, <3,000 GT'
-              : 'OOW (Deck) <3,000 GT';
-
-            // Engineering: MSN 1904 Experienced Seafarer Route (section 4.4)
-            // - 24 months onboard with 6 months seagoing (entry)
-            // - 11 months additional seagoing post-registration, 6 months watchkeeping/UMS
-            // Deck: MSN 1858 OOW Yachts <3000 GT
-            // - 250 days seagoing, 115 days additional
-            const requirements = isEngineering
-              ? [
-                  { label: 'Seagoing Service', current: seagoingDays, required: 240 },
-                  { label: 'Watchkeeping / UMS', current: watchkeepingDays, required: 180 },
-                ]
-              : [
-                  { label: 'Seagoing Service', current: seagoingDays, required: 250 },
-                  { label: 'Additional Service', current: additionalDays, required: 115 },
-                ];
-
-            return (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Certification Progress</Text>
-                <View style={styles.card}>
-                  <Text style={{
-                    fontSize: 15,
-                    fontWeight: '700',
-                    color: isDark ? colors.text : colors.textLight,
-                    marginBottom: 14,
-                  }}>
-                    {certTitle}
-                  </Text>
-                  {requirements.map((req, index) => {
-                    const pct = Math.min(req.current / req.required, 1);
-                    const isLast = index === requirements.length - 1;
-                    return (
-                      <View key={req.label} style={{ marginBottom: isLast ? 0 : 14 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <Text style={{
-                            fontSize: 14,
-                            color: isDark ? colors.text : colors.textLight,
-                          }}>
-                            {req.label}
-                          </Text>
-                          <Text style={{
-                            fontSize: 14,
-                            fontWeight: '600',
-                            color: pct >= 1 ? colors.success : colors.primary,
-                          }}>
-                            {req.current}/{req.required} days
-                          </Text>
-                        </View>
-                        <View style={{
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                          overflow: 'hidden',
-                        }}>
-                          <View style={{
-                            height: '100%',
-                            width: `${Math.round(pct * 100)}%`,
-                            backgroundColor: pct >= 1 ? colors.success : colors.primary,
-                            borderRadius: 4,
-                          }} />
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
+          {!loadingSummary && summary && profile.department && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Certification Progress</Text>
+              <View style={styles.card}>
+                <CertificationProgress
+                  authority={profile.maritime_authority ?? null}
+                  department={profile.department}
+                  targetId={profile.target_certification ?? null}
+                  serviceTypes={allServiceTypes}
+                  uscgService={summary.uscg_service ?? null}
+                  isDark={isDark}
+                  onChangeTarget={() =>
+                    router.push({
+                      pathname: '/mca-requirements',
+                      params: {
+                        department: profile.department?.toLowerCase() ?? 'deck',
+                        ...(profile.maritime_authority
+                          ? { authority: profile.maritime_authority }
+                          : {}),
+                      },
+                    })
+                  }
+                />
               </View>
-            );
-          })()}
+            </View>
+          )}
 
           {profile.department && (
             <View style={styles.section}>
@@ -1170,7 +1131,9 @@ export default function ProfileScreen() {
                 <View style={{ marginTop: 10 }}>
                   <View style={styles.infoBox}>
                     <Text style={styles.infoText}>
-                      These definitions ensure your sea time records are compliant with MCA regulations for {profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers ({profile.department.toLowerCase() === 'deck' ? 'MSN 1858' : 'MSN 1904'}). All data capture in this app follows these standards.
+                      {isUSCGPathway
+                        ? `How the Coast Guard counts service toward a ${profile.department.toLowerCase() === 'deck' ? 'deck' : 'engineer'} endorsement, under 46 CFR parts 10 and 11. Your logged time is counted on these rules.`
+                        : `These definitions ensure your sea time records are compliant with MCA regulations for ${profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers (${profile.department.toLowerCase() === 'deck' ? 'MSN 1858' : 'MSN 1904'}). All data capture in this app follows these standards.`}
                     </Text>
                   </View>
                   {filteredDefinitions.map((definition, index) => (

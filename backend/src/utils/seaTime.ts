@@ -153,6 +153,104 @@ export function qualifyingSeaDays(
   return { actual, standby, yard, port, yard_credited, qualifying_total };
 }
 
+/**
+ * USCG creditable service.
+ *
+ * The Coast Guard counts service differently from the MCA, so the MCA-shaped
+ * `qualifyingSeaDays` total above must not be reused for a USCG applicant:
+ *
+ * - A "day" is 8 hours of watchstanding or day-working, excluding overtime
+ *   (46 CFR 10.107). On vessels authorised to run a two-watch system under
+ *   46 U.S.C. 8104 a 12-hour working day may be credited as 1.5 days; that
+ *   uplift is an assessor decision and is NOT applied here.
+ * - "Service" is the time period, in days, a person is assigned to work
+ *   (46 CFR 10.107), so yard periods and time in port are not sea service.
+ * - 1 month = 30 days and 1 year = 360 days (46 CFR 10.107), which is how the
+ *   day targets in the certification requirements data are derived.
+ *
+ * Stand-by and yard service are MCA yacht constructs with no USCG equivalent,
+ * so they are reported separately rather than credited. As with the MCA total,
+ * this reports credited service and does not apply any endorsement-specific
+ * structure (route, tonnage, or capacity requirements), which an evaluator at
+ * the National Maritime Center applies to the application.
+ */
+export const USCG_MINIMUM_HOURS_PER_DAY = 8;
+export const USCG_DAYS_PER_MONTH = 30;
+export const USCG_DAYS_PER_YEAR = 360;
+
+export interface USCGServiceBreakdown {
+  /** Distinct days of sea service meeting the 8-hour threshold. */
+  creditable: number;
+  /** Distinct stand-by days, reported but not credited toward USCG service. */
+  standby: number;
+  /** Distinct yard days, reported but not credited toward USCG service. */
+  yard: number;
+  /** Distinct service-in-port days, reported but not credited. */
+  port: number;
+  /**
+   * Days that would count under the MCA 4-hour rule but fall short of the USCG
+   * 8-hour day. Surfaced so a user can see why the two totals differ.
+   */
+  short_of_eight_hours: number;
+}
+
+/** Distinct calendar days for one entry under the USCG 8-hour day. */
+function uscgEntryCalendarDays(
+  e: { start_time: Date | string; end_time: Date | string | null }
+): string[] {
+  const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+  const end = e.end_time == null
+    ? start
+    : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+  if (calculateDurationHours(start, end) < USCG_MINIMUM_HOURS_PER_DAY) return [];
+  return calendarDaysCovered(start, end);
+}
+
+/**
+ * USCG creditable sea service across many confirmed entries, deduplicated by
+ * calendar date so one date is never counted twice.
+ */
+export function uscgCreditableDays(
+  entries: Array<{ start_time: Date | string; end_time: Date | string | null; service_type?: string | null }>
+): USCGServiceBreakdown {
+  const seaDays = new Set<string>();
+  const standbyDays = new Set<string>();
+  const yardDays = new Set<string>();
+  const portDays = new Set<string>();
+  const shortDays = new Set<string>();
+
+  for (const e of entries) {
+    const type = e.service_type || 'actual_sea_service';
+    const bucket =
+      type === 'standby_service' ? standbyDays :
+      type === 'yard_service' ? yardDays :
+      type === 'service_in_port' ? portDays :
+      seaDays; // actual_sea_service, watchkeeping_service and unknown types are sea service
+
+    const credited = uscgEntryCalendarDays(e);
+    for (const d of credited) bucket.add(d);
+
+    // An entry that clears the MCA 4-hour bar but not the USCG 8-hour day.
+    if (credited.length === 0 && bucket === seaDays) {
+      for (const d of entryCalendarDays(e)) shortDays.add(d);
+    }
+  }
+
+  // Same priority order as the MCA breakdown: a day credited as sea service
+  // cannot also be stand-by, yard or port.
+  for (const d of seaDays) { standbyDays.delete(d); yardDays.delete(d); portDays.delete(d); shortDays.delete(d); }
+  for (const d of standbyDays) { yardDays.delete(d); portDays.delete(d); }
+  for (const d of yardDays) { portDays.delete(d); }
+
+  return {
+    creditable: seaDays.size,
+    standby: standbyDays.size,
+    yard: yardDays.size,
+    port: portDays.size,
+    short_of_eight_hours: shortDays.size,
+  };
+}
+
 /** Valid service types. */
 export const VALID_SERVICE_TYPES = [
   'actual_sea_service',

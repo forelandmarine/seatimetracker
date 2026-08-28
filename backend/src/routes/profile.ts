@@ -31,6 +31,7 @@ export function register(app: App, fastify: FastifyInstance) {
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              target_certification: { type: ['string', 'null'] },
               subscription_status: { type: ['string', 'null'] },
               subscription_expires_at: { type: ['string', 'null'] },
               subscription_product_id: { type: ['string', 'null'] },
@@ -125,6 +126,7 @@ export function register(app: App, fastify: FastifyInstance) {
         pya_membership_no: user.pya_membership_no || null,
         department: user.department || null,
         maritime_authority: user.maritime_authority || null,
+        target_certification: user.target_certification || null,
         subscription_status: user.subscription_status || null,
         subscription_expires_at: user.subscription_expires_at?.toISOString() || null,
         subscription_product_id: user.subscription_product_id || null,
@@ -150,6 +152,7 @@ export function register(app: App, fastify: FastifyInstance) {
       pya_membership_no?: string;
       department?: string;
       maritime_authority?: string;
+      target_certification?: string | null;
     };
   }>(
     '/api/profile',
@@ -170,6 +173,7 @@ export function register(app: App, fastify: FastifyInstance) {
             pya_membership_no: { type: 'string' },
             department: { type: 'string', enum: ['deck', 'engineering'], description: 'Department: deck or engineering' },
             maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
+            target_certification: { type: ['string', 'null'], maxLength: 64, description: 'Requirement id the user is working toward, e.g. uscg-master-nc-200grt' },
           },
         },
         response: {
@@ -190,6 +194,7 @@ export function register(app: App, fastify: FastifyInstance) {
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              target_certification: { type: ['string', 'null'] },
               createdAt: { type: 'string' },
               updatedAt: { type: 'string' },
             },
@@ -201,9 +206,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority } = request.body;
+      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification } = request.body;
 
-      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority }, 'Profile update request');
+      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification }, 'Profile update request');
 
       // Get token from Authorization header
       const authHeader = request.headers.authorization;
@@ -258,8 +263,18 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", or "mnz"' });
       }
 
+      // Validate target_certification if provided. The requirement catalogue
+      // lives in the app (constants/mcaRequirements.ts), so validate the shape
+      // rather than duplicating 90-odd ids here and letting the two drift.
+      if (target_certification !== undefined && target_certification !== null && target_certification !== '') {
+        if (typeof target_certification !== 'string' || !/^[a-z0-9-]{1,64}$/.test(target_certification)) {
+          app.logger.warn({ userId: user.id, target_certification }, 'Invalid target certification provided');
+          return reply.code(400).send({ error: 'Invalid target certification id' });
+        }
+      }
+
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority;
+      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
@@ -287,6 +302,7 @@ export function register(app: App, fastify: FastifyInstance) {
           pya_membership_no: user.pya_membership_no || null,
           department: user.department || null,
           maritime_authority: user.maritime_authority || null,
+        target_certification: user.target_certification || null,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         });
@@ -317,6 +333,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (pya_membership_no !== undefined) updateData.pya_membership_no = pya_membership_no || null;
       if (department !== undefined) updateData.department = department || null;
       if (maritime_authority !== undefined) updateData.maritime_authority = maritime_authority || null;
+      if (target_certification !== undefined) updateData.target_certification = target_certification || null;
 
       const [updatedUser] = await app.db
         .update(authSchema.user)
@@ -355,6 +372,7 @@ export function register(app: App, fastify: FastifyInstance) {
         pya_membership_no: updatedUser.pya_membership_no || null,
         department: updatedUser.department || null,
         maritime_authority: updatedUser.maritime_authority || null,
+        target_certification: updatedUser.target_certification || null,
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString(),
       });

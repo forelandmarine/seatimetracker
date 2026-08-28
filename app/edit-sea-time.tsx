@@ -21,6 +21,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
 
 interface Vessel {
@@ -514,17 +515,43 @@ export default function EditSeaTimeScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId]);
 
-  const handleViewMCARequirements = async () => {
-    log('[EditSeaTimeScreen] User tapped View MCA Requirements');
-    try {
-      const userProfile = await seaTimeApi.getUserProfile();
-      const department = userProfile?.department?.toLowerCase() || 'deck';
-      log('[EditSeaTimeScreen] User department:', department);
-      router.push(`/mca-requirements?department=${department}`);
-    } catch (error) {
-      logError('[EditSeaTimeScreen] Failed to get user profile:', error);
-      router.push('/mca-requirements?department=deck');
-    }
+  // The requirements screen reads the pathway from the profile itself, but
+  // caching it here keeps the button label and the service-type helper text
+  // from telling a USCG user about MCA rules.
+  const [pathway, setPathway] = useState<{ authority: MaritimeAuthority | null; department: string }>({
+    authority: null,
+    department: 'deck',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const userProfile = await seaTimeApi.getUserProfile();
+        if (cancelled) return;
+        const authority = userProfile?.maritime_authority ?? null;
+        setPathway({
+          authority: (['mca', 'uscg', 'amsa', 'mnz'].includes(authority) ? authority : null) as MaritimeAuthority | null,
+          department: userProfile?.department?.toLowerCase() || 'deck',
+        });
+      } catch (error) {
+        logError('[EditSeaTimeScreen] Failed to load pathway for requirements link:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleViewMCARequirements = () => {
+    log('[EditSeaTimeScreen] User tapped requirements link, pathway:', pathway);
+    router.push({
+      pathname: '/mca-requirements',
+      params: {
+        department: pathway.department,
+        ...(pathway.authority ? { authority: pathway.authority } : {}),
+      },
+    });
   };
 
   const handleSave = async () => {
@@ -639,13 +666,20 @@ export default function EditSeaTimeScreen() {
     });
   };
 
-  const mcaButtonText = 'View MCA Requirements';
+  const isUSCG = pathway.authority === 'uscg';
+  const mcaButtonText = pathway.authority
+    ? `View ${AUTHORITY_LABELS[pathway.authority]} Requirements`
+    : 'View Requirements';
   const seagoingText = 'Seagoing';
   const watchkeepingText = 'Watchkeeping';
   const standbyText = 'Standby';
   const yardText = 'Yard';
-  const standbyHelperText = 'Max 14 consecutive days; cannot exceed previous voyage length';
-  const yardHelperText = 'Up to 90 days total (continuous or split)';
+  const standbyHelperText = isUSCG
+    ? 'Recorded for your logbook. Stand-by is not USCG creditable sea service.'
+    : 'Max 14 consecutive days; cannot exceed previous voyage length';
+  const yardHelperText = isUSCG
+    ? 'Recorded for your logbook. Yard time is not USCG creditable sea service.'
+    : 'Up to 90 days total (continuous or split)';
   const serviceTypeLabel = 'Service Type';
   const vesselLabel = 'Vessel';
   const startDateLabel = 'Start Date & Time';

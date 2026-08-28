@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
-  CERTIFICATE_TYPES,
+  CERTIFICATE_TYPE_GROUPS,
   CERTIFICATE_TYPE_LABELS,
   Certificate,
   createCertificate,
@@ -43,6 +43,23 @@ export default function CertificateEditScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [typeSearch, setTypeSearch] = useState('');
+
+  // 80 certificate types is too many for a flat list, so the picker groups them
+  // and filters on the labels the user actually reads.
+  const visibleTypeGroups = useMemo(() => {
+    const query = typeSearch.trim().toLowerCase();
+    return CERTIFICATE_TYPE_GROUPS
+      .map((group) => ({
+        title: group.title,
+        types: query
+          ? group.types.filter((t) =>
+              (CERTIFICATE_TYPE_LABELS[t] || t).toLowerCase().includes(query),
+            )
+          : group.types,
+      }))
+      .filter((group) => group.types.length > 0);
+  }, [typeSearch]);
   const [showIssuedPicker, setShowIssuedPicker] = useState(false);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
 
@@ -278,20 +295,37 @@ export default function CertificateEditScreen() {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypeModal(false)}>
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalTitle}>Select certificate type</Text>
-            <ScrollView style={{ maxHeight: 400 }}>
-              {CERTIFICATE_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.typeOption, t === type && styles.typeOptionActive]}
-                  onPress={() => {
-                    setType(t);
-                    setShowTypeModal(false);
-                  }}
-                >
-                  <Text style={[styles.typeOptionText, t === type && styles.typeOptionTextActive]}>
-                    {CERTIFICATE_TYPE_LABELS[t]}
-                  </Text>
-                </TouchableOpacity>
+            <TextInput
+              style={styles.typeSearchInput}
+              value={typeSearch}
+              onChangeText={setTypeSearch}
+              placeholder="Search types"
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              autoCorrect={false}
+            />
+            <ScrollView style={{ maxHeight: 400 }} keyboardShouldPersistTaps="handled">
+              {visibleTypeGroups.length === 0 && (
+                <Text style={styles.typeEmptyText}>No certificate types match that search.</Text>
+              )}
+              {visibleTypeGroups.map((group) => (
+                <View key={group.title}>
+                  <Text style={styles.typeGroupHeader}>{group.title}</Text>
+                  {group.types.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.typeOption, t === type && styles.typeOptionActive]}
+                      onPress={() => {
+                        setType(t);
+                        setTypeSearch('');
+                        setShowTypeModal(false);
+                      }}
+                    >
+                      <Text style={[styles.typeOptionText, t === type && styles.typeOptionTextActive]}>
+                        {CERTIFICATE_TYPE_LABELS[t]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               ))}
             </ScrollView>
           </View>
@@ -502,6 +536,31 @@ const createStyles = (isDark: boolean) =>
       borderTopRightRadius: 16,
       padding: 20,
       paddingBottom: 40,
+    },
+    typeSearchInput: {
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: isDark ? colors.text : colors.textLight,
+      marginBottom: 12,
+    },
+    typeGroupHeader: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      color: colors.primary,
+      marginTop: 14,
+      marginBottom: 6,
+    },
+    typeEmptyText: {
+      fontSize: 14,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      paddingVertical: 20,
+      textAlign: 'center',
     },
     modalTitle: {
       fontSize: 18,
