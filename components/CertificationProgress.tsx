@@ -101,11 +101,15 @@ export function CertificationProgress({
 
   const rows: ProgressRow[] = useMemo(() => {
     if (isUSCG) {
-      if (!requirement?.totalDays) return [];
+      // Without the USCG day count from the summary endpoint there is no
+      // honest number to draw. Showing 0 of 720 would read as "no service
+      // logged" when the truth is "not counted yet", so render the notice
+      // below instead of a bar that is wrong.
+      if (!requirement?.totalDays || !uscgService) return [];
       return [
         {
           label: 'Creditable Service',
-          current: uscgService?.creditable ?? 0,
+          current: uscgService.creditable,
           required: requirement.totalDays,
         },
       ];
@@ -168,8 +172,9 @@ export function CertificationProgress({
 
       {rows.length === 0 && (
         <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
-          Day-by-day progress is not available for this pathway yet. Open the requirements list
-          to see the service this endorsement asks for.
+          {isUSCG && !uscgService
+            ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
+            : 'Day-by-day progress is not available for this pathway yet. Open the requirements list to see the service this endorsement asks for.'}
         </Text>
       )}
 

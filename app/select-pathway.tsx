@@ -255,12 +255,15 @@ export default function SelectPathwayScreen() {
       const departmentLowercase = selectedDepartment.toLowerCase();
       log('Sending department to backend:', departmentLowercase, 'authority:', selectedAuthority);
 
-      // Clear any saved target: a credential from the previous pathway is not
-      // valid under the new one.
+      // Deliberately does NOT send target_certification. A target left over
+      // from a previous pathway is already ignored by both readers, which
+      // fall back to the pathway default, so clearing it here buys nothing
+      // and would make this call fail against a backend that predates the
+      // column. Keeping it out means the app works against either backend
+      // and the release can go out in any order.
       await seaTimeApi.updateUserProfile({
         department: departmentLowercase,
         maritime_authority: selectedAuthority,
-        target_certification: null,
       });
       log('Department and authority saved successfully:', departmentLowercase, selectedAuthority);
 
