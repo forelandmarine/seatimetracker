@@ -5,6 +5,11 @@
  * Defaults to device language with English fallback.
  */
 
+// Hermes does not ship Intl.PluralRules, so i18next cannot use the v4 plural
+// rules requested below and falls back to v3 handling with a console error.
+// This polyfill supplies it. Must be imported before i18next initialises.
+import 'intl-pluralrules';
+
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
