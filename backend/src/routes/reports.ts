@@ -413,6 +413,8 @@ export function register(app: App, fastify: FastifyInstance) {
                 creditable: { type: 'number' },
                 provisional: { type: 'number' },
                 short_of_standard_day: { type: 'number' },
+                awaiting_tonnage: { type: 'number' },
+                vessels_awaiting_tonnage: { type: 'array', items: { type: 'string' } },
                 below_minimum: { type: 'number' },
                 standby: { type: 'number' },
                 yard: { type: 'number' },

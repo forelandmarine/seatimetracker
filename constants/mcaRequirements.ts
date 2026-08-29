@@ -2500,7 +2500,7 @@ export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
   {
     title: 'Shorter Days on Small Vessels',
     description:
-      'On vessels of less than 100 GRT a day is still taken as 8 hours unless the Coast Guard decides the vessel\u2019s operating schedule makes that inappropriate, and it can never be treated as less than 4 hours (46 CFR 10.107). The app counts your 4 to 8 hour days on small vessels separately, because whether they credit is the OCMI\u2019s decision rather than a calculation.',
+      'On vessels of less than 100 GRT a day is still taken as 8 hours unless the Coast Guard decides the vessel\u2019s operating schedule makes that inappropriate, and it can never be treated as less than 4 hours (46 CFR 10.107). The app counts your 4 to 8 hour days on small vessels separately, because whether they credit is the OCMI\u2019s decision rather than a calculation. Where a vessel has no tonnage recorded, those days are held until you add it rather than guessed at either way.',
     department: 'both',
   },
   {

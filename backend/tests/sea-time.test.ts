@@ -339,10 +339,27 @@ describe("uscgCreditableDays", () => {
     expect(r.short_of_standard_day).toBe(1);
   });
 
-  test("unknown tonnage is treated as the strict 8-hour day", () => {
-    const r = uscgCreditableDays([entry("2025-06-01", 6, null)]);
+  test("a short day on a vessel with no tonnage is held, not classified", () => {
+    const unknown = { vessel_name: "Sea Breeze", gross_tonnes: null, tonnage_itc: null };
+    const r = uscgCreditableDays([entry("2025-06-01", 6, unknown)]);
+    expect(r.awaiting_tonnage).toBe(1);
     expect(r.provisional).toBe(0);
-    expect(r.short_of_standard_day).toBe(1);
+    expect(r.short_of_standard_day).toBe(0);
+    expect(r.vessels_awaiting_tonnage).toEqual(["Sea Breeze"]);
+  });
+
+  test("a full day credits even when the tonnage is unknown", () => {
+    const unknown = { vessel_name: "Sea Breeze", gross_tonnes: null, tonnage_itc: null };
+    const r = uscgCreditableDays([entry("2025-06-01", 8, unknown)]);
+    expect(r.creditable).toBe(1);
+    expect(r.awaiting_tonnage).toBe(0);
+  });
+
+  test("under 4 hours is below the floor rather than held for tonnage", () => {
+    const unknown = { vessel_name: "Sea Breeze", gross_tonnes: null, tonnage_itc: null };
+    const r = uscgCreditableDays([entry("2025-06-01", 3, unknown)]);
+    expect(r.below_minimum).toBe(1);
+    expect(r.awaiting_tonnage).toBe(0);
   });
 
   test("ITC tonnage stands in for GRT when GRT is absent", () => {
@@ -432,5 +449,7 @@ describe("uscgCreditableDays", () => {
     expect(r.provisional).toBe(0);
     expect(r.short_of_standard_day).toBe(0);
     expect(r.below_minimum).toBe(0);
+    expect(r.awaiting_tonnage).toBe(0);
+    expect(r.vessels_awaiting_tonnage).toEqual([]);
   });
 });

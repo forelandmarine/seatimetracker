@@ -204,8 +204,16 @@ export interface USCGServiceBreakdown {
    * day inappropriate, so they are counted apart from `creditable`.
    */
   provisional: number;
-  /** Days of 4 to 8 hours where the vessel is 100 GRT or more, or its tonnage is unknown. */
+  /** Days of 4 to 8 hours on a vessel of 100 GRT or more, which cannot make a day. */
   short_of_standard_day: number;
+  /**
+   * Days of 4 to 8 hours on a vessel whose tonnage has not been recorded. Held
+   * rather than classified: the tonnage decides whether they are provisional or
+   * short, so the user is asked for it instead of being given a guess.
+   */
+  awaiting_tonnage: number;
+  /** Names of the vessels holding those days up, so the prompt can name them. */
+  vessels_awaiting_tonnage: string[];
   /** Days under 4 hours, which are not creditable on any reading. */
   below_minimum: number;
   /** Distinct stand-by days, reported but not credited toward USCG service. */
@@ -221,6 +229,7 @@ interface USCGEntry {
   end_time: Date | string | null;
   service_type?: string | null;
   vessel?: {
+    vessel_name?: string | null;
     gross_tonnes?: string | number | null;
     tonnage_itc?: string | number | null;
   } | null;
@@ -262,6 +271,8 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   const full = new Set<string>();
   const provisional = new Set<string>();
   const shortOfStandard = new Set<string>();
+  const awaitingTonnage = new Set<string>();
+  const awaitingVessels = new Set<string>();
   const belowMinimum = new Set<string>();
   const standbyDays = new Set<string>();
   const yardDays = new Set<string>();
@@ -299,14 +310,21 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
       continue;
     }
 
+    // Between 4 and 8 hours the tonnage decides the outcome, so an unrecorded
+    // tonnage is a question for the user rather than something to guess at.
     const tonnage = creditableTonnage(e);
-    const bucket =
-      tonnage != null && tonnage < USCG_SMALL_VESSEL_GRT ? provisional : shortOfStandard;
+    if (tonnage == null) {
+      for (const d of dates) awaitingTonnage.add(d);
+      const name = e.vessel?.vessel_name;
+      if (name) awaitingVessels.add(name);
+      continue;
+    }
+    const bucket = tonnage < USCG_SMALL_VESSEL_GRT ? provisional : shortOfStandard;
     for (const d of dates) bucket.add(d);
   }
 
   // A date credited at a better classification cannot also count at a worse one.
-  const order = [full, provisional, shortOfStandard, belowMinimum, standbyDays, yardDays, portDays];
+  const order = [full, provisional, shortOfStandard, awaitingTonnage, belowMinimum, standbyDays, yardDays, portDays];
   for (let i = 0; i < order.length; i++) {
     for (const d of order[i]) {
       for (let j = i + 1; j < order.length; j++) order[j].delete(d);
@@ -317,6 +335,8 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
     creditable: full.size,
     provisional: provisional.size,
     short_of_standard_day: shortOfStandard.size,
+    awaiting_tonnage: awaitingTonnage.size,
+    vessels_awaiting_tonnage: awaitingTonnage.size > 0 ? [...awaitingVessels].sort() : [],
     below_minimum: belowMinimum.size,
     standby: standbyDays.size,
     yard: yardDays.size,

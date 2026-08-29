@@ -19,8 +19,12 @@ export interface USCGServiceSummary {
   creditable: number;
   /** 4 to 8 hour days on a vessel under 100 GRT, creditable at the OCMI's discretion. */
   provisional: number;
-  /** 4 to 8 hour days on a vessel of 100 GRT or more, or of unknown tonnage. */
+  /** 4 to 8 hour days on a vessel of 100 GRT or more. */
   short_of_standard_day: number;
+  /** 4 to 8 hour days held back because the vessel has no tonnage recorded. */
+  awaiting_tonnage: number;
+  /** Vessels those days are waiting on. */
+  vessels_awaiting_tonnage: string[];
   /** Days under 4 hours, not creditable on any reading. */
   below_minimum: number;
   standby: number;
@@ -46,6 +50,14 @@ export interface CertificationProgressProps {
   /** Opens the requirements screen so the user can pick a different target. */
   onChangeTarget?: () => void;
 }
+
+/** "Corsair", "Corsair and Sea Breeze", "Corsair, Sea Breeze and 2 others". */
+const formatVesselList = (names: string[]): string => {
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} others`;
+};
 
 const daysFor = (serviceTypes: ServiceTypeDays[], type: string): number =>
   serviceTypes.find((s) => s.service_type === type)?.total_days ?? 0;
@@ -253,6 +265,32 @@ export function CertificationProgress({
 
       {isUSCG && uscgService && (
         <View style={{ marginTop: 14 }}>
+          {uscgService.awaiting_tonnage > 0 && (
+            <View
+              style={{
+                paddingTop: 12,
+                marginBottom: 12,
+                borderTopWidth: 1,
+                borderTopColor: trackColor,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                {uscgService.awaiting_tonnage}{' '}
+                {uscgService.awaiting_tonnage === 1 ? 'day is' : 'days are'} waiting on a vessel
+                tonnage
+              </Text>
+              <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+                {uscgService.vessels_awaiting_tonnage.length > 0
+                  ? `Add the gross tonnage for ${formatVesselList(
+                      uscgService.vessels_awaiting_tonnage,
+                    )} and these days will be counted. `
+                  : 'Add the gross tonnage for those vessels and these days will be counted. '}
+                Between 4 and 8 hours the tonnage decides whether a day counts, so they are held
+                rather than guessed at.
+              </Text>
+            </View>
+          )}
+
           {uscgService.provisional > 0 && (
             <View
               style={{
@@ -285,9 +323,7 @@ export function CertificationProgress({
             {uscgService.short_of_standard_day > 0
               ? ` ${uscgService.short_of_standard_day} ${
                   uscgService.short_of_standard_day === 1 ? 'day is' : 'days are'
-                } 4 to 8 hours on a vessel of 100 GRT or more, or one whose tonnage you have not recorded. Adding the tonnage may move ${
-                  uscgService.short_of_standard_day === 1 ? 'it' : 'them'
-                } into the line above.`
+                } 4 to 8 hours on a vessel of 100 GRT or more, which cannot make a day.`
               : ''}
             {uscgService.below_minimum > 0
               ? ` ${uscgService.below_minimum} ${
