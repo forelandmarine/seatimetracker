@@ -33,7 +33,7 @@ export default function CartoMap({ latitude, longitude, vesselName, track }: Car
       .map((p) => [Number(p.latitude), Number(p.longitude)])
   );
 
-  // Generate HTML for the map using CARTO basemap with theme support
+  // Generate HTML for the map using Esri basemaps with theme support
   const mapHTML = `
     <!DOCTYPE html>
     <html>
@@ -66,11 +66,31 @@ export default function CartoMap({ latitude, longitude, vesselName, track }: Car
           attributionControl: true
         });
 
-        // Add CARTO basemap - dark theme for dark mode, light theme for light mode
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/${isDark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 20
+        // Add Esri basemap - Ocean Base in light mode so open water shows
+        // bathymetry under the track, Dark Gray Canvas in dark mode.
+        // Esri serves tiles as {z}/{y}/{x}, the reverse of Leaflet's usual
+        // {z}/{x}/{y}, and offers no retina or subdomain variants. Place names
+        // live in a separate reference layer drawn over the base.
+        const esriService = '${isDark ? 'Canvas/World_Dark_Gray' : 'Ocean/World_Ocean'}';
+        const esriUrl = (layer) =>
+          'https://server.arcgisonline.com/ArcGIS/rest/services/' + esriService + '_' + layer +
+          '/MapServer/tile/{z}/{y}/{x}';
+
+        // Ocean Base is only cached to zoom 16, Dark Gray Canvas well past 20.
+        // maxNativeZoom lets Leaflet upscale beyond that instead of going blank.
+        const esriMaxNative = ${isDark ? '20' : '16'};
+
+        L.tileLayer(esriUrl('Base'), {
+          attribution: '${isDark
+            ? 'Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            : 'Esri, Garmin, GEBCO, NOAA NGDC, and other contributors'}',
+          maxZoom: 20,
+          maxNativeZoom: esriMaxNative
+        }).addTo(map);
+
+        L.tileLayer(esriUrl('Reference'), {
+          maxZoom: 20,
+          maxNativeZoom: esriMaxNative
         }).addTo(map);
 
         // Create custom vessel icon with theme-aware styling
