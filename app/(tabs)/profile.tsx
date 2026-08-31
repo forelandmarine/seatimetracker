@@ -58,6 +58,8 @@ interface SeaTimeSummary {
     creditable: number;
     provisional: number;
     short_of_standard_day: number;
+    awaiting_tonnage: number;
+    vessels_awaiting_tonnage: string[];
     below_minimum: number;
     standby: number;
     yard: number;
