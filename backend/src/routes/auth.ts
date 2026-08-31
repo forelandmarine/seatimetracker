@@ -40,7 +40,11 @@ function verifyPassword(password: string, hash: string): boolean {
 
 /**
  * Simple in-memory rate limiter for auth endpoints.
- * Limits by IP address with a sliding window.
+ *
+ * Fixed window, not sliding: the window resets a full windowMs after the first
+ * attempt in it. Callers pick the key, and sign-in and password reset key on
+ * the account rather than the IP so that crew sharing one vessel connection
+ * cannot lock each other out.
  */
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -124,8 +128,10 @@ export function register(app: App, fastify: FastifyInstance) {
       const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
-      // Rate limit: 5 sign-ups per IP per 15 minutes
-      const signUpLimit = checkRateLimit(`signup:${clientIp}`, 5, 15 * 60 * 1000);
+      // Rate limit: 20 sign-ups per IP per 15 minutes. There is no account to
+      // key on yet, so this stays per IP; the old limit of 5 would have capped
+      // a whole crew or a classroom signing up together off one connection.
+      const signUpLimit = checkRateLimit(`signup:${clientIp}`, 20, 15 * 60 * 1000);
       if (!signUpLimit.allowed) {
         app.logger.warn({ ip: clientIp, email }, 'Sign-up rate limit exceeded');
         return reply.code(429).send({ error: 'Too many sign-up attempts. Please try again later.' });
@@ -316,6 +322,7 @@ export function register(app: App, fastify: FastifyInstance) {
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          503: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -324,10 +331,23 @@ export function register(app: App, fastify: FastifyInstance) {
       const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
-      // Rate limit: 10 sign-in attempts per IP per 15 minutes
-      const signInLimit = checkRateLimit(`signin:${clientIp}`, 10, 15 * 60 * 1000);
+      // Rate limit per account, not per IP. A whole ship's crew shares one
+      // satellite address, so an IP-keyed limit let one person's fumbling lock
+      // out everyone else aboard. The IP bucket stays as an abuse backstop but
+      // is set far above what any genuine vessel would reach.
+      // 20 rather than 10 because withAuthRetry on the client fires up to three
+      // requests per tap when the server looks unhealthy, so a low ceiling let
+      // a user lock themselves out in three taps during an outage. 20 per
+      // account per 15 minutes is still a hard wall against brute force.
+      const signInLimit = checkRateLimit(`signin:email:${email}`, 20, 15 * 60 * 1000);
       if (!signInLimit.allowed) {
-        app.logger.warn({ ip: clientIp, email }, 'Sign-in rate limit exceeded');
+        app.logger.warn({ ip: clientIp, email }, 'Sign-in rate limit exceeded for account');
+        return reply.code(429).send({ error: 'Too many sign-in attempts for this account. Please try again in a few minutes.' });
+      }
+
+      const signInIpLimit = checkRateLimit(`signin:ip:${clientIp}`, 100, 15 * 60 * 1000);
+      if (!signInIpLimit.allowed) {
+        app.logger.warn({ ip: clientIp, email }, 'Sign-in rate limit exceeded for IP');
         return reply.code(429).send({ error: 'Too many sign-in attempts. Please try again in a few minutes.' });
       }
 
@@ -363,8 +383,8 @@ export function register(app: App, fastify: FastifyInstance) {
             { email, err: dbError },
             'Step 1 failed: database query error when fetching user'
           );
-          return reply.code(401).send({
-            error: 'Authentication failed',
+          return reply.code(503).send({
+            error: 'The server is temporarily unavailable. Please try again in a moment.',
           });
         }
 
@@ -395,8 +415,8 @@ export function register(app: App, fastify: FastifyInstance) {
             { userId: user.id, err: dbError },
             'Step 2 failed: database query error when fetching account'
           );
-          return reply.code(401).send({
-            error: 'Authentication failed',
+          return reply.code(503).send({
+            error: 'The server is temporarily unavailable. Please try again in a moment.',
           });
         }
 
@@ -451,8 +471,8 @@ export function register(app: App, fastify: FastifyInstance) {
             { email, err: verifyError },
             'Step 3 failed: password verification error'
           );
-          return reply.code(401).send({
-            error: 'Authentication failed',
+          return reply.code(503).send({
+            error: 'The server is temporarily unavailable. Please try again in a moment.',
           });
         }
 
@@ -488,8 +508,8 @@ export function register(app: App, fastify: FastifyInstance) {
               { userId: user.id, sessionId },
               'Step 4 failed: session insert returned empty result'
             );
-            return reply.code(401).send({
-              error: 'Failed to create session',
+            return reply.code(503).send({
+              error: 'The server is temporarily unavailable. Please try again in a moment.',
             });
           }
 
@@ -500,8 +520,8 @@ export function register(app: App, fastify: FastifyInstance) {
             { userId: user.id, err: sessionError },
             'Step 4 failed: error creating session'
           );
-          return reply.code(401).send({
-            error: 'Failed to create session',
+          return reply.code(503).send({
+            error: 'The server is temporarily unavailable. Please try again in a moment.',
           });
         }
 
@@ -513,8 +533,8 @@ export function register(app: App, fastify: FastifyInstance) {
             { userId: user.id, hasUser: !!user, hasSession: !!session },
             'Fatal: missing user or session in sign-in response'
           );
-          return reply.code(401).send({
-            error: 'Authentication failed',
+          return reply.code(503).send({
+            error: 'The server is temporarily unavailable. Please try again in a moment.',
           });
         }
 
@@ -574,8 +594,8 @@ export function register(app: App, fastify: FastifyInstance) {
         );
 
         // Ensure we always return JSON
-        return reply.code(401).send({
-          error: 'Authentication failed - internal error',
+        return reply.code(503).send({
+          error: 'The server is temporarily unavailable. Please try again in a moment.',
         });
       }
     }
@@ -939,6 +959,7 @@ export function register(app: App, fastify: FastifyInstance) {
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          503: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -1009,9 +1030,12 @@ export function register(app: App, fastify: FastifyInstance) {
           },
         });
       } catch (error) {
+        // A 401 here would tell the client its token is bad and make it sign
+        // the user out. This branch only runs when the lookup itself broke, so
+        // it has to read as a server fault or a database wobble ejects everyone.
         app.logger.error({ err: error }, 'Error retrieving user profile');
-        return reply.code(401).send({
-          error: 'Failed to retrieve user profile',
+        return reply.code(503).send({
+          error: 'The server is temporarily unavailable. Please try again in a moment.',
         });
       }
     }
@@ -1266,10 +1290,18 @@ export function register(app: App, fastify: FastifyInstance) {
       const email = rawEmail?.trim().toLowerCase();
       const clientIp = request.ip || 'unknown';
 
-      // Rate limit: 3 reset attempts per IP per 15 minutes
-      const resetLimit = checkRateLimit(`reset:${clientIp}`, 3, 15 * 60 * 1000);
+      // Keyed on the account for the same reason as sign-in: three resets per
+      // shared vessel address per quarter hour is the sort of limit that bites
+      // hardest exactly when a lot of people have just been signed out.
+      const resetLimit = checkRateLimit(`reset:email:${email}`, 3, 15 * 60 * 1000);
       if (!resetLimit.allowed) {
-        app.logger.warn({ ip: clientIp, email }, 'Password reset rate limit exceeded');
+        app.logger.warn({ ip: clientIp, email }, 'Password reset rate limit exceeded for account');
+        return reply.code(429).send({ error: 'Too many reset attempts for this account. Please try again later.' });
+      }
+
+      const resetIpLimit = checkRateLimit(`reset:ip:${clientIp}`, 30, 15 * 60 * 1000);
+      if (!resetIpLimit.allowed) {
+        app.logger.warn({ ip: clientIp, email }, 'Password reset rate limit exceeded for IP');
         return reply.code(429).send({ error: 'Too many reset attempts. Please try again later.' });
       }
 
