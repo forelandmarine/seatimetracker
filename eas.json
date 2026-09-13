@@ -24,6 +24,12 @@
       "env": {
         "APP_VARIANT": "production"
       }
+    },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
     }
   },
   "submit": {

@@ -153,6 +153,197 @@ export function qualifyingSeaDays(
   return { actual, standby, yard, port, yard_credited, qualifying_total };
 }
 
+/**
+ * USCG creditable service.
+ *
+ * The Coast Guard counts service differently from the MCA, so the MCA-shaped
+ * `qualifyingSeaDays` total above must not be reused for a USCG applicant.
+ *
+ * The length of a creditable day is not a single number. 46 CFR 10.107 defines
+ * it as 8 hours of watchstanding or day-working, excluding overtime, and then
+ * qualifies that:
+ *
+ * - On vessels of less than 100 GRT a day is still considered 8 hours "unless
+ *   the Coast Guard determines that the vessel's operating schedule makes this
+ *   criteria inappropriate; in no case will this period be less than 4 hours."
+ *   That determination belongs to the OCMI, not to this app, so a 4-to-8 hour
+ *   day on a small vessel is reported separately as provisional rather than
+ *   either credited outright or thrown away.
+ * - On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a
+ *   12-hour working day may be credited as 1.5 days. Whether a vessel holds
+ *   that authorisation is not something the app knows, so the uplift is never
+ *   applied automatically.
+ * - MODU service has its own rule: a minimum of 4 hours, with no extra credit
+ *   beyond 8. The vessel record has no MODU flag, so this is not detected; MODU
+ *   short days fall into the same buckets as any other vessel of their tonnage.
+ *
+ * Tonnage comes from gross_tonnes, falling back to tonnage_itc, because under
+ * 46 CFR 11.211(h) a vessel measured only under the Convention scheme is
+ * credited as Gross Register Tonnage.
+ *
+ * Other definitions used here: "service" is the time, in days, a person is
+ * assigned to work, which is why yard periods and time in port are not sea
+ * service; a month is 30 days and a year is 360 days (46 CFR 10.107).
+ *
+ * As with the MCA total, this reports credited service and does not apply
+ * endorsement-specific structure (route, tonnage or capacity conditions), which
+ * an evaluator at the National Maritime Center applies to the application.
+ */
+export const USCG_STANDARD_HOURS_PER_DAY = 8;
+export const USCG_MINIMUM_HOURS_PER_DAY = 4;
+export const USCG_SMALL_VESSEL_GRT = 100;
+export const USCG_DAYS_PER_MONTH = 30;
+export const USCG_DAYS_PER_YEAR = 360;
+
+export interface USCGServiceBreakdown {
+  /** Distinct days of sea service meeting the full 8-hour day. */
+  creditable: number;
+  /**
+   * Distinct days of 4 to 8 hours on a vessel under 100 GRT. Creditable only
+   * if the Coast Guard accepts that the operating schedule makes the 8-hour
+   * day inappropriate, so they are counted apart from `creditable`.
+   */
+  provisional: number;
+  /** Days of 4 to 8 hours on a vessel of 100 GRT or more, which cannot make a day. */
+  short_of_standard_day: number;
+  /**
+   * Days of 4 to 8 hours on a vessel whose tonnage has not been recorded. Held
+   * rather than classified: the tonnage decides whether they are provisional or
+   * short, so the user is asked for it instead of being given a guess.
+   */
+  awaiting_tonnage: number;
+  /** Names of the vessels holding those days up, so the prompt can name them. */
+  vessels_awaiting_tonnage: string[];
+  /** Days under 4 hours, which are not creditable on any reading. */
+  below_minimum: number;
+  /** Distinct stand-by days, reported but not credited toward USCG service. */
+  standby: number;
+  /** Distinct yard days, reported but not credited toward USCG service. */
+  yard: number;
+  /** Distinct service-in-port days, reported but not credited. */
+  port: number;
+}
+
+interface USCGEntry {
+  start_time: Date | string;
+  end_time: Date | string | null;
+  service_type?: string | null;
+  vessel?: {
+    vessel_name?: string | null;
+    gross_tonnes?: string | number | null;
+    tonnage_itc?: string | number | null;
+  } | null;
+}
+
+function toTonnage(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  const n = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** GRT for crediting purposes, with ITC-only measurement credited as GRT. */
+export function creditableTonnage(entry: USCGEntry): number | null {
+  const v = entry.vessel;
+  if (!v) return null;
+  return toTonnage(v.gross_tonnes) ?? toTonnage(v.tonnage_itc);
+}
+
+/**
+ * Calendar dates an entry can credit, capped so a short period that happens to
+ * straddle midnight cannot yield more days than its hours support. A six-hour
+ * watch from 2100 to 0300 touches two dates but is one day's work at most.
+ */
+function creditableDates(entry: USCGEntry, hours: number): string[] {
+  const start = entry.start_time instanceof Date ? entry.start_time : new Date(entry.start_time);
+  const end = entry.end_time == null
+    ? start
+    : (entry.end_time instanceof Date ? entry.end_time : new Date(entry.end_time));
+  const dates = calendarDaysCovered(start, end);
+  const cap = Math.max(1, Math.ceil(hours / USCG_STANDARD_HOURS_PER_DAY));
+  return dates.slice(0, cap);
+}
+
+/**
+ * USCG creditable sea service across many confirmed entries, deduplicated by
+ * calendar date so one date is never counted twice.
+ */
+export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
+  const full = new Set<string>();
+  const provisional = new Set<string>();
+  const shortOfStandard = new Set<string>();
+  const awaitingTonnage = new Set<string>();
+  const awaitingVessels = new Set<string>();
+  const belowMinimum = new Set<string>();
+  const standbyDays = new Set<string>();
+  const yardDays = new Set<string>();
+  const portDays = new Set<string>();
+
+  for (const e of entries) {
+    const type = e.service_type || 'actual_sea_service';
+    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+    const end = e.end_time == null
+      ? start
+      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+    const hours = calculateDurationHours(start, end);
+    const dates = creditableDates(e, hours);
+
+    if (type === 'standby_service') {
+      for (const d of dates) standbyDays.add(d);
+      continue;
+    }
+    if (type === 'yard_service') {
+      for (const d of dates) yardDays.add(d);
+      continue;
+    }
+    if (type === 'service_in_port') {
+      for (const d of dates) portDays.add(d);
+      continue;
+    }
+
+    // actual_sea_service, watchkeeping_service and unknown types are sea service
+    if (hours < USCG_MINIMUM_HOURS_PER_DAY) {
+      for (const d of dates) belowMinimum.add(d);
+      continue;
+    }
+    if (hours >= USCG_STANDARD_HOURS_PER_DAY) {
+      for (const d of dates) full.add(d);
+      continue;
+    }
+
+    // Between 4 and 8 hours the tonnage decides the outcome, so an unrecorded
+    // tonnage is a question for the user rather than something to guess at.
+    const tonnage = creditableTonnage(e);
+    if (tonnage == null) {
+      for (const d of dates) awaitingTonnage.add(d);
+      const name = e.vessel?.vessel_name;
+      if (name) awaitingVessels.add(name);
+      continue;
+    }
+    const bucket = tonnage < USCG_SMALL_VESSEL_GRT ? provisional : shortOfStandard;
+    for (const d of dates) bucket.add(d);
+  }
+
+  // A date credited at a better classification cannot also count at a worse one.
+  const order = [full, provisional, shortOfStandard, awaitingTonnage, belowMinimum, standbyDays, yardDays, portDays];
+  for (let i = 0; i < order.length; i++) {
+    for (const d of order[i]) {
+      for (let j = i + 1; j < order.length; j++) order[j].delete(d);
+    }
+  }
+
+  return {
+    creditable: full.size,
+    provisional: provisional.size,
+    short_of_standard_day: shortOfStandard.size,
+    awaiting_tonnage: awaitingTonnage.size,
+    vessels_awaiting_tonnage: awaitingTonnage.size > 0 ? [...awaitingVessels].sort() : [],
+    below_minimum: belowMinimum.size,
+    standby: standbyDays.size,
+    yard: yardDays.size,
+    port: portDays.size,
+  };
+}
+
 /** Valid service types. */
 export const VALID_SERVICE_TYPES = [
   'actual_sea_service',

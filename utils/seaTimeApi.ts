@@ -200,6 +200,7 @@ export const updateUserProfile = async (updates: {
   pya_membership_no?: string | null;
   department?: string | null;
   maritime_authority?: string | null;
+  target_certification?: string | null;
 }) => {
   const res = await authFetch('/api/profile', { method: 'PUT', body: updates });
   return res.json();

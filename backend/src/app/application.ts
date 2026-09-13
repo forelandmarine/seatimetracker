@@ -135,6 +135,13 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
    */
   private async createFastifyInstance(): Promise<FastifyInstance> {
     const fastify = Fastify({
+      // Railway terminates TLS at its edge and forwards to us over an internal
+      // mesh, so the socket address is always a 100.64.x.x proxy rather than
+      // the caller. Without this, request.ip collapsed every user in the world
+      // into a handful of buckets, which the auth rate limiters key on.
+      // Trust exactly one hop so the value comes from the address Railway's
+      // edge recorded and a client cannot spoof it with its own header.
+      trustProxy: 1,
       logger: {
         level: process.env.LOG_LEVEL || 'info',
         transport:

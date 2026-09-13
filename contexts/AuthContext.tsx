@@ -134,10 +134,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (profileResponse) warn('[Auth] Profile fetch returned non-OK status:', profileResponse.status);
             setUser(data.user);
           }
-        } else {
-          log('[Auth] Token invalid (status:', response.status, '), clearing');
+        } else if (response.status === 401 || response.status === 403) {
+          // Only a genuine rejection of the token should destroy it.
+          log('[Auth] Token rejected (status:', response.status, '), clearing');
           await tokenStorage.removeToken();
           setUser(null);
+        } else {
+          // 5xx and anything else is the server having a bad day, not proof
+          // that this token is bad. Keep it: throwing it away here is what
+          // turned a backend outage into every user being signed out and
+          // having to find their password again.
+          warn('[Auth] Auth check failed (status:', response.status, '), keeping token');
         }
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
