@@ -35,7 +35,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "43GZCFFPR9"
+        "appleTeamId": "43GZCFFPR9",
+        "ascAppId": "6758010893"
       },
       "android": {
         "serviceAccountKeyPath": "./pc-service-account.json",
