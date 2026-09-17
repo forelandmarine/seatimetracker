@@ -64,49 +64,6 @@ export function isLimitedCoastal(
 }
 
 // ---------------------------------------------------------------------------
-// Nearest-distance-to-layer (nm) using point-to-segment distance.
-// Used for distance-from-land. Approximate but consistent with the coarse
-// coastline; adequate for the 5 nm limited-coastal band.
-// ---------------------------------------------------------------------------
-function distancePointToLayerNm(p: LatLon, fc: GeoJSONFeatureCollection): number {
-  let best = Infinity;
-  for (const f of fc.features) {
-    const g: any = f.geometry;
-    const polys =
-      g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-    for (const poly of polys) {
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length - 1; i++) {
-          const d = segDistNm(p, ring[i], ring[i + 1]);
-          if (d < best) best = d;
-        }
-      }
-    }
-  }
-  return best;
-}
-
-// Distance from p to segment [a,b] in nm, using a local equirectangular
-// approximation (fine at nm scale away from the poles).
-function segDistNm(p: LatLon, a: number[], b: number[]): number {
-  const latRef = (p.lat * Math.PI) / 180;
-  const kx = R_NM * (Math.PI / 180) * Math.cos(latRef); // nm per degree lon
-  const ky = R_NM * (Math.PI / 180); // nm per degree lat
-  const px = p.lon * kx;
-  const py = p.lat * ky;
-  const ax = a[0] * kx;
-  const ay = a[1] * ky;
-  const bx = b[0] * kx;
-  const by = b[1] * ky;
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  let t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
-}
-
-// ---------------------------------------------------------------------------
 // The classifier.
 // ---------------------------------------------------------------------------
 export interface ClassifierLayers {
@@ -182,7 +139,6 @@ export class AreaClassifier {
   private catLayer: PolygonLayer;
   private tidalLayer: PolygonLayer;
   private landLayer: PolygonLayer;
-  private landFc: GeoJSONFeatureCollection;
   private dAll: PolygonLayer;
   private dSummer: PolygonLayer;
   private dWinter: PolygonLayer;
@@ -191,7 +147,6 @@ export class AreaClassifier {
     this.catLayer = new PolygonLayer(layers.categorised);
     this.tidalLayer = new PolygonLayer(layers.tidal);
     this.landLayer = new PolygonLayer(layers.land);
-    this.landFc = layers.land;
     this.dAll = seasonLayer(layers.dExtensions, 'all');
     this.dSummer = seasonLayer(layers.dExtensions, 'summer');
     this.dWinter = seasonLayer(layers.dExtensions, 'winter');
@@ -226,9 +181,15 @@ export class AreaClassifier {
     return null; // on land — could be an inland non-tidal river/lake; can't assert
   }
 
-  /** Distance from the nearest coastline (nm). Uses the coarse land layer. */
+  /**
+   * Distance from the nearest coastline (nm). Measured against the runtime land
+   * layer, which is medium-res (MHW) around GB — so the <=5 nm limited-coastal
+   * band is judged against the true shore, not a ~1 km-generalised coastline.
+   * Uses PolygonLayer's bbox-pruned nearest-distance, so the finer coastline does
+   * not slow this down.
+   */
   distanceFromLandNm(p: LatLon): number {
-    return distancePointToLayerNm(p, this.landFc);
+    return this.landLayer.nearestDistanceNm(ll(p));
   }
 
   classifyPoint(p: LatLon, opts?: ClassifyOptions): PointClassification {

@@ -90,6 +90,84 @@ export class PolygonLayer {
   contains(p: LonLat): boolean {
     return this.findContaining(p) !== null;
   }
+
+  /**
+   * Nautical-mile distance from p to the nearest polygon boundary in the layer
+   * (0 if p is inside a polygon's outer ring is NOT assumed — this measures to the
+   * ring segments, so a point just inside the coast returns its distance to shore).
+   *
+   * Uses a per-polygon bounding-box lower bound to prune: polygons whose bbox is
+   * already farther than the running best are skipped without touching their
+   * segments. Candidates are visited nearest-bbox-first so `best` shrinks fast.
+   * This keeps distance-from-land cheap even with a fine (many-vertex) coastline.
+   */
+  nearestDistanceNm(p: LonLat): number {
+    const latRef = (p.lat * Math.PI) / 180;
+    const kx = R_NM * (Math.PI / 180) * Math.cos(latRef); // nm per degree lon
+    const ky = R_NM * (Math.PI / 180); // nm per degree lat
+    const px = p.lon * kx;
+    const py = p.lat * ky;
+
+    // Point-to-bbox lower bound (nm): 0 if inside the bbox, else distance to the
+    // nearest bbox edge. A polygon can only beat `best` if its lower bound does.
+    const lbOf = (b: BBox): number => {
+      const cx = Math.max(b[0], Math.min(p.lon, b[2]));
+      const cy = Math.max(b[1], Math.min(p.lat, b[3]));
+      return Math.hypot((p.lon - cx) * kx, (p.lat - cy) * ky);
+    };
+    const scan = (poly: IndexedPolygon): number => {
+      let d = Infinity;
+      for (const ring of poly.rings) {
+        for (let i = 0; i < ring.length - 1; i++) {
+          const s = segDistNmProj(px, py, ring[i], ring[i + 1], kx, ky);
+          if (s < d) d = s;
+        }
+      }
+      return d;
+    };
+
+    // Seed `best` from the polygon with the smallest lower bound (no sort/alloc),
+    // then prune everything whose lower bound already exceeds `best`. `best` only
+    // shrinks, so a polygon skipped once is correctly skipped for good.
+    let minLb = Infinity;
+    let seed: IndexedPolygon | null = null;
+    for (const poly of this.polys) {
+      const lb = lbOf(poly.bbox);
+      if (lb < minLb) {
+        minLb = lb;
+        seed = poly;
+      }
+    }
+    if (!seed) return Infinity;
+    let best = scan(seed);
+    for (const poly of this.polys) {
+      if (poly === seed) continue;
+      if (lbOf(poly.bbox) >= best) continue;
+      const d = scan(poly);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+}
+
+const R_NM = 3440.065; // Earth radius in nautical miles
+
+/**
+ * Distance (nm) from a projected point (px,py) to segment [a,b], where a,b are
+ * lon/lat pairs and kx,ky convert degrees to nm at the query latitude. Kept here
+ * so PolygonLayer.nearestDistanceNm has no external dependency.
+ */
+function segDistNmProj(px: number, py: number, a: number[], b: number[], kx: number, ky: number): number {
+  const ax = a[0] * kx;
+  const ay = a[1] * ky;
+  const bx = b[0] * kx;
+  const by = b[1] * ky;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
 /** Ray-casting point-in-ring (even–odd rule). Ring is [lon,lat] pairs. */
