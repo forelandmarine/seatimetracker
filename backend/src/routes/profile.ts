@@ -33,6 +33,7 @@ export function register(app: App, fastify: FastifyInstance) {
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
+              vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
               subscription_status: { type: ['string', 'null'] },
               subscription_expires_at: { type: ['string', 'null'] },
               subscription_product_id: { type: ['string', 'null'] },
@@ -129,6 +130,7 @@ export function register(app: App, fastify: FastifyInstance) {
         maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
         has_record_book: user.has_record_book ?? false,
+        vessel_sector: user.vessel_sector || null,
         subscription_status: user.subscription_status || null,
         subscription_expires_at: user.subscription_expires_at?.toISOString() || null,
         subscription_product_id: user.subscription_product_id || null,
@@ -156,6 +158,7 @@ export function register(app: App, fastify: FastifyInstance) {
       maritime_authority?: string;
       target_certification?: string | null;
       has_record_book?: boolean;
+      vessel_sector?: string | null;
     };
   }>(
     '/api/profile',
@@ -178,6 +181,7 @@ export function register(app: App, fastify: FastifyInstance) {
             maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
             has_record_book: { type: 'boolean', description: 'Holds a completed AMSA task book or MNZ training record book, which shortens the sea service required' },
             target_certification: { type: ['string', 'null'], maxLength: 64, description: 'Requirement id the user is working toward, e.g. uscg-master-nc-200grt' },
+            vessel_sector: { type: ['string', 'null'], maxLength: 16, description: 'Vessel sector the user operates in: "yachting" or "commercial" (validated in handler; null/empty clears it)' },
           },
         },
         response: {
@@ -200,6 +204,7 @@ export function register(app: App, fastify: FastifyInstance) {
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
+              vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
               createdAt: { type: 'string' },
               updatedAt: { type: 'string' },
             },
@@ -211,9 +216,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book } = request.body;
+      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book, vessel_sector } = request.body;
 
-      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book }, 'Profile update request');
+      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book, vessel_sector }, 'Profile update request');
 
       // Get token from Authorization header
       const authHeader = request.headers.authorization;
@@ -268,6 +273,12 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", or "mnz"' });
       }
 
+      // Validate vessel_sector if provided (null/'' clears it back to "not chosen")
+      if (vessel_sector !== undefined && vessel_sector !== null && vessel_sector !== '' && !['yachting', 'commercial'].includes(vessel_sector)) {
+        app.logger.warn({ userId: user.id, vessel_sector }, 'Invalid vessel sector provided');
+        return reply.code(400).send({ error: 'Invalid vessel sector. Must be "yachting" or "commercial"' });
+      }
+
       // Validate target_certification if provided. The requirement catalogue
       // lives in the app (constants/mcaRequirements.ts), so validate the shape
       // rather than duplicating 90-odd ids here and letting the two drift.
@@ -279,7 +290,7 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || has_record_book !== undefined;
+      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || has_record_book !== undefined || vessel_sector !== undefined;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
@@ -309,6 +320,7 @@ export function register(app: App, fastify: FastifyInstance) {
           maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
         has_record_book: user.has_record_book ?? false,
+          vessel_sector: user.vessel_sector || null,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         });
@@ -341,6 +353,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (maritime_authority !== undefined) updateData.maritime_authority = maritime_authority || null;
       if (target_certification !== undefined) updateData.target_certification = target_certification || null;
       if (has_record_book !== undefined) updateData.has_record_book = has_record_book === true;
+      if (vessel_sector !== undefined) updateData.vessel_sector = vessel_sector || null;
 
       const [updatedUser] = await app.db
         .update(authSchema.user)
@@ -381,6 +394,7 @@ export function register(app: App, fastify: FastifyInstance) {
         maritime_authority: updatedUser.maritime_authority || null,
         target_certification: updatedUser.target_certification || null,
         has_record_book: updatedUser.has_record_book ?? false,
+        vessel_sector: updatedUser.vessel_sector || null,
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString(),
       });

@@ -168,6 +168,7 @@
     "title": "Settings",
     "profile": "PROFILE",
     "editProfile": "Edit profile",
+    "vesselSector": "Vessel sector",
     "signatureForReports": "Signature for reports",
     "certificates": "CERTIFICATES",
     "manageCertificates": "Manage certificates",
@@ -201,6 +202,7 @@
     "addSeaTime": "Add Sea Time",
     "editSeaTime": "Edit Sea Time",
     "selectPathway": "Select Pathway",
+    "vesselSector": "Vessel Sector",
     "manualTracking": "Manual GPS Tracking",
     "about": "About & Help",
     "signature": "Signature"

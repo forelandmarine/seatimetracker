@@ -203,6 +203,7 @@ export const updateUserProfile = async (updates: {
   target_certification?: string | null;
   /** Holds an AMSA task book or MNZ training record book. */
   has_record_book?: boolean;
+  vessel_sector?: 'yachting' | 'commercial' | null;
 }) => {
   const res = await authFetch('/api/profile', { method: 'PUT', body: updates });
   return res.json();

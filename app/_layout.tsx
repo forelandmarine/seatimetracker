@@ -186,6 +186,12 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="select-vessel-sector"
+          options={{
+            title: t('navigation.vesselSector'),
+          }}
+        />
+        <Stack.Screen
           name="reports"
           options={{
             title: t('navigation.reports'),
