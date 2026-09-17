@@ -55,7 +55,7 @@ const SECTOR_OPTIONS: SectorOption[] = [
     bullets: [
       'CTV / workboat certificate pathways',
       'MSN 1837 sea-area and tidal classification',
-      'In development — not yet available to select',
+      'In development, not yet available to select',
     ],
     comingSoon: true,
   },
@@ -317,7 +317,7 @@ export default function SelectVesselSectorScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Vessel Sector</Text>
           <Text style={styles.subtitle}>
-            Tell us whether you work in yachting or commercial. You can change this any time — it never
+            Tell us whether you work in yachting or commercial. You can change this any time, and it never
             affects sea time you have already logged.
           </Text>
         </View>
