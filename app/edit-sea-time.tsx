@@ -51,6 +51,7 @@ interface SeaTimeEntry {
   rank_capacity?: string | null;
   trade_area?: string | null;
   bridge_watch_hours?: number | null;
+  night_watch_hours?: number | null;
 }
 
 type ServiceType = 'seagoing' | 'watchkeeping' | 'standby' | 'yard';
@@ -385,6 +386,7 @@ export default function EditSeaTimeScreen() {
   const [rankCapacity, setRankCapacity] = useState<RankCapacity | null>(null);
   const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
   const [watchkeepingHours, setWatchkeepingHours] = useState('');
+  const [nightWatchHours, setNightWatchHours] = useState('');
   const [showRankPicker, setShowRankPicker] = useState(false);
   const [showTradeAreaPicker, setShowTradeAreaPicker] = useState(false);
   // Track whether user has modified any fields
@@ -498,6 +500,7 @@ export default function EditSeaTimeScreen() {
       if (foundEntry.rank || foundEntry.rank_capacity) setRankCapacity((foundEntry.rank || foundEntry.rank_capacity) as RankCapacity);
       if (foundEntry.trade_area) setTradeArea(foundEntry.trade_area as TradeArea);
       if (foundEntry.bridge_watch_hours != null) setWatchkeepingHours(String(foundEntry.bridge_watch_hours));
+      if (foundEntry.night_watch_hours != null) setNightWatchHours(String(foundEntry.night_watch_hours));
     } catch (error) {
       logError('[EditSeaTimeScreen] Error loading entry:', error);
       showFeedback('Error', 'Failed to load sea time entry', 'error', () => router.back());
@@ -597,6 +600,7 @@ export default function EditSeaTimeScreen() {
         bridge_watch_hours: backendServiceType === 'watchkeeping_service' && watchkeepingHours
           ? parseFloat(watchkeepingHours)
           : null,
+        night_watch_hours: nightWatchHours ? parseFloat(nightWatchHours) : null,
       };
       if (showPositionEditor) {
         const sLat = parseCoord(startLat);
@@ -949,6 +953,20 @@ export default function EditSeaTimeScreen() {
               />
             </View>
           )}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Night Watch Hours (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Night hours worked this period"
+              placeholderTextColor={
+                isDark ? colors.textSecondary : colors.textSecondaryLight
+              }
+              value={nightWatchHours}
+              onChangeText={(t) => { setNightWatchHours(t); setIsDirty(true); }}
+              keyboardType="numeric"
+            />
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{vesselLabel}</Text>

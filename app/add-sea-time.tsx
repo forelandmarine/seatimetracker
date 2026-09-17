@@ -361,6 +361,7 @@ export default function AddSeaTimeScreen() {
   const [rankCapacity, setRankCapacity] = useState<RankCapacity | null>(null);
   const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
   const [watchkeepingHours, setWatchkeepingHours] = useState('');
+  const [nightWatchHours, setNightWatchHours] = useState('');
   const [showRankPicker, setShowRankPicker] = useState(false);
   const [showTradeAreaPicker, setShowTradeAreaPicker] = useState(false);
   const [voyageFrom, setVoyageFrom] = useState('');
@@ -605,6 +606,7 @@ export default function AddSeaTimeScreen() {
           bridge_watch_hours: backendServiceType === 'watchkeeping_service' && watchkeepingHours
             ? parseFloat(watchkeepingHours)
             : null,
+          night_watch_hours: nightWatchHours ? parseFloat(nightWatchHours) : null,
         }),
         signal: saveController.signal,
       });
@@ -894,6 +896,20 @@ export default function AddSeaTimeScreen() {
               />
             </View>
           )}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Night Watch Hours (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Night hours worked this period"
+              placeholderTextColor={
+                isDark ? colors.textSecondary : colors.textSecondaryLight
+              }
+              value={nightWatchHours}
+              onChangeText={setNightWatchHours}
+              keyboardType="numeric"
+            />
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{vesselLabel}</Text>

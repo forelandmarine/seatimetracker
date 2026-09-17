@@ -113,7 +113,7 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="person.circle" androidIcon="person" label={t('settings.editProfile')} onPress={() => router.push('/user-profile')} isDark={isDark} />
-          <SettingsRow icon="sailboat.fill" androidIcon="sailing" label={t('settings.vesselSector')} onPress={() => router.push('/select-vessel-sector')} isDark={isDark} />
+          <SettingsRow icon="sailboat.fill" androidIcon="sailing" label={t('settings.vesselSector')} onPress={() => router.push('/select-vessel-sector' as any)} isDark={isDark} />
           <SettingsRow icon="signature" androidIcon="draw" label={t('settings.signatureForReports')} onPress={() => router.push('/signature')} isLast isDark={isDark} />
         </View>
 
