@@ -613,7 +613,7 @@ export function register(app: App, fastify: FastifyInstance) {
   });
 
   // PUT /api/sea-time/:id/confirm - Confirm pending entry with optional notes and service_type
-  fastify.put<{ Params: { id: string }; Body: { notes?: string; service_type?: string; rank?: string | null; date_joined?: string | null; date_left?: string | null; trade_area?: string | null; bridge_watch_hours?: number | null; engine_watch_hours?: number | null; certificate_id?: string | null } }>('/api/sea-time/:id/confirm', {
+  fastify.put<{ Params: { id: string }; Body: { notes?: string; service_type?: string; rank?: string | null; date_joined?: string | null; date_left?: string | null; trade_area?: string | null; bridge_watch_hours?: number | null; engine_watch_hours?: number | null; night_watch_hours?: number | null; certificate_id?: string | null } }>('/api/sea-time/:id/confirm', {
     schema: {
       description: 'Confirm a pending sea time entry (requires authentication). Accepts optional notes and service_type.',
       tags: ['sea-time'],
@@ -633,6 +633,7 @@ export function register(app: App, fastify: FastifyInstance) {
           trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
           bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
           engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          night_watch_hours: { type: ['number', 'null'], description: 'Night watch hours (tracked separately)' },
           certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
@@ -651,7 +652,7 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     const { id } = request.params;
-    const { notes, service_type, rank, date_joined, date_left, trade_area, bridge_watch_hours, engine_watch_hours, certificate_id } = request.body;
+    const { notes, service_type, rank, date_joined, date_left, trade_area, bridge_watch_hours, engine_watch_hours, night_watch_hours, certificate_id } = request.body;
 
     // Validate service_type if provided
     if (service_type !== undefined && !isValidServiceType(service_type)) {
@@ -731,6 +732,7 @@ export function register(app: App, fastify: FastifyInstance) {
     if (trade_area !== undefined) confirmUpdateData.trade_area = trade_area;
     if (bridge_watch_hours !== undefined) confirmUpdateData.bridge_watch_hours = bridge_watch_hours !== null ? String(bridge_watch_hours) : null;
     if (engine_watch_hours !== undefined) confirmUpdateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
+    if (night_watch_hours !== undefined) confirmUpdateData.night_watch_hours = night_watch_hours !== null ? String(night_watch_hours) : null;
     if (certificate_id !== undefined) {
       if (certificate_id && !(await validateCertificateOwnership(app, certificate_id, userId))) {
         return reply.code(403).send({ error: 'Certificate does not belong to this user' });
@@ -842,6 +844,7 @@ export function register(app: App, fastify: FastifyInstance) {
       trade_area?: string | null;
       bridge_watch_hours?: number | null;
       engine_watch_hours?: number | null;
+      night_watch_hours?: number | null;
       certificate_id?: string | null;
     };
   }>('/api/sea-time/:id', {
@@ -872,6 +875,7 @@ export function register(app: App, fastify: FastifyInstance) {
           trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
           bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
           engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          night_watch_hours: { type: ['number', 'null'], description: 'Night watch hours (tracked separately)' },
           certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
@@ -907,6 +911,7 @@ export function register(app: App, fastify: FastifyInstance) {
       trade_area,
       bridge_watch_hours,
       engine_watch_hours,
+      night_watch_hours,
       certificate_id,
     } = request.body;
 
@@ -996,6 +1001,9 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     if (engine_watch_hours !== undefined) {
       updateData.engine_watch_hours = engine_watch_hours !== null ? String(engine_watch_hours) : null;
+    }
+    if (night_watch_hours !== undefined) {
+      updateData.night_watch_hours = night_watch_hours !== null ? String(night_watch_hours) : null;
     }
     if (certificate_id !== undefined) {
       if (certificate_id && !(await validateCertificateOwnership(app, certificate_id, userId))) {
@@ -1831,6 +1839,7 @@ export function register(app: App, fastify: FastifyInstance) {
       trade_area?: string | null;
       bridge_watch_hours?: number | null;
       engine_watch_hours?: number | null;
+      night_watch_hours?: number | null;
       certificate_id?: string | null;
     };
   }>('/api/logbook/manual-entry', {
@@ -1860,6 +1869,7 @@ export function register(app: App, fastify: FastifyInstance) {
           trade_area: { type: ['string', 'null'], description: 'Trade area classification' },
           bridge_watch_hours: { type: ['number', 'null'], description: 'Bridge watch hours' },
           engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
+          night_watch_hours: { type: ['number', 'null'], description: 'Night watch hours (tracked separately)' },
           certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
         },
       },
@@ -1918,6 +1928,7 @@ export function register(app: App, fastify: FastifyInstance) {
       trade_area: rawTradeArea,
       bridge_watch_hours: rawBridgeWatchHours,
       engine_watch_hours: rawEngineWatchHours,
+      night_watch_hours: rawNightWatchHours,
       certificate_id: rawCertificateId,
     } = request.body as any;
     // Coerce null → undefined for downstream code that uses ?? defaults
@@ -1935,6 +1946,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const manualTradeArea = rawTradeArea ?? undefined;
     const manualBridgeWatchHours = rawBridgeWatchHours ?? undefined;
     const manualEngineWatchHours = rawEngineWatchHours ?? undefined;
+    const manualNightWatchHours = rawNightWatchHours ?? undefined;
     const manualCertificateId = rawCertificateId ?? undefined;
 
     // Validate service_type if provided
@@ -2095,6 +2107,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (manualTradeArea !== undefined) manualEntryValues.trade_area = manualTradeArea;
       if (manualBridgeWatchHours !== undefined) manualEntryValues.bridge_watch_hours = manualBridgeWatchHours !== null ? String(manualBridgeWatchHours) : null;
       if (manualEngineWatchHours !== undefined) manualEntryValues.engine_watch_hours = manualEngineWatchHours !== null ? String(manualEngineWatchHours) : null;
+      if (manualNightWatchHours !== undefined) manualEntryValues.night_watch_hours = manualNightWatchHours !== null ? String(manualNightWatchHours) : null;
       if (manualCertificateId !== undefined) manualEntryValues.certificate_id = manualCertificateId;
 
       const [entry] = await app.db

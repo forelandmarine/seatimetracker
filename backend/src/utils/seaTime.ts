@@ -609,6 +609,43 @@ export function calculateDistanceNauticalMiles(
   return Math.round(distance * 100) / 100;
 }
 
+/** A position fix from ais_checks: coordinates (string or number) plus the check time. */
+export interface TrackFix {
+  latitude: string | number | null;
+  longitude: string | number | null;
+  check_time: Date | string;
+}
+
+/**
+ * Cumulative track distance in nautical miles: the sum of the great-circle legs
+ * between consecutive AIS fixes, ordered by time.
+ *
+ * This is the honest mileage for continuous / short-leg operations (e.g. a CTV
+ * working turbine to turbine in a wind farm), where a single start-to-end
+ * straight line badly understates the distance actually run. Accuracy is bounded
+ * by the AIS sampling interval — it cannot see movement between two fixes — so it
+ * is a lower bound on true mileage, but a far better one than point-to-point.
+ *
+ * Fixes with missing/invalid coordinates are skipped. Returns 0 for fewer than
+ * two usable fixes (callers fall back to point-to-point in that case).
+ */
+export function cumulativeTrackDistanceNm(fixes: TrackFix[]): number {
+  const pts = fixes
+    .map((f) => ({
+      lat: typeof f.latitude === 'string' ? parseFloat(f.latitude) : f.latitude,
+      lon: typeof f.longitude === 'string' ? parseFloat(f.longitude) : f.longitude,
+      t: f.check_time instanceof Date ? f.check_time.getTime() : new Date(f.check_time).getTime(),
+    }))
+    .filter((p) => p.lat != null && p.lon != null && !Number.isNaN(p.lat) && !Number.isNaN(p.lon) && !Number.isNaN(p.t))
+    .sort((a, b) => a.t - b.t);
+
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    total += calculateDistanceNauticalMiles(pts[i - 1].lat!, pts[i - 1].lon!, pts[i].lat!, pts[i].lon!);
+  }
+  return Math.round(total * 100) / 100;
+}
+
 /** Calendar day string (YYYY-MM-DD) from a Date, using local time. */
 export function getCalendarDay(date: Date): string {
   const year = date.getUTCFullYear();

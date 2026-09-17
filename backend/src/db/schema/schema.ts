@@ -66,6 +66,7 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   // Watchkeeping breakdown by watch type
   bridge_watch_hours: decimal('bridge_watch_hours', { precision: 10, scale: 2 }), // Bridge/navigation watch hours (deck)
   engine_watch_hours: decimal('engine_watch_hours', { precision: 10, scale: 2 }), // Engine room watch hours (engineering)
+  night_watch_hours: decimal('night_watch_hours', { precision: 10, scale: 2 }), // Night watch hours, tracked separately (e.g. CTV night shifts); informational, does not change day counting
   // Certificate held during this service period
   certificate_id: uuid('certificate_id').references(() => certificates.id, { onDelete: 'set null' }),
   // Voyage detail fields (Sprint 6)
