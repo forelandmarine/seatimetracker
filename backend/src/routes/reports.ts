@@ -6,7 +6,7 @@ import type { App } from "../index.js";
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { countDistinctSeaDays, qualifyingSeaDays, uscgCreditableDays } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -421,6 +421,30 @@ export function register(app: App, fastify: FastifyInstance) {
                 port: { type: 'number' },
               },
             },
+            amsa_service: {
+              type: 'object',
+              properties: {
+                underway: { type: 'number' },
+                not_underway: { type: 'number' },
+                part_day_hours: { type: 'number' },
+                qualifying_hours: { type: 'number' },
+                navigational_watch: { type: 'number' },
+                engineering_watch: { type: 'number' },
+              },
+            },
+            mnz_service: {
+              type: 'object',
+              properties: {
+                actual: { type: 'number' },
+                standby: { type: 'number' },
+                yard: { type: 'number' },
+                port: { type: 'number' },
+                qualifying_total: { type: 'number' },
+                watchkeeping: { type: 'number' },
+                hours: { type: 'number' },
+                outside_window: { type: 'number' },
+              },
+            },
             entries_by_vessel: {
               type: 'array',
               items: {
@@ -508,6 +532,14 @@ export function register(app: App, fastify: FastifyInstance) {
     // one that matches the user's chosen authority.
     const uscg_service = uscgCreditableDays(entries as any);
 
+    // AMSA counts an 8-hour day and caps service gained while the vessel is not
+    // underway; Maritime NZ counts in 30-day months inside a 10-year window and
+    // measures two of its certificates in hours. Neither is the MCA figure, so
+    // each is returned separately and the client shows the one matching the
+    // user's chosen authority.
+    const amsa_service = amsaCreditableDays(entries as any);
+    const mnz_service = mnzCreditableDays(entries as any);
+
     // Group by vessel, counting distinct days within each vessel.
     const vesselGroups: { [key: string]: any[] } = {};
     entries.forEach((entry) => {
@@ -564,6 +596,8 @@ export function register(app: App, fastify: FastifyInstance) {
       total_days,
       sea_service: breakdown,
       uscg_service,
+      amsa_service,
+      mnz_service,
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
@@ -790,12 +824,12 @@ export function register(app: App, fastify: FastifyInstance) {
       mnz: {
         title: 'SEA SERVICE TESTIMONIAL',
         bodyName: 'Maritime New Zealand (MNZ)',
-        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with Maritime New Zealand requirements.',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with Maritime New Zealand requirements under Maritime Rules Part 32. Sea service is stated in days, where 30 days is one month.',
       },
       amsa: {
-        title: 'SEA SERVICE TESTIMONIAL',
+        title: 'RECORD OF SEA SERVICE',
         bodyName: 'Australian Maritime Safety Authority (AMSA)',
-        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this testimonial in accordance with AMSA requirements.',
+        declaration: 'I certify that the seafarer named above has performed the sea service detailed in this record in accordance with Marine Order 505, where a day of sea service is 8 hours of qualifying work. This record is provided in support of, or in place of, AMSA form 771.',
       },
       generic: {
         title: 'SEA TIME REPORT',
@@ -1041,6 +1075,10 @@ export function register(app: App, fastify: FastifyInstance) {
         if (vessel.length_metres) particulars.push(['Length', `${vessel.length_metres}m`]);
         if (vessel.gross_tonnes) particulars.push(['Gross Tonnes', String(vessel.gross_tonnes)]);
         if (vessel.tonnage_itc) particulars.push(['ITC Tonnage', String(vessel.tonnage_itc)]);
+        // AMSA and MNZ engineering certificates are banded on propulsion power
+        // rather than tonnage, so a testimonial without kW is missing the one
+        // figure the assessor needs.
+        if (vessel.engine_kilowatts) particulars.push(['Propulsion Power', `${vessel.engine_kilowatts} kW`]);
 
         // Calculate service types for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};

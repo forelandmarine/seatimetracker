@@ -377,6 +377,25 @@ export default function CertificationRequirementsScreen() {
                 Coast Guard accepts the operating schedule.
               </Text>
             )}
+            {authority === 'amsa' && (
+              <Text style={styles.footnote}>
+                Service is shown in days. Under Marine Order 505 a day is 8 hours of qualifying
+                work, shorter shifts add together until they make a day, and more than 8 hours in
+                one 24-hour period is still one day. A month is 30 days. Most certificates list two
+                figures: the shorter one applies if you hold a completed AMSA task book. No more
+                than 15 per cent of deck service, or 33 per cent of engineering service, can be
+                gained while the vessel is not underway.
+              </Text>
+            )}
+            {authority === 'mnz' && (
+              <Text style={styles.footnote}>
+                Service is shown in days, where a month is 30 days. Unless a certificate says
+                otherwise it must have been gained in the 10 years before you apply. Where a
+                requirement names a vessel size it is either required, which must be met as
+                written, or preferred, which is assessed case by case. Skipper Restricted Limits
+                and Marine Engineer Class 6 are counted in hours rather than days.
+              </Text>
+            )}
           </View>
 
           {requirements.length > 6 && (

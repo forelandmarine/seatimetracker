@@ -15,6 +15,7 @@ export const user = pgTable("user", {
   department: text("department"), // Department: 'deck' or 'engineering'
   maritime_authority: text("maritime_authority"), // 'mca', 'uscg', 'amsa', 'mnz' — which authority user is applying to
   target_certification: text("target_certification"), // requirement id the user is working toward, e.g. 'uscg-master-nc-200grt'
+  has_record_book: boolean("has_record_book").default(false), // holds an AMSA task book / MNZ training record book, which shortens the sea service required
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID

@@ -18,7 +18,7 @@ import { colors } from '@/styles/commonStyles';
 import { countryName } from '@/utils/countryCodes';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { IconSymbol } from '@/components/IconSymbol';
-import { USCG_SERVICE_DEFINITIONS } from '@/constants/mcaRequirements';
+import { getAuthorityServiceDefinitions } from '@/constants/mcaRequirements';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -517,10 +517,10 @@ export default function ReportsScreen() {
   };
 
   const userDepartment = profile?.department?.toLowerCase();
-  // The shipped definitions describe the MCA yacht rules, so a USCG applicant
-  // gets the 46 CFR ones instead.
+  // The shipped definitions describe the MCA yacht rules. Every other authority
+  // counts service its own way, so each one has its own set.
   const definitionSource =
-    profile?.maritime_authority === 'uscg' ? USCG_SERVICE_DEFINITIONS : SEA_DAY_DEFINITIONS;
+    getAuthorityServiceDefinitions(profile?.maritime_authority) ?? SEA_DAY_DEFINITIONS;
   const filteredDefinitions = definitionSource.filter(
     (def) => def.department === 'both' || def.department === userDepartment
   );

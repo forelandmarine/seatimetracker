@@ -201,6 +201,8 @@ export const updateUserProfile = async (updates: {
   department?: string | null;
   maritime_authority?: string | null;
   target_certification?: string | null;
+  /** Holds an AMSA task book or MNZ training record book. */
+  has_record_book?: boolean;
 }) => {
   const res = await authFetch('/api/profile', { method: 'PUT', body: updates });
   return res.json();

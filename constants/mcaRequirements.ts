@@ -1,4 +1,15 @@
 
+import {
+  AMSA_DECK_REQUIREMENTS,
+  AMSA_ENGINEERING_REQUIREMENTS,
+  AMSA_SERVICE_DEFINITIONS,
+} from './amsaRequirements';
+import {
+  MNZ_DECK_REQUIREMENTS,
+  MNZ_ENGINEERING_REQUIREMENTS,
+  MNZ_SERVICE_DEFINITIONS,
+} from './mnzRequirements';
+
 export interface MCARequirement {
   id: string;
   title: string;
@@ -8,6 +19,28 @@ export interface MCARequirement {
   category?: string;
   /** Headline qualifying-service target in creditable days, where the rules state one. */
   totalDays?: number;
+  /**
+   * Shorter target for applicants holding a completed record of training: an
+   * AMSA task book, or an MNZ training record book / cadet programme. Most AMSA
+   * certificates roughly halve on this basis, so measuring a task-book holder
+   * against the longer figure would understate how close they are.
+   */
+  totalDaysWithRecordBook?: number;
+  /**
+   * Days of the target that must be watchkeeping, or in charge of a
+   * navigational watch. AMSA gates Master <45m and <100m on this figure rather
+   * than on the total, and the MNZ yacht certificates carry a watchkeeping
+   * component inside the total.
+   */
+  watchkeepingDays?: number;
+  /** Watchkeeping component of the shorter record-of-training route. */
+  watchkeepingDaysWithRecordBook?: number;
+  /**
+   * Target stated in hours rather than days. Maritime NZ counts two
+   * certificates this way (SRL and MEC 6, both 200 hours), and converting them
+   * to days would invent a rule the rule-maker did not write.
+   */
+  totalHours?: number;
   requirements: {
     label: string;
     value: string;
@@ -2115,226 +2148,6 @@ const USCG_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
   },
 ];
 
-// ── AMSA pathways ───────────────────────────────────────────────────
-// Based on Marine Order 505 (Certificates of Competency - National Law) 2022
-// 1 day = 8 hours of qualifying work on board
-
-const AMSA_DECK_REQUIREMENTS: MCARequirement[] = [
-  {
-    id: 'amsa-master-24m-nc',
-    title: 'Master <24m Near Coastal',
-    regulation: 'MO 505',
-    description: 'Vessels <24m within EEZ',
-    requirements: [
-      {
-        label: 'Sea Service (with task book)',
-        value: '120 days',
-        details: [
-          'On commercial vessels ≥7.5m',
-          'In a deck or deck/engineering role',
-          '1 day = 8 hours of qualifying work',
-        ],
-      },
-      {
-        label: 'Sea Service (without task book)',
-        value: '360 days',
-        details: [
-          'At least half on commercial vessels',
-          'On vessels ≥7.5m',
-        ],
-      },
-    ],
-    notes: [
-      'Requires Certificate III in Maritime Operations',
-      'LROCP (marine radio), first aid, medical fitness certificate',
-      'Max 15% of deck service can be while vessel is not underway',
-    ],
-  },
-  {
-    id: 'amsa-master-35m-nc',
-    title: 'Master <35m Near Coastal',
-    regulation: 'MO 505',
-    description: 'Vessels <35m within EEZ',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '360 days',
-        details: [
-          'On commercial vessels',
-          'In a deck role',
-          'On vessels ≥12m',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'amsa-master-80m-nc',
-    title: 'Master <80m Near Coastal',
-    regulation: 'MO 505',
-    description: 'Vessels <80m within EEZ',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '720 days',
-        details: [
-          'On commercial vessels',
-          'At least 360 days as mate or master',
-        ],
-      },
-    ],
-  },
-];
-
-const AMSA_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
-  {
-    id: 'amsa-me-nc',
-    title: 'Marine Engineer Near Coastal',
-    regulation: 'MO 505',
-    description: 'Vessels <500 kW',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '120 days',
-        details: [
-          'In an engineering role on commercial vessels',
-          '1 day = 8 hours of qualifying work',
-          'Max 33% while vessel is not underway',
-        ],
-      },
-    ],
-    notes: [
-      'Requires Certificate III in Marine Engineering',
-      'Medical fitness certificate required',
-    ],
-  },
-  {
-    id: 'amsa-engineer-class3-nc',
-    title: 'Engineer Class 3 Near Coastal',
-    regulation: 'MO 505',
-    description: 'Vessels <3000 kW',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '360 days',
-        details: [
-          'In an engineering role on commercial vessels',
-          'On vessels ≥75 kW propulsion power',
-        ],
-      },
-    ],
-  },
-];
-
-// ── Maritime NZ pathways ────────────────────────────────────────────
-// Based on Maritime Rule Part 32 and Seafarer Certification Framework (Jan 2024)
-
-const MNZ_DECK_REQUIREMENTS: MCARequirement[] = [
-  {
-    id: 'mnz-skipper-restricted-limits',
-    title: 'Skipper Restricted Limits (SRL)',
-    regulation: 'Part 32',
-    description: 'Vessels <24m in restricted limits',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '200 days',
-        details: [
-          'On vessels relevant to the certificate',
-          'Within the preceding 5 years',
-        ],
-      },
-    ],
-    notes: [
-      'Entry-level NZ skipper qualification',
-      'Requires approved training and examination',
-    ],
-  },
-  {
-    id: 'mnz-skipper-coastal-nearshore',
-    title: 'Skipper Coastal/Near Shore',
-    regulation: 'Part 32',
-    description: 'Vessels <24m coastal',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '400 days',
-        details: [
-          'On seagoing vessels ≥6m',
-          'At least 200 days as SRL holder',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'mnz-mate-500gt',
-    title: 'Mate <500 GT',
-    regulation: 'Part 32',
-    description: 'Near coastal waters',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '540 days',
-        details: [
-          'On seagoing vessels',
-          'As a watchkeeping officer or in a deck capacity',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'mnz-master-500gt',
-    title: 'Master <500 GT',
-    regulation: 'Part 32',
-    description: 'Near coastal waters',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '1,080 days',
-        details: [
-          'On seagoing vessels',
-          'At least 360 days as mate or master',
-        ],
-      },
-    ],
-  },
-];
-
-const MNZ_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
-  {
-    id: 'mnz-marine-engineer-class6',
-    title: 'Marine Engineer Class 6',
-    regulation: 'Part 32',
-    description: 'Vessels <750 kW',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '180 days',
-        details: [
-          'In the engine department',
-          'On vessels of appropriate power',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'mnz-marine-engineer-class5',
-    title: 'Marine Engineer Class 5',
-    regulation: 'Part 32',
-    description: 'Vessels <3000 kW',
-    requirements: [
-      {
-        label: 'Sea Service',
-        value: '360 days',
-        details: [
-          'In the engine department',
-          'On vessels ≥350 kW',
-          'At least 180 days as engineer watchkeeper',
-        ],
-      },
-    ],
-  },
-];
-
 // ── Combined exports ────────────────────────────────────────────────
 
 export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
@@ -2423,7 +2236,7 @@ export interface RequirementGroup {
 /**
  * Group a requirement list by its `category` field, preserving first-seen order.
  * Entries with no category fall into a single untitled group, which keeps the
- * MCA, AMSA and MNZ lists rendering exactly as they did before.
+ * MCA lists rendering exactly as they did before.
  */
 export const groupRequirementsByCategory = (
   requirements: MCARequirement[],
@@ -2464,9 +2277,9 @@ export const DEFAULT_TARGET_BY_PATHWAY: Record<string, string> = {
   'uscg:deck': 'uscg-master-nc-200grt',
   'uscg:engineering': 'uscg-dde-1000hp',
   'amsa:deck': 'amsa-master-24m-nc',
-  'amsa:engineering': 'amsa-me-nc',
-  'mnz:deck': 'mnz-skipper-restricted-limits',
-  'mnz:engineering': 'mnz-marine-engineer-class6',
+  'amsa:engineering': 'amsa-med3-nc',
+  'mnz:deck': 'mnz-srl',
+  'mnz:engineering': 'mnz-mec6',
 };
 
 export const getDefaultTargetId = (
@@ -2552,3 +2365,94 @@ export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
     department: 'both',
   },
 ];
+
+export { AMSA_SERVICE_DEFINITIONS, MNZ_SERVICE_DEFINITIONS };
+
+/**
+ * The service definitions that apply to an authority, or null where the app
+ * should keep showing the MCA yacht definitions each screen holds locally
+ * (MSN 1858 and MSN 1904).
+ *
+ * Before this existed the screens asked "is this a USCG user?" and fell back to
+ * the MCA definitions for everyone else, which told an AMSA or MNZ applicant
+ * how the MCA counts stand-by and yard service. That is not their rule.
+ */
+export const getAuthorityServiceDefinitions = (
+  authority: MaritimeAuthority | null | undefined,
+): ServiceDefinition[] | null => {
+  switch (authority) {
+    case 'uscg':
+      return USCG_SERVICE_DEFINITIONS;
+    case 'amsa':
+      return AMSA_SERVICE_DEFINITIONS;
+    case 'mnz':
+      return MNZ_SERVICE_DEFINITIONS;
+    default:
+      return null;
+  }
+};
+
+/**
+ * The day target to measure against, given whether the user holds the record of
+ * training the authority reduces service for (an AMSA task book, an MNZ
+ * training record book or cadet programme).
+ */
+export const getTargetDays = (
+  requirement: MCARequirement | undefined,
+  hasRecordBook: boolean,
+): number | undefined => {
+  if (!requirement) return undefined;
+  if (hasRecordBook && requirement.totalDaysWithRecordBook) {
+    return requirement.totalDaysWithRecordBook;
+  }
+  return requirement.totalDays;
+};
+
+/** Authorities that reduce sea service for a completed record of training. */
+export const AUTHORITIES_WITH_RECORD_BOOK: MaritimeAuthority[] = ['amsa', 'mnz'];
+
+/**
+ * What each authority calls that record, for labels and help text. The article
+ * is part of the label because "an AMSA task book" and "a training record book"
+ * do not take the same one.
+ */
+export const RECORD_BOOK_LABELS: Partial<Record<MaritimeAuthority, string>> = {
+  amsa: 'an AMSA task book',
+  mnz: 'a training record book',
+};
+
+/**
+ * Heading and intro for the service definitions panel, so each authority's
+ * applicant is told which rule book the figures come from rather than being
+ * shown MSN 1858 by default.
+ */
+export const getServiceDefinitionsHeading = (
+  authority: MaritimeAuthority | null | undefined,
+  department: 'deck' | 'engineering',
+): { title: string; intro: string } => {
+  const dept = department === 'deck' ? 'Deck' : 'Engineering';
+  switch (authority) {
+    case 'uscg':
+      return {
+        title: `${dept} Department - USCG Service Definitions (46 CFR)`,
+        intro: `How the Coast Guard counts service toward a ${department === 'deck' ? 'deck' : 'engineer'} endorsement, under 46 CFR parts 10 and 11. Your logged time is counted on these rules.`,
+      };
+    case 'amsa':
+      return {
+        title: `${dept} Department - AMSA Service Definitions (MO 505)`,
+        intro:
+          'How AMSA counts service toward a certificate of competency, under Marine Order 505. A day is 8 hours of qualifying work, and your logged time is counted on these rules.',
+      };
+    case 'mnz':
+      return {
+        title: `${dept} Department - Maritime NZ Service Definitions (SeaCert)`,
+        intro:
+          'How Maritime NZ counts service toward a certificate, under Maritime Rules Part 32. Service is stated in 30-day months and must be gained in the 10 years before you apply.',
+      };
+    default:
+      return {
+        title: `${dept} Department - Sea Service Definitions (${department === 'deck' ? 'MSN 1858' : 'MSN 1904'})`,
+        intro: `These definitions ensure your sea time records are compliant with MCA regulations for ${dept} officers. All data capture in this app follows these standards.`,
+      };
+  }
+};

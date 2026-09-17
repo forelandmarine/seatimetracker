@@ -6,6 +6,8 @@ import {
   countDistinctSeaDays,
   qualifyingSeaDays,
   uscgCreditableDays,
+  amsaCreditableDays,
+  mnzCreditableDays,
   USCG_DAYS_PER_MONTH,
   USCG_DAYS_PER_YEAR,
   USCG_STANDARD_HOURS_PER_DAY,
@@ -451,5 +453,120 @@ describe("uscgCreditableDays", () => {
     expect(r.below_minimum).toBe(0);
     expect(r.awaiting_tonnage).toBe(0);
     expect(r.vessels_awaiting_tonnage).toEqual([]);
+  });
+});
+
+// ── AMSA (Marine Order 505) ─────────────────────────────────────────
+
+describe("amsaCreditableDays", () => {
+  test("credits a full 8-hour working day", () => {
+    const r = amsaCreditableDays(days("2026-01-01", 10));
+    expect(r.underway).toBe(10);
+    expect(r.not_underway).toBe(0);
+    expect(r.part_day_hours).toBe(0);
+  });
+
+  test("adds shorter shifts together until they make a day", () => {
+    const r = amsaCreditableDays([
+      { start_time: "2026-01-01T08:00:00Z", end_time: "2026-01-01T12:00:00Z" },
+      { start_time: "2026-01-02T08:00:00Z", end_time: "2026-01-02T12:00:00Z" },
+    ]);
+    expect(r.qualifying_hours).toBe(8);
+    expect(r.underway).toBe(1);
+  });
+
+  test("a long day is still one day", () => {
+    const r = amsaCreditableDays([
+      { start_time: "2026-01-01T00:00:00Z", end_time: "2026-01-01T16:00:00Z" },
+    ]);
+    expect(r.underway).toBe(1);
+    expect(r.qualifying_hours).toBe(8);
+  });
+
+  test("yard, stand-by and port service count as not underway", () => {
+    const r = amsaCreditableDays([
+      ...days("2026-02-01", 3, "yard_service"),
+      ...days("2026-03-01", 2, "standby_service"),
+      ...days("2026-04-01", 1, "service_in_port"),
+    ]);
+    expect(r.underway).toBe(0);
+    expect(r.not_underway).toBe(6);
+  });
+
+  test("sea service logged while stationary is not underway", () => {
+    const r = amsaCreditableDays([
+      { ...day("2026-05-01"), is_stationary: true },
+    ]);
+    expect(r.underway).toBe(0);
+    expect(r.not_underway).toBe(1);
+  });
+
+  test("a date worked both ways counts once, as underway", () => {
+    const r = amsaCreditableDays([
+      day("2026-06-01"),
+      { ...day("2026-06-01", "yard_service") },
+    ]);
+    expect(r.underway).toBe(1);
+    expect(r.not_underway).toBe(0);
+  });
+
+  test("navigational watch days come from logged bridge-watch hours", () => {
+    const r = amsaCreditableDays([
+      { ...day("2026-07-01"), bridge_watch_hours: 40 },
+      { ...day("2026-07-02"), bridge_watch_hours: 40 },
+    ]);
+    expect(r.navigational_watch).toBe(10);
+  });
+});
+
+// ── Maritime NZ (SeaCert) ───────────────────────────────────────────
+
+describe("mnzCreditableDays", () => {
+  const now = new Date("2026-09-16T00:00:00Z");
+
+  test("counts actual, stand-by and yard toward the total", () => {
+    const r = mnzCreditableDays([
+      ...days("2026-01-01", 10),
+      ...days("2026-02-01", 5, "standby_service"),
+      ...days("2026-03-01", 3, "yard_service"),
+    ], now);
+    expect(r.actual).toBe(10);
+    expect(r.standby).toBe(5);
+    expect(r.yard).toBe(3);
+    expect(r.qualifying_total).toBe(18);
+  });
+
+  test("does not apply the MCA 90-day yard cap", () => {
+    const r = mnzCreditableDays(days("2025-01-01", 100, "yard_service"), now);
+    expect(r.yard).toBe(100);
+    expect(r.qualifying_total).toBe(100);
+  });
+
+  test("service in port is reported but not credited", () => {
+    const r = mnzCreditableDays(days("2026-01-01", 4, "service_in_port"), now);
+    expect(r.port).toBe(4);
+    expect(r.qualifying_total).toBe(0);
+  });
+
+  test("service older than 10 years falls outside the window", () => {
+    const r = mnzCreditableDays([
+      ...days("2010-01-01", 6),
+      ...days("2026-01-01", 4),
+    ], now);
+    expect(r.actual).toBe(4);
+    expect(r.outside_window).toBe(6);
+  });
+
+  test("hours are totalled for the 200-hour certificates", () => {
+    const r = mnzCreditableDays(days("2026-01-01", 10), now);
+    expect(r.hours).toBe(80);
+  });
+
+  test("watchkeeping days come from logged watch hours", () => {
+    const r = mnzCreditableDays([
+      { ...day("2026-01-01"), watchkeeping_hours: 24 },
+      { ...day("2026-01-02"), watchkeeping_hours: 24 },
+    ], now);
+    expect(r.watchkeeping).toBe(6);
   });
 });

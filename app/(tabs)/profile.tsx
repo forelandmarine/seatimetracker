@@ -2,10 +2,15 @@
 import { IconSymbol } from '@/components/IconSymbol';
 import { CertificationProgress } from '@/components/CertificationProgress';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
-import { USCG_SERVICE_DEFINITIONS } from '@/constants/mcaRequirements';
+import {
+  getAuthorityServiceDefinitions,
+  getServiceDefinitionsHeading,
+  RECORD_BOOK_LABELS,
+} from '@/constants/mcaRequirements';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { authorityUsesRecordBook, getRecordBookFlag, setRecordBookFlag } from '@/utils/recordBook';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -22,6 +27,7 @@ import {
   Modal,
   Linking,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -64,6 +70,24 @@ interface SeaTimeSummary {
     standby: number;
     yard: number;
     port: number;
+  } | null;
+  amsa_service?: {
+    underway: number;
+    not_underway: number;
+    part_day_hours: number;
+    qualifying_hours: number;
+    navigational_watch: number;
+    engineering_watch: number;
+  } | null;
+  mnz_service?: {
+    actual: number;
+    standby: number;
+    yard: number;
+    port: number;
+    qualifying_total: number;
+    watchkeeping: number;
+    hours: number;
+    outside_window: number;
   } | null;
   entries_by_vessel: {
     vessel_name: string;
@@ -530,6 +554,9 @@ const createStyles = (isDark: boolean) =>
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // AMSA task book / MNZ training record book. Held here because it decides
+  // which of the two sea-service figures the progress card measures against.
+  const [hasRecordBook, setHasRecordBook] = useState(false);
   const [summary, setSummary] = useState<SeaTimeSummary | null>(null);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -595,6 +622,8 @@ export default function ProfileScreen() {
       const data = await seaTimeApi.getUserProfile();
       log('User profile loaded successfully:', data?.email);
       setProfile(data);
+      // A server value wins; otherwise the setting falls back to this device.
+      setHasRecordBook(await getRecordBookFlag((data as any)?.has_record_book));
       // Default the report template to the user's own authority. A USCG
       // applicant needs a sea service letter, not an MCA testimonial.
       if (data?.maritime_authority && ['mca', 'uscg', 'mnz', 'amsa'].includes(data.maritime_authority)) {
@@ -1039,10 +1068,11 @@ export default function ProfileScreen() {
   const totalDays = summary ? summary.total_days : 0;
 
   const userDepartment = profile?.department?.toLowerCase();
-  // The shipped definitions describe the MCA yacht rules (MSN 1858 / 1904), so
-  // a USCG applicant gets the 46 CFR ones instead.
-  const isUSCGPathway = profile?.maritime_authority === 'uscg';
-  const definitionSource = isUSCGPathway ? USCG_SERVICE_DEFINITIONS : SEA_DAY_DEFINITIONS;
+  // The shipped definitions describe the MCA yacht rules (MSN 1858 / 1904).
+  // Every other authority counts service its own way, so each one has its own
+  // set and only an MCA applicant sees the yacht rules.
+  const definitionSource =
+    getAuthorityServiceDefinitions(profile?.maritime_authority) ?? SEA_DAY_DEFINITIONS;
   const filteredDefinitions = definitionSource.filter(
     (def) => (def.department === 'both' || def.department === userDepartment) && def.title !== 'Administrative Rules'
   );
@@ -1269,6 +1299,9 @@ export default function ProfileScreen() {
                   targetId={profile.target_certification ?? null}
                   serviceTypes={allServiceTypes}
                   uscgService={summary.uscg_service ?? null}
+                  amsaService={summary.amsa_service ?? null}
+                  mnzService={summary.mnz_service ?? null}
+                  hasRecordBook={hasRecordBook}
                   isDark={isDark}
                   onChangeTarget={() =>
                     router.push({
@@ -1282,6 +1315,62 @@ export default function ProfileScreen() {
                     })
                   }
                 />
+
+                {authorityUsesRecordBook(profile.maritime_authority) && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      marginTop: 16,
+                      paddingTop: 14,
+                      borderTopWidth: 1,
+                      borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: '600',
+                          color: isDark ? colors.text : colors.textLight,
+                        }}
+                      >
+                        I hold {RECORD_BOOK_LABELS[profile.maritime_authority!] ?? 'a record book'}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          lineHeight: 17,
+                          marginTop: 3,
+                          color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+                        }}
+                      >
+                        {profile.maritime_authority === 'amsa'
+                          ? 'A completed AMSA task book roughly halves the sea service for most certificates.'
+                          : 'A completed training record book or cadet programme puts you on the shorter sea service route.'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={hasRecordBook}
+                      onValueChange={async (value) => {
+                        setHasRecordBook(value);
+                        await setRecordBookFlag(value);
+                        // Best effort: the device copy is what the card reads,
+                        // and the server copy is what carries the setting to a
+                        // new device once the column is live.
+                        try {
+                          await seaTimeApi.updateUserProfile({ has_record_book: value });
+                        } catch (e) {
+                          warn('[profile] could not sync the record book flag', e);
+                        }
+                      }}
+                      trackColor={{ false: '#767577', true: colors.primary }}
+                      accessibilityLabel="I hold a completed record of training"
+                    />
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -1289,17 +1378,21 @@ export default function ProfileScreen() {
           {profile.department && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                {isUSCGPathway
-                  ? `${profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} Department - USCG Service Definitions (46 CFR)`
-                  : profile.department.toLowerCase() === 'deck'
-                    ? 'Deck Department - Sea Service Definitions (MSN 1858)'
-                    : 'Engineering Department - Sea Service Definitions (MSN 1904)'}
+                {
+                  getServiceDefinitionsHeading(
+                    profile.maritime_authority,
+                    profile.department.toLowerCase() === 'engineering' ? 'engineering' : 'deck',
+                  ).title
+                }
               </Text>
               <View style={styles.infoBox}>
                 <Text style={styles.infoText}>
-                  {isUSCGPathway
-                    ? `How the Coast Guard counts service toward a ${profile.department.toLowerCase() === 'deck' ? 'deck' : 'engineer'} endorsement, under 46 CFR parts 10 and 11. Your logged time is counted on these rules.`
-                    : `These definitions ensure your sea time records are compliant with MCA regulations for ${profile.department.toLowerCase() === 'deck' ? 'Deck' : 'Engineering'} officers. All data capture in this app follows these standards.`}
+                  {
+                    getServiceDefinitionsHeading(
+                      profile.maritime_authority,
+                      profile.department.toLowerCase() === 'engineering' ? 'engineering' : 'deck',
+                    ).intro
+                  }
                 </Text>
               </View>
               {filteredDefinitions.map((definition, index) => (

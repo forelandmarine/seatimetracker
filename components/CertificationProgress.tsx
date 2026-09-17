@@ -7,6 +7,7 @@ import {
   MaritimeAuthority,
   getDefaultTargetId,
   getRequirementByIdForPathway,
+  getTargetDays,
 } from '@/constants/mcaRequirements';
 
 export interface ServiceTypeDays {
@@ -32,10 +33,44 @@ export interface USCGServiceSummary {
   port: number;
 }
 
+/** AMSA day count from the summary endpoint, counted under Marine Order 505. */
+export interface AMSAServiceSummary {
+  /** Whole days of qualifying work while the vessel was underway. */
+  underway: number;
+  /** Whole days gained alongside, at anchor without a watch, in yard or in port. */
+  not_underway: number;
+  /** Qualifying hours that do not yet make a whole 8-hour day. */
+  part_day_hours: number;
+  qualifying_hours: number;
+  /** Days derived from logged bridge-watch hours. */
+  navigational_watch: number;
+  /** Days derived from logged engine-room watch hours. */
+  engineering_watch: number;
+}
+
+/** Maritime NZ day count from the summary endpoint, counted under SeaCert. */
+export interface MNZServiceSummary {
+  actual: number;
+  standby: number;
+  yard: number;
+  port: number;
+  qualifying_total: number;
+  watchkeeping: number;
+  /** Hours on board, for the two certificates counted in hours. */
+  hours: number;
+  /** Days older than the 10-year window, which will not be accepted as they stand. */
+  outside_window: number;
+}
+
+/** Share of the required service AMSA lets you gain while not underway. */
+const AMSA_NOT_UNDERWAY_CAP = { deck: 0.15, engineering: 0.33 } as const;
+
 interface ProgressRow {
   label: string;
   current: number;
   required: number;
+  /** Maritime NZ states two certificates in hours rather than days. */
+  unit?: 'days' | 'hours';
 }
 
 export interface CertificationProgressProps {
@@ -46,6 +81,18 @@ export interface CertificationProgressProps {
   serviceTypes: ServiceTypeDays[];
   /** USCG-rules day count from the summary endpoint. Required for USCG progress. */
   uscgService?: USCGServiceSummary | null;
+  /** AMSA-rules day count from the summary endpoint. Required for AMSA progress. */
+  amsaService?: AMSAServiceSummary | null;
+  /** MNZ-rules day count from the summary endpoint. Required for MNZ progress. */
+  mnzService?: MNZServiceSummary | null;
+  /**
+   * Whether the user holds the record of training their authority reduces sea
+   * service for: an AMSA task book, or an MNZ training record book or cadet
+   * programme. It roughly halves most AMSA requirements, so measuring a holder
+   * against the longer figure would tell them they are further away than they
+   * are.
+   */
+  hasRecordBook?: boolean;
   isDark: boolean;
   /** Opens the requirements screen so the user can pick a different target. */
   onChangeTarget?: () => void;
@@ -97,6 +144,9 @@ export function CertificationProgress({
   targetId,
   serviceTypes,
   uscgService,
+  amsaService,
+  mnzService,
+  hasRecordBook = false,
   isDark,
   onChangeTarget,
 }: CertificationProgressProps) {
@@ -116,6 +166,28 @@ export function CertificationProgress({
   }, [targetId, resolvedAuthority, dept]);
 
   const isUSCG = resolvedAuthority === 'uscg';
+  const isAMSA = resolvedAuthority === 'amsa';
+  const isMNZ = resolvedAuthority === 'mnz';
+
+  /** Day target for this pathway, allowing for a held task or record book. */
+  const targetDays = getTargetDays(requirement, hasRecordBook);
+  const targetWatchkeeping =
+    hasRecordBook && requirement?.watchkeepingDaysWithRecordBook
+      ? requirement.watchkeepingDaysWithRecordBook
+      : requirement?.watchkeepingDays;
+
+  /**
+   * How much of the not-underway service AMSA will let this target absorb. The
+   * cap is a share of the required service, not of what has been logged, so it
+   * can only be worked out once the target is known.
+   */
+  const amsaAllowance =
+    isAMSA && targetDays
+      ? Math.floor(targetDays * AMSA_NOT_UNDERWAY_CAP[dept === 'engineering' ? 'engineering' : 'deck'])
+      : 0;
+  const amsaNotUnderwayCounted = amsaService
+    ? Math.min(amsaService.not_underway, amsaAllowance)
+    : 0;
 
   const rows: ProgressRow[] = useMemo(() => {
     if (isUSCG) {
@@ -135,12 +207,78 @@ export function CertificationProgress({
 
     if (resolvedAuthority === 'mca') return mcaRows(serviceTypes, dept === 'engineering');
 
-    // AMSA and Maritime NZ entries carry no machine-readable day target yet, so
-    // show the headline total where the data has one and nothing otherwise.
+    if (isAMSA) {
+      // Same reasoning as the USCG branch: the MCA-shaped totals in
+      // `serviceTypes` are not counted under Marine Order 505, so without the
+      // AMSA figure there is no honest bar to draw.
+      if (!targetDays || !amsaService) return [];
+      const out: ProgressRow[] = [
+        {
+          label: 'Qualifying Service',
+          current: amsaService.underway + amsaNotUnderwayCounted,
+          required: targetDays,
+        },
+      ];
+      if (targetWatchkeeping) {
+        out.push({
+          label: 'In Charge of a Navigational Watch',
+          current: amsaService.navigational_watch,
+          required: targetWatchkeeping,
+        });
+      }
+      return out;
+    }
+
+    if (isMNZ) {
+      if (!mnzService) return [];
+      // Skipper Restricted Limits and MEC 6 are stated in hours, and converting
+      // them to days would invent a rule Maritime NZ did not write.
+      if (requirement?.totalHours) {
+        return [
+          {
+            label: 'Sea Service',
+            current: Math.floor(mnzService.hours),
+            required: requirement.totalHours,
+            unit: 'hours',
+          },
+        ];
+      }
+      if (!targetDays) return [];
+      const out: ProgressRow[] = [
+        {
+          label: 'Qualifying Service',
+          current: mnzService.qualifying_total,
+          required: targetDays,
+        },
+      ];
+      if (targetWatchkeeping) {
+        out.push({
+          label: 'Watchkeeping Service',
+          current: mnzService.watchkeeping,
+          required: targetWatchkeeping,
+        });
+      }
+      return out;
+    }
+
     if (!requirement?.totalDays) return [];
     const total = serviceTypes.reduce((sum, s) => sum + s.total_days, 0);
     return [{ label: 'Qualifying Service', current: total, required: requirement.totalDays }];
-  }, [isUSCG, requirement, uscgService, serviceTypes, resolvedAuthority, dept]);
+  }, [
+    isUSCG,
+    isAMSA,
+    isMNZ,
+    requirement,
+    uscgService,
+    amsaService,
+    mnzService,
+    serviceTypes,
+    resolvedAuthority,
+    dept,
+    targetDays,
+    targetWatchkeeping,
+    amsaNotUnderwayCounted,
+  ]);
 
   if (!requirement && rows.length === 0) return null;
 
@@ -148,9 +286,31 @@ export function CertificationProgress({
   const mutedColor = isDark ? colors.textSecondary : colors.textSecondaryLight;
   const trackColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
 
-  // Requirement rows the app cannot measure (capacity, tonnage or route
+  /**
+   * Labels used in the AMSA and MNZ datasets for rows that state a condition
+   * rather than a quantity of service: what you must already hold, and what the
+   * certificate lets you work on. They are listed as checkpoints because the
+   * app cannot measure them. Slicing off the first row the way the USCG list
+   * does would not work here, where the second row is usually the alternative
+   * sea-service route rather than a condition.
+   */
+  const CONDITION_LABELS = [
+    'Prior Certificate',
+    'Vessel and Area Limits',
+    'Privileges',
+    'Sailing Qualification',
+    'Engine Competency',
+  ];
+
+  // Requirement rows the app cannot measure (capacity, tonnage, power or route
   // conditions). Listed as checkpoints rather than faked as progress bars.
-  const checkpoints = isUSCG && requirement ? requirement.requirements.slice(1) : [];
+  const checkpoints = !requirement
+    ? []
+    : isUSCG
+      ? requirement.requirements.slice(1)
+      : isAMSA || isMNZ
+        ? requirement.requirements.filter((r) => CONDITION_LABELS.includes(r.label))
+        : [];
 
   return (
     <View>
@@ -192,7 +352,11 @@ export function CertificationProgress({
         <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
           {isUSCG && !uscgService
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
-            : 'Day-by-day progress is not available for this pathway yet. Open the requirements list to see the service this endorsement asks for.'}
+            : isAMSA && !amsaService
+              ? 'Your AMSA day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under Marine Order 505.'
+              : isMNZ && !mnzService
+                ? 'Your Maritime NZ day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under SeaCert.'
+                : 'This certificate is not measured in days of sea service. Open the requirements list to see what it asks for.'}
         </Text>
       )}
 
@@ -212,7 +376,7 @@ export function CertificationProgress({
                   color: pct >= 1 ? colors.success : colors.primary,
                 }}
               >
-                {row.current}/{row.required} days
+                {row.current}/{row.required} {row.unit === 'hours' ? 'hours' : 'days'}
               </Text>
             </View>
             <View
@@ -257,8 +421,94 @@ export function CertificationProgress({
             </View>
           ))}
           <Text style={{ fontSize: 12, color: mutedColor, marginTop: 6, lineHeight: 17 }}>
-            These depend on the capacity, route and tonnage you served in, so the Coast Guard
-            evaluates them from your sea service letters rather than from this total.
+            {isUSCG
+              ? 'These depend on the capacity, route and tonnage you served in, so the Coast Guard evaluates them from your sea service letters rather than from this total.'
+              : isAMSA
+                ? 'These depend on the certificate you held and the vessels you served on, so AMSA assesses them from your sea service records rather than from this total.'
+                : 'These depend on the certificate you held and the vessels you served on, so Maritime NZ assesses them from your sea service records rather than from this total.'}
+          </Text>
+        </View>
+      )}
+
+      {isAMSA && amsaService && (
+        <View style={{ marginTop: 14 }}>
+          {amsaService.not_underway > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: 12,
+                paddingTop: 10,
+                borderTopWidth: 1,
+                borderTopColor: trackColor,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 13, color: mutedColor, flex: 1 }}>
+                Counted while not underway
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: mutedColor }}>
+                {amsaNotUnderwayCounted}/{amsaAllowance} days
+              </Text>
+            </View>
+          )}
+
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted under Marine Order 505: a day is 8 hours of qualifying work, shorter shifts add
+            together, and more than 8 hours in a 24-hour period is still one day.
+            {amsaService.not_underway > amsaNotUnderwayCounted
+              ? ` ${amsaService.not_underway - amsaNotUnderwayCounted} ${
+                  amsaService.not_underway - amsaNotUnderwayCounted === 1 ? 'day sits' : 'days sit'
+                } beyond the ${Math.round(
+                  AMSA_NOT_UNDERWAY_CAP[dept === 'engineering' ? 'engineering' : 'deck'] * 100,
+                )} per cent AMSA allows while the vessel is not underway, so ${
+                  amsaService.not_underway - amsaNotUnderwayCounted === 1 ? 'it is' : 'they are'
+                } logged but not counted here.`
+              : ''}
+            {amsaService.part_day_hours > 0
+              ? ` ${amsaService.part_day_hours} hours are logged but do not yet make a whole day.`
+              : ''}
+            {hasRecordBook
+              ? ' Measured against the task book figure, because you have told us you hold one.'
+              : ' Measured against the figure for an applicant without a task book. Holding one roughly halves it.'}
+          </Text>
+        </View>
+      )}
+
+      {isMNZ && mnzService && (
+        <View style={{ marginTop: 14 }}>
+          {mnzService.outside_window > 0 && (
+            <View
+              style={{
+                paddingTop: 12,
+                marginBottom: 12,
+                borderTopWidth: 1,
+                borderTopColor: trackColor,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                {mnzService.outside_window}{' '}
+                {mnzService.outside_window === 1 ? 'day falls' : 'days fall'} outside the 10-year
+                window
+              </Text>
+              <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+                Maritime NZ accepts sea service gained in the 10 years before you apply, so this
+                time stays in your record but is not counted toward the certificate.
+              </Text>
+            </View>
+          )}
+
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted under SeaCert, where a month is 30 days.
+            {mnzService.standby + mnzService.yard > 0
+              ? ` ${mnzService.actual} days are actual sea service, with ${mnzService.standby} stand-by and ${mnzService.yard} yard days making up the rest. The yacht certificates accept that combination; the others are assessed on sea service alone.`
+              : ''}
+            {mnzService.port > 0
+              ? ` ${mnzService.port} days in port are recorded but are not sea service.`
+              : ''}
+            {hasRecordBook
+              ? ' Measured against the shorter route, because you have told us you hold a training record book.'
+              : ''}
           </Text>
         </View>
       )}

@@ -31,6 +31,7 @@ export function register(app: App, fastify: FastifyInstance) {
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
               subscription_status: { type: ['string', 'null'] },
               subscription_expires_at: { type: ['string', 'null'] },
@@ -127,6 +128,7 @@ export function register(app: App, fastify: FastifyInstance) {
         department: user.department || null,
         maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
+        has_record_book: user.has_record_book ?? false,
         subscription_status: user.subscription_status || null,
         subscription_expires_at: user.subscription_expires_at?.toISOString() || null,
         subscription_product_id: user.subscription_product_id || null,
@@ -153,6 +155,7 @@ export function register(app: App, fastify: FastifyInstance) {
       department?: string;
       maritime_authority?: string;
       target_certification?: string | null;
+      has_record_book?: boolean;
     };
   }>(
     '/api/profile',
@@ -173,6 +176,7 @@ export function register(app: App, fastify: FastifyInstance) {
             pya_membership_no: { type: 'string' },
             department: { type: 'string', enum: ['deck', 'engineering'], description: 'Department: deck or engineering' },
             maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
+            has_record_book: { type: 'boolean', description: 'Holds a completed AMSA task book or MNZ training record book, which shortens the sea service required' },
             target_certification: { type: ['string', 'null'], maxLength: 64, description: 'Requirement id the user is working toward, e.g. uscg-master-nc-200grt' },
           },
         },
@@ -194,6 +198,7 @@ export function register(app: App, fastify: FastifyInstance) {
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
               maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
               createdAt: { type: 'string' },
               updatedAt: { type: 'string' },
@@ -206,9 +211,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification } = request.body;
+      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book } = request.body;
 
-      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification }, 'Profile update request');
+      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book }, 'Profile update request');
 
       // Get token from Authorization header
       const authHeader = request.headers.authorization;
@@ -274,7 +279,7 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined;
+      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || has_record_book !== undefined;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
@@ -303,6 +308,7 @@ export function register(app: App, fastify: FastifyInstance) {
           department: user.department || null,
           maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
+        has_record_book: user.has_record_book ?? false,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         });
@@ -334,6 +340,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (department !== undefined) updateData.department = department || null;
       if (maritime_authority !== undefined) updateData.maritime_authority = maritime_authority || null;
       if (target_certification !== undefined) updateData.target_certification = target_certification || null;
+      if (has_record_book !== undefined) updateData.has_record_book = has_record_book === true;
 
       const [updatedUser] = await app.db
         .update(authSchema.user)
@@ -373,6 +380,7 @@ export function register(app: App, fastify: FastifyInstance) {
         department: updatedUser.department || null,
         maritime_authority: updatedUser.maritime_authority || null,
         target_certification: updatedUser.target_certification || null,
+        has_record_book: updatedUser.has_record_book ?? false,
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString(),
       });

@@ -344,6 +344,235 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   };
 }
 
+/**
+ * AMSA creditable service.
+ *
+ * Marine Order 505 counts a day as 8 hours of qualifying work. Shifts shorter
+ * than 8 hours are added together until they make a day, and more than 8 hours
+ * inside one 24-hour period is still only one day. That is a different rule
+ * from both the MCA calendar day and the USCG 8-hour day, which is why neither
+ * of the totals above can be reused for an AMSA applicant.
+ *
+ * AMSA also caps service gained while the vessel is not underway: no more than
+ * 15 per cent of the required service for a deck certificate and 33 per cent
+ * for an engineering one. The cap is a share of the target rather than of the
+ * service logged, so this function reports the two buckets and leaves the cap
+ * to the caller, which is the only place the target is known.
+ */
+export const AMSA_STANDARD_HOURS_PER_DAY = 8;
+export const AMSA_DAYS_PER_MONTH = 30;
+/** Share of the required service that may be gained while not underway. */
+export const AMSA_NOT_UNDERWAY_CAP_DECK = 0.15;
+export const AMSA_NOT_UNDERWAY_CAP_ENGINEERING = 0.33;
+
+export interface AMSAServiceBreakdown {
+  /** Whole days of qualifying work while the vessel was underway. */
+  underway: number;
+  /**
+   * Whole days gained while the vessel was not underway: stand-by, yard, port
+   * and anything flagged stationary. Credited only up to the caller's cap.
+   */
+  not_underway: number;
+  /** Qualifying hours left over that do not yet make a whole day. */
+  part_day_hours: number;
+  /** Total qualifying hours after the 8-hour-per-day ceiling is applied. */
+  qualifying_hours: number;
+  /**
+   * Days derived from logged bridge-watch hours, for the certificates gated on
+   * service in charge of a navigational watch (Master <45m and Master <100m).
+   * Whether a watch was stood in charge rather than under supervision is the
+   * assessor's call, so this is reported as logged rather than asserted.
+   */
+  navigational_watch: number;
+  /** Days derived from logged engine-room watch hours. */
+  engineering_watch: number;
+}
+
+interface AMSAEntry {
+  start_time: Date | string;
+  end_time: Date | string | null;
+  service_type?: string | null;
+  is_stationary?: boolean | null;
+  bridge_watch_hours?: string | number | null;
+  engine_watch_hours?: string | number | null;
+}
+
+function toHours(value: string | number | null | undefined): number {
+  if (value == null) return 0;
+  const n = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** Is this entry service gained while the vessel was not underway? */
+function isNotUnderway(e: AMSAEntry): boolean {
+  const type = e.service_type || 'actual_sea_service';
+  if (type === 'standby_service' || type === 'yard_service' || type === 'service_in_port') {
+    return true;
+  }
+  return e.is_stationary === true;
+}
+
+export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
+  // Hours per calendar date, so the 8-hour ceiling for a 24-hour period can be
+  // applied before anything is turned into days.
+  const underwayHours = new Map<string, number>();
+  const notUnderwayHours = new Map<string, number>();
+  let bridgeHours = 0;
+  let engineHours = 0;
+
+  for (const e of entries) {
+    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+    const end = e.end_time == null
+      ? start
+      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+    const hours = calculateDurationHours(start, end);
+    if (hours <= 0) continue;
+
+    bridgeHours += toHours(e.bridge_watch_hours);
+    engineHours += toHours(e.engine_watch_hours);
+
+    // Spread the period's hours evenly across the dates it touches, then let
+    // the per-date ceiling below do the capping. An entry that runs for days
+    // cannot credit more than one day per date whichever way it is split.
+    const dates = calendarDaysCovered(start, end);
+    if (dates.length === 0) continue;
+    const perDate = hours / dates.length;
+    const bucket = isNotUnderway(e) ? notUnderwayHours : underwayHours;
+    for (const d of dates) bucket.set(d, (bucket.get(d) ?? 0) + perDate);
+  }
+
+  // A date worked both underway and alongside counts once, at the better
+  // classification, the same way the other authorities' counters resolve it.
+  for (const d of underwayHours.keys()) notUnderwayHours.delete(d);
+
+  const capped = (m: Map<string, number>): number => {
+    let total = 0;
+    for (const h of m.values()) total += Math.min(h, AMSA_STANDARD_HOURS_PER_DAY);
+    return total;
+  };
+
+  const underwayTotal = capped(underwayHours);
+  const notUnderwayTotal = capped(notUnderwayHours);
+  const underway = Math.floor(underwayTotal / AMSA_STANDARD_HOURS_PER_DAY);
+  const notUnderway = Math.floor(notUnderwayTotal / AMSA_STANDARD_HOURS_PER_DAY);
+  const partDayHours =
+    (underwayTotal % AMSA_STANDARD_HOURS_PER_DAY) + (notUnderwayTotal % AMSA_STANDARD_HOURS_PER_DAY);
+
+  return {
+    underway,
+    not_underway: notUnderway,
+    part_day_hours: Math.round(partDayHours * 100) / 100,
+    qualifying_hours: Math.round((underwayTotal + notUnderwayTotal) * 100) / 100,
+    navigational_watch: Math.floor(bridgeHours / AMSA_STANDARD_HOURS_PER_DAY),
+    engineering_watch: Math.floor(engineHours / AMSA_STANDARD_HOURS_PER_DAY),
+  };
+}
+
+/**
+ * Maritime NZ creditable service.
+ *
+ * SeaCert states sea service in months, and a month is 30 days. It does not
+ * define an hours-per-day rule the way MO 505 and 46 CFR do, so days are
+ * counted per calendar date as they are for the MCA. Two things are specific
+ * to MNZ and are handled here: service must have been gained in the 10 years
+ * before the application, and the two 200-hour certificates (Skipper Restricted
+ * Limits and Marine Engineer Class 6) are measured in hours rather than days.
+ *
+ * The yacht certificates are written in the same actual / stand-by / yard split
+ * the app already records, so those three totals are reported separately rather
+ * than collapsed. No 90-day yard cap is applied: that is MSN 1858, an MCA rule,
+ * and MNZ has its own combination limit instead.
+ */
+export const MNZ_DAYS_PER_MONTH = 30;
+export const MNZ_SERVICE_WINDOW_YEARS = 10;
+
+export interface MNZServiceBreakdown {
+  /** Distinct days of actual sea service inside the 10-year window. */
+  actual: number;
+  /** Distinct stand-by days inside the window. */
+  standby: number;
+  /** Distinct yard days inside the window. */
+  yard: number;
+  /** Distinct service-in-port days inside the window (reported, not credited). */
+  port: number;
+  /** actual + standby + yard, which is the combination the yacht certificates use. */
+  qualifying_total: number;
+  /** Days derived from logged watchkeeping hours, at 8 hours to the day. */
+  watchkeeping: number;
+  /** Hours on board inside the window, for the 200-hour certificates. */
+  hours: number;
+  /** Days older than the 10-year window, reported so the user knows why they are missing. */
+  outside_window: number;
+}
+
+interface MNZEntry {
+  start_time: Date | string;
+  end_time: Date | string | null;
+  service_type?: string | null;
+  bridge_watch_hours?: string | number | null;
+  engine_watch_hours?: string | number | null;
+  watchkeeping_hours?: string | number | null;
+}
+
+export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): MNZServiceBreakdown {
+  const windowStart = new Date(now);
+  windowStart.setUTCFullYear(windowStart.getUTCFullYear() - MNZ_SERVICE_WINDOW_YEARS);
+
+  const actualDays = new Set<string>();
+  const standbyDays = new Set<string>();
+  const yardDays = new Set<string>();
+  const portDays = new Set<string>();
+  const outsideDays = new Set<string>();
+  let watchHours = 0;
+  let totalHours = 0;
+
+  for (const e of entries) {
+    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+    const end = e.end_time == null
+      ? start
+      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+    if (calculateDurationHours(start, end) < 4) continue;
+
+    const dates = calendarDaysCovered(start, end);
+    if (end.getTime() < windowStart.getTime()) {
+      for (const d of dates) outsideDays.add(d);
+      continue;
+    }
+
+    totalHours += calculateDurationHours(start, end);
+    watchHours +=
+      toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
+
+    const type = e.service_type || 'actual_sea_service';
+    const bucket =
+      type === 'standby_service' ? standbyDays :
+      type === 'yard_service' ? yardDays :
+      type === 'service_in_port' ? portDays :
+      actualDays;
+    for (const d of dates) bucket.add(d);
+  }
+
+  for (const d of actualDays) { standbyDays.delete(d); yardDays.delete(d); portDays.delete(d); outsideDays.delete(d); }
+  for (const d of standbyDays) { yardDays.delete(d); portDays.delete(d); outsideDays.delete(d); }
+  for (const d of yardDays) { portDays.delete(d); outsideDays.delete(d); }
+  for (const d of portDays) { outsideDays.delete(d); }
+
+  const actual = actualDays.size;
+  const standby = standbyDays.size;
+  const yard = yardDays.size;
+
+  return {
+    actual,
+    standby,
+    yard,
+    port: portDays.size,
+    qualifying_total: actual + standby + yard,
+    watchkeeping: Math.floor(watchHours / 8),
+    hours: Math.round(totalHours * 100) / 100,
+    outside_window: outsideDays.size,
+  };
+}
+
 /** Valid service types. */
 export const VALID_SERVICE_TYPES = [
   'actual_sea_service',
