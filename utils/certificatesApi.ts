@@ -8,7 +8,6 @@ export interface Certificate {
   issued_date: string | null;
   expiry_date: string | null;
   notes: string | null;
-  image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,7 +19,6 @@ export interface CertificateInput {
   issued_date?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
-  image_url?: string | null;
 }
 
 export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {

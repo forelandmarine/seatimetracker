@@ -242,7 +242,9 @@ export const certificates = pgTable('certificates', {
   issued_date: date('issued_date'),
   expiry_date: date('expiry_date'),
   notes: text('notes'),
-  image_url: text('image_url'),
+  // NOTE: the tracker stores only certificate metadata + expiry, never the
+  // certificate itself. The old image_url column (which held base64 scans) is
+  // removed; see manual-migration 2026-09-23_certificate_no_image.sql.
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

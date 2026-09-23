@@ -147,7 +147,6 @@ interface CertificateBody {
   issued_date?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
-  image_url?: string | null;
 }
 
 export function register(app: App, fastify: FastifyInstance) {
@@ -197,7 +196,6 @@ export function register(app: App, fastify: FastifyInstance) {
           issued_date: { type: ["string", "null"] },
           expiry_date: { type: ["string", "null"] },
           notes: { type: ["string", "null"] },
-          image_url: { type: ["string", "null"] },
         },
       },
       response: {
@@ -232,7 +230,6 @@ export function register(app: App, fastify: FastifyInstance) {
         issued_date: body.issued_date || null,
         expiry_date: body.expiry_date || null,
         notes: body.notes || null,
-        image_url: body.image_url || null,
       })
       .returning();
 
@@ -263,7 +260,6 @@ export function register(app: App, fastify: FastifyInstance) {
             issued_date: { type: ["string", "null"] },
             expiry_date: { type: ["string", "null"] },
             notes: { type: ["string", "null"] },
-            image_url: { type: ["string", "null"] },
           },
         },
         response: {
@@ -307,7 +303,6 @@ export function register(app: App, fastify: FastifyInstance) {
       if (body.issued_date !== undefined) updateData.issued_date = body.issued_date;
       if (body.expiry_date !== undefined) updateData.expiry_date = body.expiry_date;
       if (body.notes !== undefined) updateData.notes = body.notes;
-      if (body.image_url !== undefined) updateData.image_url = body.image_url;
 
       const [updated] = await app.db
         .update(schema.certificates)

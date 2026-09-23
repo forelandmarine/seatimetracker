@@ -11,13 +11,9 @@ import {
   Alert,
   Modal,
   Platform,
-  Image,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
@@ -29,7 +25,11 @@ import {
   listCertificates,
   updateCertificate,
 } from '@/utils/certificatesApi';
-import { log, error as logError } from '@/utils/log';
+import {
+  scheduleCertificateExpiryReminders,
+  cancelCertificateExpiryReminders,
+} from '@/utils/notifications';
+import { error as logError } from '@/utils/log';
 
 export default function CertificateEditScreen() {
   const router = useRouter();
@@ -69,8 +69,6 @@ export default function CertificateEditScreen() {
   const [issuedDate, setIssuedDate] = useState<Date | null>(null);
   const [expiryDate, setExpiryDate] = useState<Date | null>(null);
   const [notes, setNotes] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [showImagePicker, setShowImagePicker] = useState(false);
 
   useEffect(() => {
     if (!editId) return;
@@ -85,7 +83,6 @@ export default function CertificateEditScreen() {
           setIssuedDate(cert.issued_date ? new Date(cert.issued_date) : null);
           setExpiryDate(cert.expiry_date ? new Date(cert.expiry_date) : null);
           setNotes(cert.notes || '');
-          setImageUri(cert.image_url || null);
         }
       } catch (e) {
         logError('[CertEdit] Failed to load:', e);
@@ -109,20 +106,26 @@ export default function CertificateEditScreen() {
 
     setSaving(true);
     try {
+      const expiryIso = expiryDate ? expiryDate.toISOString().split('T')[0] : null;
       const payload = {
         certificate_type: type,
         certificate_number: number || null,
         issuing_body: issuingBody || null,
         issued_date: issuedDate ? issuedDate.toISOString().split('T')[0] : null,
-        expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
+        expiry_date: expiryIso,
         notes: notes || null,
-        image_url: imageUri || null,
       };
 
+      const label = CERTIFICATE_TYPE_LABELS[type] || type;
       if (editId) {
         await updateCertificate(editId, payload);
+        // Reschedule reminders (the helper cancels the old ones first).
+        await scheduleCertificateExpiryReminders(editId, label, expiryIso);
       } else {
-        await createCertificate(payload);
+        const created = await createCertificate(payload);
+        if (created?.id) {
+          await scheduleCertificateExpiryReminders(created.id, label, expiryIso);
+        }
       }
       router.back();
     } catch (e: any) {
@@ -147,6 +150,7 @@ export default function CertificateEditScreen() {
             setDeleting(true);
             try {
               await deleteCertificate(editId);
+              await cancelCertificateExpiryReminders(editId);
               router.back();
             } catch (e: any) {
               Alert.alert('Error', e?.message || 'Failed to delete');
@@ -255,36 +259,6 @@ export default function CertificateEditScreen() {
           multiline
         />
 
-        <Text style={styles.label}>Certificate scan</Text>
-        {imageUri ? (
-          <View style={styles.imagePreviewContainer}>
-            {imageUri.startsWith('data:application/pdf') ? (
-              <View style={[styles.imagePreview, { alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1c1c1e' : '#f2f2f7' }]}>
-                <IconSymbol ios_icon_name="doc.fill" android_material_icon_name="description" size={48} color={colors.primary} />
-                <Text style={{ color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 8, fontSize: 14 }}>PDF attached</Text>
-              </View>
-            ) : (
-              <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
-            )}
-            <View style={styles.imageActions}>
-              <TouchableOpacity style={styles.imageActionButton} onPress={() => setShowImagePicker(true)}>
-                <IconSymbol ios_icon_name="arrow.triangle.2.circlepath" android_material_icon_name="refresh" size={18} color={colors.primary} />
-                <Text style={styles.imageActionText}>Replace</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.imageActionButton} onPress={() => setImageUri(null)}>
-                <IconSymbol ios_icon_name="trash" android_material_icon_name="delete" size={18} color={colors.error} />
-                <Text style={[styles.imageActionText, { color: colors.error }]}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.addImageButton} onPress={() => setShowImagePicker(true)}>
-            <IconSymbol ios_icon_name="doc.badge.plus" android_material_icon_name="note-add" size={28} color={colors.primary} />
-            <Text style={styles.addImageText}>Add photo, scan, or PDF</Text>
-            <Text style={styles.addImageHint}>Take a photo, choose from library, or upload a document</Text>
-          </TouchableOpacity>
-        )}
-
         <TouchableOpacity style={[styles.saveButton, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveButtonText}>Save</Text>}
         </TouchableOpacity>
@@ -356,107 +330,6 @@ export default function CertificateEditScreen() {
         />
       )}
 
-      {/* Image picker modal */}
-      <Modal visible={showImagePicker} transparent animationType="fade" onRequestClose={() => setShowImagePicker(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { justifyContent: 'center' }]}>
-            <Text style={styles.modalTitle}>Add certificate scan</Text>
-
-            <TouchableOpacity
-              style={styles.imagePickerOption}
-              onPress={async () => {
-                setShowImagePicker(false);
-                const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                if (status !== 'granted') {
-                  Alert.alert('Permission needed', 'Camera access is required to take a photo.');
-                  return;
-                }
-                const result = await ImagePicker.launchCameraAsync({
-                  mediaTypes: ['images'],
-                  quality: 0.7,
-                  base64: true,
-                });
-                if (!result.canceled && result.assets[0]) {
-                  const asset = result.assets[0];
-                  if (asset.base64) {
-                    setImageUri(`data:image/jpeg;base64,${asset.base64}`);
-                  } else {
-                    setImageUri(asset.uri);
-                  }
-                  log('[CertEdit] Photo captured');
-                }
-              }}
-            >
-              <IconSymbol ios_icon_name="camera.fill" android_material_icon_name="photo-camera" size={22} color={colors.primary} />
-              <Text style={styles.imagePickerOptionText}>Take photo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.imagePickerOption}
-              onPress={async () => {
-                setShowImagePicker(false);
-                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (status !== 'granted') {
-                  Alert.alert('Permission needed', 'Photo library access is required.');
-                  return;
-                }
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: ['images'],
-                  quality: 0.7,
-                  base64: true,
-                });
-                if (!result.canceled && result.assets[0]) {
-                  const asset = result.assets[0];
-                  if (asset.base64) {
-                    setImageUri(`data:image/jpeg;base64,${asset.base64}`);
-                  } else {
-                    setImageUri(asset.uri);
-                  }
-                  log('[CertEdit] Image picked from library');
-                }
-              }}
-            >
-              <IconSymbol ios_icon_name="photo.fill" android_material_icon_name="photo-library" size={22} color={colors.primary} />
-              <Text style={styles.imagePickerOptionText}>Choose from library</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.imagePickerOption}
-              onPress={async () => {
-                setShowImagePicker(false);
-                try {
-                  const result = await DocumentPicker.getDocumentAsync({
-                    type: ['application/pdf', 'image/*'],
-                    copyToCacheDirectory: true,
-                  });
-                  if (!result.canceled && result.assets?.[0]) {
-                    const asset = result.assets[0];
-                    const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-                      encoding: FileSystem.EncodingType.Base64,
-                    });
-                    const mimeType = asset.mimeType || (asset.name?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-                    setImageUri(`data:${mimeType};base64,${base64}`);
-                    log('[CertEdit] Document picked:', asset.name);
-                  }
-                } catch (err) {
-                  logError('[CertEdit] Document pick failed:', err);
-                  Alert.alert('Error', 'Failed to pick document');
-                }
-              }}
-            >
-              <IconSymbol ios_icon_name="doc.fill" android_material_icon_name="description" size={22} color={colors.primary} />
-              <Text style={styles.imagePickerOptionText}>Upload PDF or document</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.imagePickerOption, { borderBottomWidth: 0, marginTop: 8 }]}
-              onPress={() => setShowImagePicker(false)}
-            >
-              <Text style={[styles.imagePickerOptionText, { color: colors.textSecondary, textAlign: 'center', flex: 1 }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }

@@ -372,3 +372,103 @@ export async function setBadgeCount(count: number): Promise<void> {
 export async function clearBadge(): Promise<void> {
   await setBadgeCount(0);
 }
+
+// ---------------------------------------------------------------------------
+// Certificate expiry reminders (local, on-device only)
+//
+// The certificate tracker stores only a type and an expiry date. These local
+// notifications are the entire "reminder" feature: nothing about the
+// certificate is sent anywhere, it is scheduled on the device from the expiry
+// date alone.
+// ---------------------------------------------------------------------------
+
+/** Days before expiry at which a reminder fires. */
+export const CERTIFICATE_REMINDER_OFFSETS_DAYS = [90, 60, 30, 7];
+
+/** Deterministic identifier so reminders can be cancelled/rescheduled per certificate + offset. */
+function certReminderId(certId: string, offsetDays: number): string {
+  return `cert-expiry-${certId}-${offsetDays}`;
+}
+
+/**
+ * Cancel any pending expiry reminders for a certificate (used on edit + delete).
+ */
+export async function cancelCertificateExpiryReminders(certId: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    await Promise.all(
+      CERTIFICATE_REMINDER_OFFSETS_DAYS.map((d) =>
+        Notifications.cancelScheduledNotificationAsync(certReminderId(certId, d)).catch(() => {}),
+      ),
+    );
+    log('[Notifications] Cancelled certificate reminders for', certId);
+  } catch (error) {
+    logError('[Notifications] Failed to cancel certificate reminders:', error);
+  }
+}
+
+/**
+ * (Re)schedule local expiry reminders for a certificate at 90/60/30/7 days
+ * before its expiry date. Existing reminders for the certificate are cancelled
+ * first, so this is safe to call on both create and update. Only future
+ * reminder dates are scheduled; a no-op when there is no expiry date.
+ */
+export async function scheduleCertificateExpiryReminders(
+  certId: string,
+  certLabel: string,
+  expiryDateISO: string | null | undefined,
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+
+    // Always clear existing first so an edit reschedules cleanly.
+    await cancelCertificateExpiryReminders(certId);
+
+    if (!expiryDateISO) return;
+    const expiry = new Date(expiryDateISO);
+    if (isNaN(expiry.getTime())) return;
+
+    // Ensure permission + the Android channel exist (idempotent; returns false
+    // on simulators and when permission is denied, in which case we skip).
+    const granted = await registerForPushNotificationsAsync();
+    if (!granted) {
+      warn('[Notifications] Certificate reminders not scheduled (no permission / not a device)');
+      return;
+    }
+
+    const now = Date.now();
+    for (const offsetDays of CERTIFICATE_REMINDER_OFFSETS_DAYS) {
+      // Fire at 09:00 local on the reminder day.
+      const fire = new Date(expiry);
+      fire.setDate(fire.getDate() - offsetDays);
+      fire.setHours(9, 0, 0, 0);
+      if (fire.getTime() <= now) continue; // skip reminder dates already past
+
+      const when = offsetDays === 7 ? 'in 1 week' : `in ${offsetDays} days`;
+      await Notifications.scheduleNotificationAsync({
+        identifier: certReminderId(certId, offsetDays),
+        content: {
+          title: 'Certificate expiring soon',
+          body: `${certLabel} expires ${when} (${expiry.toLocaleDateString('en-GB')}).`,
+          data: { type: 'certificate_expiry', certId, screen: 'certificates', url: '/certificates' },
+          sound: 'default',
+          ...(Platform.OS === 'android' && {
+            channelId: 'sea-time-entries',
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          }),
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fire,
+        } as any,
+      });
+    }
+    log('[Notifications] Scheduled certificate reminders for', certId);
+  } catch (error) {
+    logError('[Notifications] Failed to schedule certificate reminders:', error);
+  }
+}
