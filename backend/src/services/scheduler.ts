@@ -7,6 +7,7 @@ import { processNotificationSchedules } from '../routes/notifications.js';
 import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
 import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
+import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -1077,10 +1078,45 @@ async function handleSeaTimeEntries(
     );
 
   // Filter for entries on the same calendar day
-  const existingEntryForDay = existingEntries.find(entry => {
+  const sameDayEntry = existingEntries.find(entry => {
     const entryDay = getCalendarDay(entry.start_time);
     return entryDay === calendarDay;
   });
+
+  // Anchor rules. If the vessel lay stopped between the end of that entry and
+  // the start of this movement window, the stop may have ended the passage:
+  // a stop at the destination always does, and a stop elsewhere does once it
+  // outlasts the leg before it. In that case this movement starts a new entry
+  // rather than stretching the old one across the time spent at anchor or
+  // alongside.
+  let existingEntryForDay = sameDayEntry;
+  if (sameDayEntry?.end_time && !oldCheck.is_moving && oldCheck.check_time > sameDayEntry.end_time) {
+    const stoppedHours = (oldCheck.check_time.getTime() - sameDayEntry.end_time.getTime()) / 3_600_000;
+    const precedingLegHours = (sameDayEntry.end_time.getTime() - sameDayEntry.start_time.getTime()) / 3_600_000;
+    const stopActivity = classifyActivity(
+      oldCheck.speed_knots != null ? parseFloat(String(oldCheck.speed_knots)) : null,
+      oldCheck.nav_status
+    );
+    const port = await resolveDestinationPort(oldCheck.destination, { logger: app.logger });
+    const arrivedAtDestination = hasArrivedAtDestination(stopActivity, oldLat, oldLng, port);
+
+    if (shouldCloseVoyageAtStop({ arrivedAtDestination, stoppedHours, precedingLegHours })) {
+      app.logger.info(
+        {
+          vesselId,
+          mmsi,
+          entryId: sameDayEntry.id,
+          stopActivity,
+          arrivedAtDestination,
+          destination: oldCheck.destination,
+          stoppedHours: Math.round(stoppedHours * 100) / 100,
+          precedingLegHours: Math.round(precedingLegHours * 100) / 100,
+        },
+        `Passage entry [${sameDayEntry.id}] for ${vessel_name} ended at its last stop (${arrivedAtDestination ? 'arrived at destination' : 'stop outlasted the previous leg'}); new movement starts a new entry`
+      );
+      existingEntryForDay = undefined;
+    }
+  }
 
   if (existingEntryForDay) {
     // EXTEND the existing entry (amalgamate multiple detections)
