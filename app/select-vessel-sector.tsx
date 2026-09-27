@@ -29,9 +29,11 @@ interface SectorOption {
   comingSoon: boolean;
 }
 
-// Commercial is intentionally not selectable yet: the CTV/workboat qualifying-service
-// engine is not built, and MCA/TSN acceptance of AIS-derived classification is pending,
-// so we show it as "coming soon" rather than let users pick a pathway that does nothing.
+// Commercial is selectable: it unlocks the manual shift clock-in (log your own
+// on-duty hours) plus sea-area/tidal classification. The automatic CTV/workboat
+// certificate qualifying-service engine is still in development, so the bullets
+// say so rather than implying it is live. The comingSoon flag is retained for
+// future use but is off for both sectors today.
 const SECTOR_OPTIONS: SectorOption[] = [
   {
     value: 'yachting',
@@ -53,11 +55,11 @@ const SECTOR_OPTIONS: SectorOption[] = [
     icon_ios: 'ferry.fill',
     icon_android: 'directions-boat',
     bullets: [
-      'CTV / workboat certificate pathways',
+      'Clock in and out to log your actual shift hours',
       'MSN 1837 sea-area and tidal classification',
-      'In development, not yet available to select',
+      'CTV / workboat certificate pathways in development',
     ],
-    comingSoon: true,
+    comingSoon: false,
   },
 ];
 
@@ -378,9 +380,9 @@ export default function SelectVesselSectorScreen() {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Commercial workboat and CTV pathways are on the way. For now every account uses the yachting
-            experience; your choice here is saved to your profile so we can enable commercial features for
-            you as soon as they are ready.
+            Commercial adds a manual shift clock-in so you log your own on-duty hours, plus sea-area and
+            tidal classification. The automatic CTV and workboat certificate pathways are still in
+            development. You can switch sector any time, and it never changes sea time you have already logged.
           </Text>
         </View>
 

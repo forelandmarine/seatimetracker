@@ -1,6 +1,7 @@
 
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
+import { ShiftClockCard } from '@/components/ShiftClockCard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   View,
@@ -555,6 +556,8 @@ export default function SeaTimeScreen() {
           </View>
         ) : (
         <>
+        {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
+        <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
         {/* Active Vessel Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>

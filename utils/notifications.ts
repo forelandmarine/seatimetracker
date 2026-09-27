@@ -382,6 +382,39 @@ export async function clearBadge(): Promise<void> {
 // date alone.
 // ---------------------------------------------------------------------------
 
+/**
+ * Fire a local notification immediately (used for shift clock-in / disembark
+ * reminders driven by location). No-op on web or without permission.
+ */
+export async function sendLocalNotification(
+  title: string,
+  body: string,
+  data: Record<string, any> = {},
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    const granted = await registerForPushNotificationsAsync();
+    if (!granted) return;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+        sound: 'default',
+        ...(Platform.OS === 'android' && {
+          channelId: 'sea-time-entries',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        }),
+      },
+      trigger: null, // deliver now
+    });
+  } catch (error) {
+    logError('[Notifications] Failed to send local notification:', error);
+  }
+}
+
 /** Days before expiry at which a reminder fires. */
 export const CERTIFICATE_REMINDER_OFFSETS_DAYS = [90, 60, 30, 7];
 

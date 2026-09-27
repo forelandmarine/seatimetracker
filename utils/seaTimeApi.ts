@@ -318,6 +318,47 @@ export const getVesselAISStatus = async (vesselId: string) => {
   return res.json();
 };
 
+// --- Manual shift clock-in / clock-out (commercial / CTV crews) ---
+export interface ActiveShift {
+  id: string;
+  vessel_id: string;
+  start_time: string;
+  end_time: string | null;
+  status: string;
+  start_latitude: string | null;
+  start_longitude: string | null;
+}
+
+export const getActiveShift = async (): Promise<ActiveShift | null> => {
+  const res = await authFetch('/api/sea-time/shift/active');
+  const data = await res.json();
+  return data.shift ?? null;
+};
+
+export const startShift = async (
+  vesselId: string,
+  latitude?: number | null,
+  longitude?: number | null,
+): Promise<ActiveShift> => {
+  const res = await authFetch('/api/sea-time/shift/start', {
+    method: 'POST',
+    body: { vessel_id: vesselId, latitude: latitude ?? null, longitude: longitude ?? null },
+  });
+  const data = await res.json();
+  return data.shift;
+};
+
+export const stopShift = async (
+  latitude?: number | null,
+  longitude?: number | null,
+): Promise<{ shift: ActiveShift; durationHours: number; sea_days: number }> => {
+  const res = await authFetch('/api/sea-time/shift/stop', {
+    method: 'POST',
+    body: { latitude: latitude ?? null, longitude: longitude ?? null },
+  });
+  return res.json();
+};
+
 // Read-only — returns cached AIS data from the database, never triggers an external API query.
 // Normalizes the /api/ais/status response into the flat { latitude, longitude, timestamp }
 // shape that callers (home screen, vessel detail) expect.

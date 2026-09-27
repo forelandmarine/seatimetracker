@@ -2442,4 +2442,116 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'Failed to generate sample sea time entries' });
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Manual shift clock-in / clock-out (commercial / CTV crews)
+  //
+  // Records the crew member's ACTUAL on-duty hours, not the vessel's 24h AIS
+  // activity, so a 12-hour shift on a 24-hour vessel is attributed correctly.
+  // An open shift is a sea_time_entry with status 'active' and end_time null;
+  // clock-out finalises it. Reuses existing columns, so no migration is needed.
+  // -------------------------------------------------------------------------
+
+  const shiftResponse = (e: any) => ({
+    id: e.id,
+    vessel_id: e.vessel_id,
+    start_time: e.start_time instanceof Date ? e.start_time.toISOString() : e.start_time,
+    end_time: e.end_time ? (e.end_time instanceof Date ? e.end_time.toISOString() : e.end_time) : null,
+    status: e.status,
+    start_latitude: e.start_latitude,
+    start_longitude: e.start_longitude,
+  });
+
+  // Current open shift for the user, or null.
+  fastify.get('/api/sea-time/shift/active', async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+    const [active] = await app.db
+      .select()
+      .from(schema.sea_time_entries)
+      .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
+      .limit(1);
+    return reply.code(200).send({ shift: active ? shiftResponse(active) : null });
+  });
+
+  // Clock in: start a shift. Idempotent — returns the existing open shift if one exists.
+  fastify.post<{ Body: { vessel_id?: string; latitude?: number | null; longitude?: number | null } }>(
+    '/api/sea-time/shift/start',
+    async (request, reply) => {
+      const userId = await extractUserIdFromRequest(request, app);
+      if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+      const { vessel_id, latitude, longitude } = request.body || {};
+      if (!vessel_id) return reply.code(400).send({ error: 'vessel_id is required' });
+
+      const [existing] = await app.db
+        .select()
+        .from(schema.sea_time_entries)
+        .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
+        .limit(1);
+      if (existing) return reply.code(200).send({ shift: shiftResponse(existing), alreadyActive: true });
+
+      const [created] = await app.db
+        .insert(schema.sea_time_entries)
+        .values({
+          user_id: userId,
+          vessel_id,
+          start_time: new Date(),
+          end_time: null,
+          status: 'active',
+          service_type: 'actual_sea_service',
+          start_latitude: latitude != null ? String(latitude) : null,
+          start_longitude: longitude != null ? String(longitude) : null,
+          notes: 'Manual shift — clocked in',
+        })
+        .returning();
+      app.logger.info({ userId, vessel_id, entryId: created.id }, 'Shift clock-in');
+      return reply.code(200).send({ shift: shiftResponse(created) });
+    },
+  );
+
+  // Clock out (disembark): finalise the open shift into a confirmed sea-time entry.
+  fastify.post<{ Body: { latitude?: number | null; longitude?: number | null } }>(
+    '/api/sea-time/shift/stop',
+    async (request, reply) => {
+      const userId = await extractUserIdFromRequest(request, app);
+      if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+      const { latitude, longitude } = request.body || {};
+
+      const [active] = await app.db
+        .select()
+        .from(schema.sea_time_entries)
+        .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
+        .limit(1);
+      if (!active) return reply.code(404).send({ error: 'No active shift to clock out of' });
+
+      const end = new Date();
+      const durationHours = Math.round(((end.getTime() - active.start_time.getTime()) / 3_600_000) * 100) / 100;
+      let distanceNm = 0;
+      if (active.start_latitude != null && active.start_longitude != null && latitude != null && longitude != null) {
+        distanceNm = calculateDistanceNauticalMiles(
+          parseFloat(String(active.start_latitude)),
+          parseFloat(String(active.start_longitude)),
+          Number(latitude),
+          Number(longitude),
+        );
+      }
+      const [updated] = await app.db
+        .update(schema.sea_time_entries)
+        .set({
+          end_time: end,
+          end_latitude: latitude != null ? String(latitude) : null,
+          end_longitude: longitude != null ? String(longitude) : null,
+          duration_hours: String(durationHours),
+          sea_days: durationHours > 0 ? 1 : 0,
+          mca_compliant: durationHours >= 4,
+          distance_nm: String(distanceNm),
+          status: 'confirmed',
+          notes: `Manual shift — ${durationHours}h on duty`,
+        })
+        .where(eq(schema.sea_time_entries.id, active.id))
+        .returning();
+      app.logger.info({ userId, entryId: active.id, durationHours }, 'Shift clock-out');
+      return reply.code(200).send({ shift: shiftResponse(updated), durationHours, sea_days: updated.sea_days });
+    },
+  );
 }
