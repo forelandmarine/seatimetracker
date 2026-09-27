@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { eq, desc, and, gte, isNotNull, lt, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, isNotNull, isNull, lt, inArray } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
@@ -296,10 +296,14 @@ async function fetchVesselAISDataFromDatalastic(
         return (data as any).flag || (data as any).country_iso;
       }
       if (field === 'status') {
-        return (data as any).status || (data as any).nav_status;
+        // Datalastic names it navigation_status; without this it was always dropped.
+        return (data as any).status || (data as any).nav_status || (data as any).navigation_status;
       }
       if (field === 'timestamp') {
-        return (data as any).timestamp || (data as any).last_position_time || (data as any).received || (data as any).position_updated;
+        return (data as any).timestamp || (data as any).last_position_time || (data as any).last_position_UTC || (data as any).last_position_epoch || (data as any).received || (data as any).position_updated;
+      }
+      if (field === 'eta') {
+        return (data as any).eta || (data as any).eta_UTC;
       }
 
       return undefined;
@@ -1342,7 +1346,11 @@ export function register(app: App, fastify: FastifyInstance) {
     let sea_time_entry_ended = false;
 
     // Handle sea time entry lifecycle
-    // Get any existing open sea time entries for this vessel
+    // Only an entry with no end_time is an open voyage. An entry that already has
+    // an end_time (closed here earlier, or written by the scheduler) must never be
+    // re-closed from this endpoint: doing so moved its end to "now" on every app
+    // refresh and stretched a 9-hour passage into an 11-day entry while the yacht
+    // lay in port.
     const open_entry = await app.db
       .select()
       .from(schema.sea_time_entries)
@@ -1351,15 +1359,36 @@ export function register(app: App, fastify: FastifyInstance) {
           eq(schema.sea_time_entries.vessel_id, vesselId),
           eq(schema.sea_time_entries.user_id, userId),
           isNotNull(schema.sea_time_entries.start_time),
+          isNull(schema.sea_time_entries.end_time),
           eq(schema.sea_time_entries.status, 'pending')
         )
       )
       .orderBy(desc(schema.sea_time_entries.created_at))
       .limit(1);
 
+    // A pending entry the scheduler is still growing (end_time within the last
+    // few hours) already covers this passage; opening another would overlap it.
+    const ACTIVE_PASSAGE_WINDOW_MS = 3 * 60 * 60 * 1000;
+    const activePassage = open_entry.length === 0 && ais_data.is_moving
+      ? await app.db
+          .select({ id: schema.sea_time_entries.id })
+          .from(schema.sea_time_entries)
+          .where(
+            and(
+              eq(schema.sea_time_entries.vessel_id, vesselId),
+              eq(schema.sea_time_entries.user_id, userId),
+              eq(schema.sea_time_entries.status, 'pending'),
+              gte(schema.sea_time_entries.end_time, new Date(check_time.getTime() - ACTIVE_PASSAGE_WINDOW_MS))
+            )
+          )
+          .limit(1)
+      : [];
+
     if (ais_data.is_moving) {
       // Vessel is moving
-      if (open_entry.length === 0) {
+      if (activePassage.length > 0) {
+        app.logger.info(`Vessel is moving and passage entry ${activePassage[0].id} is already being tracked`);
+      } else if (open_entry.length === 0) {
         // Create a new pending sea time entry with voyage port data if available
         const friendlyDest = lookupPort(ais_data.destination) ?? ais_data.destination ?? null;
         const [new_entry] = await app.db
@@ -1379,7 +1408,9 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.info(`Created new sea time entry: ${new_entry.id} for vessel ${vesselId}`);
 
         // Guard against race condition: if a concurrent request also inserted,
-        // keep only the earliest entry and delete the rest.
+        // keep only the earliest entry and delete the rest. Only open entries
+        // are candidates: closed pending entries are earlier passages still
+        // awaiting the user's review and must never be deleted here.
         const allPending = await app.db
           .select()
           .from(schema.sea_time_entries)
@@ -1388,7 +1419,8 @@ export function register(app: App, fastify: FastifyInstance) {
               eq(schema.sea_time_entries.vessel_id, vesselId),
               eq(schema.sea_time_entries.user_id, userId),
               eq(schema.sea_time_entries.status, 'pending'),
-              isNotNull(schema.sea_time_entries.start_time)
+              isNotNull(schema.sea_time_entries.start_time),
+              isNull(schema.sea_time_entries.end_time)
             )
           )
           .orderBy(schema.sea_time_entries.created_at);
@@ -1411,23 +1443,40 @@ export function register(app: App, fastify: FastifyInstance) {
     } else {
       // Vessel is not moving
       if (open_entry.length > 0) {
-        // End the sea time entry and calculate duration
+        // End the passage when the vessel actually stopped: the first stationary
+        // fix after the last underway fix since the entry opened. The user may
+        // only open the app days after arriving, so "now" is not the end time.
         const start_time = open_entry[0].start_time;
-        const duration_ms = check_time.getTime() - start_time.getTime();
+        const checksSinceStart = await app.db
+          .select()
+          .from(schema.ais_checks)
+          .where(
+            and(
+              eq(schema.ais_checks.vessel_id, vesselId),
+              gte(schema.ais_checks.check_time, start_time)
+            )
+          )
+          .orderBy(schema.ais_checks.check_time);
+        let lastMovingIdx = -1;
+        checksSinceStart.forEach((c, i) => { if (c.is_moving) lastMovingIdx = i; });
+        const stopCheck = checksSinceStart[lastMovingIdx + 1] ?? null;
+        const end_time = stopCheck ? stopCheck.check_time : check_time;
+
+        const duration_ms = end_time.getTime() - start_time.getTime();
         const duration_hours = Math.round((duration_ms / (1000 * 60 * 60)) * 100) / 100;
 
         // Calculate distance from start to end position
         const startLat = open_entry[0].start_latitude != null ? parseFloat(String(open_entry[0].start_latitude)) : null;
         const startLon = open_entry[0].start_longitude != null ? parseFloat(String(open_entry[0].start_longitude)) : null;
-        const endLat = ais_data.latitude;
-        const endLon = ais_data.longitude;
+        const endLat = stopCheck?.latitude != null ? parseFloat(String(stopCheck.latitude)) : ais_data.latitude;
+        const endLon = stopCheck?.longitude != null ? parseFloat(String(stopCheck.longitude)) : ais_data.longitude;
         let distance_nm: string | null = null;
         if (startLat !== null && startLon !== null && endLat !== null && endLon !== null) {
           const d = calculateDistanceNauticalMiles(startLat, startLon, endLat, endLon);
           distance_nm = String(Math.round(d * 100) / 100);
         }
 
-        const sea_days = calculateSeaDays(start_time, check_time);
+        const sea_days = calculateSeaDays(start_time, end_time);
         const mca_compliant = duration_hours >= 4;
 
         // Resolve port names for the voyage
@@ -1436,7 +1485,7 @@ export function register(app: App, fastify: FastifyInstance) {
         const [ended_entry] = await app.db
           .update(schema.sea_time_entries)
           .set({
-            end_time: check_time,
+            end_time,
             duration_hours: String(duration_hours),
             end_latitude: endLat !== null ? String(endLat) : null,
             end_longitude: endLon !== null ? String(endLon) : null,
