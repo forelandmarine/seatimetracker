@@ -20,7 +20,7 @@ import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import Purchases from 'react-native-purchases';
+import Purchases, { INTRO_ELIGIBILITY_STATUS, type PurchasesPackage } from 'react-native-purchases';
 import Constants from 'expo-constants';
 
 import { log, warn, error as logError } from '@/utils/log';
@@ -83,6 +83,34 @@ export default function PaywallScreen() {
     }
   }, [availablePackages]);
   const [offeringsLoading, setOfferingsLoading] = useState(false);
+
+  // Apple gives each Apple ID one introductory offer per subscription group,
+  // but StoreKit reports the offer on the product whether or not this user can
+  // have it. Without this check a returning subscriber is told "Start Free
+  // Trial" and then charged. Play only returns offers the user is eligible
+  // for, so Android keeps using the product's intro price as-is.
+  const [iosTrialEligible, setIosTrialEligible] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || availablePackages.length === 0) return;
+    const ids = availablePackages.map((p) => p.product.identifier);
+    Purchases.checkTrialOrIntroductoryPriceEligibility(ids)
+      .then((result) => {
+        const eligible: Record<string, boolean> = {};
+        for (const id of ids) {
+          // Unknown is treated as not eligible, per RevenueCat's guidance.
+          eligible[id] = result[id]?.status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+        }
+        log('[Paywall] Intro offer eligibility:', eligible);
+        setIosTrialEligible(eligible);
+      })
+      .catch((err) => warn('[Paywall] Intro eligibility check failed, showing standard pricing:', err));
+  }, [availablePackages]);
+
+  const introOfferFor = (pkg: PurchasesPackage | undefined) => {
+    if (!pkg?.product.introPrice) return null;
+    if (Platform.OS === 'ios' && !iosTrialEligible[pkg.product.identifier]) return null;
+    return pkg.product.introPrice;
+  };
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const waitingForRedeemRef = useRef(false);
 
@@ -416,9 +444,9 @@ export default function PaywallScreen() {
                 <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
                   per year
                 </Text>
-                {annualPackage.product.introPrice ? (
+                {introOfferFor(annualPackage) ? (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
-                    {formatIntroOffer(annualPackage.product.introPrice)}
+                    {formatIntroOffer(introOfferFor(annualPackage)!)}
                   </Text>
                 ) : (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
@@ -460,9 +488,9 @@ export default function PaywallScreen() {
                 <Text style={[styles.planPeriod, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
                   per month
                 </Text>
-                {monthlyPackage.product.introPrice && (
+                {introOfferFor(monthlyPackage) && (
                   <Text style={[styles.planSavings, { color: colors.success }]}>
-                    {formatIntroOffer(monthlyPackage.product.introPrice)}
+                    {formatIntroOffer(introOfferFor(monthlyPackage)!)}
                   </Text>
                 )}
                 {selectedPlan === 'monthly' && (
@@ -587,7 +615,8 @@ export default function PaywallScreen() {
                     ? 'Subscription Unavailable'
                     : (() => {
                         const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
-                        const hasFreeTrial = pkg?.product.introPrice && (pkg.product.introPrice.priceString === '$0.00' || pkg.product.introPrice.price === 0);
+                        const intro = introOfferFor(pkg);
+                        const hasFreeTrial = intro && (intro.priceString === '$0.00' || intro.price === 0);
                         return hasFreeTrial ? 'Start Free Trial' : 'Subscribe Now';
                       })()}
                 </Text>
