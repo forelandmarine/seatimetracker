@@ -19,7 +19,11 @@
     },
     "production": {
       "ios": {},
-      "android": {},
+      "android": {
+        "buildArtifactPaths": [
+          "android/app/build/outputs/mapping/release/mapping.txt"
+        ]
+      },
       "channel": "production",
       "env": {
         "APP_VARIANT": "production"

@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "19",
+      "buildNumber": "20",
       "bundleIdentifier": "com.forelandmarine.seatimetracker",
       "appleTeamId": "43GZCFFPR9",
       "usesAppleSignIn": true,
@@ -23,7 +23,6 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "SeaTime Tracker uses your camera to capture a profile photo for your seafarer account.",
         "NSPhotoLibraryUsageDescription": "SeaTime Tracker accesses your photo library so you can select a profile photo for your seafarer account.",
-        "NSLocationWhenInUseUsageDescription": "SeaTime Tracker uses your location to record vessel positions for manual GPS tracking and to calculate sea time in compliance with MCA regulations.",
         "NSFaceIDUsageDescription": "SeaTime Tracker uses Face ID for quick, secure sign-in to your account."
       }
     },
@@ -33,7 +32,7 @@
         "monochromeImage": "./assets/images/adaptive-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 19,
+      "versionCode": 20,
       "package": "com.forelandmarine.seatimetracker",
       "permissions": [
         "android.permission.CAMERA",
@@ -61,7 +60,34 @@
           "color": "#ffffff"
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SeaTime Tracker uses your location while the app is open to check whether you are aboard your vessel, so it can remind you to clock in and out of a shift, and to record your position when you log sea time manually.",
+          "locationAlwaysAndWhenInUsePermission": "SeaTime Tracker only uses your location while the app is open. It does not track your location in the background. Your sea time is calculated from your vessel's AIS position, not from your phone.",
+          "locationAlwaysPermission": "SeaTime Tracker only uses your location while the app is open. It does not track your location in the background. Your sea time is calculated from your vessel's AIS position, not from your phone.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SeaTime Tracker accesses your photo library so you can select a profile photo for your seafarer account.",
+          "cameraPermission": "SeaTime Tracker uses your camera to capture a profile photo for your seafarer account.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
