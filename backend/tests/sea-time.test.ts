@@ -570,3 +570,58 @@ describe("mnzCreditableDays", () => {
     expect(r.watchkeeping).toBe(6);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Declared day entries: confirmed manual entries with a start date, no end
+// time and sea_days set, which the logbook already counts as sea days.
+// ---------------------------------------------------------------------------
+describe("declared day entries", () => {
+  const declared = (date: string, extra: Record<string, unknown> = {}) => ({
+    start_time: `${date}T07:30:00Z`,
+    end_time: null,
+    sea_days: 1,
+    status: "confirmed",
+    service_type: "actual_sea_service",
+    ...extra,
+  });
+
+  test("count as one MCA sea day each", () => {
+    const entries = [declared("2026-09-14"), declared("2026-09-15"), declared("2026-09-16")];
+    expect(countDistinctSeaDays(entries)).toBe(3);
+    expect(qualifyingSeaDays(entries).actual).toBe(3);
+  });
+
+  test("a late start time still credits only its own date", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { start_time: "2026-09-14T22:30:00Z" })])).toBe(1);
+  });
+
+  test("sea_days > 1 credits consecutive dates", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: 3 })])).toBe(3);
+  });
+
+  test("do not double count a date already covered by a timed entry", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14"), day("2026-09-14")])).toBe(1);
+  });
+
+  test("keep their service type", () => {
+    const r = qualifyingSeaDays([declared("2026-09-14", { service_type: "standby_service" })]);
+    expect(r.standby).toBe(1);
+    expect(r.actual).toBe(0);
+  });
+
+  test("credit a standard day under USCG, AMSA and MNZ", () => {
+    const entries = [declared("2026-09-14"), declared("2026-09-15")];
+    expect(uscgCreditableDays(entries).creditable).toBe(2);
+    expect(amsaCreditableDays(entries).underway).toBe(2);
+    const mnz = mnzCreditableDays(entries, new Date("2026-10-08T00:00:00Z"));
+    expect(mnz.actual).toBe(2);
+    expect(mnz.hours).toBe(16);
+  });
+
+  test("open shifts, pending entries and entries without sea_days still count nothing", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { status: "active" })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { status: "pending" })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: null })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: 0 })])).toBe(0);
+  });
+});

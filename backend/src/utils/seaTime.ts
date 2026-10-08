@@ -45,21 +45,60 @@ export function calendarDaysCovered(startTime: Date, endTime: Date): string[] {
 }
 
 /**
+ * A logged day rather than a timed period: a confirmed entry with a start date,
+ * no end time and a sea_days count. The manual-entry form makes the end time
+ * optional and the API stores sea_days = 1 when it is left out, so these are
+ * the user recording "I was at sea on this date", which is how the logbook
+ * already shows them. Without this they read as zero hours and every counter
+ * dropped them.
+ *
+ * Each declared day is credited as one standard 8-hour working day on its own
+ * UTC calendar date, so it makes a day under the MCA 4-hour, USCG 8-hour and
+ * AMSA 8-hour rules alike, and adds 8 hours to the MNZ hour count. Open shifts
+ * (status 'active') and pending detections are timed periods still running,
+ * not declared days, so they are excluded.
+ */
+export const DECLARED_DAY_HOURS = 8;
+
+interface PeriodEntry {
+  start_time: Date | string;
+  end_time: Date | string | null;
+  sea_days?: number | null;
+  status?: string | null;
+}
+
+export function isDeclaredDayEntry(e: PeriodEntry): boolean {
+  return e.end_time == null
+    && typeof e.sea_days === 'number' && e.sea_days >= 1
+    && e.status !== 'active' && e.status !== 'pending';
+}
+
+/** Start, end, hours and calendar dates an entry covers, for the counters below. */
+export function entryPeriod(e: PeriodEntry): { start: Date; end: Date; hours: number; dates: string[] } {
+  const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
+  if (isDeclaredDayEntry(e)) {
+    const n = Math.floor(e.sea_days as number);
+    const first = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+    const last = new Date(first.getTime() + (n - 1) * 86400000);
+    return { start, end: last, hours: n * DECLARED_DAY_HOURS, dates: calendarDaysCovered(first, last) };
+  }
+  const end = e.end_time == null
+    ? start
+    : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
+  return { start, end, hours: calculateDurationHours(start, end), dates: calendarDaysCovered(start, end) };
+}
+
+/**
  * Distinct sea days across many entries, deduplicating overlapping calendar
  * days so the same date is never counted twice. Each entry only counts if it
  * meets the 4-hour threshold. Pass entries that already qualify (e.g. confirmed).
  */
-export function countDistinctSeaDays(
-  entries: Array<{ start_time: Date | string; end_time: Date | string | null }>
-): number {
+export function countDistinctSeaDays(entries: PeriodEntry[]): number {
   const days = new Set<string>();
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    if (calculateDurationHours(start, end) < 4) continue;
-    for (const d of calendarDaysCovered(start, end)) days.add(d);
+    const { hours, dates } = entryPeriod(e);
+    if (hours < 4) continue;
+    for (const d of dates) days.add(d);
   }
   return days.size;
 }
@@ -93,13 +132,10 @@ export interface SeaServiceBreakdown {
 }
 
 /** Distinct qualifying calendar days for one entry ([] if under the 4-hour threshold). */
-function entryCalendarDays(e: { start_time: Date | string; end_time: Date | string | null }): string[] {
-  const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-  const end = e.end_time == null
-    ? start
-    : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-  if (calculateDurationHours(start, end) < 4) return [];
-  return calendarDaysCovered(start, end);
+function entryCalendarDays(e: PeriodEntry): string[] {
+  const { hours, dates } = entryPeriod(e);
+  if (hours < 4) return [];
+  return dates;
 }
 
 /**
@@ -119,7 +155,7 @@ function entryCalendarDays(e: { start_time: Date | string; end_time: Date | stri
  * specific certificate.
  */
 export function qualifyingSeaDays(
-  entries: Array<{ start_time: Date | string; end_time: Date | string | null; service_type?: string | null }>
+  entries: Array<PeriodEntry & { service_type?: string | null }>
 ): SeaServiceBreakdown {
   const actualDays = new Set<string>();
   const standbyDays = new Set<string>();
@@ -224,9 +260,7 @@ export interface USCGServiceBreakdown {
   port: number;
 }
 
-interface USCGEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
+interface USCGEntry extends PeriodEntry {
   service_type?: string | null;
   vessel?: {
     vessel_name?: string | null;
@@ -253,12 +287,7 @@ export function creditableTonnage(entry: USCGEntry): number | null {
  * straddle midnight cannot yield more days than its hours support. A six-hour
  * watch from 2100 to 0300 touches two dates but is one day's work at most.
  */
-function creditableDates(entry: USCGEntry, hours: number): string[] {
-  const start = entry.start_time instanceof Date ? entry.start_time : new Date(entry.start_time);
-  const end = entry.end_time == null
-    ? start
-    : (entry.end_time instanceof Date ? entry.end_time : new Date(entry.end_time));
-  const dates = calendarDaysCovered(start, end);
+function creditableDates(dates: string[], hours: number): string[] {
   const cap = Math.max(1, Math.ceil(hours / USCG_STANDARD_HOURS_PER_DAY));
   return dates.slice(0, cap);
 }
@@ -280,12 +309,9 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
 
   for (const e of entries) {
     const type = e.service_type || 'actual_sea_service';
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    const hours = calculateDurationHours(start, end);
-    const dates = creditableDates(e, hours);
+    const period = entryPeriod(e);
+    const hours = period.hours;
+    const dates = creditableDates(period.dates, hours);
 
     if (type === 'standby_service') {
       for (const d of dates) standbyDays.add(d);
@@ -388,9 +414,7 @@ export interface AMSAServiceBreakdown {
   engineering_watch: number;
 }
 
-interface AMSAEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
+interface AMSAEntry extends PeriodEntry {
   service_type?: string | null;
   is_stationary?: boolean | null;
   bridge_watch_hours?: string | number | null;
@@ -421,11 +445,7 @@ export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
   let engineHours = 0;
 
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    const hours = calculateDurationHours(start, end);
+    const { hours, dates } = entryPeriod(e);
     if (hours <= 0) continue;
 
     bridgeHours += toHours(e.bridge_watch_hours);
@@ -434,7 +454,6 @@ export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
     // Spread the period's hours evenly across the dates it touches, then let
     // the per-date ceiling below do the capping. An entry that runs for days
     // cannot credit more than one day per date whichever way it is split.
-    const dates = calendarDaysCovered(start, end);
     if (dates.length === 0) continue;
     const perDate = hours / dates.length;
     const bucket = isNotUnderway(e) ? notUnderwayHours : underwayHours;
@@ -505,9 +524,7 @@ export interface MNZServiceBreakdown {
   outside_window: number;
 }
 
-interface MNZEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
+interface MNZEntry extends PeriodEntry {
   service_type?: string | null;
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
@@ -527,19 +544,15 @@ export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): 
   let totalHours = 0;
 
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    if (calculateDurationHours(start, end) < 4) continue;
+    const { end, hours, dates } = entryPeriod(e);
+    if (hours < 4) continue;
 
-    const dates = calendarDaysCovered(start, end);
     if (end.getTime() < windowStart.getTime()) {
       for (const d of dates) outsideDays.add(d);
       continue;
     }
 
-    totalHours += calculateDurationHours(start, end);
+    totalHours += hours;
     watchHours +=
       toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
 
