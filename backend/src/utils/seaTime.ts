@@ -10,23 +10,47 @@ export function calculateDurationHours(startTime: Date, endTime: Date): number {
   return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
 }
 
+const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+
 /**
- * Number of qualifying sea days for a single service period.
- *
- * The MCA counts one sea day for each calendar day on which qualifying service
- * is performed, and never more than one per calendar day. A continuous voyage
- * therefore earns one day for every distinct calendar date it spans, not a
- * single day for the whole passage. Returns 0 if the whole period is under the
- * 4-hour threshold.
+ * MSN 1858: "A minimum of 4 hours of working duty in 24 hours would count as 1
+ * full day." The app reckons the 24 hours as the UTC calendar date, so a date
+ * is a sea day when at least 4 hours of service fall on it. A passage that
+ * crosses midnight only earns the second date if 4 hours fall after midnight.
+ */
+export const MCA_MINIMUM_HOURS_PER_DAY = 4;
+
+/** Hours an interval spends on each UTC calendar date (YYYY-MM-DD). */
+export function hoursByDate(startTime: Date, endTime: Date): Map<string, number> {
+  const out = new Map<string, number>();
+  let t = startTime.getTime();
+  const end = endTime.getTime();
+  while (t < end) {
+    const dayStart = Math.floor(t / DAY_MS) * DAY_MS;
+    const next = Math.min(dayStart + DAY_MS, end);
+    const key = getCalendarDay(new Date(dayStart));
+    out.set(key, (out.get(key) ?? 0) + (next - t) / HOUR_MS);
+    t = next;
+  }
+  return out;
+}
+
+/**
+ * Number of MCA sea days for a single service period: the UTC calendar dates
+ * on which at least 4 hours of the period fall. A continuous voyage earns one
+ * day for every such date, never more than one per date.
  *
  * Note: to avoid double-counting when two entries overlap, a running total
  * across multiple entries should be computed with countDistinctSeaDays rather
  * than by summing this per-entry value.
  */
 export function calculateSeaDays(startTime: Date, endTime: Date): number {
-  const durationHours = calculateDurationHours(startTime, endTime);
-  if (durationHours < 4) return 0;
-  return calendarDaysCovered(startTime, endTime).length;
+  let days = 0;
+  for (const h of hoursByDate(startTime, endTime).values()) {
+    if (meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY)) days++;
+  }
+  return days;
 }
 
 /** UTC calendar dates (YYYY-MM-DD) a period touches, inclusive of both ends. */
@@ -44,24 +68,155 @@ export function calendarDaysCovered(startTime: Date, endTime: Date): string[] {
   return days;
 }
 
+/** Threshold comparison that tolerates millisecond rounding in stored times. */
+function meetsHours(hours: number, threshold: number): boolean {
+  return hours >= threshold - 1e-6;
+}
+
 /**
- * Distinct sea days across many entries, deduplicating overlapping calendar
- * days so the same date is never counted twice. Each entry only counts if it
- * meets the 4-hour threshold. Pass entries that already qualify (e.g. confirmed).
+ * A logged day rather than a timed period: a confirmed entry with a start date,
+ * no end time and a sea_days count. The manual-entry form makes the end time
+ * optional and the API stores sea_days = 1 when it is left out, so these are
+ * the user recording "I was at sea on this date", which is how the logbook
+ * already shows them. Without this they read as zero hours and every counter
+ * dropped them.
+ *
+ * Each declared day is credited as one standard 8-hour working day on its own
+ * UTC calendar date, so it makes a day under the MCA 4-hour, USCG 8-hour and
+ * AMSA 8-hour rules alike, and adds 8 hours to the MNZ hour count. Open shifts
+ * (status 'active') and pending detections are timed periods still running,
+ * not declared days, so they are excluded.
  */
-export function countDistinctSeaDays(
-  entries: Array<{ start_time: Date | string; end_time: Date | string | null }>
-): number {
-  const days = new Set<string>();
+export const DECLARED_DAY_HOURS = 8;
+
+interface PeriodEntry {
+  start_time: Date | string;
+  end_time: Date | string | null;
+  sea_days?: number | null;
+  status?: string | null;
+  service_type?: string | null;
+}
+
+export function isDeclaredDayEntry(e: PeriodEntry): boolean {
+  return e.end_time == null
+    && typeof e.sea_days === 'number' && e.sea_days >= 1
+    && e.status !== 'active' && e.status !== 'pending';
+}
+
+const toDate = (v: Date | string): Date => (v instanceof Date ? v : new Date(v));
+
+/** Dates a declared-day entry covers: sea_days consecutive UTC dates from its start date. */
+function declaredDates(e: PeriodEntry): string[] {
+  const start = toDate(e.start_time);
+  const first = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const last = new Date(first.getTime() + (Math.floor(e.sea_days as number) - 1) * DAY_MS);
+  return calendarDaysCovered(first, last);
+}
+
+/** A continuous stretch of service after overlapping entries are merged. */
+interface Span<T> { start: number; end: number; entries: T[] }
+
+/**
+ * Merge overlapping timed entries so the same hours are never counted twice
+ * (AIS detections and manual entries often overlap). Declared-day entries are
+ * returned separately because they have dates but no times.
+ */
+function mergeEntries<T extends PeriodEntry>(entries: T[]): { spans: Span<T>[]; declared: T[] } {
+  const declared: T[] = [];
+  const timed: Array<{ start: number; end: number; e: T }> = [];
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    if (calculateDurationHours(start, end) < 4) continue;
-    for (const d of calendarDaysCovered(start, end)) days.add(d);
+    if (isDeclaredDayEntry(e)) { declared.push(e); continue; }
+    if (e.end_time == null) continue;
+    const start = toDate(e.start_time).getTime();
+    const end = toDate(e.end_time).getTime();
+    if (!(end > start)) continue;
+    timed.push({ start, end, e });
   }
-  return days.size;
+  timed.sort((a, b) => a.start - b.start);
+  const spans: Span<T>[] = [];
+  for (const t of timed) {
+    const last = spans[spans.length - 1];
+    if (last && t.start <= last.end) {
+      last.end = Math.max(last.end, t.end);
+      last.entries.push(t.e);
+    } else {
+      spans.push({ start: t.start, end: t.end, entries: [t.e] });
+    }
+  }
+  return { spans, declared };
+}
+
+/** Union hours of service per UTC calendar date. Declared days count as 8 hours. */
+function unionHoursByDate(entries: PeriodEntry[]): Map<string, number> {
+  const { spans, declared } = mergeEntries(entries);
+  const out = new Map<string, number>();
+  for (const s of spans) {
+    for (const [d, h] of hoursByDate(new Date(s.start), new Date(s.end))) {
+      out.set(d, (out.get(d) ?? 0) + h);
+    }
+  }
+  for (const e of declared) {
+    for (const d of declaredDates(e)) out.set(d, Math.max(out.get(d) ?? 0, DECLARED_DAY_HOURS));
+  }
+  return out;
+}
+
+type Bucket = 'actual' | 'standby' | 'yard' | 'port';
+
+/** actual_sea_service, watchkeeping_service and any unknown type are actual sea service. */
+function bucketOf(e: { service_type?: string | null }): Bucket {
+  const type = e.service_type || 'actual_sea_service';
+  return type === 'standby_service' ? 'standby'
+    : type === 'yard_service' ? 'yard'
+    : type === 'service_in_port' ? 'port'
+    : 'actual';
+}
+
+/**
+ * MCA-style day classification shared by the MCA and MNZ counters. A date
+ * qualifies when the combined (merged) sea-service hours on it reach 4: actual,
+ * stand-by and yard are all working duty. It is credited once, at the best
+ * service type worked that day (actual > stand-by > yard). Service in port is
+ * not sea service, so it never helps a date qualify and is reported apart.
+ */
+function classifyCalendarDays(entries: PeriodEntry[]): {
+  actual: Set<string>; standby: Set<string>; yard: Set<string>; port: Set<string>; hours: Map<string, number>;
+} {
+  const byBucket: Record<Bucket, PeriodEntry[]> = { actual: [], standby: [], yard: [], port: [] };
+  for (const e of entries) byBucket[bucketOf(e)].push(e);
+  const present = {
+    actual: unionHoursByDate(byBucket.actual),
+    standby: unionHoursByDate(byBucket.standby),
+    yard: unionHoursByDate(byBucket.yard),
+  };
+  const seaHours = unionHoursByDate([...byBucket.actual, ...byBucket.standby, ...byBucket.yard]);
+  const portHours = unionHoursByDate(byBucket.port);
+
+  const actual = new Set<string>(), standby = new Set<string>(), yard = new Set<string>(), port = new Set<string>();
+  for (const [d, h] of seaHours) {
+    if (!meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY)) continue;
+    if ((present.actual.get(d) ?? 0) > 0) actual.add(d);
+    else if ((present.standby.get(d) ?? 0) > 0) standby.add(d);
+    else yard.add(d);
+  }
+  for (const [d, h] of portHours) {
+    if (meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY) && !actual.has(d) && !standby.has(d) && !yard.has(d)) port.add(d);
+  }
+  const hours = unionHoursByDate(entries);
+  return { actual, standby, yard, port, hours };
+}
+
+/**
+ * Distinct days across many entries of any service type: the UTC dates with at
+ * least 4 merged hours of logged time. Overlapping entries are merged first so
+ * the same hours and the same date are never counted twice.
+ */
+export function countDistinctSeaDays(entries: PeriodEntry[]): number {
+  let days = 0;
+  for (const h of unionHoursByDate(entries).values()) {
+    if (meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY)) days++;
+  }
+  return days;
 }
 
 /**
@@ -92,16 +247,6 @@ export interface SeaServiceBreakdown {
   qualifying_total: number;
 }
 
-/** Distinct qualifying calendar days for one entry ([] if under the 4-hour threshold). */
-function entryCalendarDays(e: { start_time: Date | string; end_time: Date | string | null }): string[] {
-  const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-  const end = e.end_time == null
-    ? start
-    : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-  if (calculateDurationHours(start, end) < 4) return [];
-  return calendarDaysCovered(start, end);
-}
-
 /**
  * Qualifying sea service across many confirmed entries. Applies the two
  * crediting rules that belong in a universal total: yard service is capped at
@@ -118,39 +263,52 @@ function entryCalendarDays(e: { start_time: Date | string; end_time: Date | stri
  * it reports the credited sea service, which an assessor then maps to a
  * specific certificate.
  */
-export function qualifyingSeaDays(
-  entries: Array<{ start_time: Date | string; end_time: Date | string | null; service_type?: string | null }>
-): SeaServiceBreakdown {
-  const actualDays = new Set<string>();
-  const standbyDays = new Set<string>();
-  const yardDays = new Set<string>();
-  const portDays = new Set<string>();
-
-  for (const e of entries) {
-    const type = e.service_type || 'actual_sea_service';
-    const bucket =
-      type === 'standby_service' ? standbyDays :
-      type === 'yard_service' ? yardDays :
-      type === 'service_in_port' ? portDays :
-      actualDays; // actual_sea_service, watchkeeping_service, and any unknown default to actual
-    for (const d of entryCalendarDays(e)) bucket.add(d);
-  }
-
-  // Deduplicate by priority: a day already credited as actual can't also be
-  // stand-by/yard/port, etc.
-  for (const d of actualDays) { standbyDays.delete(d); yardDays.delete(d); portDays.delete(d); }
-  for (const d of standbyDays) { yardDays.delete(d); portDays.delete(d); }
-  for (const d of yardDays) { portDays.delete(d); }
-
-  const actual = actualDays.size;
-  const standby = standbyDays.size;
-  const yard = yardDays.size;
-  const port = portDays.size;
+export function qualifyingSeaDays(entries: PeriodEntry[]): SeaServiceBreakdown {
+  const c = classifyCalendarDays(entries);
+  const actual = c.actual.size;
+  const standby = c.standby.size;
+  const yard = c.yard.size;
+  const port = c.port.size;
 
   const yard_credited = Math.min(yard, YARD_SERVICE_CAP_DAYS);
   const qualifying_total = actual + standby + yard_credited; // port excluded, stand-by in full
 
   return { actual, standby, yard, port, yard_credited, qualifying_total };
+}
+
+/**
+ * 24-hour periods for the 8-hour-day authorities (USCG, AMSA). Neither ties
+ * its day to midnight: 46 CFR 10.107 and MO 505 both speak of hours within a
+ * 24-hour period. Each merged stretch of service is cut into consecutive
+ * 24-hour windows from its own start, so a 2000-0400 watch is one period of 8
+ * hours rather than two 4-hour halves either side of midnight. Each window is
+ * filed under the UTC date it starts on, and windows from separate stretches
+ * that start on the same date are added together. A declared day is one
+ * 8-hour period on its date.
+ */
+function twentyFourHourPeriods<T extends PeriodEntry>(entries: T[]): Map<string, { hours: number; entries: T[] }> {
+  const { spans, declared } = mergeEntries(entries);
+  const out = new Map<string, { hours: number; entries: T[] }>();
+  const add = (d: string, h: number, es: T[]) => {
+    const cur = out.get(d) ?? { hours: 0, entries: [] };
+    cur.hours += h;
+    for (const e of es) if (!cur.entries.includes(e)) cur.entries.push(e);
+    out.set(d, cur);
+  };
+  for (const s of spans) {
+    for (let w = s.start; w < s.end; w += DAY_MS) {
+      const h = (Math.min(w + DAY_MS, s.end) - w) / HOUR_MS;
+      add(getCalendarDay(new Date(w)), h, s.entries);
+    }
+  }
+  for (const e of declared) {
+    for (const d of declaredDates(e)) {
+      const cur = out.get(d);
+      if (cur) { cur.hours = Math.max(cur.hours, DECLARED_DAY_HOURS); if (!cur.entries.includes(e)) cur.entries.push(e); }
+      else out.set(d, { hours: DECLARED_DAY_HOURS, entries: [e] });
+    }
+  }
+  return out;
 }
 
 /**
@@ -224,10 +382,7 @@ export interface USCGServiceBreakdown {
   port: number;
 }
 
-interface USCGEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
-  service_type?: string | null;
+interface USCGEntry extends PeriodEntry {
   vessel?: {
     vessel_name?: string | null;
     gross_tonnes?: string | number | null;
@@ -249,23 +404,9 @@ export function creditableTonnage(entry: USCGEntry): number | null {
 }
 
 /**
- * Calendar dates an entry can credit, capped so a short period that happens to
- * straddle midnight cannot yield more days than its hours support. A six-hour
- * watch from 2100 to 0300 touches two dates but is one day's work at most.
- */
-function creditableDates(entry: USCGEntry, hours: number): string[] {
-  const start = entry.start_time instanceof Date ? entry.start_time : new Date(entry.start_time);
-  const end = entry.end_time == null
-    ? start
-    : (entry.end_time instanceof Date ? entry.end_time : new Date(entry.end_time));
-  const dates = calendarDaysCovered(start, end);
-  const cap = Math.max(1, Math.ceil(hours / USCG_STANDARD_HOURS_PER_DAY));
-  return dates.slice(0, cap);
-}
-
-/**
- * USCG creditable sea service across many confirmed entries, deduplicated by
- * calendar date so one date is never counted twice.
+ * USCG creditable sea service across many confirmed entries. Hours are taken
+ * per 24-hour period (see twentyFourHourPeriods) after overlapping entries are
+ * merged, so one period is never credited twice and never as more than a day.
  */
 export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   const full = new Set<string>();
@@ -278,49 +419,37 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   const yardDays = new Set<string>();
   const portDays = new Set<string>();
 
-  for (const e of entries) {
-    const type = e.service_type || 'actual_sea_service';
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    const hours = calculateDurationHours(start, end);
-    const dates = creditableDates(e, hours);
+  const byBucket: Record<Bucket, USCGEntry[]> = { actual: [], standby: [], yard: [], port: [] };
+  for (const e of entries) byBucket[bucketOf(e)].push(e);
 
-    if (type === 'standby_service') {
-      for (const d of dates) standbyDays.add(d);
-      continue;
+  // Stand-by, yard and port are reported but not credited as sea service.
+  const notSea: Array<[USCGEntry[], Set<string>]> = [
+    [byBucket.standby, standbyDays], [byBucket.yard, yardDays], [byBucket.port, portDays],
+  ];
+  for (const [list, set] of notSea) {
+    for (const [d, p] of twentyFourHourPeriods(list)) {
+      if (meetsHours(p.hours, USCG_MINIMUM_HOURS_PER_DAY)) set.add(d);
     }
-    if (type === 'yard_service') {
-      for (const d of dates) yardDays.add(d);
-      continue;
-    }
-    if (type === 'service_in_port') {
-      for (const d of dates) portDays.add(d);
-      continue;
-    }
+  }
 
-    // actual_sea_service, watchkeeping_service and unknown types are sea service
-    if (hours < USCG_MINIMUM_HOURS_PER_DAY) {
-      for (const d of dates) belowMinimum.add(d);
-      continue;
-    }
-    if (hours >= USCG_STANDARD_HOURS_PER_DAY) {
-      for (const d of dates) full.add(d);
-      continue;
-    }
+  for (const [d, p] of twentyFourHourPeriods(byBucket.actual)) {
+    if (p.hours <= 0) continue;
+    if (!meetsHours(p.hours, USCG_MINIMUM_HOURS_PER_DAY)) { belowMinimum.add(d); continue; }
+    if (meetsHours(p.hours, USCG_STANDARD_HOURS_PER_DAY)) { full.add(d); continue; }
 
-    // Between 4 and 8 hours the tonnage decides the outcome, so an unrecorded
-    // tonnage is a question for the user rather than something to guess at.
-    const tonnage = creditableTonnage(e);
-    if (tonnage == null) {
-      for (const d of dates) awaitingTonnage.add(d);
-      const name = e.vessel?.vessel_name;
-      if (name) awaitingVessels.add(name);
+    // Between 4 and 8 hours the tonnage decides the outcome. Any vessel of 100
+    // GRT or more worked in the period rules out the small-vessel allowance; an
+    // unrecorded tonnage is a question for the user rather than a guess.
+    const tonnages = p.entries.map(creditableTonnage);
+    if (tonnages.some((t) => t != null && t >= USCG_SMALL_VESSEL_GRT)) { shortOfStandard.add(d); continue; }
+    if (tonnages.some((t) => t == null)) {
+      awaitingTonnage.add(d);
+      for (const e of p.entries) {
+        if (creditableTonnage(e) == null && e.vessel?.vessel_name) awaitingVessels.add(e.vessel.vessel_name);
+      }
       continue;
     }
-    const bucket = tonnage < USCG_SMALL_VESSEL_GRT ? provisional : shortOfStandard;
-    for (const d of dates) bucket.add(d);
+    provisional.add(d);
   }
 
   // A date credited at a better classification cannot also count at a worse one.
@@ -388,10 +517,7 @@ export interface AMSAServiceBreakdown {
   engineering_watch: number;
 }
 
-interface AMSAEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
-  service_type?: string | null;
+interface AMSAEntry extends PeriodEntry {
   is_stationary?: boolean | null;
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
@@ -405,41 +531,31 @@ function toHours(value: string | number | null | undefined): number {
 
 /** Is this entry service gained while the vessel was not underway? */
 function isNotUnderway(e: AMSAEntry): boolean {
-  const type = e.service_type || 'actual_sea_service';
-  if (type === 'standby_service' || type === 'yard_service' || type === 'service_in_port') {
-    return true;
-  }
+  const b = bucketOf(e);
+  if (b !== 'actual') return true;
   return e.is_stationary === true;
 }
 
 export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
-  // Hours per calendar date, so the 8-hour ceiling for a 24-hour period can be
-  // applied before anything is turned into days.
-  const underwayHours = new Map<string, number>();
-  const notUnderwayHours = new Map<string, number>();
   let bridgeHours = 0;
   let engineHours = 0;
-
+  const underwayEntries: AMSAEntry[] = [];
+  const notUnderwayEntries: AMSAEntry[] = [];
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    const hours = calculateDurationHours(start, end);
-    if (hours <= 0) continue;
-
-    bridgeHours += toHours(e.bridge_watch_hours);
-    engineHours += toHours(e.engine_watch_hours);
-
-    // Spread the period's hours evenly across the dates it touches, then let
-    // the per-date ceiling below do the capping. An entry that runs for days
-    // cannot credit more than one day per date whichever way it is split.
-    const dates = calendarDaysCovered(start, end);
-    if (dates.length === 0) continue;
-    const perDate = hours / dates.length;
-    const bucket = isNotUnderway(e) ? notUnderwayHours : underwayHours;
-    for (const d of dates) bucket.set(d, (bucket.get(d) ?? 0) + perDate);
+    // Watch hours only count from entries that represent service.
+    if (isDeclaredDayEntry(e) || (e.end_time != null && toDate(e.end_time) > toDate(e.start_time))) {
+      bridgeHours += toHours(e.bridge_watch_hours);
+      engineHours += toHours(e.engine_watch_hours);
+    }
+    (isNotUnderway(e) ? notUnderwayEntries : underwayEntries).push(e);
   }
+
+  // Hours per 24-hour period, merged so overlapping entries are not counted
+  // twice, then capped at 8 per period before anything becomes a day.
+  const underwayHours = new Map<string, number>();
+  const notUnderwayHours = new Map<string, number>();
+  for (const [d, p] of twentyFourHourPeriods(underwayEntries)) underwayHours.set(d, p.hours);
+  for (const [d, p] of twentyFourHourPeriods(notUnderwayEntries)) notUnderwayHours.set(d, p.hours);
 
   // A date worked both underway and alongside counts once, at the better
   // classification, the same way the other authorities' counters resolve it.
@@ -453,10 +569,11 @@ export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
 
   const underwayTotal = capped(underwayHours);
   const notUnderwayTotal = capped(notUnderwayHours);
-  const underway = Math.floor(underwayTotal / AMSA_STANDARD_HOURS_PER_DAY);
-  const notUnderway = Math.floor(notUnderwayTotal / AMSA_STANDARD_HOURS_PER_DAY);
+  const underway = Math.floor((underwayTotal + 1e-6) / AMSA_STANDARD_HOURS_PER_DAY);
+  const notUnderway = Math.floor((notUnderwayTotal + 1e-6) / AMSA_STANDARD_HOURS_PER_DAY);
   const partDayHours =
-    (underwayTotal % AMSA_STANDARD_HOURS_PER_DAY) + (notUnderwayTotal % AMSA_STANDARD_HOURS_PER_DAY);
+    Math.max(0, underwayTotal - underway * AMSA_STANDARD_HOURS_PER_DAY) +
+    Math.max(0, notUnderwayTotal - notUnderway * AMSA_STANDARD_HOURS_PER_DAY);
 
   return {
     underway,
@@ -505,10 +622,7 @@ export interface MNZServiceBreakdown {
   outside_window: number;
 }
 
-interface MNZEntry {
-  start_time: Date | string;
-  end_time: Date | string | null;
-  service_type?: string | null;
+interface MNZEntry extends PeriodEntry {
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
   watchkeeping_hours?: string | number | null;
@@ -517,45 +631,34 @@ interface MNZEntry {
 export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): MNZServiceBreakdown {
   const windowStart = new Date(now);
   windowStart.setUTCFullYear(windowStart.getUTCFullYear() - MNZ_SERVICE_WINDOW_YEARS);
+  const windowStartDay = getCalendarDay(windowStart);
 
-  const actualDays = new Set<string>();
-  const standbyDays = new Set<string>();
-  const yardDays = new Set<string>();
-  const portDays = new Set<string>();
+  // Days are counted per calendar date on the MCA basis (see above), then split
+  // by whether the date falls inside the 10-year window.
+  const c = classifyCalendarDays(entries);
+  const inWindow = (d: string) => d >= windowStartDay;
   const outsideDays = new Set<string>();
-  let watchHours = 0;
+  const keep = (set: Set<string>) => {
+    const kept = new Set<string>();
+    for (const d of set) (inWindow(d) ? kept : outsideDays).add(d);
+    return kept;
+  };
+  const actualDays = keep(c.actual);
+  const standbyDays = keep(c.standby);
+  const yardDays = keep(c.yard);
+  const portDays = keep(c.port);
+
+  // Hours on board inside the window, merged so overlaps are not double counted.
   let totalHours = 0;
+  for (const [d, h] of c.hours) if (inWindow(d)) totalHours += h;
 
+  let watchHours = 0;
   for (const e of entries) {
-    const start = e.start_time instanceof Date ? e.start_time : new Date(e.start_time);
-    const end = e.end_time == null
-      ? start
-      : (e.end_time instanceof Date ? e.end_time : new Date(e.end_time));
-    if (calculateDurationHours(start, end) < 4) continue;
-
-    const dates = calendarDaysCovered(start, end);
-    if (end.getTime() < windowStart.getTime()) {
-      for (const d of dates) outsideDays.add(d);
-      continue;
-    }
-
-    totalHours += calculateDurationHours(start, end);
+    const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
+    if (last.getTime() < windowStart.getTime()) continue;
     watchHours +=
       toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
-
-    const type = e.service_type || 'actual_sea_service';
-    const bucket =
-      type === 'standby_service' ? standbyDays :
-      type === 'yard_service' ? yardDays :
-      type === 'service_in_port' ? portDays :
-      actualDays;
-    for (const d of dates) bucket.add(d);
   }
-
-  for (const d of actualDays) { standbyDays.delete(d); yardDays.delete(d); portDays.delete(d); outsideDays.delete(d); }
-  for (const d of standbyDays) { yardDays.delete(d); portDays.delete(d); outsideDays.delete(d); }
-  for (const d of yardDays) { portDays.delete(d); outsideDays.delete(d); }
-  for (const d of portDays) { outsideDays.delete(d); }
 
   const actual = actualDays.size;
   const standby = standbyDays.size;
@@ -571,6 +674,44 @@ export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): 
     hours: Math.round(totalHours * 100) / 100,
     outside_window: outsideDays.size,
   };
+}
+
+/** Maritime authorities a user can choose, matching user.maritime_authority. */
+export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+
+/**
+ * The sea_days value stored on a single entry: the days that entry earns on
+ * its own under the user's chosen authority (MCA when none is set). This is
+ * the per-entry figure the logbook shows; running totals must still come from
+ * the counters above, which merge overlapping entries across the logbook.
+ *
+ * - MCA: calendar dates with 4+ hours, across actual, stand-by and yard
+ *   (port is not sea service). The 90-day yard cap is a total, not per entry.
+ * - MNZ: as MCA, inside the 10-year window.
+ * - USCG: 24-hour periods with a full 8-hour day of sea service. Provisional
+ *   small-vessel days and stand-by, yard and port time are not credited.
+ * - AMSA: whole 8-hour days, underway and not underway. Part days carry over
+ *   only in the running total, so a short entry alone earns 0 here.
+ */
+export function entrySeaDays(
+  entry: USCGEntry & AMSAEntry & MNZEntry,
+  authority: string | null | undefined,
+  now: Date = new Date()
+): number {
+  switch (authority) {
+    case 'uscg':
+      return uscgCreditableDays([entry]).creditable;
+    case 'amsa': {
+      const a = amsaCreditableDays([entry]);
+      return a.underway + a.not_underway;
+    }
+    case 'mnz':
+      return mnzCreditableDays([entry], now).qualifying_total;
+    default: {
+      const q = qualifyingSeaDays([entry]);
+      return q.actual + q.standby + q.yard;
+    }
+  }
 }
 
 /** Valid service types. */

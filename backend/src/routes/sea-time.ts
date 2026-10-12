@@ -7,6 +7,7 @@ import { extractUserIdFromRequest } from "../middleware/auth.js";
 import {
   calculateDurationHours,
   calculateSeaDays,
+  entrySeaDays,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
@@ -19,6 +20,24 @@ async function validateCertificateOwnership(app: App, certificateId: string | nu
   const certs = await app.db.select({ id: schema.certificates.id }).from(schema.certificates)
     .where(and(eq(schema.certificates.id, certificateId), eq(schema.certificates.user_id, userId)));
   return certs.length > 0;
+}
+
+// sea_days stored on one entry, counted under the user's chosen maritime
+// authority (MCA when none is set). Vessel tonnage is needed for USCG.
+async function storedSeaDays(
+  app: App,
+  userId: string,
+  entry: { vessel_id: string; start_time: Date; end_time: Date | null; service_type?: string | null; sea_days?: number | null; status?: string | null; is_stationary?: boolean | null }
+): Promise<number> {
+  const [u] = await app.db
+    .select({ authority: authSchema.user.maritime_authority })
+    .from(authSchema.user)
+    .where(eq(authSchema.user.id, userId));
+  const [vessel] = await app.db
+    .select({ vessel_name: schema.vessels.vessel_name, gross_tonnes: schema.vessels.gross_tonnes, tonnage_itc: schema.vessels.tonnage_itc })
+    .from(schema.vessels)
+    .where(eq(schema.vessels.id, entry.vessel_id));
+  return entrySeaDays({ ...entry, vessel: vessel ?? null }, u?.authority);
 }
 
 const VALID_TRADE_AREAS = ['unlimited', 'near_coastal', 'coastal', 'inland'] as const;
@@ -712,7 +731,12 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'Sea time duration cannot be 0 hours. Cannot confirm entry with 0 hours.' });
     }
 
-    const calculated_sea_days = calculateSeaDays(current_entry.start_time, end_time);
+    const calculated_sea_days = await storedSeaDays(app, userId, {
+      ...current_entry,
+      end_time,
+      status: 'confirmed',
+      service_type: service_type || current_entry.service_type || 'actual_sea_service',
+    });
 
     // Note: Calendar day restriction has been removed to allow multiple entries per day as vessels move throughout the day
     // The scheduler now creates multiple entries (every 2 hours) when movement is detected
@@ -962,6 +986,11 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     if (service_type !== undefined) {
       updateData.service_type = service_type;
+      // The service type changes what the entry earns (port is not sea
+      // service; USCG does not credit stand-by or yard), so recount it.
+      if (sea_days === undefined && current_entry.end_time && service_type !== current_entry.service_type) {
+        updateData.sea_days = await storedSeaDays(app, userId, { ...current_entry, service_type });
+      }
     }
     if (start_latitude !== undefined) {
       updateData.start_latitude = start_latitude !== null ? String(start_latitude) : null;
@@ -2084,6 +2113,18 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
 
+    // A timed entry is counted under the user's authority. An entry with no end
+    // time is a declared day and keeps the count the user gave.
+    if (endDate) {
+      calculated_sea_days = await storedSeaDays(app, session.userId, {
+        vessel_id,
+        start_time: startDate,
+        end_time: endDate,
+        service_type: service_type || 'actual_sea_service',
+        status: 'confirmed',
+      });
+    }
+
     // Create the sea time entry (marked as confirmed for manually created entries)
     try {
       const manualEntryValues: any = {
@@ -2542,7 +2583,7 @@ export function register(app: App, fastify: FastifyInstance) {
           end_latitude: latitude != null ? String(latitude) : null,
           end_longitude: longitude != null ? String(longitude) : null,
           duration_hours: String(durationHours),
-          sea_days: durationHours > 0 ? 1 : 0,
+          sea_days: await storedSeaDays(app, userId, { ...active, end_time: end, status: 'confirmed' }),
           mca_compliant: durationHours >= 4,
           distance_nm: String(distanceNm),
           status: 'confirmed',

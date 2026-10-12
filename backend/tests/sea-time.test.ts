@@ -1,5 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import {
+  entrySeaDays,
+  hoursByDate,
   calculateDurationHours,
   calculateSeaDays,
   calendarDaysCovered,
@@ -110,7 +112,8 @@ describe("calculateSeaDays", () => {
   });
 
   test("counts a 93-day passage as 93 days, not 1", () => {
-    expect(calculateSeaDays(d("2025-01-14T00:00:00Z"), d("2025-04-17T00:00:00Z"))).toBe(94);
+    // Ends at 00:00 on 17 Apr, so no time falls on that date
+    expect(calculateSeaDays(d("2025-01-14T00:00:00Z"), d("2025-04-17T00:00:00Z"))).toBe(93);
   });
 
   test("returns 0 for reversed timestamps", () => {
@@ -568,5 +571,206 @@ describe("mnzCreditableDays", () => {
       { ...day("2026-01-02"), watchkeeping_hours: 24 },
     ], now);
     expect(r.watchkeeping).toBe(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Declared day entries: confirmed manual entries with a start date, no end
+// time and sea_days set, which the logbook already counts as sea days.
+// ---------------------------------------------------------------------------
+describe("declared day entries", () => {
+  const declared = (date: string, extra: Record<string, unknown> = {}) => ({
+    start_time: `${date}T07:30:00Z`,
+    end_time: null,
+    sea_days: 1,
+    status: "confirmed",
+    service_type: "actual_sea_service",
+    ...extra,
+  });
+
+  test("count as one MCA sea day each", () => {
+    const entries = [declared("2026-09-14"), declared("2026-09-15"), declared("2026-09-16")];
+    expect(countDistinctSeaDays(entries)).toBe(3);
+    expect(qualifyingSeaDays(entries).actual).toBe(3);
+  });
+
+  test("a late start time still credits only its own date", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { start_time: "2026-09-14T22:30:00Z" })])).toBe(1);
+  });
+
+  test("sea_days > 1 credits consecutive dates", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: 3 })])).toBe(3);
+  });
+
+  test("do not double count a date already covered by a timed entry", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14"), day("2026-09-14")])).toBe(1);
+  });
+
+  test("keep their service type", () => {
+    const r = qualifyingSeaDays([declared("2026-09-14", { service_type: "standby_service" })]);
+    expect(r.standby).toBe(1);
+    expect(r.actual).toBe(0);
+  });
+
+  test("credit a standard day under USCG, AMSA and MNZ", () => {
+    const entries = [declared("2026-09-14"), declared("2026-09-15")];
+    expect(uscgCreditableDays(entries).creditable).toBe(2);
+    expect(amsaCreditableDays(entries).underway).toBe(2);
+    const mnz = mnzCreditableDays(entries, new Date("2026-10-08T00:00:00Z"));
+    expect(mnz.actual).toBe(2);
+    expect(mnz.hours).toBe(16);
+  });
+
+  test("open shifts, pending entries and entries without sea_days still count nothing", () => {
+    expect(countDistinctSeaDays([declared("2026-09-14", { status: "active" })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { status: "pending" })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: null })])).toBe(0);
+    expect(countDistinctSeaDays([declared("2026-09-14", { sea_days: 0 })])).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Per-date hours (MCA / MNZ): 4 hours must fall on the date itself
+// ---------------------------------------------------------------------------
+describe("MCA 4 hours within the calendar day", () => {
+  const e = (start: string, end: string, service_type = "actual_sea_service") =>
+    ({ start_time: start, end_time: end, service_type, status: "confirmed" });
+
+  test("hoursByDate splits at UTC midnight", () => {
+    const m = hoursByDate(d("2026-07-21T18:55:00Z"), d("2026-07-22T02:28:00Z"));
+    expect(m.get("2026-07-21")).toBeCloseTo(5.0833, 3);
+    expect(m.get("2026-07-22")).toBeCloseTo(2.4667, 3);
+  });
+
+  test("a passage crossing midnight only earns the second date with 4 hours after midnight", () => {
+    expect(calculateSeaDays(d("2026-07-21T18:55:00Z"), d("2026-07-22T02:28:00Z"))).toBe(1);
+    expect(calculateSeaDays(d("2026-07-21T18:00:00Z"), d("2026-07-22T04:00:00Z"))).toBe(2);
+    expect(calculateSeaDays(d("2026-07-21T21:00:00Z"), d("2026-07-22T03:00:00Z"))).toBe(0);
+  });
+
+  test("overlapping entries are merged, not double counted", () => {
+    const entries = [
+      e("2026-07-08T18:31:00Z", "2026-07-14T07:09:00Z"),
+      e("2026-07-09T00:02:00Z", "2026-07-14T07:09:00Z"),
+      e("2026-07-11T00:27:00Z", "2026-07-14T07:09:00Z"),
+    ];
+    // 8 Jul has 5.5h, 9-13 Jul full, 14 Jul 7.15h
+    expect(countDistinctSeaDays(entries)).toBe(7);
+    expect(qualifyingSeaDays(entries).actual).toBe(7);
+  });
+
+  test("two short passages on one date add up to a day", () => {
+    const entries = [e("2026-07-01T06:00:00Z", "2026-07-01T08:30:00Z"), e("2026-07-01T15:00:00Z", "2026-07-01T17:00:00Z")];
+    expect(countDistinctSeaDays(entries)).toBe(1);
+  });
+
+  test("overlapping short entries do not add up to a day", () => {
+    const entries = [e("2026-07-01T06:00:00Z", "2026-07-01T09:00:00Z"), e("2026-07-01T07:00:00Z", "2026-07-01T09:30:00Z")];
+    expect(countDistinctSeaDays(entries)).toBe(0);
+  });
+
+  test("stand-by and actual on one date make a day, credited as actual", () => {
+    const r = qualifyingSeaDays([
+      e("2026-07-01T06:00:00Z", "2026-07-01T08:00:00Z"),
+      e("2026-07-01T10:00:00Z", "2026-07-01T13:00:00Z", "standby_service"),
+    ]);
+    expect(r.actual).toBe(1);
+    expect(r.standby).toBe(0);
+  });
+
+  test("port time never makes a sea day", () => {
+    const r = qualifyingSeaDays([
+      e("2026-07-01T06:00:00Z", "2026-07-01T08:00:00Z"),
+      e("2026-07-01T10:00:00Z", "2026-07-01T18:00:00Z", "service_in_port"),
+    ]);
+    expect(r.qualifying_total).toBe(0);
+    expect(r.port).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 24-hour periods (USCG / AMSA)
+// ---------------------------------------------------------------------------
+describe("USCG and AMSA 24-hour periods", () => {
+  const e = (start: string, end: string, extra: Record<string, unknown> = {}) =>
+    ({ start_time: start, end_time: end, service_type: "actual_sea_service", status: "confirmed", ...extra });
+  const big = { vessel: { vessel_name: "Big", gross_tonnes: 499 } };
+
+  test("an 8-hour watch across midnight is one USCG day, not two halves", () => {
+    expect(uscgCreditableDays([e("2026-07-21T20:00:00Z", "2026-07-22T04:00:00Z", big)]).creditable).toBe(1);
+  });
+
+  test("a 10-hour watch is one USCG day, not two", () => {
+    expect(uscgCreditableDays([e("2026-07-21T08:00:00Z", "2026-07-21T18:00:00Z", big)]).creditable).toBe(1);
+  });
+
+  test("a 72-hour passage is three USCG days", () => {
+    expect(uscgCreditableDays([e("2026-07-21T18:00:00Z", "2026-07-24T18:00:00Z", big)]).creditable).toBe(3);
+  });
+
+  test("overlapping USCG entries are merged", () => {
+    const r = uscgCreditableDays([
+      e("2026-07-21T08:00:00Z", "2026-07-21T14:00:00Z", big),
+      e("2026-07-21T10:00:00Z", "2026-07-21T15:00:00Z", big),
+    ]);
+    // 7 merged hours on a 499 GT vessel: short of an 8-hour day
+    expect(r.creditable).toBe(0);
+    expect(r.short_of_standard_day).toBe(1);
+  });
+
+  test("AMSA: an 8-hour watch across midnight is one day", () => {
+    expect(amsaCreditableDays([e("2026-07-21T20:00:00Z", "2026-07-22T04:00:00Z")]).underway).toBe(1);
+  });
+
+  test("AMSA: overlapping entries are not counted twice", () => {
+    const r = amsaCreditableDays([
+      e("2026-07-21T08:00:00Z", "2026-07-21T14:00:00Z"),
+      e("2026-07-21T08:00:00Z", "2026-07-21T14:00:00Z"),
+    ]);
+    expect(r.underway).toBe(0);
+    expect(r.part_day_hours).toBe(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// entrySeaDays: the per-entry stored value by authority
+// ---------------------------------------------------------------------------
+describe("entrySeaDays", () => {
+  const e = (start: string, end: string | null, extra: Record<string, unknown> = {}) =>
+    ({ start_time: start, end_time: end, service_type: "actual_sea_service", status: "confirmed", ...extra });
+  const now = new Date("2026-10-08T00:00:00Z");
+
+  test("MCA by calendar date", () => {
+    expect(entrySeaDays(e("2026-07-21T18:55:00Z", "2026-07-22T02:28:00Z"), "mca", now)).toBe(1);
+    expect(entrySeaDays(e("2026-07-21T18:55:00Z", "2026-07-22T02:28:00Z"), null, now)).toBe(1);
+    expect(entrySeaDays(e("2026-06-04T08:49:00Z", "2026-06-04T10:02:00Z"), "mca", now)).toBe(0);
+  });
+
+  test("MCA: port earns no sea days; stand-by and yard do", () => {
+    expect(entrySeaDays(e("2026-07-01T08:00:00Z", "2026-07-01T18:00:00Z", { service_type: "service_in_port" }), "mca", now)).toBe(0);
+    expect(entrySeaDays(e("2026-07-01T08:00:00Z", "2026-07-01T18:00:00Z", { service_type: "standby_service" }), "mca", now)).toBe(1);
+    expect(entrySeaDays(e("2026-07-01T08:00:00Z", "2026-07-01T18:00:00Z", { service_type: "yard_service" }), "mca", now)).toBe(1);
+  });
+
+  test("USCG credits only full 8-hour days of sea service", () => {
+    const small = { vessel: { gross_tonnes: 40 } };
+    expect(entrySeaDays(e("2026-07-21T20:00:00Z", "2026-07-22T04:00:00Z", small), "uscg", now)).toBe(1);
+    expect(entrySeaDays(e("2026-07-21T08:00:00Z", "2026-07-21T14:00:00Z", small), "uscg", now)).toBe(0);
+    expect(entrySeaDays(e("2026-07-21T08:00:00Z", "2026-07-21T18:00:00Z", { service_type: "standby_service" }), "uscg", now)).toBe(0);
+  });
+
+  test("AMSA whole 8-hour days", () => {
+    expect(entrySeaDays(e("2026-07-21T08:00:00Z", "2026-07-21T14:00:00Z"), "amsa", now)).toBe(0);
+    expect(entrySeaDays(e("2026-07-21T00:00:00Z", "2026-07-23T00:00:00Z"), "amsa", now)).toBe(2);
+  });
+
+  test("MNZ by calendar date inside the 10-year window", () => {
+    expect(entrySeaDays(e("2026-07-21T18:00:00Z", "2026-07-22T04:00:00Z"), "mnz", now)).toBe(2);
+    expect(entrySeaDays(e("2015-07-21T08:00:00Z", "2015-07-21T18:00:00Z"), "mnz", now)).toBe(0);
+  });
+
+  test("declared days keep their count under every authority", () => {
+    const declared = e("2026-09-14T08:00:00Z", null, { sea_days: 1 });
+    for (const a of ["mca", "uscg", "amsa", "mnz"]) expect(entrySeaDays(declared, a, now)).toBe(1);
   });
 });
