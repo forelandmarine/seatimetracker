@@ -30,9 +30,10 @@ interface SectorOption {
 }
 
 // Commercial is selectable: it unlocks the manual shift clock-in (log your own
-// on-duty hours) plus sea-area/tidal classification. The automatic CTV/workboat
-// certificate qualifying-service engine is still in development, so the bullets
-// say so rather than implying it is live. The comingSoon flag is retained for
+// on-duty hours). Sea-area/tidal classification and the CTV/workboat certificate
+// pathways are not live yet (the classifier is off behind COMMERCIAL_PATHWAYS_ENABLED
+// and nothing in the app displays it), so the bullets say so rather than implying
+// they are. The comingSoon flag is retained for
 // future use but is off for both sectors today.
 const SECTOR_OPTIONS: SectorOption[] = [
   {
@@ -56,7 +57,7 @@ const SECTOR_OPTIONS: SectorOption[] = [
     icon_android: 'directions-boat',
     bullets: [
       'Clock in and out to log your actual shift hours',
-      'MSN 1837 sea-area and tidal classification',
+      'Sea-area and tidal classification coming soon',
       'CTV / workboat certificate pathways in development',
     ],
     comingSoon: false,
@@ -380,9 +381,9 @@ export default function SelectVesselSectorScreen() {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Commercial adds a manual shift clock-in so you log your own on-duty hours, plus sea-area and
-            tidal classification. The automatic CTV and workboat certificate pathways are still in
-            development. You can switch sector any time, and it never changes sea time you have already logged.
+            Commercial adds a manual shift clock-in so you log your own on-duty hours. Sea-area and tidal
+            classification and the CTV and workboat certificate pathways are still in development. You can
+            switch sector any time, and it never changes sea time you have already logged.
           </Text>
         </View>
 
