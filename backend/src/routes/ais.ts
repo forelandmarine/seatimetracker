@@ -1173,6 +1173,9 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
 
+    // Passages detected while the user is off board are stored hidden until claimed.
+    const entryStatus = (users[0] as any)?.on_board === false ? 'off_board' : 'pending';
+
     // Check if vessel is active
     if (!vessel[0].is_active) {
       app.logger.warn(`Cannot track inactive vessel: ${vesselId}`);
@@ -1360,7 +1363,9 @@ export function register(app: App, fastify: FastifyInstance) {
           eq(schema.sea_time_entries.user_id, userId),
           isNotNull(schema.sea_time_entries.start_time),
           isNull(schema.sea_time_entries.end_time),
-          eq(schema.sea_time_entries.status, 'pending')
+          // An open passage is closed when the vessel stops, whichever side of the
+          // on/off board switch it was opened on.
+          inArray(schema.sea_time_entries.status, ['pending', 'off_board'])
         )
       )
       .orderBy(desc(schema.sea_time_entries.created_at))
@@ -1377,7 +1382,7 @@ export function register(app: App, fastify: FastifyInstance) {
             and(
               eq(schema.sea_time_entries.vessel_id, vesselId),
               eq(schema.sea_time_entries.user_id, userId),
-              eq(schema.sea_time_entries.status, 'pending'),
+              eq(schema.sea_time_entries.status, entryStatus),
               gte(schema.sea_time_entries.end_time, new Date(check_time.getTime() - ACTIVE_PASSAGE_WINDOW_MS))
             )
           )
@@ -1400,7 +1405,7 @@ export function register(app: App, fastify: FastifyInstance) {
             start_latitude: ais_data.latitude !== null ? String(ais_data.latitude) : null,
             start_longitude: ais_data.longitude !== null ? String(ais_data.longitude) : null,
             to_port: friendlyDest,
-            status: 'pending',
+            status: entryStatus,
           })
           .returning();
 
@@ -1418,7 +1423,7 @@ export function register(app: App, fastify: FastifyInstance) {
             and(
               eq(schema.sea_time_entries.vessel_id, vesselId),
               eq(schema.sea_time_entries.user_id, userId),
-              eq(schema.sea_time_entries.status, 'pending'),
+              eq(schema.sea_time_entries.status, entryStatus),
               isNotNull(schema.sea_time_entries.start_time),
               isNull(schema.sea_time_entries.end_time)
             )

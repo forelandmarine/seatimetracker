@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, isNull, isNotNull, desc, lte, gte } from "drizzle-orm";
+import { eq, and, ne, isNull, isNotNull, desc, lte, gte } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
@@ -225,7 +225,11 @@ export function register(app: App, fastify: FastifyInstance) {
       with: {
         vessel: true,
       },
-      where: eq(schema.sea_time_entries.user_id, userId),
+      // Passages logged while the user was off board stay hidden until claimed
+      where: and(
+        eq(schema.sea_time_entries.user_id, userId),
+        ne(schema.sea_time_entries.status, 'off_board')
+      ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
 
@@ -427,7 +431,10 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Get all sea time entries for the vessel, ordered by most recent first
     const entries = await app.db.query.sea_time_entries.findMany({
-      where: eq(schema.sea_time_entries.vessel_id, vesselId),
+      where: and(
+        eq(schema.sea_time_entries.vessel_id, vesselId),
+        ne(schema.sea_time_entries.status, 'off_board')
+      ),
       with: {
         vessel: true,
       },
@@ -1826,7 +1833,11 @@ export function register(app: App, fastify: FastifyInstance) {
       with: {
         vessel: true,
       },
-      where: eq(schema.sea_time_entries.user_id, userId),
+      // Passages logged while the user was off board stay hidden until claimed
+      where: and(
+        eq(schema.sea_time_entries.user_id, userId),
+        ne(schema.sea_time_entries.status, 'off_board')
+      ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
 

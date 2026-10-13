@@ -9,6 +9,7 @@ import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
+import { sendPushToUser } from '../utils/push.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -18,6 +19,8 @@ const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
 // every minute for a user who has already lapsed. 12h still auto-resumes
 // promptly if the user renews.
 const INACTIVE_RECHECK_HOURS = 12;
+// While a user is off board, at most one "your vessel is underway" push per this many hours.
+const UNDERWAY_ALERT_COOLDOWN_HOURS = 24;
 
 // Track which users have received drip emails (in-memory cache; resets on restart
 // but the database createdAt window prevents double-sends across restarts).
@@ -329,7 +332,7 @@ async function runSchedulerIteration(app: App): Promise<void> {
     let processedWithErrors = 0;
 
     // Process each due task
-    for (const { task, vessel } of activeSubscriptionTasks) {
+    for (const { task, vessel, user } of activeSubscriptionTasks) {
       try {
         app.logger.info(
           {
@@ -344,7 +347,7 @@ async function runSchedulerIteration(app: App): Promise<void> {
           `Executing AIS check task for vessel ${vessel.vessel_name} (MMSI: ${vessel.mmsi}) for user ${vessel.user_id} with ${task.interval_hours}-hour interval`
         );
 
-        await processScheduledTask(app, task, vessel);
+        await processScheduledTask(app, task, vessel, user);
         processedSuccessfully++;
       } catch (error) {
         processedWithErrors++;
@@ -442,10 +445,13 @@ async function updateScheduledTaskNextRun(
 async function processScheduledTask(
   app: App,
   task: typeof schema.scheduled_tasks.$inferSelect,
-  vessel: typeof schema.vessels.$inferSelect
+  vessel: typeof schema.vessels.$inferSelect,
+  user: typeof authSchema.user.$inferSelect
 ): Promise<void> {
   const { id: taskId, vessel_id: vesselId, interval_hours, next_run } = task;
   const { vessel_name, mmsi, id, is_active, user_id } = vessel;
+  // Passages detected while the user is off board are stored hidden until claimed.
+  const entryStatus = user.on_board === false ? 'off_board' : 'pending';
 
   app.logger.info(
     {
@@ -597,10 +603,14 @@ async function processScheduledTask(
   // Handle sea time entry lifecycle based on movement analysis (only if AIS check was successful)
   if (ais_check) {
     // First check for offshore passages (long gaps with significant distance)
-    await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId);
+    await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId, entryStatus);
 
     // Then handle regular 2-hour window detections
-    await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id);
+    await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus);
+
+    if (ais_data.is_moving === true && user.on_board === false) {
+      await maybeSendUnderwayAlert(app, user, vessel_name, check_time);
+    }
   }
 
   // Adaptive interval: shorter checks when underway, longer when stationary.
@@ -722,7 +732,8 @@ async function handleOffshorePassage(
   mmsi: string,
   userId: string,
   currentCheck: typeof schema.ais_checks.$inferSelect,
-  taskId: string
+  taskId: string,
+  entryStatus: 'pending' | 'off_board'
 ): Promise<void> {
   try {
     // Get all AIS checks for this vessel, ordered by time
@@ -853,7 +864,7 @@ async function handleOffshorePassage(
             start_longitude: String(prevLng),
             end_latitude: String(currLat),
             end_longitude: String(currLng),
-            status: 'pending',
+            status: entryStatus,
             service_type: 'actual_sea_service',
             mca_compliant: true, // 24 hours > 4 hour requirement
             is_stationary: false,
@@ -929,7 +940,8 @@ async function handleSeaTimeEntries(
   is_moving: boolean,
   check_time: Date,
   taskId: string,
-  userId: string
+  userId: string,
+  entryStatus: 'pending' | 'off_board'
 ): Promise<void> {
   // Using 2-hour position check interval
   const twoHoursAgo = new Date(check_time.getTime() - 2 * 60 * 60 * 1000);
@@ -1072,13 +1084,14 @@ async function handleSeaTimeEntries(
   );
 
   // Check if there's an existing PENDING sea time entry for this vessel on the same calendar day
+  // (or, while the user is off board, an off-board entry: the two never merge)
   const existingEntries = await app.db
     .select()
     .from(schema.sea_time_entries)
     .where(
       and(
         eq(schema.sea_time_entries.vessel_id, vesselId),
-        eq(schema.sea_time_entries.status, 'pending')
+        eq(schema.sea_time_entries.status, entryStatus)
       )
     );
 
@@ -1231,7 +1244,7 @@ async function handleSeaTimeEntries(
           start_longitude: String(oldLng),
           end_latitude: String(currentLat),
           end_longitude: String(currentLng),
-          status: 'pending',
+          status: entryStatus,
           service_type: 'actual_sea_service',
           mca_compliant: isMCACompliant,
           distance_nm: String(distanceNm),
@@ -1265,5 +1278,45 @@ async function handleSeaTimeEntries(
         `Failed to create sea time entry for vessel ${vessel_name} (user: ${userId})`
       );
     }
+  }
+}
+
+/**
+ * While a user is off board and their vessel gets underway, ask whether they are
+ * aboard, so a passage is not lost because they forgot to switch back on board.
+ *
+ * Quiet until the day before the user's expected return date (if they set one),
+ * and at most once per UNDERWAY_ALERT_COOLDOWN_HOURS.
+ */
+async function maybeSendUnderwayAlert(
+  app: App,
+  user: typeof authSchema.user.$inferSelect,
+  vesselName: string,
+  now: Date
+): Promise<void> {
+  try {
+    if (user.expected_return_date) {
+      const dayBeforeReturn = new Date(`${user.expected_return_date}T00:00:00Z`);
+      dayBeforeReturn.setUTCDate(dayBeforeReturn.getUTCDate() - 1);
+      if (now < dayBeforeReturn) return;
+    }
+
+    const lastSent = user.underway_alert_sent_at ? new Date(user.underway_alert_sent_at) : null;
+    if (lastSent && now.getTime() - lastSent.getTime() < UNDERWAY_ALERT_COOLDOWN_HOURS * 3_600_000) return;
+
+    // Record the attempt first so a slow or failed push never repeats every 30 minutes.
+    await app.db
+      .update(authSchema.user)
+      .set({ underway_alert_sent_at: now })
+      .where(eq(authSchema.user.id, user.id));
+    user.underway_alert_sent_at = now;
+
+    await sendPushToUser(app, user.id, {
+      title: `${vesselName} is underway`,
+      body: "Are you on board? Switch on board so this passage counts towards your sea time.",
+      data: { type: 'underway_off_board', url: '/(tabs)/(home)' },
+    });
+  } catch (err) {
+    app.logger.warn({ err, userId: user.id }, 'Underway alert failed (non-critical)');
   }
 }

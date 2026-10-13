@@ -231,6 +231,20 @@ export const leave_periods = pgTable('leave_periods', {
   index('leave_periods_vessel_id_idx').on(table.vessel_id),
 ]);
 
+// Expo push tokens, one row per device. Used for server-sent alerts such as
+// "your vessel is underway" while the user is off board.
+export const push_tokens = pgTable('push_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  token: text('token').notNull(), // ExponentPushToken[...]
+  platform: text('platform'), // 'ios' | 'android'
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('push_tokens_user_id_idx').on(table.user_id),
+  uniqueIndex('push_tokens_token_uq').on(table.token),
+]);
+
 // Maritime certificates: STCW, ENG1, GMDSS, ECDIS, etc.
 // Tracks expiry dates so we can send reminders.
 export const certificates = pgTable('certificates', {
