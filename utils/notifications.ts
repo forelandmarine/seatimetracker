@@ -505,3 +505,77 @@ export async function scheduleCertificateExpiryReminders(
     logError('[Notifications] Failed to schedule certificate reminders:', error);
   }
 }
+
+const RETURN_REMINDER_ID = 'on-board-return-reminder';
+
+/**
+ * Remind an off-board user to switch back on board, at 08:00 local on their
+ * expected return date. Replaces any earlier reminder; a no-op for past dates.
+ */
+export async function scheduleReturnReminder(returnDateISO: string, vesselName?: string | null): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    await cancelReturnReminder();
+
+    const [y, m, d] = returnDateISO.split('-').map(Number);
+    const fire = new Date(y, m - 1, d, 8, 0, 0, 0);
+    if (isNaN(fire.getTime()) || fire.getTime() <= Date.now()) return;
+
+    const granted = await registerForPushNotificationsAsync();
+    if (!granted) return;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: RETURN_REMINDER_ID,
+      content: {
+        title: 'Back on board today?',
+        body: `Switch on board so ${vesselName || 'your vessel'}'s passages count towards your sea time.`,
+        data: { type: 'on_board_return', url: '/(tabs)/(home)' },
+        sound: 'default',
+        ...(Platform.OS === 'android' && {
+          channelId: 'sea-time-entries',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fire,
+      } as any,
+    });
+    log('[Notifications] Return reminder scheduled for', fire.toISOString());
+  } catch (error) {
+    logError('[Notifications] Failed to schedule return reminder:', error);
+  }
+}
+
+export async function cancelReturnReminder(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    await Notifications.cancelScheduledNotificationAsync(RETURN_REMINDER_ID).catch(() => {});
+  } catch (error) {
+    logError('[Notifications] Failed to cancel return reminder:', error);
+  }
+}
+
+/**
+ * Expo push token for server-sent alerts (e.g. "your vessel is underway").
+ * Null on web, simulators, without permission, or if push credentials are missing.
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const { Notifications, Device } = await loadNotificationModules();
+    if (!Notifications || !Device?.isDevice) return null;
+    const { default: Constants } = await import('expo-constants');
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    if (!projectId) return null;
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    return data;
+  } catch (error) {
+    warn('[Notifications] Could not get Expo push token:', error);
+    return null;
+  }
+}

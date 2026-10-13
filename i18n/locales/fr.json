@@ -75,6 +75,7 @@
     "noHistoricVessels": "Aucun navire antérieur",
     "historicSubtext": "Les navires que vous avez suivis précédemment apparaîtront ici",
     "tracking": "SUIVI",
+    "paused": "EN PAUSE",
     "addNewVessel": "Ajouter un nouveau navire",
     "vesselName": "Nom du navire",
     "mmsi": "MMSI",

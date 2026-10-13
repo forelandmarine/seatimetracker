@@ -75,6 +75,7 @@
     "noHistoricVessels": "Nema prethodnih brodova",
     "historicSubtext": "Brodovi koje ste prethodno pratili pojavit će se ovdje",
     "tracking": "PRAĆENJE",
+    "paused": "PAUZIRANO",
     "addNewVessel": "Dodaj novi brod",
     "vesselName": "Ime broda",
     "mmsi": "MMSI",

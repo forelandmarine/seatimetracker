@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as seaTimeApi from '@/utils/seaTimeApi';
-import { scheduleDailySeaTimeReviewNotification, registerForPushNotificationsAsync } from '@/utils/notifications';
+import { scheduleDailySeaTimeReviewNotification, registerForPushNotificationsAsync, getExpoPushToken } from '@/utils/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { log, warn, error as logError } from '@/utils/log';
@@ -43,6 +43,11 @@ export function useNotifications() {
         }
 
         log('[useNotifications] Notification permissions granted');
+
+        // Register this device for server-sent alerts (non-blocking, best effort)
+        getExpoPushToken()
+          .then((token) => (token ? seaTimeApi.registerPushToken(token, Platform.OS) : undefined))
+          .catch((e) => warn('[useNotifications] Push token registration failed:', e));
 
         // Fetch user's notification schedule from backend
         const schedule = await seaTimeApi.getNotificationSchedule();

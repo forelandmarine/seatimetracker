@@ -75,6 +75,7 @@
     "noHistoricVessels": "Sin buques anteriores",
     "historicSubtext": "Los buques que hayas rastreado anteriormente aparecerán aquí",
     "tracking": "SEGUIMIENTO",
+    "paused": "EN PAUSA",
     "addNewVessel": "Añadir nuevo buque",
     "vesselName": "Nombre del buque",
     "mmsi": "MMSI",
