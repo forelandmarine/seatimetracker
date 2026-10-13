@@ -272,6 +272,11 @@ export default function SeaTimeScreen() {
       Alert.alert('Error', 'Please enter both MMSI and vessel name');
       return;
     }
+    const mmsiProblem = seaTimeApi.mmsiValidationError(newMMSI);
+    if (mmsiProblem) {
+      Alert.alert('Check the MMSI', mmsiProblem);
+      return;
+    }
 
     if (addingVessel) return; // Prevent double-tap
     setAddingVessel(true);
@@ -282,7 +287,7 @@ export default function SeaTimeScreen() {
       log('[Home] User action: Creating new vessel:', { mmsi: newMMSI, name: vesselNameTrimmed });
 
       const createdVessel = await seaTimeApi.createVessel(
-        newMMSI.trim(),
+        seaTimeApi.normalizeMmsi(newMMSI),
         vesselNameTrimmed,
         true, // always activate
         newFlag.trim() || undefined,
@@ -876,10 +881,16 @@ export default function SeaTimeScreen() {
                     placeholder="e.g., 235012345"
                     placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                     value={newMMSI}
-                    onChangeText={setNewMMSI}
+                    onChangeText={(text) => setNewMMSI(seaTimeApi.normalizeMmsi(text))}
                     keyboardType="numeric"
+                    maxLength={9}
                     returnKeyType="next"
                   />
+                  {newMMSI.length > 0 && newMMSI.length < 9 && (
+                    <Text style={{ color: colors.error, fontSize: 13, marginTop: 6 }}>
+                      MMSI must be 9 digits ({newMMSI.length} entered)
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputGroup}>

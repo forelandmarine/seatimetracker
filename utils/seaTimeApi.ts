@@ -222,6 +222,20 @@ export const getVessels = async () => {
   return data.map(normalizeVessel);
 };
 
+// MMSI = Maritime Mobile Service Identity, always exactly 9 digits. A short
+// MMSI (e.g. 8 digits with a dropped trailing zero) is never found on AIS, so
+// the vessel is never tracked. Strip spaces/dashes people paste in, then check.
+export const normalizeMmsi = (raw: string) => (raw || '').replace(/\D/g, '');
+
+export const mmsiValidationError = (raw: string): string | null => {
+  const digits = normalizeMmsi(raw);
+  if (digits.length === 9) return null;
+  if (digits.length === 0) return 'Please enter the vessel\'s MMSI.';
+  return `An MMSI is always 9 digits, but you entered ${digits.length} (${digits}). ` +
+    'Please check the number on the ship\'s radio licence or the VHF/AIS unit. ' +
+    'AIS tracking will not work with an incomplete MMSI.';
+};
+
 export const createVessel = async (
   mmsi: string,
   vessel_name: string,

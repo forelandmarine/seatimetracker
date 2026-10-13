@@ -489,7 +489,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // (handled below when is_active=true)
 
     const {
-      mmsi,
+      mmsi: rawMmsi,
       vessel_name,
       imo_number,
       callsign,
@@ -503,11 +503,22 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_type,
       is_active = false,
     } = request.body;
+    // Strip spaces/dashes from pasted numbers before validating and storing
+    const mmsi = (rawMmsi || '').replace(/\D/g, '');
 
     app.logger.info(
       { userId, mmsi, vessel_name, flag, official_number, type, length_metres, gross_tonnes, is_active },
       `Creating vessel with is_active=${is_active} for user ${userId}`
     );
+
+    // MMSI is always exactly 9 digits. Anything else never matches on AIS, so the
+    // vessel would silently never be tracked (e.g. 8-digit 23243571, 6-digit 432901).
+    if (!/^\d{9}$/.test(mmsi)) {
+      app.logger.warn({ userId, mmsi }, 'Rejected vessel with invalid MMSI');
+      return reply.code(400).send({
+        error: `An MMSI is always 9 digits, but "${rawMmsi}" has ${mmsi.length}. Please check the number on the ship's radio licence or the VHF/AIS unit.`,
+      });
+    }
 
     // Check if MMSI already exists for THIS USER (allow other users to track the same vessel)
     const existing = await app.db
