@@ -1053,6 +1053,74 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
+  // PUT /api/vessels/:id/mmsi - Correct a vessel's MMSI (authenticated).
+  // Lets users fix a mistyped MMSI (e.g. 8 digits) without deleting the vessel.
+  fastify.put<{ Params: { id: string }; Body: { mmsi: string } }>('/api/vessels/:id/mmsi', {
+    schema: {
+      description: 'Correct the MMSI of a vessel (must be 9 digits). Triggers a fresh AIS check if the vessel is active. (Requires authentication)',
+      tags: ['vessels'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+      body: {
+        type: 'object',
+        required: ['mmsi'],
+        properties: { mmsi: { type: 'string' } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
+    const { id } = request.params;
+    const mmsi = (request.body.mmsi || '').replace(/\D/g, '');
+
+    if (!/^\d{9}$/.test(mmsi)) {
+      return reply.code(400).send({
+        error: `An MMSI is always 9 digits, but "${request.body.mmsi}" has ${mmsi.length}. Please check the number on the ship's radio licence or the VHF/AIS unit.`,
+      });
+    }
+
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      app.logger.warn({ userId, vesselId: id }, 'Unauthorized MMSI update attempt');
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    if (vessel.mmsi === mmsi) {
+      return reply.code(200).send(transformVesselForResponse(vessel));
+    }
+
+    const duplicate = await app.db
+      .select({ id: schema.vessels.id })
+      .from(schema.vessels)
+      .where(and(eq(schema.vessels.mmsi, mmsi), eq(schema.vessels.user_id, userId)));
+    if (duplicate.length > 0) {
+      return reply.code(409).send({ error: 'You already have a vessel with this MMSI.' });
+    }
+
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ mmsi, updated_at: new Date() })
+      .where(eq(schema.vessels.id, id))
+      .returning();
+
+    app.logger.info({ userId, vesselId: id, oldMmsi: vessel.mmsi, newMmsi: mmsi }, 'Vessel MMSI corrected');
+
+    // Pick up the vessel's position straight away rather than waiting for the scheduler
+    if (updated.is_active) {
+      await fetchAndStoreInitialAISCheck(app, updated.id, mmsi, userId);
+    }
+
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
   // PUT /api/vessels/:id/particulars - Update vessel particulars (authenticated)
   fastify.put<{
     Params: { id: string };

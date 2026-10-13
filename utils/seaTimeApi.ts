@@ -283,6 +283,12 @@ export const updateVesselParticulars = async (
   return normalizeVessel(await res.json());
 };
 
+// Correct a mistyped MMSI on an existing vessel (backend re-checks AIS if active)
+export const updateVesselMmsi = async (vesselId: string, mmsi: string) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/mmsi`, { method: 'PUT', body: { mmsi: normalizeMmsi(mmsi) } });
+  return normalizeVessel(await res.json());
+};
+
 export const activateVessel = async (vesselId: string) => {
   const res = await authFetch(`/api/vessels/${vesselId}/activate`, { method: 'PUT', body: {} });
   return normalizeVessel(await res.json());

@@ -2,6 +2,7 @@
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { ShiftClockCard } from '@/components/ShiftClockCard';
+import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   listCertificates,
@@ -505,6 +506,8 @@ export default function SeaTimeScreen() {
           </View>
         </View>
 
+        {/* Vessels saved with a short MMSI are never tracked: prompt to correct */}
+        <MmsiFixBanner vessels={vessels} onFixed={loadData} />
         {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
         <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
 
