@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { ShiftClockCard } from '@/components/ShiftClockCard';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
+import { OnBoardCard } from '@/components/OnBoardCard';
+import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   listCertificates,
@@ -79,6 +81,7 @@ export default function SeaTimeScreen() {
   const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
   const { refreshTrigger } = useGlobalRefresh();
   const { t } = useTranslation();
+  const { on_board: isOnBoard } = useOnBoard();
   
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -508,6 +511,9 @@ export default function SeaTimeScreen() {
 
         {/* Vessels saved with a short MMSI are never tracked: prompt to correct */}
         <MmsiFixBanner vessels={vessels} onFixed={loadData} />
+        {/* On/off board switch (rotational crew and leave) */}
+        <OnBoardCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
+
         {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
         <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
 
@@ -546,10 +552,16 @@ export default function SeaTimeScreen() {
                 style={[styles.vesselCard, styles.activeVesselCard]}
                 onPress={() => handleVesselPress(activeVessel.id)}
               >
-                <View style={styles.activeVesselBadge}>
-                  <View style={styles.activeIndicatorPulse} />
-                  <Text style={styles.activeVesselBadgeText}>{t('home.tracking')}</Text>
-                </View>
+                {isOnBoard ? (
+                  <View style={styles.activeVesselBadge}>
+                    <View style={styles.activeIndicatorPulse} />
+                    <Text style={styles.activeVesselBadgeText}>{t('home.tracking')}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.activeVesselBadge, styles.pausedVesselBadge]}>
+                    <Text style={[styles.activeVesselBadgeText, styles.pausedVesselBadgeText]}>{t('home.paused')}</Text>
+                  </View>
+                )}
                 
                 <Text style={styles.vesselName}>{activeVessel.vessel_name}</Text>
                 <Text style={styles.vesselMmsi}>{t('home.mmsi')}: {activeVessel.mmsi}</Text>
@@ -594,8 +606,13 @@ export default function SeaTimeScreen() {
                   )}
                 </View>
 
-                {/* Location in DMS format with timestamp */}
-                {locationLoading ? (
+                {/* Location in DMS format with timestamp (hidden while off board) */}
+                {!isOnBoard ? (
+                  <View style={styles.locationSection}>
+                    <Text style={styles.locationSectionTitle}>Position</Text>
+                    <Text style={styles.vesselLocation}>Hidden while you're off board</Text>
+                  </View>
+                ) : locationLoading ? (
                   <View style={styles.locationSection}>
                     <Text style={styles.locationSectionTitle}>Position</Text>
                     <View style={styles.locationLoadingRow}>
@@ -646,7 +663,7 @@ export default function SeaTimeScreen() {
               </TouchableOpacity>
 
               {/* Map showing vessel location - always show if we have any location data */}
-              {activeVesselLocation && 
+              {!isOnBoard ? null : activeVesselLocation && 
                activeVesselLocation.latitude !== null && 
                activeVesselLocation.longitude !== null ? (
                 <View style={styles.mapContainer}>
@@ -1168,6 +1185,12 @@ function createStyles(isDark: boolean, topInset: number) {
       height: 8,
       borderRadius: 4,
       backgroundColor: colors.success,
+    },
+    pausedVesselBadge: {
+      backgroundColor: (isDark ? colors.textSecondary : colors.textSecondaryLight) + '25',
+    },
+    pausedVesselBadgeText: {
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
     activeVesselBadgeText: {
       fontSize: 11,

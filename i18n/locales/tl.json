@@ -75,6 +75,7 @@
     "noHistoricVessels": "Walang nakaraang barko",
     "historicSubtext": "Ang mga barko na dati mong sinubaybayan ay lalabas dito",
     "tracking": "PAGSUBAYBAY",
+    "paused": "NAKAHINTO",
     "addNewVessel": "Magdagdag ng bagong barko",
     "vesselName": "Pangalan ng barko",
     "mmsi": "MMSI",

@@ -379,6 +379,49 @@ export const stopShift = async (
   return res.json();
 };
 
+// --- On/off board toggle (rotational crew and leave) ---
+export interface OnBoardStatus {
+  on_board: boolean;
+  off_board_since: string | null;
+  expected_return_date: string | null; // YYYY-MM-DD
+  off_board_passages?: number;
+}
+
+export interface OffBoardPassage {
+  id: string;
+  vessel_name: string | null;
+  start_time: string;
+  end_time: string | null;
+  duration_hours: number | null;
+  distance_nm: number | null;
+}
+
+export const getOnBoardStatus = async (): Promise<OnBoardStatus> => {
+  const res = await authFetch('/api/on-board');
+  return res.json();
+};
+
+// Going back on board returns the passages logged while away, for the claim prompt.
+export const setOnBoard = async (
+  onBoard: boolean,
+  expectedReturnDate?: string | null,
+): Promise<OnBoardStatus & { passages: OffBoardPassage[] }> => {
+  const res = await authFetch('/api/on-board', {
+    method: 'PUT',
+    body: { on_board: onBoard, expected_return_date: expectedReturnDate ?? null },
+  });
+  return res.json();
+};
+
+export const claimOffBoardPassages = async (entryIds: string[]): Promise<{ claimed: number }> => {
+  const res = await authFetch('/api/on-board/claim', { method: 'POST', body: { entry_ids: entryIds } });
+  return res.json();
+};
+
+export const registerPushToken = async (token: string, platform: string): Promise<void> => {
+  await authFetch('/api/push-tokens', { method: 'POST', body: { token, platform } });
+};
+
 // Read-only — returns cached AIS data from the database, never triggers an external API query.
 // Normalizes the /api/ais/status response into the flat { latitude, longitude, timestamp }
 // shape that callers (home screen, vessel detail) expect.

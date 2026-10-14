@@ -17,6 +17,12 @@ export const user = pgTable("user", {
   target_certification: text("target_certification"), // requirement id the user is working toward, e.g. 'uscg-master-nc-200grt'
   has_record_book: boolean("has_record_book").default(false), // holds an AMSA task book / MNZ training record book, which shortens the sea service required
   vessel_sector: text("vessel_sector"), // 'yachting' | 'commercial' — user-chosen sector. null = not yet chosen (treated as yachting). Changeable any time; does not retro-affect existing entries.
+  // On/off board toggle for rotational crew and leave. While off board, AIS passages on the
+  // user's vessel are stored with status 'off_board' (hidden) instead of 'pending'.
+  on_board: boolean("on_board").default(true).notNull(),
+  off_board_since: timestamp("off_board_since", { withTimezone: true }), // when the user last switched off board
+  expected_return_date: date("expected_return_date"), // optional date the user expects to rejoin (YYYY-MM-DD)
+  underway_alert_sent_at: timestamp("underway_alert_sent_at", { withTimezone: true }), // last "vessel is underway" push while off board
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID

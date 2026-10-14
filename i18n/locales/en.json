@@ -75,6 +75,7 @@
     "noHistoricVessels": "No historic vessels",
     "historicSubtext": "Vessels you've previously tracked will appear here",
     "tracking": "TRACKING",
+    "paused": "PAUSED",
     "addNewVessel": "Add New Vessel",
     "vesselName": "Vessel Name",
     "mmsi": "MMSI",
