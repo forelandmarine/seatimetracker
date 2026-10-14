@@ -201,28 +201,6 @@ export function register(app: App, fastify: FastifyInstance) {
       .set({ lightship_interested_at: new Date() } as any)
       .where(eq(authSchema.user.id, userId));
 
-    // Also flag in HubSpot if available
-    const users = await app.db
-      .select()
-      .from(authSchema.user)
-      .where(eq(authSchema.user.id, userId));
-
-    if (users[0]?.email) {
-      try {
-        const { upsertHubspotContact } = await import("../utils/hubspot.js");
-        await upsertHubspotContact(
-          {
-            email: users[0].email,
-            firstName: users[0].name || undefined,
-            source: "lightship_interest",
-          },
-          app.logger
-        );
-      } catch (err) {
-        app.logger.warn({ err }, "[Lightship Click] HubSpot tag failed (non-critical)");
-      }
-    }
-
     app.logger.info({ userId }, "Lightship CTA clicked");
     return reply.code(200).send({ success: true });
   });

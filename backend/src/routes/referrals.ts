@@ -3,7 +3,7 @@
  * the code lets a new signup credit the referrer. Both users get a free
  * month bonus (handled via subscription_expires_at extension or backend
  * promo code) — for now we just track the relationship and bump
- * referral_count for visibility in HubSpot.
+ * referral_count.
  */
 
 import type { FastifyInstance } from "fastify";

@@ -6,7 +6,6 @@ import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
 import { fetchVesselAISDataWithFallback, fetchVesselSpecs } from "./ais.js";
 import { lookupPort } from "../utils/portDatabase.js";
-import { enrichHubspotContactWithVessel } from "../utils/hubspot.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
 // Used on activation to populate position data right away rather than waiting
@@ -623,16 +622,6 @@ export function register(app: App, fastify: FastifyInstance) {
       } catch {
         scheduledTaskFailed = true;
       }
-    }
-
-    // Enrich HubSpot contact with vessel info (non-blocking, fire-and-forget)
-    if (users[0]?.email) {
-      enrichHubspotContactWithVessel(
-        { email: users[0].email, vesselName: vessel_name, mmsi, flag: flag || undefined },
-        app.logger
-      ).catch((err) => {
-        app.logger.warn({ userId, err }, 'HubSpot enrichment failed (non-critical)');
-      });
     }
 
     const response = transformVesselForResponse(vessel);
