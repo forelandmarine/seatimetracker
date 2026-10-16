@@ -54,7 +54,7 @@ const slides: OnboardingSlide[] = [
     label: 'AUTOMATIC TRACKING',
     title: 'Ditch the paper logbook.',
     body:
-      'Enter your MMSI and SeaTime Tracker picks up AIS positions automatically. Your sea service builds in the background while you focus on the job.',
+      'Enter your vessel\'s MMSI and SeaTime Tracker picks up its AIS positions automatically. Your vessel must transmit AIS; without it, you can still log passages by hand.',
   },
   {
     iconName: 'doc.text.fill',

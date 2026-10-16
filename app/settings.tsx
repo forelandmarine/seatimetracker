@@ -120,7 +120,8 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />
-          <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isLast isDark={isDark} />
+          <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isDark={isDark} />
+          <SettingsRow icon="envelope.badge" androidIcon="mark-email-read" label="Email preferences" onPress={() => router.push('/email-preferences' as any)} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>

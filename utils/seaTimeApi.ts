@@ -541,6 +541,31 @@ export const deleteSeaTimeEntry = async (entryId: string) => {
   return res.json();
 };
 
+export type MarketingConsentSource = 'signup' | 'prompt' | 'settings';
+
+export interface MarketingConsent {
+  marketing_consent: boolean;
+  /** When the user last answered; null = never asked. */
+  consented_at: string | null;
+  source: string | null;
+}
+
+export const getMarketingConsent = async (): Promise<MarketingConsent> => {
+  const res = await authFetch('/api/marketing-consent');
+  return res.json();
+};
+
+export const setMarketingConsent = async (
+  marketing_consent: boolean,
+  source: MarketingConsentSource
+): Promise<MarketingConsent> => {
+  const res = await authFetch('/api/marketing-consent', {
+    method: 'PUT',
+    body: { marketing_consent, source },
+  });
+  return res.json();
+};
+
 export const getReportSummary = async () => {
   const res = await authFetch('/api/reports/summary');
   return res.json();

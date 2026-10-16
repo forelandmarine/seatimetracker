@@ -2,6 +2,9 @@
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { ShiftClockCard } from '@/components/ShiftClockCard';
+import { VesselSetupCard, useFirstVesselPrompt } from '@/components/VesselSetupCard';
+import { SeaTimeProgressCard } from '@/components/SeaTimeProgressCard';
+import { MarketingConsentPrompt } from '@/components/MarketingConsentPrompt';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
@@ -465,6 +468,10 @@ export default function SeaTimeScreen() {
     );
   }
 
+  // New users: open Add Vessel once, and remind after 24 h if still no vessel.
+  const openAddVessel = useCallback(() => setModalVisible(true), []);
+  useFirstVesselPrompt(vessels.length, !loading && !loadError, openAddVessel);
+
   if (loadError && vessels.length === 0) {
     return (
       <View style={[styles.loadingContainer, { justifyContent: 'center' }]}>
@@ -524,24 +531,9 @@ export default function SeaTimeScreen() {
         {/* Empty State - No Vessels */}
         {vessels.length === 0 ? (
           <View style={styles.noVesselsContainer}>
-            <IconSymbol
-              ios_icon_name="sailboat"
-              android_material_icon_name="sailing"
-              size={80}
-              color={isDark ? colors.textSecondary : colors.textSecondaryLight}
-            />
-            <Text style={styles.noVesselsTitle}>No Vessels Yet</Text>
-            <Text style={styles.noVesselsSubtitle}>
-              Add your first vessel to start tracking sea time
-            </Text>
+            <VesselSetupCard onAddVessel={openAddVessel} />
             <TouchableOpacity
-              style={styles.noVesselsButton}
-              onPress={() => setModalVisible(true)}
-            >
-              <Text style={styles.noVesselsButtonText}>Add Vessel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.noVesselsButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary, marginTop: 12 }]}
+              style={[styles.noVesselsButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary, marginHorizontal: 16, marginTop: 0, alignItems: 'center' }]}
               onPress={async () => {
                 try {
                   await seaTimeApi.createVessel(
@@ -572,6 +564,9 @@ export default function SeaTimeScreen() {
 
         {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
         <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
+
+        {/* Confirmed sea days and passages waiting to be confirmed */}
+        <SeaTimeProgressCard />
         {/* Active Vessel Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -873,6 +868,9 @@ export default function SeaTimeScreen() {
         </>
         )}
       </ScrollView>
+
+      {/* One-time marketing email question (users never asked); not during first-run vessel setup */}
+      <MarketingConsentPrompt enabled={!loading && vessels.length > 0 && !modalVisible} />
 
       {/* Add Vessel Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
@@ -1568,10 +1566,8 @@ function createStyles(isDark: boolean) {
       fontWeight: '500',
     },
     noVesselsContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 80,
-      paddingHorizontal: 32,
+      paddingTop: 8,
+      paddingBottom: 40,
     },
     noVesselsTitle: {
       fontSize: 22,
