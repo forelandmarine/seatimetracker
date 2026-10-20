@@ -10,6 +10,7 @@ import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
+import { processHistoryImports } from './historyImport.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -156,6 +157,13 @@ async function runSchedulerIteration(app: App): Promise<void> {
       await processDripEmails(app);
     } catch (error) {
       app.logger.error({ err: error }, 'Error processing drip emails');
+    }
+
+    // AIS history imports (paid): at most one Datalastic call per iteration
+    try {
+      await processHistoryImports(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing history imports');
     }
 
     // Find all due scheduled tasks that are active AND for active vessels only
