@@ -41,6 +41,7 @@ import { register as registerCertificatesRoutes } from './routes/certificates.js
 import { register as registerReferralsRoutes } from './routes/referrals.js';
 import { register as registerLeavePeriodsRoutes } from './routes/leave-periods.js';
 import { register as registerOnBoardRoutes } from './routes/on-board.js';
+import { register as registerMarketingConsentRoutes } from './routes/marketing-consent.js';
 import { register as registerPublicRoutes } from './routes/public.js';
 
 // Create application with schema for full database type support
@@ -80,6 +81,7 @@ registerCertificatesRoutes(app, app.fastify);
 registerReferralsRoutes(app, app.fastify);
 registerLeavePeriodsRoutes(app, app.fastify);
 registerOnBoardRoutes(app, app.fastify);
+registerMarketingConsentRoutes(app, app.fastify);
 registerPublicRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
