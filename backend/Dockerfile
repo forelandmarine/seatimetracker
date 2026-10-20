@@ -2,11 +2,12 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Copy package.json only — package-lock will be regenerated.
-# We removed @specific-dev/framework so the old lockfile is invalid.
-COPY package.json ./
+# Install from the lockfile so every deploy gets the same dependency tree.
+# (A fresh `npm install` on each build began failing on 2026-10-20 with an npm
+# internal error, "Cannot read properties of null (reading 'edgesOut')".)
+COPY package.json package-lock.json ./
 
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 
