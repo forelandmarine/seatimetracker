@@ -18,6 +18,7 @@ import {
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { headlineSeaDays, vesselSeaDays, creditedDates, partDayLabel, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { getRequirementTitles } from '@/constants/mcaRequirements';
@@ -603,6 +604,8 @@ export default function LogbookScreen() {
 
   const [entries, setEntries] = useState<SeaTimeEntry[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [summary, setSummary] = useState<ReportSummaryTotals | null>(null);
+  const [authority, setAuthority] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -619,14 +622,19 @@ export default function LogbookScreen() {
   const loadData = useCallback(async () => {
     try {
       log('[LogbookScreen] Fetching sea time entries and vessels');
-      const [entriesData, vesselsData] = await Promise.all([
+      const [entriesData, vesselsData, summaryData, profileData] = await Promise.all([
         seaTimeApi.getSeaTimeEntries(),
         seaTimeApi.getVessels(),
+        // Totals come from the report summary so they match the submitted report.
+        seaTimeApi.getReportSummary().catch(() => null),
+        seaTimeApi.getUserProfile().catch(() => null),
       ]);
       log('[LogbookScreen] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
       
       setEntries(entriesData);
       setVessels(vesselsData);
+      setSummary(summaryData);
+      setAuthority(profileData?.maritime_authority ?? null);
     } catch (error) {
       logError('[LogbookScreen] Error loading data:', error);
       showError('Failed to load logbook data');
@@ -729,11 +737,18 @@ export default function LogbookScreen() {
     return `${wholeHours}h ${minutes}m`;
   };
 
-  const formatSeaDay = (seaDays: number | null | undefined): string => {
+  const formatSeaDay = (entry: SeaTimeEntry): string => {
+    const seaDays = entry.sea_days;
+    const partDay = partDayLabel(seaDays, entry.duration_hours, authority);
+    if (partDay) return partDay;
     if (seaDays === 1) {
       return 'Sea Day Qualified';
+    } else if (seaDays != null && seaDays > 1) {
+      return `${seaDays} Sea Days`;
     } else if (seaDays === 0) {
-      return 'Not Qualified (< 4 hours)';
+      return authority === 'amsa' || authority === 'uscg'
+        ? 'Not Qualified (< 8 hours)'
+        : 'Not Qualified (< 4 hours)';
     }
     return 'Pending Confirmation';
   };
@@ -753,6 +768,9 @@ export default function LogbookScreen() {
   };
 
   const calculateTotalSeaDays = () => {
+    const fromSummary = headlineSeaDays(summary, authority);
+    if (fromSummary != null) return fromSummary;
+    // Summary unavailable: fall back to the per-entry sum.
     return entries
       .filter((e) => e.status === 'confirmed')
       .reduce((sum, entry) => sum + (entry.sea_days ?? 0), 0);
@@ -768,10 +786,8 @@ export default function LogbookScreen() {
     const dateEntries = entries.filter((entry) => {
       if (entry.status !== 'confirmed') return false;
       
-      const entryDate = new Date(entry.start_time);
-      const entryDateString = formatDateToLocalString(entryDate);
-      
-      return entryDateString === dateString;
+      const entryDateString = formatDateToLocalString(new Date(entry.start_time));
+      return entryDateString === dateString || creditedDates(entry).includes(dateString);
     });
     
     return dateEntries;
@@ -780,19 +796,19 @@ export default function LogbookScreen() {
   const markedDates = useMemo(() => {
     const marked: any = {};
     
-    const confirmedEntries = entries.filter((e) => e.status === 'confirmed' && e.sea_days === 1);
+    // Mark every date an entry earns sea days on, not just single-day entries.
+    const confirmedEntries = entries.filter((e) => e.status === 'confirmed');
     
     confirmedEntries.forEach((entry) => {
-      const entryDate = new Date(entry.start_time);
-      const dateString = formatDateToLocalString(entryDate);
-      
-      marked[dateString] = {
-        marked: true,
-        dotColor: colors.primary,
-        selected: selectedDate === dateString,
-        selectedColor: colors.primary,
-        selectedTextColor: '#FFFFFF',
-      };
+      creditedDates(entry).forEach((dateString) => {
+        marked[dateString] = {
+          marked: true,
+          dotColor: colors.primary,
+          selected: selectedDate === dateString,
+          selectedColor: colors.primary,
+          selectedTextColor: '#FFFFFF',
+        };
+      });
     });
     
     return marked;
@@ -1005,7 +1021,7 @@ export default function LogbookScreen() {
 
                       <View style={styles.seaDayBadge}>
                         <Text style={styles.seaDayText}>
-                          {formatSeaDay(entry.sea_days)}
+                          {formatSeaDay(entry)}
                         </Text>
                       </View>
 
@@ -1104,10 +1120,9 @@ export default function LogbookScreen() {
                 <React.Fragment>
                   <Text style={styles.sectionTitle}>{t('logbook.byVessel')}</Text>
                   {Object.entries(groupedByVessel).map(([vesselId, group]) => {
-                    const vesselTotalSeaDays = group.entries.reduce(
-                      (sum, entry) => sum + (entry.sea_days ?? 0),
-                      0
-                    );
+                    const vesselTotalSeaDays =
+                      vesselSeaDays(summary, group.vessel?.vessel_name) ??
+                      group.entries.reduce((sum, entry) => sum + (entry.sea_days ?? 0), 0);
                     
                     return (
                       <React.Fragment key={vesselId}>
@@ -1183,7 +1198,7 @@ export default function LogbookScreen() {
 
                             <View style={styles.seaDayBadge}>
                               <Text style={styles.seaDayText}>
-                                {formatSeaDay(entry.sea_days)}
+                                {formatSeaDay(entry)}
                               </Text>
                             </View>
 
@@ -1267,7 +1282,7 @@ export default function LogbookScreen() {
 
                       <View style={styles.seaDayBadge}>
                         <Text style={styles.seaDayText}>
-                          {formatSeaDay(entry.sea_days)}
+                          {formatSeaDay(entry)}
                         </Text>
                       </View>
                     </TouchableOpacity>

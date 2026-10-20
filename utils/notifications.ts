@@ -560,6 +560,100 @@ export async function cancelReturnReminder(): Promise<void> {
   }
 }
 
+const PENDING_REMINDER_ID = 'pending-passages-reminder';
+const NO_VESSEL_REMINDER_ID = 'no-vessel-reminder';
+
+/** Local notification at `fire`, replacing any earlier one with the same id. */
+async function scheduleOneOff(
+  identifier: string,
+  fire: Date,
+  title: string,
+  body: string,
+  url: string
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+    if (fire.getTime() <= Date.now()) return;
+
+    const granted = await registerForPushNotificationsAsync();
+    if (!granted) return;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title,
+        body,
+        data: { type: identifier, url },
+        sound: 'default',
+        ...(Platform.OS === 'android' && {
+          channelId: 'sea-time-entries',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fire,
+      } as any,
+    });
+    log('[Notifications] Scheduled', identifier, 'for', fire.toISOString());
+  } catch (error) {
+    logError('[Notifications] Failed to schedule', identifier, error);
+  }
+}
+
+async function cancelById(identifier: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return;
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+  } catch (error) {
+    logError('[Notifications] Failed to cancel', identifier, error);
+  }
+}
+
+/**
+ * Remind the user about unconfirmed passages a week from now, at 09:00 local.
+ * Called whenever the pending count is refreshed, so the reminder keeps moving
+ * a week ahead while the user is active and fires once they stop opening the app.
+ */
+export async function schedulePendingPassagesReminder(pendingCount: number): Promise<void> {
+  if (pendingCount <= 0) return cancelPendingPassagesReminder();
+  const fire = new Date();
+  fire.setDate(fire.getDate() + 7);
+  fire.setHours(9, 0, 0, 0);
+  const noun = pendingCount === 1 ? 'passage' : 'passages';
+  await scheduleOneOff(
+    PENDING_REMINDER_ID,
+    fire,
+    `You have ${pendingCount} ${noun} to confirm`,
+    'Confirm them so they count towards your sea time.',
+    '/(tabs)/confirmations'
+  );
+}
+
+export async function cancelPendingPassagesReminder(): Promise<void> {
+  await cancelById(PENDING_REMINDER_ID);
+}
+
+/** One reminder to add a vessel, if the user still has none at `fire`. */
+export async function scheduleNoVesselReminder(fire: Date): Promise<void> {
+  await scheduleOneOff(
+    NO_VESSEL_REMINDER_ID,
+    fire,
+    'Add your vessel to start tracking',
+    'Enter its 9-digit MMSI and SeaTime Tracker logs your passages from AIS automatically.',
+    '/(tabs)/(home)'
+  );
+}
+
+export async function cancelNoVesselReminder(): Promise<void> {
+  await cancelById(NO_VESSEL_REMINDER_ID);
+}
+
 /**
  * Expo push token for server-sent alerts (e.g. "your vessel is underway").
  * Null on web, simulators, without permission, or if push credentials are missing.

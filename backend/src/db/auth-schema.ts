@@ -23,6 +23,11 @@ export const user = pgTable("user", {
   off_board_since: timestamp("off_board_since", { withTimezone: true }), // when the user last switched off board
   expected_return_date: date("expected_return_date"), // optional date the user expects to rejoin (YYYY-MM-DD)
   underway_alert_sent_at: timestamp("underway_alert_sent_at", { withTimezone: true }), // last "vessel is underway" push while off board
+  // Marketing email consent (PECR/UK GDPR). Off unless the user opts in. A null
+  // marketing_consent_at means the user has never been asked.
+  marketing_consent: boolean("marketing_consent").default(false).notNull(),
+  marketing_consent_at: timestamp("marketing_consent_at", { withTimezone: true }), // when the user last answered
+  marketing_consent_source: text("marketing_consent_source"), // 'signup' | 'prompt' | 'settings' | 'unsubscribe'
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID

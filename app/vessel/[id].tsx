@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 import { log, error as logError } from '@/utils/log';
@@ -88,6 +89,7 @@ export default function VesselDetailScreen() {
 
   const [vessel, setVessel] = useState<Vessel | null>(null);
   const [seaTimeEntries, setSeaTimeEntries] = useState<SeaTimeEntry[]>([]);
+  const [summary, setSummary] = useState<ReportSummaryTotals | null>(null);
   const [aisData, setAisData] = useState<AISData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,10 +123,13 @@ export default function VesselDetailScreen() {
 
     try {
       log('[VesselDetail] Loading data for vessel:', vesselId);
-      const [vesselsData, seaTimeData] = await Promise.all([
+      const [vesselsData, seaTimeData, summaryData] = await Promise.all([
         seaTimeApi.getVessels(),
         seaTimeApi.getVesselSeaTime(vesselId),
+        // The vessel total comes from the report summary so overlapping entries count once.
+        seaTimeApi.getReportSummary().catch(() => null),
       ]);
+      setSummary(summaryData);
 
       const currentVessel = vesselsData.find((v: Vessel) => v.id === vesselId);
       if (currentVessel) {
@@ -448,6 +453,8 @@ export default function VesselDetailScreen() {
   };
 
   const calculateTotalDays = (): number => {
+    const fromSummary = vesselSeaDays(summary, vessel?.vessel_name);
+    if (fromSummary != null) return fromSummary;
     return seaTimeEntries
       .filter(entry => entry.status === 'confirmed')
       .reduce((total, entry) => total + (entry.sea_days || 0), 0);

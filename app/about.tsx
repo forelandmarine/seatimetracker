@@ -27,7 +27,7 @@ const FORELAND_URL = 'https://forelandmarine.com';
 const SEATIME_URL = 'https://forelandmarine.com/tools/seatime-tracker';
 const LIGHTSHIP_URL = 'https://forelandmarine.com/tools/lightship-ism';
 const PRIVACY_URL = 'https://forelandmarine.com/privacy-policy';
-const TERMS_URL = 'https://forelandmarine.com/terms';
+const TERMS_URL = 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
 const SUPPORT_EMAIL = 'info@forelandmarine.com';
 
 export default function AboutScreen() {

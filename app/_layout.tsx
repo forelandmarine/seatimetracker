@@ -199,6 +199,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="email-preferences"
+          options={{
+            title: 'Email preferences',
+            headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
           name="notification-settings"
           options={{
             title: t('navigation.notificationSettings'),

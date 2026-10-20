@@ -2,6 +2,9 @@
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { ShiftClockCard } from '@/components/ShiftClockCard';
+import { VesselSetupCard, useFirstVesselPrompt } from '@/components/VesselSetupCard';
+import { SeaTimeProgressCard } from '@/components/SeaTimeProgressCard';
+import { MarketingConsentPrompt } from '@/components/MarketingConsentPrompt';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
@@ -453,6 +456,10 @@ export default function SeaTimeScreen() {
     );
   }
 
+  // New users: open Add Vessel once, and remind after 24 h if still no vessel.
+  const openAddVessel = useCallback(() => setModalVisible(true), []);
+  useFirstVesselPrompt(vessels.length, !loading && !loadError, openAddVessel);
+
   if (loadError && vessels.length === 0) {
     return (
       <View style={[styles.loadingContainer, { paddingHorizontal: 24, justifyContent: 'center' }]}>
@@ -509,6 +516,9 @@ export default function SeaTimeScreen() {
           </View>
         </View>
 
+        {/* First run: no vessel yet */}
+        {vessels.length === 0 && <VesselSetupCard onAddVessel={openAddVessel} />}
+
         {/* Vessels saved with a short MMSI are never tracked: prompt to correct */}
         <MmsiFixBanner vessels={vessels} onFixed={loadData} />
         {/* On/off board switch (rotational crew and leave) */}
@@ -516,6 +526,9 @@ export default function SeaTimeScreen() {
 
         {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
         <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
+
+        {/* Confirmed sea days and passages waiting to be confirmed */}
+        {vessels.length > 0 && <SeaTimeProgressCard />}
 
         {/* Active Vessel Section */}
         <View style={styles.section}>
@@ -836,6 +849,9 @@ export default function SeaTimeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* One-time marketing email question (users never asked); not during first-run vessel setup */}
+      <MarketingConsentPrompt enabled={!loading && vessels.length > 0 && !modalVisible} />
 
       {/* Add Vessel Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>

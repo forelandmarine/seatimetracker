@@ -10,6 +10,7 @@ import {
   useColorScheme,
   Platform,
   Image,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -26,10 +27,14 @@ import {
   authenticateWithBiometrics
 } from '@/utils/biometricAuth';
 import { getToken } from '@/utils/tokenStorage';
+import { setMarketingConsent } from '@/utils/seaTimeApi';
 import { log, error as logError } from '@/utils/log';
 import { RETRYABLE_CODES } from '@/utils/errorCodes';
 import ErrorModal from '@/components/ErrorModal';
 import { createAuthStyles } from '@/styles/authStyles';
+
+const TERMS_URL = 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
+const PRIVACY_URL = 'https://forelandmarine.com/privacy-policy';
 
 export default function AuthScreen() {
   const { t } = useTranslation();
@@ -39,6 +44,8 @@ export default function AuthScreen() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  // Marketing opt-in at sign-up: always starts unticked (PECR consent).
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -145,6 +152,27 @@ export default function AuthScreen() {
     }
   };
 
+  /** Store the sign-up opt-in answer. Never blocks sign-up if it fails. */
+  const recordSignUpConsent = () => {
+    setMarketingConsent(marketingOptIn, 'signup').catch((e) =>
+      logError('[AuthScreen] Failed to record marketing consent:', e?.message)
+    );
+  };
+
+  const legalText = (lead: string) => (
+    <Text style={[styles.footerText, { fontSize: 12, marginTop: 4, marginBottom: 16, textAlign: 'center' }]}>
+      {lead} you agree to the{' '}
+      <Text style={{ color: colors.primary }} onPress={() => Linking.openURL(TERMS_URL)}>
+        Terms of Service
+      </Text>{' '}
+      and{' '}
+      <Text style={{ color: colors.primary }} onPress={() => Linking.openURL(PRIVACY_URL)}>
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
+
   const handleEmailAuth = async () => {
     if (loading) return;
     log('[AuthScreen] Email auth started, mode:', isSignUp ? 'Sign Up' : 'Sign In');
@@ -175,6 +203,7 @@ export default function AuthScreen() {
     try {
       if (isSignUp) {
         await signUp(email, password, name || 'User');
+        recordSignUpConsent();
       } else {
         await signIn(email, password, rememberMe);
       }
@@ -256,6 +285,9 @@ export default function AuthScreen() {
       };
       
       await signInWithApple(credential.identityToken, appleUserData);
+      // Only the sign-up form shows the opt-in box. Apple users who sign in from
+      // the sign-in form are asked later by the one-time prompt on Home.
+      if (isSignUp) recordSignUpConsent();
 
       log('[AuthScreen] Apple sign in successful, navigating to index');
       
@@ -404,6 +436,25 @@ export default function AuthScreen() {
           </TouchableOpacity>
         )}
 
+        {isSignUp && (
+          <>
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setMarketingOptIn(!marketingOptIn)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: marketingOptIn }}
+            >
+              <View style={[styles.checkbox, marketingOptIn && styles.checkboxChecked]}>
+                {marketingOptIn && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                Send me occasional tips and offers about SeaTime Tracker
+              </Text>
+            </TouchableOpacity>
+            {legalText('By creating an account')}
+          </>
+        )}
+
         <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
           onPress={handleEmailAuth}
@@ -463,6 +514,7 @@ export default function AuthScreen() {
               style={styles.appleButton}
               onPress={handleAppleSignIn}
             />
+            {legalText('By continuing with Apple')}
           </View>
         )}
 

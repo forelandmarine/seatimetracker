@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { confirmFutureDates } from '@/utils/futureDateCheck';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -523,7 +524,7 @@ export default function AddSeaTimeScreen() {
     return { lat: null, lon: null };
   };
 
-  const handleSave = async () => {
+  const handleSave = async (futureDatesConfirmed?: boolean) => {
     log('[AddSeaTimeScreen] User tapped Save');
     
     if (!selectedVessel) {
@@ -552,6 +553,11 @@ export default function AddSeaTimeScreen() {
       }
       
       log('[AddSeaTimeScreen] Duration validation passed:', durationHours, 'hours');
+    }
+
+    // Future dates are allowed, but ask first.
+    if (!futureDatesConfirmed && confirmFutureDates(startDate, endDate, () => handleSave(true))) {
+      return;
     }
 
     try {
@@ -658,6 +664,7 @@ export default function AddSeaTimeScreen() {
   const endDateLabel = 'End Date & Time';
   const optionalText = '(Optional)';
   const endDatePlaceholder = 'Select end date & time';
+  const endDateHelperText = 'Leave blank to log a single sea day.';
   const voyageLocationsLabel = 'Voyage Locations';
   const voyageHelperText = 'Enter location names or coordinates (e.g., "51.5074, -0.1278")';
   const fromLabel = 'From';
@@ -968,6 +975,7 @@ export default function AddSeaTimeScreen() {
                 <Text style={styles.inputLabelOptional}> {optionalText}</Text>
               </Text>
             </View>
+            <Text style={styles.helperText}>{endDateHelperText}</Text>
             <TouchableOpacity
               style={styles.dateTimeButton}
               onPress={() => {
@@ -1050,7 +1058,7 @@ export default function AddSeaTimeScreen() {
 
           <TouchableOpacity 
             style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
-            onPress={handleSave}
+            onPress={() => handleSave()}
             disabled={saving}
           >
             <Text style={styles.saveButtonText}>{saveButtonText}</Text>

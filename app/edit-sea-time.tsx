@@ -19,10 +19,12 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { confirmFutureDates } from '@/utils/futureDateCheck';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 interface Vessel {
   id: string;
@@ -367,6 +369,7 @@ export default function EditSeaTimeScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
+  const { triggerRefresh } = useGlobalRefresh();
   const navigation = useNavigation();
   const params = useLocalSearchParams();
   const entryId = params.id as string;
@@ -557,12 +560,17 @@ export default function EditSeaTimeScreen() {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = async (futureDatesConfirmed?: boolean) => {
     if (saving) return;
     log('[EditSeaTimeScreen] User tapped Save');
 
     if (!entry) {
       showFeedback('Error', 'Entry not found', 'error');
+      return;
+    }
+
+    // Future dates are allowed, but ask first.
+    if (!futureDatesConfirmed && confirmFutureDates(entry.start_time, entry.end_time, () => handleSave(true))) {
       return;
     }
 
@@ -615,6 +623,9 @@ export default function EditSeaTimeScreen() {
 
       await seaTimeApi.updateSeaTimeEntry(entry.id, updatePayload);
 
+      // The backend recounts the entry's days when its service type changes,
+      // so tell the vessel and home screens to reload their totals.
+      triggerRefresh();
       savedOrDeletedRef.current = true;
       showFeedback('Success', 'Sea time entry updated successfully', 'success', () => router.back());
     } catch (error: any) {
@@ -639,6 +650,7 @@ export default function EditSeaTimeScreen() {
         try {
           log('[EditSeaTimeScreen] Deleting sea time entry:', entry.id);
           await seaTimeApi.deleteSeaTimeEntry(entry.id);
+          triggerRefresh();
           savedOrDeletedRef.current = true;
           // Show success modal; when user taps OK, navigate back once
           showFeedback('Success', 'Sea time entry deleted successfully', 'success', () => router.back());
@@ -1145,7 +1157,7 @@ export default function EditSeaTimeScreen() {
 
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-            onPress={handleSave}
+            onPress={() => handleSave()}
             disabled={saving}
           >
             <Text style={styles.saveButtonText}>{saveButtonText}</Text>

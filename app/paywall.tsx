@@ -288,7 +288,7 @@ export default function PaywallScreen() {
     // Apple requires linking its standard EULA on iOS; Android links Foreland's own terms.
     const termsUrl = Platform.OS === 'ios'
       ? 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
-      : 'https://forelandmarine.com/terms';
+      : 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
     log('[Paywall] Opening Terms of Service:', termsUrl);
     Linking.openURL(termsUrl).catch(err => {
       logError('[Paywall] Failed to open Terms URL:', err);
