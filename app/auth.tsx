@@ -33,7 +33,7 @@ import { RETRYABLE_CODES } from '@/utils/errorCodes';
 import ErrorModal from '@/components/ErrorModal';
 import { createAuthStyles } from '@/styles/authStyles';
 
-const TERMS_URL = 'https://forelandmarine.com/terms';
+const TERMS_URL = 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
 const PRIVACY_URL = 'https://forelandmarine.com/privacy-policy';
 
 export default function AuthScreen() {
