@@ -206,6 +206,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="history-import"
+          options={{
+            title: 'Import past sea time',
+            headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
           name="notification-settings"
           options={{
             title: t('navigation.notificationSettings'),
