@@ -19,6 +19,8 @@ import {
   AUTHORITY_LABELS,
   MCARequirement,
   MaritimeAuthority,
+  VesselSector,
+  filterRequirementsBySector,
   getDefaultTargetId,
   getRequirementsByAuthority,
   groupRequirementsByCategory,
@@ -246,6 +248,9 @@ export default function CertificationRequirementsScreen() {
   const [profileAuthority, setProfileAuthority] = useState<MaritimeAuthority | null>(null);
   const [profileDepartment, setProfileDepartment] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [sector, setSector] = useState<VesselSector | null>(null);
+  // Only worth explaining what carries over once there is commercial time to carry.
+  const [hasCommercialVessel, setHasCommercialVessel] = useState(false);
   const [savingTarget, setSavingTarget] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -262,6 +267,12 @@ export default function CertificationRequirementsScreen() {
         setProfileAuthority(isAuthority(profile?.maritime_authority) ? profile.maritime_authority : null);
         setProfileDepartment(profile?.department ?? null);
         setTargetId(profile?.target_certification ?? null);
+        setSector(profile?.vessel_sector ?? null);
+        const vessels = await seaTimeApi.getVessels().catch(() => []);
+        if (cancelled) return;
+        setHasCommercialVessel(
+          Array.isArray(vessels) && vessels.some((v: any) => v?.sector === 'commercial'),
+        );
       } catch (err) {
         logError('[CertificationRequirements] Failed to load profile', err);
       } finally {
@@ -279,8 +290,8 @@ export default function CertificationRequirementsScreen() {
     (profileDepartment ?? params.department)?.toLowerCase() === 'engineering' ? 'engineering' : 'deck';
 
   const requirements = useMemo(
-    () => getRequirementsByAuthority(authority, department),
-    [authority, department],
+    () => filterRequirementsBySector(getRequirementsByAuthority(authority, department), sector),
+    [authority, department, sector],
   );
 
   const filtered = useMemo(() => {
@@ -454,6 +465,17 @@ export default function CertificationRequirementsScreen() {
                     </View>
 
                     <Text style={styles.requirementDescription}>{requirement.description}</Text>
+
+                    {hasCommercialVessel && requirement.commercialService && (
+                      <View style={styles.detailItem}>
+                        <Text style={styles.bullet}>•</Text>
+                        <Text style={styles.detailText}>
+                          {requirement.commercialService === 'counts'
+                            ? 'Your time on commercial vessels counts toward this.'
+                            : 'Only yacht service counts toward this; your commercial vessel time is not included.'}
+                        </Text>
+                      </View>
+                    )}
 
                     {requirement.requirements.map((req, reqIndex) => (
                       <View key={reqIndex} style={styles.requirementSection}>

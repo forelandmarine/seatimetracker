@@ -289,6 +289,13 @@ export const updateVesselMmsi = async (vesselId: string, mmsi: string) => {
   return normalizeVessel(await res.json());
 };
 
+// Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
+// certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
+export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sector`, { method: 'PUT', body: { sector } });
+  return normalizeVessel(await res.json());
+};
+
 export const activateVessel = async (vesselId: string) => {
   const res = await authFetch(`/api/vessels/${vesselId}/activate`, { method: 'PUT', body: {} });
   return normalizeVessel(await res.json());
