@@ -18,6 +18,7 @@ export const vessels = pgTable('vessels', {
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
   is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
+  sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),

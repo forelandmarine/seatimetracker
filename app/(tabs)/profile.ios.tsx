@@ -16,7 +16,7 @@ import {
   Switch,
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress } from '@/components/CertificationProgress';
+import { CertificationProgress, CommercialServiceSummary } from '@/components/CertificationProgress';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
   getAuthorityServiceDefinitions,
@@ -82,6 +82,7 @@ interface SeaTimeSummary {
     navigational_watch: number;
     engineering_watch: number;
   } | null;
+  commercial_service?: CommercialServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -1129,6 +1130,7 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
+                  commercialService={summary.commercial_service ?? null}
                   hasRecordBook={hasRecordBook}
                   isDark={isDark}
                   onChangeTarget={() =>

@@ -62,6 +62,17 @@ export interface MNZServiceSummary {
   outside_window: number;
 }
 
+/**
+ * Service on vessels tagged commercial, from the summary endpoint. MCA yacht
+ * deck CoCs only credit yacht service, so the yacht-only breakdown is what
+ * they are measured against.
+ */
+export interface CommercialServiceSummary {
+  qualifying_total: number;
+  vessels: string[];
+  yacht_entries_by_service_type: ServiceTypeDays[];
+}
+
 /** Share of the required service AMSA lets you gain while not underway. */
 const AMSA_NOT_UNDERWAY_CAP = { deck: 0.15, engineering: 0.33 } as const;
 
@@ -85,6 +96,8 @@ export interface CertificationProgressProps {
   amsaService?: AMSAServiceSummary | null;
   /** MNZ-rules day count from the summary endpoint. Required for MNZ progress. */
   mnzService?: MNZServiceSummary | null;
+  /** Service on commercial vessels, used to decide what carries over to MCA yacht CoCs. */
+  commercialService?: CommercialServiceSummary | null;
   /**
    * Whether the user holds the record of training their authority reduces sea
    * service for: an AMSA task book, or an MNZ training record book or cadet
@@ -146,6 +159,7 @@ export function CertificationProgress({
   uscgService,
   amsaService,
   mnzService,
+  commercialService,
   hasRecordBook = false,
   isDark,
   onChangeTarget,
@@ -168,6 +182,13 @@ export function CertificationProgress({
   const isUSCG = resolvedAuthority === 'uscg';
   const isAMSA = resolvedAuthority === 'amsa';
   const isMNZ = resolvedAuthority === 'mnz';
+
+  // Commercial-vessel days only matter for MCA, where the rules split by
+  // vessel type. For a yacht-only CoC they are left out of the bars; for one
+  // that accepts them they stay in and are shown as carried over.
+  const commercialDays =
+    resolvedAuthority === 'mca' ? commercialService?.qualifying_total ?? 0 : 0;
+  const excludeCommercial = commercialDays > 0 && requirement?.commercialService === 'yacht_only';
 
   /** Day target for this pathway, allowing for a held task or record book. */
   const targetDays = getTargetDays(requirement, hasRecordBook);
@@ -205,7 +226,14 @@ export function CertificationProgress({
       ];
     }
 
-    if (resolvedAuthority === 'mca') return mcaRows(serviceTypes, dept === 'engineering');
+    if (resolvedAuthority === 'mca') {
+      return mcaRows(
+        excludeCommercial && commercialService
+          ? commercialService.yacht_entries_by_service_type
+          : serviceTypes,
+        dept === 'engineering',
+      );
+    }
 
     if (isAMSA) {
       // Same reasoning as the USCG branch: the MCA-shaped totals in
@@ -273,6 +301,8 @@ export function CertificationProgress({
     amsaService,
     mnzService,
     serviceTypes,
+    commercialService,
+    excludeCommercial,
     resolvedAuthority,
     dept,
     targetDays,
@@ -426,6 +456,23 @@ export function CertificationProgress({
               : isAMSA
                 ? 'These depend on the certificate you held and the vessels you served on, so AMSA assesses them from your sea service records rather than from this total.'
                 : 'These depend on the certificate you held and the vessels you served on, so Maritime NZ assesses them from your sea service records rather than from this total.'}
+          </Text>
+        </View>
+      )}
+
+      {commercialDays > 0 && requirement?.commercialService && (
+        <View
+          style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+            {excludeCommercial
+              ? `${commercialDays} ${commercialDays === 1 ? 'day' : 'days'} on commercial vessels not counted`
+              : `Includes ${commercialDays} ${commercialDays === 1 ? 'day' : 'days'} carried over from commercial vessels`}
+          </Text>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            {excludeCommercial
+              ? `MSN 1858 only credits service on yachts toward this certificate, so time on ${formatVesselList(commercialService?.vessels ?? [])} stays in your record but is left out of these totals.`
+              : `This certificate accepts service on commercial vessels, so time on ${formatVesselList(commercialService?.vessels ?? [])} counts toward it.`}
           </Text>
         </View>
       )}

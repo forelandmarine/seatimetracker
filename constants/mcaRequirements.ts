@@ -10,6 +10,8 @@ import {
   MNZ_SERVICE_DEFINITIONS,
 } from './mnzRequirements';
 
+export type VesselSector = 'yachting' | 'commercial';
+
 export interface MCARequirement {
   id: string;
   title: string;
@@ -41,6 +43,16 @@ export interface MCARequirement {
    * to days would invent a rule the rule-maker did not write.
    */
   totalHours?: number;
+  /** Sector lists that show this entry. Absent means both. */
+  sectors?: VesselSector[];
+  /**
+   * Whether sea time on vessels tagged commercial counts toward this
+   * certificate. MSN 1858 only credits yacht service toward the yacht deck
+   * CoCs; ratings (MSN 1862), small vessel engineer (MSN 1904) and ETO
+   * (MSN 1860) accept service on commercial vessels. Absent means the app
+   * does not split service by sector for it.
+   */
+  commercialService?: 'counts' | 'yacht_only';
   requirements: {
     label: string;
     value: string;
@@ -62,6 +74,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW A-II/4',
     category: 'Ratings',
     description: 'Entry-level deck rating for yacht crew (MSN 1862, section 3)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Onboard Yacht Service',
@@ -94,6 +107,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW A-II/4',
     category: 'Ratings',
     description: 'Watch rating certificate (MSN 1862, section 2)',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service',
@@ -117,6 +131,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'MSN 1862',
     category: 'Ratings',
     description: 'Required for the OOW (Yachts) CoC (MSN 1862, section 4)',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service',
@@ -145,11 +160,47 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
   },
   {
+    id: 'able-seafarer-deck',
+    title: 'Able Seafarer Deck',
+    regulation: 'STCW II/5',
+    category: 'Ratings',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    description: 'Senior deck rating (MSN 1862, section 5)',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '18 months',
+        details: [
+          'In the deck department, while holding an NWR CoP',
+          'Reduced to 12 months on an MCA approved programme (Maritime Studies Qualification)',
+          'All on vessels of 15m or more in load line length',
+          'Including at least 6 months on vessels of 24m or more, or over 80 GT, outside categorised waters',
+        ],
+      },
+      {
+        label: 'Merchant Service',
+        value: '6 months',
+        details: [
+          'At least 6 months seagoing service on merchant ships is required',
+          'Deck service on fishing vessels over 16.5m, Royal Navy ships or MOUs is counted in full toward the rest',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Requires an NWR CoP, an EDH certificate, Proficiency in Survival Craft and Rescue Boats, the four STCW basic training elements and ENG1',
+      'Yacht Rating holders must gain the NWR first, then complete the service after it is issued',
+      'Applications are made through local Marine Offices; no revalidation is required',
+    ],
+  },
+  {
     id: 'yachtmaster-offshore',
     title: 'RYA/MCA Yachtmaster Offshore (Commercially Endorsed)',
     regulation: 'RYA CoC',
     category: 'Yachtmaster',
     description: 'Skipper up to 200 GT (or Mate to 500 GT), up to 150 miles from a safe haven',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Sea Time',
@@ -183,6 +234,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'RYA CoC',
     category: 'Yachtmaster',
     description: 'Ocean qualifying passage; needed for Chief Mate (Yachts)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -214,6 +266,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/3',
     category: 'Yachtmaster',
     description: 'Voluntary MCA CoC built on Yachtmaster Offshore (MSN 1858 section 3.1)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Seagoing Service',
@@ -236,6 +289,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Yachtmaster',
     description: 'Voluntary MCA CoC built on Yachtmaster Ocean (MSN 1858 section 3.2)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Seagoing Service',
@@ -256,6 +310,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/1',
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Qualifying sea service to apply (NOE)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Total Onboard Service',
@@ -293,6 +348,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'No service beyond OOW (MSN 1858 section 3.4)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -322,6 +378,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Service after OOW',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Onboard Service',
@@ -345,6 +402,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Service after OOW',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Onboard Service',
@@ -376,6 +434,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Yachts Unlimited (from May 2026)',
     description: 'New route for yachts of 3000 GT and over (MSN 1858 Amendment 2, section 4.3)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -406,6 +465,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Reg II/2',
     category: 'Yachts Unlimited (from May 2026)',
     description: 'New route for yachts of 3000 GT and over (MSN 1858 Amendment 2, section 4.4)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -438,6 +498,7 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: 'Non-STCW',
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Small vessels 200-750 kW (where STCW does not apply)',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Onboard Service',
@@ -463,6 +524,7 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW III/2, VII',
     category: 'Small Vessel Engineer (MSN 1904)',
     description: '<9,000 kW, <3,000 GT, unlimited area',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Standard Route (section 4.3)',
@@ -511,6 +573,7 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW III/3, VII',
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -534,6 +597,7 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW III/2, VII',
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -560,6 +624,7 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: 'STCW III/6',
     category: 'Electro-technical Officer (MSN 1860)',
     description: 'Unlimited area and tonnage',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Cadetship Route (section 3.2)',
@@ -2517,6 +2582,18 @@ export const ALL_REQUIREMENTS = [
 
 export const getRequirementById = (id: string): MCARequirement | undefined => {
   return ALL_REQUIREMENTS.find((req) => req.id === id);
+};
+
+/**
+ * The list a user in this sector should see. Entries without `sectors` show in
+ * both, so only sector-specific ones (Able Seafarer Deck for commercial) drop out.
+ */
+export const filterRequirementsBySector = (
+  requirements: MCARequirement[],
+  sector: VesselSector | null | undefined,
+): MCARequirement[] => {
+  const effective: VesselSector = sector === 'commercial' ? 'commercial' : 'yachting';
+  return requirements.filter((req) => !req.sectors || req.sectors.includes(effective));
 };
 
 export const getRequirementsByAuthority = (

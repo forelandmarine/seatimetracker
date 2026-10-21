@@ -200,6 +200,56 @@ function createStyles(isDark: boolean) {
       color: isDark ? colors.text : colors.textLight,
       lineHeight: 20,
     },
+    carryOverBox: {
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+    },
+    carryOverTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDark ? colors.text : colors.textLight,
+      marginBottom: 6,
+    },
+    vesselRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      gap: 8,
+    },
+    vesselName: {
+      flex: 1,
+      fontSize: 15,
+      color: isDark ? colors.text : colors.textLight,
+    },
+    chipGroup: {
+      flexDirection: 'row',
+      gap: 6,
+    },
+    chip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    chipSelected: {
+      backgroundColor: colors.primary,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    chipTextSelected: {
+      color: '#FFFFFF',
+    },
     button: {
       backgroundColor: colors.primary,
       borderRadius: 12,
@@ -245,6 +295,11 @@ export default function SelectVesselSectorScreen() {
   const router = useRouter();
 
   const [selected, setSelected] = useState<VesselSector>('yachting');
+  const [initialSector, setInitialSector] = useState<VesselSector>('yachting');
+  const [department, setDepartment] = useState<string | null>(null);
+  const [vessels, setVessels] = useState<{ id: string; vessel_name: string; sector: VesselSector | null }[]>([]);
+  // Sector per vessel id as the user leaves it on this screen.
+  const [vesselSectors, setVesselSectors] = useState<Record<string, VesselSector>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -256,6 +311,19 @@ export default function SelectVesselSectorScreen() {
         const profile = await seaTimeApi.getUserProfile();
         if (active && profile?.vessel_sector === 'commercial') {
           setSelected('commercial');
+          setInitialSector('commercial');
+        }
+        if (active) setDepartment(profile?.department ?? null);
+        const list = await seaTimeApi.getVessels().catch(() => []);
+        if (active && Array.isArray(list)) {
+          const usable = list.filter((v: any) => v?.id);
+          setVessels(usable);
+          // Untagged vessels logged while working commercially are taken as
+          // commercial, so their time is not counted toward yacht-only CoCs.
+          const fallback: VesselSector = profile?.vessel_sector === 'commercial' ? 'commercial' : 'yachting';
+          setVesselSectors(
+            Object.fromEntries(usable.map((v: any) => [v.id, v.sector === 'commercial' || v.sector === 'yachting' ? v.sector : fallback])),
+          );
         }
       } catch (err) {
         logError('[SelectVesselSector] Failed to load profile:', err);
@@ -279,13 +347,25 @@ export default function SelectVesselSectorScreen() {
     setSelected(option.value);
   };
 
+  // Moving from commercial into yachting is the one switch where earlier time
+  // may or may not carry over, so only then are the vessels shown for tagging.
+  const showCarryOver = initialSector === 'commercial' && selected === 'yachting' && vessels.length > 0;
+  const isEngineering = department?.toLowerCase() === 'engineering';
+
   const handleSave = async () => {
     setSaving(true);
     try {
       log('[SelectVesselSector] Saving vessel_sector:', selected);
       await seaTimeApi.updateUserProfile({ vessel_sector: selected });
-      // Changing sector is a forward-looking preference; it never alters sea-time
-      // entries already logged, so there is nothing to recompute here.
+      // The sector never alters logged entries. On the commercial-to-yachting
+      // switch, the vessel tags are saved so the summary can tell which time
+      // carries over. Untagged vessels are tagged here too, since the fallback
+      // shown to the user is only a suggestion until it is stored.
+      if (showCarryOver) {
+        const changed = vessels.filter((v) => vesselSectors[v.id] && vesselSectors[v.id] !== v.sector);
+        await Promise.all(changed.map((v) => seaTimeApi.updateVesselSector(v.id, vesselSectors[v.id])));
+        log('[SelectVesselSector] Tagged vessels:', changed.length);
+      }
       router.back();
     } catch (err: any) {
       logError('[SelectVesselSector] Failed to save vessel sector:', err);
@@ -378,6 +458,43 @@ export default function SelectVesselSectorScreen() {
             </TouchableOpacity>
           );
         })}
+
+        {showCarryOver && (
+          <View style={styles.carryOverBox}>
+            <Text style={styles.carryOverTitle}>Carrying over your commercial time</Text>
+            <Text style={[styles.infoText, { marginBottom: 10 }]}>
+              {isEngineering
+                ? 'Small vessel engineer and ETO certificates accept service on commercial vessels, so your commercial time carries over to them. A yacht-restricted small vessel CoC needs yacht service.'
+                : 'Your commercial time carries over to the Navigational Watch Rating and Efficient Deck Hand. MSN 1858 only credits yacht service toward Yachtmaster and the yacht officer certificates (OOW, Chief Mate, Master), so it will not count toward those.'}
+              {' '}Mark which vessels were commercial:
+            </Text>
+            {vessels.map((v) => (
+              <View key={v.id} style={styles.vesselRow}>
+                <Text style={styles.vesselName} numberOfLines={1}>
+                  {v.vessel_name}
+                </Text>
+                <View style={styles.chipGroup}>
+                  {(['yachting', 'commercial'] as VesselSector[]).map((value) => {
+                    const on = vesselSectors[v.id] === value;
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        style={[styles.chip, on && styles.chipSelected]}
+                        onPress={() => setVesselSectors((prev) => ({ ...prev, [v.id]: value }))}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: on }}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextSelected]}>
+                          {value === 'yachting' ? 'Yacht' : 'Commercial'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
