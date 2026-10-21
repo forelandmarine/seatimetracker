@@ -537,6 +537,23 @@ export function register(app: App, fastify: FastifyInstance) {
                 },
               },
             },
+            commercial_service: {
+              type: 'object',
+              properties: {
+                qualifying_total: { type: 'number' },
+                vessels: { type: 'array', items: { type: 'string' } },
+                yacht_entries_by_service_type: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      service_type: { type: 'string' },
+                      total_days: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -644,6 +661,27 @@ export function register(app: App, fastify: FastifyInstance) {
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
+    // Service on vessels tagged commercial. MSN 1858 only credits yacht service
+    // toward the yacht deck CoCs, while ratings, small vessel engineer and ETO
+    // CoCs accept it, so the client needs both figures to decide what carries
+    // over for the certificate being tracked. Untagged vessels count as yachts.
+    const commercialEntries = entries.filter((entry) => entry.vessel?.sector === 'commercial');
+    const yachtTypeGroups: { [key: string]: any[] } = {};
+    entries
+      .filter((entry) => entry.vessel?.sector !== 'commercial')
+      .forEach((entry) => {
+        const service_type = entry.service_type || 'actual_sea_service';
+        (yachtTypeGroups[service_type] ||= []).push(entry);
+      });
+    const commercial_service = {
+      qualifying_total: qualifyingSeaDays(commercialEntries as any).qualifying_total,
+      vessels: [...new Set(commercialEntries.map((entry) => entry.vessel?.vessel_name || 'Unknown'))],
+      yacht_entries_by_service_type: Object.entries(yachtTypeGroups).map(([service_type, group]) => ({
+        service_type,
+        total_days: countDistinctSeaDays(group as any),
+      })),
+    };
+
     app.logger.info(
       {
         total_days,
@@ -663,6 +701,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
+      commercial_service,
     });
   });
 

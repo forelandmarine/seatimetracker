@@ -289,6 +289,13 @@ export const updateVesselMmsi = async (vesselId: string, mmsi: string) => {
   return normalizeVessel(await res.json());
 };
 
+// Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
+// certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
+export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sector`, { method: 'PUT', body: { sector } });
+  return normalizeVessel(await res.json());
+};
+
 export const activateVessel = async (vesselId: string) => {
   const res = await authFetch(`/api/vessels/${vesselId}/activate`, { method: 'PUT', body: {} });
   return normalizeVessel(await res.json());
@@ -563,6 +570,62 @@ export const setMarketingConsent = async (
     method: 'PUT',
     body: { marketing_consent, source },
   });
+  return res.json();
+};
+
+export type HistoryProductId = 'seatime_history_6m' | 'seatime_history_12m';
+
+export interface HistoryImport {
+  id: string;
+  vessel_id: string;
+  product_id: HistoryProductId;
+  months: number;
+  window_from: string;
+  window_to: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  days_with_data: number | null;
+  passages_created: number | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface HistoryAvailability {
+  available: boolean;
+  /** Furthest-back day we found AIS positions for (YYYY-MM-DD). */
+  earliest_day: string | null;
+  /** First day of live tracking; the import stops the day before. */
+  tracking_start_day: string;
+  /** Subscription or trial active. */
+  can_purchase: boolean;
+  products: { product_id: HistoryProductId; months: number; window_from: string; window_to: string }[];
+  latest_import: HistoryImport | null;
+}
+
+export const getHistoryAvailability = async (vesselId: string): Promise<HistoryAvailability> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/history-import`, { timeout: 45000 });
+  return res.json();
+};
+
+export const redeemHistoryImport = async (body: {
+  vessel_id: string;
+  product_id: HistoryProductId;
+  transaction_id?: string | null;
+  joined_date?: string | null;
+  platform?: string | null;
+}): Promise<HistoryImport> => {
+  const res = await authFetch('/api/history-import', { method: 'POST', body });
+  return res.json();
+};
+
+export const getHistoryImport = async (importId: string): Promise<HistoryImport> => {
+  const res = await authFetch(`/api/history-import/${importId}`);
+  return res.json();
+};
+
+export const getUnredeemedHistoryPurchases = async (): Promise<{
+  purchases: { product_id: HistoryProductId; transaction_id: string; purchase_date: string | null }[];
+}> => {
+  const res = await authFetch('/api/history-import/unredeemed');
   return res.json();
 };
 

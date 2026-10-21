@@ -251,6 +251,7 @@ function transformVesselForResponse(vessel: any) {
     tonnage_itc: vessel.tonnage_itc || null,
     engine_kilowatts: engine_kilowatts,
     engine_type: vessel.engine_type || null,
+    sector: vessel.sector || null,
     is_active: vessel.is_active,
     created_at: vessel.created_at,
     updated_at: vessel.updated_at,
@@ -282,6 +283,7 @@ export function register(app: App, fastify: FastifyInstance) {
               tonnage_itc: { type: ['string', 'null'] },
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
+              sector: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
@@ -339,6 +341,7 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
+            sector: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -396,6 +399,7 @@ export function register(app: App, fastify: FastifyInstance) {
       tonnage_itc?: number;
       engine_kilowatts?: number;
       engine_type?: string;
+      sector?: 'yachting' | 'commercial';
       is_active?: boolean;
     }
   }>('/api/vessels', {
@@ -418,6 +422,7 @@ export function register(app: App, fastify: FastifyInstance) {
           tonnage_itc: { type: 'number' },
           engine_kilowatts: { type: 'number' },
           engine_type: { type: 'string' },
+          sector: { type: 'string', enum: ['yachting', 'commercial'] },
           is_active: { type: 'boolean', default: false },
         },
       },
@@ -438,6 +443,7 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
+            sector: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -500,6 +506,7 @@ export function register(app: App, fastify: FastifyInstance) {
       tonnage_itc,
       engine_kilowatts,
       engine_type,
+      sector,
       is_active = false,
     } = request.body;
     // Strip spaces/dashes from pasted numbers before validating and storing
@@ -579,6 +586,9 @@ export function register(app: App, fastify: FastifyInstance) {
         tonnage_itc: tonnage_itc != null ? String(tonnage_itc) : null,
         engine_kilowatts: engine_kilowatts != null ? String(engine_kilowatts) : null,
         engine_type,
+        // A new vessel takes the sector the user works in unless the client says
+        // otherwise, so commercial time is kept apart from yacht time from the start.
+        sector: sector ?? ((user as any).vessel_sector === 'commercial' ? 'commercial' : 'yachting'),
         is_active,
       })
       .returning();
@@ -656,6 +666,7 @@ export function register(app: App, fastify: FastifyInstance) {
             length_metres: { type: ['string', 'null'] },
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
+            sector: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -782,6 +793,7 @@ export function register(app: App, fastify: FastifyInstance) {
             length_metres: { type: ['string', 'null'] },
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
+            sector: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -964,6 +976,7 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
+            sector: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -1039,6 +1052,52 @@ export function register(app: App, fastify: FastifyInstance) {
       'Vessel updated successfully'
     );
 
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/sector - Mark a vessel as a yacht or a commercial vessel.
+  // MSN 1858 only credits yacht service toward the yacht deck CoCs, so the tag
+  // decides which certificates this vessel's sea time is counted toward.
+  fastify.put<{ Params: { id: string }; Body: { sector: 'yachting' | 'commercial' } }>('/api/vessels/:id/sector', {
+    schema: {
+      description: 'Set whether a vessel is a yacht or a commercial vessel (Requires authentication)',
+      tags: ['vessels'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+      body: {
+        type: 'object',
+        required: ['sector'],
+        properties: { sector: { type: 'string', enum: ['yachting', 'commercial'] } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
+    const { id } = request.params;
+    const { sector } = request.body;
+
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      app.logger.warn({ userId, vesselId: id }, 'Unauthorized vessel sector update attempt');
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ sector, updated_at: new Date() })
+      .where(eq(schema.vessels.id, id))
+      .returning();
+
+    app.logger.info({ userId, vesselId: id, sector }, 'Vessel sector updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
@@ -1170,6 +1229,7 @@ export function register(app: App, fastify: FastifyInstance) {
               tonnage_itc: { type: ['string', 'null'] },
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
+              sector: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
@@ -1295,6 +1355,7 @@ export function register(app: App, fastify: FastifyInstance) {
               length_metres: { type: ['string', 'null'] },
               gross_tonnes: { type: ['string', 'null'] },
               tonnage_itc: { type: ['string', 'null'] },
+              sector: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },

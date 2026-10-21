@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
+import { HistoryImportRow } from '@/components/HistoryImportRow';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
@@ -677,6 +678,7 @@ export default function VesselDetailScreen() {
           ) : (
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
           )}
+          <HistoryImportRow vesselId={vessel.id} vesselName={vessel.vessel_name} />
         </View>
 
         {/* Sea Time Summary Card */}

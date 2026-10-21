@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
+import { HistoryImportRow } from '@/components/HistoryImportRow';
 import { countryName } from '@/utils/countryCodes';
 import {
   View,
@@ -837,6 +838,7 @@ export default function VesselDetailScreen() {
               </TouchableOpacity>
             );
           })()}
+          <HistoryImportRow vesselId={vessel.id} vesselName={vessel.vessel_name} />
         </View>
 
         {/* Sea Time Summary Card */}

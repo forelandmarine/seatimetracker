@@ -47,6 +47,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { countryName } from '@/utils/countryCodes';
 
 import { log, error as logError } from '@/utils/log';
+import { promptHistoryImport } from '@/components/HistoryImportRow';
 
 const ACTIVE_VESSEL_CACHE_KEY = 'seatime_active_vessel_cache';
 
@@ -326,6 +327,7 @@ export default function SeaTimeScreen() {
 
       // Refresh data to show the new vessel
       await loadData();
+      promptHistoryImport(createdVessel.id, vesselNameTrimmed);
 
       // Trigger initial AIS check in background (non-blocking)
       seaTimeApi.checkVesselAIS(createdVessel.id, true).then(() => {

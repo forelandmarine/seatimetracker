@@ -10,6 +10,8 @@ import {
   MNZ_SERVICE_DEFINITIONS,
 } from './mnzRequirements';
 
+export type VesselSector = 'yachting' | 'commercial';
+
 export interface MCARequirement {
   id: string;
   title: string;
@@ -41,6 +43,16 @@ export interface MCARequirement {
    * to days would invent a rule the rule-maker did not write.
    */
   totalHours?: number;
+  /** Sector lists that show this entry. Absent means both. */
+  sectors?: VesselSector[];
+  /**
+   * Whether sea time on vessels tagged commercial counts toward this
+   * certificate. MSN 1858 only credits yacht service toward the yacht deck
+   * CoCs; ratings (MSN 1862), small vessel engineer (MSN 1904) and ETO
+   * (MSN 1860) accept service on commercial vessels. Absent means the app
+   * does not split service by sector for it.
+   */
+  commercialService?: 'counts' | 'yacht_only';
   requirements: {
     label: string;
     value: string;
@@ -49,12 +61,256 @@ export interface MCARequirement {
   notes?: string[];
 }
 
+// ── Deck department pathways (Yachts) ────────────────────────────────
+// Officer CoCs: MSN 1858 (M) Amendment 2 (18 May 2026), which replaced
+// Amendment 1 and added the Yachts Unlimited route (section 4).
+// Ratings: MSN 1862 (M) Amendment 1. Yachtmaster: RYA exam requirements,
+// which count a day differently from the MCA (8 consecutive hours).
+
 export const MCA_REQUIREMENTS: MCARequirement[] = [
+  {
+    id: 'yacht-rating',
+    title: 'Yacht Rating Certificate of Proficiency',
+    regulation: 'STCW A-II/4',
+    category: 'Ratings',
+    description: 'Entry-level deck rating for yacht crew (MSN 1862, section 3)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Onboard Yacht Service',
+        value: '6 months',
+        details: [
+          'All on vessels of 15m or over in load line length',
+          'Including at least 2 months seagoing service',
+        ],
+      },
+      {
+        label: 'Reduced Route',
+        value: '2 months seagoing',
+        details: [
+          'Holders of Watch Leader + Competent Crew, Day Skipper + Competent Crew, or a Yacht Rating course completion certificate',
+          'On vessels of at least 15m load line length',
+          'No Yacht Rating Training Record Book required on this route',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 16',
+      'Requires the four STCW basic training elements (PST, FPFF, EFA, PSSR) and ENG1',
+      'Complete the Yacht Rating Training Record Book (MSN 1862 Annex B)',
+      'Apply through an MCA approved training provider or direct to the MCA on form MSF 4340',
+    ],
+  },
+  {
+    id: 'navigational-watch-rating',
+    title: 'Navigational Watch Rating (NWR)',
+    regulation: 'STCW A-II/4',
+    category: 'Ratings',
+    description: 'Watch rating certificate (MSN 1862, section 2)',
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'On vessels of at least 15m load line length',
+          'Reduced to 2 months when following an MCA approved training provider course',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 16',
+      'Complete the NWR Training Record Book, signed off by an officer holding a UK CoC or CEC',
+      'Requires the four STCW basic training elements and ENG1',
+      'Yacht Rating holders must gain the NWR before progressing to Able Seafarer Deck',
+    ],
+  },
+  {
+    id: 'efficient-deck-hand',
+    title: 'Efficient Deck Hand (EDH)',
+    regulation: 'MSN 1862',
+    category: 'Ratings',
+    description: 'Required for the OOW (Yachts) CoC (MSN 1862, section 4)',
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'Minimum before the EDH certificate can be issued',
+          'On vessels of 15m or more',
+          'Service in category C and D waters accepted at full rate',
+        ],
+      },
+      {
+        label: 'Course Entry',
+        value: 'One of:',
+        details: [
+          'MCA accepted Yachtmaster Offshore',
+          'Yacht Rating CoP with at least 6 months onboard yacht service and a steering certificate',
+          'NWR CoP',
+          'Boat Master Licence Tier 1 Level 2',
+          'Tug Rating CoP with 6 months seagoing service and a steering certificate',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 17',
+      'For the OOW (Yachts) CoC, the EDH must have been issued at least 18 months before the CoC (MSN 1858 section 3.3)',
+    ],
+  },
+  {
+    id: 'able-seafarer-deck',
+    title: 'Able Seafarer Deck',
+    regulation: 'STCW II/5',
+    category: 'Ratings',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    description: 'Senior deck rating (MSN 1862, section 5)',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '18 months',
+        details: [
+          'In the deck department, while holding an NWR CoP',
+          'Reduced to 12 months on an MCA approved programme (Maritime Studies Qualification)',
+          'All on vessels of 15m or more in load line length',
+          'Including at least 6 months on vessels of 24m or more, or over 80 GT, outside categorised waters',
+        ],
+      },
+      {
+        label: 'Merchant Service',
+        value: '6 months',
+        details: [
+          'At least 6 months seagoing service on merchant ships is required',
+          'Deck service on fishing vessels over 16.5m, Royal Navy ships or MOUs is counted in full toward the rest',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Requires an NWR CoP, an EDH certificate, Proficiency in Survival Craft and Rescue Boats, the four STCW basic training elements and ENG1',
+      'Yacht Rating holders must gain the NWR first, then complete the service after it is issued',
+      'Applications are made through local Marine Offices; no revalidation is required',
+    ],
+  },
+  {
+    id: 'yachtmaster-offshore',
+    title: 'RYA/MCA Yachtmaster Offshore (Commercially Endorsed)',
+    regulation: 'RYA CoC',
+    category: 'Yachtmaster',
+    description: 'Skipper up to 200 GT (or Mate to 500 GT), up to 150 miles from a safe haven',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Sea Time',
+        value: '50 days',
+        details: [
+          'On seagoing yachts up to 500 GT, in the last 10 years',
+          '5 days as skipper, on vessels under 24m LOA',
+          'At least half in tidal waters and on vessels under 24m LOA',
+          'All in the same discipline as the exam (sail or power)',
+        ],
+      },
+      {
+        label: 'Distance and Passages',
+        value: '2,500 miles',
+        details: [
+          '5 passages over 60 miles, including 2 overnight and 2 as skipper',
+        ],
+      },
+    ],
+    notes: [
+      'RYA counts a day as 8 consecutive hours living on board, mostly at sea. This differs from the MCA 4-hour day the app uses, so check short days',
+      'Mileage and passages are not tracked by the app; keep your own record',
+      'Holders of Yachtmaster Offshore in the other discipline: 25 days, 3 as skipper, 1,250 miles, 3 passages',
+      'Sea time on yachts over 24m and 500 GT: contact the RYA (training@rya.org.uk)',
+      'Commercial endorsement needs a sea survival course and medical fitness certificate',
+    ],
+  },
+  {
+    id: 'yachtmaster-ocean',
+    title: 'RYA/MCA Yachtmaster Ocean',
+    regulation: 'RYA CoC',
+    category: 'Yachtmaster',
+    description: 'Ocean qualifying passage; needed for Chief Mate (Yachts)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Prior Certificate',
+        value: 'One of:',
+        details: [
+          'RYA/MCA Yachtmaster Offshore CoC',
+          'MCA OOW (Yachts) <3000 GT, II/1 CoC',
+        ],
+      },
+      {
+        label: 'Ocean Qualifying Passage',
+        value: '600 miles',
+        details: [
+          'At least 96 hours continuously at sea',
+          'Over 50 miles from land continuously for at least 200 miles sailed',
+          'As skipper or mate of the watch throughout',
+          'Within 10 years of the exam date',
+        ],
+      },
+    ],
+    notes: [
+      'Candidates must show astro navigation worked at sea',
+      'The app does not track passage distance; keep your own passage record',
+    ],
+  },
+  {
+    id: 'master-code-200gt-150nm',
+    title: 'Master (Code Vessels) <200 GT / OOW (Yachts) <500 GT, 150 Miles',
+    regulation: 'Reg II/3',
+    category: 'Yachtmaster',
+    description: 'Voluntary MCA CoC built on Yachtmaster Offshore (MSN 1858 section 3.1)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'While holding RYA Yachtmaster Offshore (with shore-based course) or IYT Master of Yachts Limited',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Pass the MCA Master (code vessels <200 GT) oral examination',
+      'The 150-mile limit can be removed with a GMDSS certificate plus Yachtmaster Ocean (with shore-based course) or IYT Master of Yachts Unlimited',
+      'Not mandatory; useful where overseas administrations do not recognise the RYA certificate',
+    ],
+  },
+  {
+    id: 'master-code-200gt-unlimited',
+    title: 'Master (Code Vessels) <200 GT / OOW (Yachts) <500 GT, Unlimited',
+    regulation: 'Reg II/2',
+    category: 'Yachtmaster',
+    description: 'Voluntary MCA CoC built on Yachtmaster Ocean (MSN 1858 section 3.2)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'While holding RYA Yachtmaster Ocean (with shore-based course) or IYT Master of Yachts Unlimited',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Pass the MCA Master (code vessels <200 GT) oral examination',
+    ],
+  },
   {
     id: 'oow-yachts-3000gt',
     title: 'Officer of the Watch (OOW) Yachts <3000 GT',
     regulation: 'Reg II/1',
+    category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Qualifying sea service to apply (NOE)',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Total Onboard Service',
@@ -87,10 +343,42 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
   },
   {
+    id: 'chief-mate-yachts-3000gt',
+    title: 'Chief Mate (Yachts) <3000 GT Unlimited Area',
+    regulation: 'Reg II/2',
+    category: 'Deck Officer (Yachts <3000 GT)',
+    description: 'No service beyond OOW (MSN 1858 section 3.4)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Prior Certificate',
+        value: 'OOW (Yachts) <3000 GT',
+        details: [
+          'Hold the OOW (Yachts) <3000 GT, II/1 CoC, or meet all of its requirements',
+          'No additional sea service is required',
+        ],
+      },
+      {
+        label: 'Yachtmaster Ocean',
+        value: 'Required',
+        details: [
+          'RYA Yachtmaster Ocean certificate with shore-based Yachtmaster Ocean course, or IYT Master of Yachts Unlimited',
+        ],
+      },
+    ],
+    notes: [
+      'Can be applied for at the same time as OOW (Yachts) <3000 GT',
+      'Applying for both together requires HELM operational and HELM management',
+      'ECDIS is mandatory for this CoC',
+    ],
+  },
+  {
     id: 'master-yachts-500gt',
     title: 'Master (Yachts) <500 GT Unlimited Area',
     regulation: 'Reg II/2',
+    category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Service after OOW',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Onboard Service',
@@ -112,7 +400,9 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     id: 'master-yachts-3000gt',
     title: 'Master (Yachts) <3000 GT Unlimited Area',
     regulation: 'Reg II/2',
+    category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Service after OOW',
+    commercialService: 'yacht_only',
     requirements: [
       {
         label: 'Onboard Service',
@@ -138,6 +428,62 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       },
     ],
   },
+  {
+    id: 'chief-mate-yachts-unlimited',
+    title: 'Chief Mate (Yachts) Unlimited',
+    regulation: 'Reg II/2',
+    category: 'Yachts Unlimited (from May 2026)',
+    description: 'New route for yachts of 3000 GT and over (MSN 1858 Amendment 2, section 4.3)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Prior Certificate',
+        value: 'One of:',
+        details: [
+          'Master (Yachts) <3000 GT CoC (no further service stated)',
+          'OOW Unlimited CoC with NAEST (M), plus the service below',
+        ],
+      },
+      {
+        label: 'OOW Unlimited Route: Onboard Yacht Service',
+        value: '12 months',
+        details: [
+          'As OOW, all on yachts of at least 500 GT',
+          'Including at least 6 months seagoing service',
+        ],
+      },
+    ],
+    notes: [
+      'Complete nine management-level academic modules at an MCA approved nautical college (exempt with an approved management-level qualification such as an HND or degree)',
+      'Pass the MCA Chief Mate Navigation and Stability (Yacht Unlimited) assessments and an MCA oral exam',
+      'Master (Yachts) <3000 GT and Chief Mate Unlimited holders are exempt from this oral',
+    ],
+  },
+  {
+    id: 'master-yachts-unlimited',
+    title: 'Master (Yachts) Unlimited',
+    regulation: 'Reg II/2',
+    category: 'Yachts Unlimited (from May 2026)',
+    description: 'New route for yachts of 3000 GT and over (MSN 1858 Amendment 2, section 4.4)',
+    commercialService: 'yacht_only',
+    requirements: [
+      {
+        label: 'Prior Certificate',
+        value: 'Chief Mate (Yachts) Unlimited',
+        details: ['Hold, or meet the requirements for, a Chief Mate (Yachts) Unlimited CoC'],
+      },
+      {
+        label: 'Service: One Of',
+        value: '6 to 36 months',
+        details: [
+          'As Chief Mate (holding Chief Mate Yachts Unlimited or Chief Mate Unlimited): 12 months onboard yacht service including 6 months seagoing, all on yachts ≥500 GT',
+          'As Master (holding Master Yachts <3000 GT): 6 months onboard yacht service including 3 months seagoing, all on vessels ≥500 GT',
+          'As OOW (holding OOW Unlimited): 36 months onboard yacht service including 15 months seagoing, on vessels ≥15m with the seagoing service on vessels ≥500 GT',
+        ],
+      },
+    ],
+    notes: ['Pass the Master Unlimited GT Yacht oral examination'],
+  },
 ];
 
 // ── Engineering department pathways (SV - Small Vessel) ──────────────
@@ -150,7 +496,9 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     id: 'meol-sv',
     title: 'Marine Engine Operator Licence (MEOL SV)',
     regulation: 'Non-STCW',
+    category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Small vessels 200-750 kW (where STCW does not apply)',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Onboard Service',
@@ -174,7 +522,9 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     id: 'eoow-sv',
     title: 'EOOW Engineer Officer of the Watch (SV)',
     regulation: 'STCW III/2, VII',
+    category: 'Small Vessel Engineer (MSN 1904)',
     description: '<9,000 kW, <3,000 GT, unlimited area',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Standard Route (section 4.3)',
@@ -221,7 +571,9 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     id: 'chief-engineer-sv-500gt',
     title: 'Chief Engineer (SV) <500 GT, <3,000 kW',
     regulation: 'STCW III/3, VII',
+    category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -243,7 +595,9 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     id: 'chief-engineer-sv-3000gt',
     title: 'Chief Engineer (SV) <3,000 GT, <9,000 kW',
     regulation: 'STCW III/2, VII',
+    category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
+    commercialService: 'counts',
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -261,6 +615,50 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
       'Requires General Engineering Science I & II OR Diploma in Maritime Studies (SV Engineer + SV Chief Engineer)',
       'Requires HELM (Management)',
       'MCA oral examination for Chief Engineer <9,000 kW, <3,000 GT, III/2',
+    ],
+  },
+  // ETO: MSN 1860 (M) Amendment 1. Unlimited STCW CoC, not yacht restricted.
+  {
+    id: 'eto-mca',
+    title: 'Electro-technical Officer (ETO)',
+    regulation: 'STCW III/6',
+    category: 'Electro-technical Officer (MSN 1860)',
+    description: 'Unlimited area and tonnage',
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Cadetship Route (section 3.2)',
+        value: '12 months',
+        details: [
+          'Combined seagoing service and workshop skills training, on an MCA approved cadetship or Foundation Degree/HND',
+          'At least 6 months seagoing service on vessels of at least 750 kW, documented in a Training Record Book',
+          'At least 3 months approved workshop skills training',
+        ],
+      },
+      {
+        label: 'Qualified Entrant Route (section 3.3)',
+        value: '6 to 33 months',
+        details: [
+          'For holders of an electrical or electronic engineering degree, HND/HNC or apprenticeship',
+          'Seagoing service set case by case by the MCA or IAMI action plan',
+        ],
+      },
+      {
+        label: 'Electro-technical Rating Route (section 4.3)',
+        value: '36 months',
+        details: [
+          'For ETRs without an academic qualification',
+          'At least 30 months seagoing service and 3 months workshop training',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Service must be in the engineering department on vessels over 750 kW propulsion power',
+      'MSN 1860 states service on merchant ships proceeding to sea; confirm with the MCA how yacht service will be credited',
+      'Lay-up, maintenance berth, extended anchorage or dry dock: up to 25% or 3 months, whichever is less',
+      'Requires High Voltage (management level), ENG1 and the MCA III/6 ETO oral examination',
+      'Senior ETO (SETO) endorsement: 12 months seagoing service as an ETO after the CoC is issued',
     ],
   },
 ];
@@ -2184,6 +2582,18 @@ export const ALL_REQUIREMENTS = [
 
 export const getRequirementById = (id: string): MCARequirement | undefined => {
   return ALL_REQUIREMENTS.find((req) => req.id === id);
+};
+
+/**
+ * The list a user in this sector should see. Entries without `sectors` show in
+ * both, so only sector-specific ones (Able Seafarer Deck for commercial) drop out.
+ */
+export const filterRequirementsBySector = (
+  requirements: MCARequirement[],
+  sector: VesselSector | null | undefined,
+): MCARequirement[] => {
+  const effective: VesselSector = sector === 'commercial' ? 'commercial' : 'yachting';
+  return requirements.filter((req) => !req.sectors || req.sectors.includes(effective));
 };
 
 export const getRequirementsByAuthority = (

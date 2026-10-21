@@ -18,6 +18,7 @@ export const vessels = pgTable('vessels', {
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
   is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
+  sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
@@ -266,3 +267,56 @@ export const certificates = pgTable('certificates', {
   expiryDateIdx: index('certificates_expiry_date_idx').on(table.expiry_date),
   typeIdx: index('certificates_certificate_type_idx').on(table.certificate_type),
 }));
+
+// AIS history import (in-app purchase): one row per purchase redeemed against a vessel.
+// See utils/historyImport.ts and services/historyImport.ts.
+export const history_imports = pgTable('history_imports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  mmsi: text('mmsi').notNull(), // MMSI the history was fetched for
+  product_id: text('product_id').notNull(), // 'seatime_history_6m' | 'seatime_history_12m'
+  months: integer('months').notNull(),
+  transaction_id: text('transaction_id').notNull(), // RevenueCat transaction id; one import per purchase
+  store_transaction_id: text('store_transaction_id'), // App Store / Play transaction id
+  platform: text('platform'), // 'ios' | 'android'
+  is_sandbox: boolean('is_sandbox').notNull().default(false),
+  window_from: date('window_from').notNull(), // first day imported (inclusive)
+  window_to: date('window_to').notNull(), // day tracking started (exclusive)
+  status: text('status').notNull().default('queued'), // 'queued' | 'running' | 'done' | 'failed'
+  days_with_data: integer('days_with_data'),
+  passages_created: integer('passages_created'),
+  error: text('error'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  started_at: timestamp('started_at', { withTimezone: true }),
+  completed_at: timestamp('completed_at', { withTimezone: true }),
+}, (table) => [
+  index('history_imports_user_id_idx').on(table.user_id),
+  index('history_imports_vessel_id_idx').on(table.vessel_id),
+  index('history_imports_status_idx').on(table.status),
+  uniqueIndex('history_imports_transaction_id_uq').on(table.transaction_id),
+]);
+
+// Days of Datalastic vessel_history already fetched, per MMSI (shared by everyone on that
+// vessel, so no day is ever paid for twice). position_count 0 = fetched, no positions.
+export const ais_history_days = pgTable('ais_history_days', {
+  mmsi: text('mmsi').notNull(),
+  day: date('day').notNull(),
+  position_count: integer('position_count').notNull(),
+  fetched_at: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('ais_history_days_mmsi_day_uq').on(table.mmsi, table.day),
+]);
+
+// Cached historical AIS positions, per MMSI.
+export const ais_history_positions = pgTable('ais_history_positions', {
+  mmsi: text('mmsi').notNull(),
+  position_time: timestamp('position_time', { withTimezone: true }).notNull(),
+  latitude: decimal('latitude', { precision: 9, scale: 6 }).notNull(),
+  longitude: decimal('longitude', { precision: 10, scale: 6 }).notNull(),
+  speed_knots: decimal('speed_knots', { precision: 8, scale: 2 }),
+  course: decimal('course', { precision: 6, scale: 2 }),
+  destination: text('destination'),
+}, (table) => [
+  uniqueIndex('ais_history_positions_mmsi_time_uq').on(table.mmsi, table.position_time),
+]);
