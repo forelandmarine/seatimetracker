@@ -446,6 +446,11 @@ export default function SeaTimeScreen() {
     }
   };
 
+  // New users: open Add Vessel once, and remind after 24 h if still no vessel.
+  // These are hooks, so they must run before any early return below.
+  const openAddVessel = useCallback(() => setModalVisible(true), []);
+  useFirstVesselPrompt(vessels.length, !loading && !loadError, openAddVessel);
+
   // Show loading for data
   if (loading) {
     return (
@@ -455,10 +460,6 @@ export default function SeaTimeScreen() {
       </View>
     );
   }
-
-  // New users: open Add Vessel once, and remind after 24 h if still no vessel.
-  const openAddVessel = useCallback(() => setModalVisible(true), []);
-  useFirstVesselPrompt(vessels.length, !loading && !loadError, openAddVessel);
 
   if (loadError && vessels.length === 0) {
     return (
