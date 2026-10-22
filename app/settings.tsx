@@ -25,6 +25,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
 
 const SUPPORT_EMAIL = 'info@forelandmarine.com';
 
@@ -131,13 +132,15 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{t('settings.growTheCrew')}</Text>
         <View style={styles.card}>
-          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referAFriend')} onPress={() => router.push('/refer')} isLast isDark={isDark} />
+          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referAFriend')} onPress={() => router.push('/refer')} isDark={isDark} />
+          <SettingsRow icon="star" androidIcon="star-outline" label="Rate SeaTime Tracker" onPress={openWriteReview} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.support')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="info.circle" androidIcon="info" label={t('settings.aboutAndHelp')} onPress={() => router.push('/about')} isDark={isDark} />
           <SettingsRow icon="envelope" androidIcon="email" label={t('settings.contactSupport')} onPress={handleSupport} isDark={isDark} />
+          <SettingsRow icon="creditcard" androidIcon="credit-card" label="Manage subscription" onPress={openManageSubscription} isDark={isDark} />
           <SettingsRow icon="rectangle.portrait.and.arrow.right" androidIcon="logout" label={t('settings.signOut')} onPress={() => setShowSignOutModal(true)} destructive
             isLast
             isDark={isDark}

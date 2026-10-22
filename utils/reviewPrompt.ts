@@ -1,61 +1,49 @@
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { log, error as logError } from '@/utils/log';
 
-const ENTRY_COUNT_KEY = 'review_prompt_entry_count';
-const LAST_PROMPTED_AT_KEY = 'review_prompt_last_at';
-const PROMPTED_VERSION_KEY = 'review_prompt_version';
+/**
+ * Store review requests, kept inside Apple's and Google's rules:
+ * - Only the native sheet (SKStoreReviewController / Play In-App Review) is used. It has its
+ *   own Submit and Not Now buttons, so there is no custom pre-prompt or "do you like it?" question.
+ * - Never fired from a button tap; it runs on the Home screen when nothing else is open.
+ * - First asked a week after purchase, then again every week. The OS decides whether the
+ *   sheet actually appears: it stops once the user has reviewed and caps how often it shows
+ *   (Apple: 3 times a year), so asking weekly never nags past those limits.
+ * Users can also leave a review any time from Settings (openWriteReview in utils/storeLinks).
+ *
+ * Testing: iOS shows the sheet every time in development, never in TestFlight. Android
+ * shows it only for builds installed from Play (internal testing track works).
+ */
 
-const MIN_ENTRIES = 3;
-const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
+const LAST_ASKED_KEY = 'review_prompt_last_asked_at';
 
-type Trigger = 'pdf_export' | 'entry_saved';
+export const REVIEW_AFTER_PURCHASE_MS = 7 * 24 * 60 * 60 * 1000;
+export const REVIEW_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
 
-export async function recordSeaTimeEntrySaved(): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(ENTRY_COUNT_KEY);
-    const next = (parseInt(raw || '0', 10) || 0) + 1;
-    await AsyncStorage.setItem(ENTRY_COUNT_KEY, String(next));
-    if (next >= MIN_ENTRIES) {
-      await maybeRequestReview('entry_saved');
-    }
-  } catch (err) {
-    logError('[reviewPrompt] recordSeaTimeEntrySaved failed', err);
-  }
+/** A week after purchase, and a week since the last ask. */
+export function isReviewDue(purchasedAt: Date | null, lastAskedAt: number | null, now: number): boolean {
+  if (!purchasedAt || isNaN(purchasedAt.getTime())) return false;
+  if (now - purchasedAt.getTime() < REVIEW_AFTER_PURCHASE_MS) return false;
+  return !lastAskedAt || now - lastAskedAt >= REVIEW_EVERY_MS;
 }
 
-export async function recordPdfExported(): Promise<void> {
-  await maybeRequestReview('pdf_export');
+export async function isReviewDueFor(userId: string, purchasedAt: Date | null): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  const raw = await AsyncStorage.getItem(`${LAST_ASKED_KEY}:${userId}`);
+  return isReviewDue(purchasedAt, raw ? parseInt(raw, 10) || null : null, Date.now());
 }
 
-async function maybeRequestReview(trigger: Trigger): Promise<void> {
+/** Ask the OS for its review sheet if one is due. Records the ask either way. */
+export async function maybeRequestReview(userId: string, purchasedAt: Date | null): Promise<void> {
   try {
-    if (Platform.OS === 'web') return;
+    if (!(await isReviewDueFor(userId, purchasedAt))) return;
+    if (!(await StoreReview.isAvailableAsync())) return;
 
-    const [available, hasAction] = await Promise.all([
-      StoreReview.isAvailableAsync(),
-      StoreReview.hasAction(),
-    ]);
-    if (!available || !hasAction) return;
-
-    const currentVersion =
-      (Constants.expoConfig?.version as string | undefined) ?? 'unknown';
-    const promptedVersion = await AsyncStorage.getItem(PROMPTED_VERSION_KEY);
-    if (promptedVersion === currentVersion) return;
-
-    const lastPromptedRaw = await AsyncStorage.getItem(LAST_PROMPTED_AT_KEY);
-    const lastPromptedAt = lastPromptedRaw ? parseInt(lastPromptedRaw, 10) : 0;
-    if (lastPromptedAt && Date.now() - lastPromptedAt < COOLDOWN_MS) return;
-
-    log('[reviewPrompt] requesting review', { trigger, currentVersion });
+    log('[reviewPrompt] requesting review');
+    await AsyncStorage.setItem(`${LAST_ASKED_KEY}:${userId}`, String(Date.now()));
     await StoreReview.requestReview();
-
-    await AsyncStorage.multiSet([
-      [LAST_PROMPTED_AT_KEY, String(Date.now())],
-      [PROMPTED_VERSION_KEY, currentVersion],
-    ]);
   } catch (err) {
     logError('[reviewPrompt] maybeRequestReview failed', err);
   }
