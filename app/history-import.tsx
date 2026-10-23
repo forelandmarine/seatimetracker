@@ -161,8 +161,17 @@ export default function HistoryImportScreen() {
   // An import already started for this vessel.
   if (current && current.status !== 'failed') {
     const done = current.status === 'done';
+    // Only offer to go further back when the user was aboard for the whole 6 months:
+    // an import that started later than the 6-month window was cut by a joining date,
+    // so earlier days are not theirs to import.
+    const sixMonthFrom = availability.products.find((p) => p.months === 6)?.window_from;
+    const joinedLater = !!sixMonthFrom && current.window_from > sixMonthFrom;
     const canGoFurther =
-      done && current.months === 6 && availability.products.some((p) => p.months === 12) && !!products.seatime_history_12m;
+      done &&
+      current.months === 6 &&
+      !joinedLater &&
+      availability.products.some((p) => p.months === 12) &&
+      !!products.seatime_history_12m;
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.card}>
