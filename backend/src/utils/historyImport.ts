@@ -30,6 +30,21 @@ export function isHistoryProduct(id: string): id is HistoryProductId {
   return Object.prototype.hasOwnProperty.call(HISTORY_PRODUCTS, id);
 }
 
+/**
+ * Most days each product covers. Users pick the periods they were aboard and
+ * pay by the total: up to 6 months' worth (184 days, enough for any six calendar
+ * months) or up to 12 months' worth.
+ */
+export const PRODUCT_MAX_DAYS: Record<HistoryProductId, number> = {
+  seatime_history_6m: 184,
+  seatime_history_12m: 366,
+};
+
+/** How far back periods may go, counted from the day tracking started. */
+export const LOOKBACK_MONTHS = 12;
+/** Most separate periods in one purchase. */
+export const MAX_RANGES = 6;
+
 /** A leg longer than this has no coverage in the middle: it ends the passage. */
 export const MAX_BRIDGE_GAP_HOURS = 6;
 /** Faster than this between two fixes is a bad position, not a passage. */
@@ -289,20 +304,59 @@ export function daysBetween(from: string, to: string): string[] {
   return out;
 }
 
+/** A run of days: `from` inclusive, `to` exclusive (YYYY-MM-DD). */
+export interface DayRange {
+  from: string;
+  to: string;
+}
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The product that a selection of `days` costs, or null if it is more than 12 months' worth. */
+export function productForDays(days: number): HistoryProductId | null {
+  if (days < 1) return null;
+  if (days <= PRODUCT_MAX_DAYS.seatime_history_6m) return 'seatime_history_6m';
+  if (days <= PRODUCT_MAX_DAYS.seatime_history_12m) return 'seatime_history_12m';
+  return null;
+}
+
 /**
- * The days an import covers: from the later of the joining date and `months`
- * before tracking started, up to (not including) the day tracking started.
- * Null when there is nothing to import.
+ * Check and tidy the periods a user picked: valid dates, inside the lookback
+ * window (`earliest` inclusive to `trackingStart` exclusive), at most MAX_RANGES.
+ * Overlapping or touching periods are merged so no day is counted twice.
  */
-export function importWindow(params: {
-  months: number;
-  trackingStartDay: string;
-  joinedDay?: string | null;
-}): { from: string; to: string } | null {
-  const earliest = monthsBefore(params.trackingStartDay, params.months);
-  const from = params.joinedDay && params.joinedDay > earliest ? params.joinedDay : earliest;
-  const to = params.trackingStartDay;
-  return from < to ? { from, to } : null;
+export function normaliseRanges(
+  ranges: DayRange[],
+  bounds: { earliest: string; trackingStart: string }
+): { ok: true; ranges: DayRange[]; days: number } | { ok: false; error: string } {
+  if (!Array.isArray(ranges) || ranges.length === 0) return { ok: false, error: 'Choose at least one period' };
+  if (ranges.length > MAX_RANGES) return { ok: false, error: `Choose at most ${MAX_RANGES} periods` };
+  for (const r of ranges) {
+    if (!r || !DAY_RE.test(r.from) || !DAY_RE.test(r.to) || isNaN(dayToDate(r.from).getTime()) || isNaN(dayToDate(r.to).getTime())) {
+      return { ok: false, error: 'Dates must be YYYY-MM-DD' };
+    }
+    if (r.from >= r.to) return { ok: false, error: 'Each period must end after it starts' };
+    if (r.from < bounds.earliest || r.to > bounds.trackingStart) {
+      return { ok: false, error: `Periods must fall between ${bounds.earliest} and the day before tracking started (${bounds.trackingStart})` };
+    }
+  }
+  const sorted = [...ranges].sort((a, b) => (a.from < b.from ? -1 : 1));
+  const merged: DayRange[] = [];
+  for (const r of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && r.from <= last.to) {
+      if (r.to > last.to) last.to = r.to;
+    } else {
+      merged.push({ from: r.from, to: r.to });
+    }
+  }
+  const days = merged.reduce((n, r) => n + daysBetween(r.from, r.to).length, 0);
+  return { ok: true, ranges: merged, days };
+}
+
+/** Every day the ranges cover, in order. */
+export function rangeDays(ranges: DayRange[]): string[] {
+  return ranges.flatMap((r) => daysBetween(r.from, r.to));
 }
 
 /** Contiguous runs of days, each at most `maxDays` long, for batched API calls. */
@@ -318,4 +372,36 @@ export function dayRuns(days: string[], maxDays: number): { from: string; to: st
     }
   }
   return runs;
+}
+
+/** Days (UTC) on which the track has at least one underway leg. */
+export function underwayDays(fixes: HistoryFix[]): Set<string> {
+  const track = cleanFixes(fixes);
+  const out = new Set<string>();
+  for (let i = 1; i < track.length; i++) {
+    if (legKind(track[i - 1], track[i]) === 'moving') out.add(utcDay(track[i].time));
+  }
+  return out;
+}
+
+/** Up to `n` days spread evenly through `days` (sorted), always including the first and last. */
+export function sampleDays(days: string[], n: number): string[] {
+  if (days.length <= n) return [...days];
+  if (n <= 1) return days.slice(0, Math.max(n, 0));
+  const out = new Set<string>();
+  for (let i = 0; i < n; i++) out.add(days[Math.round((i * (days.length - 1)) / (n - 1))]);
+  return [...out];
+}
+
+export type CheckVerdict = 'good' | 'patchy' | 'none';
+
+/**
+ * How promising a selection looks from the days we could check: 'good' when
+ * most checked days have AIS positions and some show the vessel underway,
+ * 'none' when no checked day has positions, otherwise 'patchy'.
+ */
+export function checkVerdict(checked: number, withAis: number, underway: number): CheckVerdict {
+  if (checked === 0 || withAis === 0) return 'none';
+  if (underway > 0 && withAis / checked >= 0.5) return 'good';
+  return 'patchy';
 }

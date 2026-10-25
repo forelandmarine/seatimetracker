@@ -3,16 +3,28 @@ import { and, eq } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { isHistoryProduct, HISTORY_PRODUCTS } from "../utils/historyImport.js";
+import { isHistoryProduct, HISTORY_PRODUCTS, MAX_RANGES, type DayRange } from "../utils/historyImport.js";
 import {
   HistoryImportError,
   availability,
+  checkRanges,
   importSummary,
   redeem,
   unredeemed,
 } from "../services/historyImport.js";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_RE = "^\\d{4}-\\d{2}-\\d{2}$";
+const rangesSchema = {
+  type: "array",
+  minItems: 1,
+  maxItems: MAX_RANGES,
+  items: {
+    type: "object",
+    required: ["from", "to"],
+    additionalProperties: false,
+    properties: { from: { type: "string", pattern: DATE_RE }, to: { type: "string", pattern: DATE_RE } },
+  },
+};
 const errorSchema = { type: "object", properties: { error: { type: "string" } } };
 
 function sendError(app: App, reply: any, error: unknown, what: string) {
@@ -40,19 +52,38 @@ export function register(app: App, fastify: FastifyInstance) {
     }
   });
 
+  // POST /api/vessels/:vesselId/history-import/check - Sample the picked periods before buying
+  fastify.post<{ Params: { vesselId: string }; Body: { ranges: DayRange[] } }>("/api/vessels/:vesselId/history-import/check", {
+    schema: {
+      description: "Check a sample of days in the picked periods for AIS positions and movement (free, rate limited)",
+      tags: ["history-import"],
+      params: { type: "object", required: ["vesselId"], properties: { vesselId: { type: "string" } } },
+      body: { type: "object", required: ["ranges"], properties: { ranges: rangesSchema } },
+      response: { 200: { type: "object", additionalProperties: true }, 400: errorSchema, 401: errorSchema, 404: errorSchema, 429: errorSchema },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: "Authentication required" });
+    try {
+      return reply.code(200).send(await checkRanges(app, userId, request.params.vesselId, request.body.ranges));
+    } catch (error) {
+      return sendError(app, reply, error, "check");
+    }
+  });
+
   // POST /api/history-import - Redeem a completed store purchase against a vessel
-  fastify.post<{ Body: { vessel_id: string; product_id: string; transaction_id?: string | null; joined_date?: string | null; platform?: string | null } }>("/api/history-import", {
+  fastify.post<{ Body: { vessel_id: string; product_id: string; transaction_id?: string | null; ranges: DayRange[]; platform?: string | null } }>("/api/history-import", {
     schema: {
       description: "Redeem an AIS history purchase (verified with RevenueCat) and queue the import",
       tags: ["history-import"],
       body: {
         type: "object",
-        required: ["vessel_id", "product_id"],
+        required: ["vessel_id", "product_id", "ranges"],
         properties: {
           vessel_id: { type: "string" },
           product_id: { type: "string", enum: Object.keys(HISTORY_PRODUCTS) },
           transaction_id: { type: ["string", "null"] },
-          joined_date: { type: ["string", "null"] },
+          ranges: rangesSchema,
           platform: { type: ["string", "null"] },
         },
       },
@@ -61,11 +92,10 @@ export function register(app: App, fastify: FastifyInstance) {
   }, async (request, reply) => {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) return reply.code(401).send({ error: "Authentication required" });
-    const { vessel_id, product_id, transaction_id, joined_date, platform } = request.body;
+    const { vessel_id, product_id, transaction_id, ranges, platform } = request.body;
     if (!isHistoryProduct(product_id)) return reply.code(400).send({ error: "Unknown product" });
-    if (joined_date && !DATE_RE.test(joined_date)) return reply.code(400).send({ error: "joined_date must be YYYY-MM-DD" });
     try {
-      const created = await redeem(app, { userId, vesselId: vessel_id, productId: product_id, transactionId: transaction_id, joinedDay: joined_date, platform });
+      const created = await redeem(app, { userId, vesselId: vessel_id, productId: product_id, transactionId: transaction_id, ranges, platform });
       return reply.code(200).send(importSummary(created));
     } catch (error) {
       return sendError(app, reply, error, "redeem");

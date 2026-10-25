@@ -6,7 +6,12 @@ import {
   groupPassages,
   splitAtUtcMidnight,
   withoutOverlaps,
-  importWindow,
+  normaliseRanges,
+  productForDays,
+  rangeDays,
+  sampleDays,
+  underwayDays,
+  checkVerdict,
   monthsBefore,
   daysBetween,
   dayRuns,
@@ -175,12 +180,73 @@ describe("windows and days", () => {
     expect(monthsBefore("2026-08-31", 6)).toBe("2026-02-28");
   });
 
-  test("importWindow runs back from tracking start, limited by the joining date", () => {
-    expect(importWindow({ months: 6, trackingStartDay: "2026-10-20" })).toEqual({ from: "2026-04-20", to: "2026-10-20" });
-    expect(importWindow({ months: 12, trackingStartDay: "2026-10-20", joinedDay: "2026-03-01" })).toEqual({ from: "2026-03-01", to: "2026-10-20" });
-    // A joining date before the product's reach does not extend it.
-    expect(importWindow({ months: 6, trackingStartDay: "2026-10-20", joinedDay: "2025-01-01" })).toEqual({ from: "2026-04-20", to: "2026-10-20" });
-    expect(importWindow({ months: 6, trackingStartDay: "2026-10-20", joinedDay: "2026-10-20" })).toBeNull();
+  test("productForDays prices by total days", () => {
+    expect(productForDays(0)).toBeNull();
+    expect(productForDays(1)).toBe("seatime_history_6m");
+    expect(productForDays(184)).toBe("seatime_history_6m");
+    expect(productForDays(185)).toBe("seatime_history_12m");
+    expect(productForDays(366)).toBe("seatime_history_12m");
+    expect(productForDays(367)).toBeNull();
+  });
+
+  test("normaliseRanges validates, sorts and merges periods", () => {
+    const bounds = { earliest: "2025-10-20", trackingStart: "2026-10-20" };
+    const r = normaliseRanges(
+      [
+        { from: "2026-06-01", to: "2026-07-01" },
+        { from: "2026-01-10", to: "2026-02-01" },
+        { from: "2026-06-20", to: "2026-07-10" }, // overlaps the first
+        { from: "2026-07-10", to: "2026-07-12" }, // touches the merged one
+      ],
+      bounds
+    );
+    expect(r).toEqual({
+      ok: true,
+      ranges: [
+        { from: "2026-01-10", to: "2026-02-01" },
+        { from: "2026-06-01", to: "2026-07-12" },
+      ],
+      days: 22 + 41,
+    });
+    expect(normaliseRanges([], bounds).ok).toBe(false);
+    expect(normaliseRanges([{ from: "2026-02-01", to: "2026-02-01" }], bounds).ok).toBe(false);
+    expect(normaliseRanges([{ from: "2025-10-19", to: "2025-11-01" }], bounds).ok).toBe(false);
+    expect(normaliseRanges([{ from: "2026-10-01", to: "2026-10-21" }], bounds).ok).toBe(false);
+    expect(normaliseRanges([{ from: "2026-1-01", to: "2026-02-01" }], bounds).ok).toBe(false);
+    const seven = Array.from({ length: 7 }, (_, i) => ({ from: `2026-0${i + 1}-01`, to: `2026-0${i + 1}-02` }));
+    expect(normaliseRanges(seven, bounds).ok).toBe(false);
+    expect(normaliseRanges([{ from: "2025-10-20", to: "2026-10-20" }], bounds)).toMatchObject({ ok: true, days: 365 });
+  });
+
+  test("rangeDays lists every day in the periods", () => {
+    expect(rangeDays([{ from: "2026-01-30", to: "2026-02-02" }, { from: "2026-03-01", to: "2026-03-02" }])).toEqual([
+      "2026-01-30", "2026-01-31", "2026-02-01", "2026-03-01",
+    ]);
+  });
+
+  test("sampleDays spreads evenly and keeps the ends", () => {
+    const days = daysBetween("2026-01-01", "2026-04-11"); // 100 days
+    const s = sampleDays(days, 8);
+    expect(s.length).toBe(8);
+    expect(s[0]).toBe("2026-01-01");
+    expect(s[7]).toBe("2026-04-10");
+    expect(sampleDays(["2026-01-01", "2026-01-02"], 8)).toEqual(["2026-01-01", "2026-01-02"]);
+  });
+
+  test("underwayDays finds the days the vessel moved", () => {
+    const moving = track("2026-05-02T08:00:00Z", 6, 10);
+    const still = track("2026-05-03T08:00:00Z", 6, 0);
+    expect([...underwayDays([...moving, ...still])]).toEqual(["2026-05-02"]);
+    expect(underwayDays(fromDatalastic(underwayDay)).size).toBeGreaterThan(0);
+    expect(underwayDays(fromDatalastic(mooredDay)).size).toBe(0);
+  });
+
+  test("checkVerdict", () => {
+    expect(checkVerdict(0, 0, 0)).toBe("none");
+    expect(checkVerdict(8, 0, 0)).toBe("none");
+    expect(checkVerdict(8, 6, 2)).toBe("good");
+    expect(checkVerdict(8, 6, 0)).toBe("patchy");
+    expect(checkVerdict(8, 2, 1)).toBe("patchy");
   });
 
   test("daysBetween excludes the end day", () => {

@@ -575,6 +575,12 @@ export const setMarketingConsent = async (
 
 export type HistoryProductId = 'seatime_history_6m' | 'seatime_history_12m';
 
+/** A period of days, YYYY-MM-DD: `from` inclusive, `to` exclusive. */
+export interface HistoryRange {
+  from: string;
+  to: string;
+}
+
 export interface HistoryImport {
   id: string;
   vessel_id: string;
@@ -582,6 +588,8 @@ export interface HistoryImport {
   months: number;
   window_from: string;
   window_to: string;
+  /** The periods imported; null on imports made before periods existed (window only). */
+  ranges: HistoryRange[] | null;
   status: 'queued' | 'running' | 'done' | 'failed';
   days_with_data: number | null;
   passages_created: number | null;
@@ -597,7 +605,12 @@ export interface HistoryAvailability {
   tracking_start_day: string;
   /** Subscription or trial active. */
   can_purchase: boolean;
-  products: { product_id: HistoryProductId; months: number; window_from: string; window_to: string }[];
+  /** First day that can be picked (12 months before tracking started, or the earliest AIS day if later). */
+  range_from: string;
+  /** Most periods one purchase can hold. */
+  max_ranges: number;
+  /** Each product covers up to max_days days in total across its periods. */
+  products: { product_id: HistoryProductId; months: number; max_days: number }[];
   latest_import: HistoryImport | null;
 }
 
@@ -606,11 +619,25 @@ export const getHistoryAvailability = async (vesselId: string): Promise<HistoryA
   return res.json();
 };
 
+/** A free sample of the picked periods: does the vessel have AIS positions, and did it move? */
+export interface HistoryCheck {
+  checked_days: number;
+  days_with_ais: number;
+  days_underway: number;
+  verdict: 'good' | 'patchy' | 'none';
+  days: { day: string; ais: boolean; underway: boolean }[];
+}
+
+export const checkHistoryRanges = async (vesselId: string, ranges: HistoryRange[]): Promise<HistoryCheck> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/history-import/check`, { method: 'POST', body: { ranges }, timeout: 60000 });
+  return res.json();
+};
+
 export const redeemHistoryImport = async (body: {
   vessel_id: string;
   product_id: HistoryProductId;
   transaction_id?: string | null;
-  joined_date?: string | null;
+  ranges: HistoryRange[];
   platform?: string | null;
 }): Promise<HistoryImport> => {
   const res = await authFetch('/api/history-import', { method: 'POST', body });

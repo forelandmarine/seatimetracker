@@ -282,7 +282,8 @@ export const history_imports = pgTable('history_imports', {
   platform: text('platform'), // 'ios' | 'android'
   is_sandbox: boolean('is_sandbox').notNull().default(false),
   window_from: date('window_from').notNull(), // first day imported (inclusive)
-  window_to: date('window_to').notNull(), // day tracking started (exclusive)
+  window_to: date('window_to').notNull(), // day after the last day imported (exclusive)
+  ranges: jsonb('ranges').$type<{ from: string; to: string }[]>(), // periods picked, from inclusive / to exclusive; null = whole window (early imports)
   status: text('status').notNull().default('queued'), // 'queued' | 'running' | 'done' | 'failed'
   days_with_data: integer('days_with_data'),
   passages_created: integer('passages_created'),

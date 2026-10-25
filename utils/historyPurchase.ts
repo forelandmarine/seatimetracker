@@ -16,6 +16,7 @@ import {
   redeemHistoryImport,
   type HistoryImport,
   type HistoryProductId,
+  type HistoryRange,
 } from '@/utils/seaTimeApi';
 import { log, error as logError } from '@/utils/log';
 
@@ -27,7 +28,7 @@ const PENDING_MAX_AGE_MS = 30 * 24 * 3_600_000;
 interface PendingRedeem {
   vessel_id: string;
   product_id: HistoryProductId;
-  joined_date: string | null;
+  ranges?: HistoryRange[]; // missing on purchases saved before periods existed
   transaction_id: string | null;
   saved_at: number;
 }
@@ -73,7 +74,7 @@ async function redeemWithRetry(p: PendingRedeem, attempts = 3): Promise<HistoryI
         vessel_id: p.vessel_id,
         product_id: p.product_id,
         transaction_id: p.transaction_id,
-        joined_date: p.joined_date,
+        ranges: p.ranges ?? [],
         platform: Platform.OS,
       });
     } catch (e: any) {
@@ -94,12 +95,12 @@ async function redeemWithRetry(p: PendingRedeem, attempts = 3): Promise<HistoryI
 export async function buyHistoryImport(params: {
   vesselId: string;
   product: PurchasesStoreProduct;
-  joinedDate: string | null;
+  ranges: HistoryRange[];
 }): Promise<HistoryImport> {
   const pending: PendingRedeem = {
     vessel_id: params.vesselId,
     product_id: params.product.identifier as HistoryProductId,
-    joined_date: params.joinedDate,
+    ranges: params.ranges,
     transaction_id: null,
     saved_at: Date.now(),
   };
@@ -142,7 +143,8 @@ export async function resumePendingHistoryImport(): Promise<HistoryImport | null
     return created;
   } catch (e: any) {
     // 402: no unredeemed purchase on the server (never charged, or already used).
-    if (e?.status === 402 || [403, 404, 409, 422].includes(e?.status) || Date.now() - pending.saved_at > PENDING_MAX_AGE_MS) {
+    // 400: a request this app version can no longer send (e.g. saved before periods existed).
+    if (e?.status === 402 || [400, 403, 404, 409, 422].includes(e?.status) || Date.now() - pending.saved_at > PENDING_MAX_AGE_MS) {
       await savePending(null);
     }
     return null;

@@ -19,15 +19,24 @@ import { isSubscriptionActive } from '../utils/subscription.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, type PortPosition } from '../utils/voyageState.js';
 import {
   HISTORY_PRODUCTS,
+  LOOKBACK_MONTHS,
+  MAX_RANGES,
+  PRODUCT_MAX_DAYS,
+  type CheckVerdict,
+  type DayRange,
   type HistoryFix,
   type HistoryProductId,
   addDays,
+  checkVerdict,
   dayRuns,
   dayToDate,
   daysBetween,
   detectPassages,
-  importWindow,
   monthsBefore,
+  normaliseRanges,
+  rangeDays,
+  sampleDays,
+  underwayDays,
   utcDay,
   withoutOverlaps,
 } from '../utils/historyImport.js';
@@ -44,6 +53,10 @@ export const CREDIT_FLOOR = 6_000;
 const EMPTY_DAY_RECHECK_MS = 7 * 24 * 3_600_000;
 /** Probe points for the availability check, oldest first (months before tracking started). */
 const PROBE_MONTHS = [12, 10, 8, 6, 4, 2, 1];
+/** Days fetched for a pre-purchase check (about 2 credits each; cached days are free). */
+export const CHECK_SAMPLE_DAYS = 8;
+/** Pre-purchase checks per user per hour. */
+const CHECKS_PER_HOUR = 10;
 /** An import that keeps failing for this long is marked failed. */
 const FAIL_AFTER_MS = 24 * 3_600_000;
 
@@ -197,7 +210,9 @@ export interface Availability {
   earliest_day: string | null; // furthest-back probe day with positions
   tracking_start_day: string;
   can_purchase: boolean; // subscription or trial active
-  products: { product_id: HistoryProductId; months: number; window_from: string; window_to: string }[];
+  range_from: string; // first day that can be picked
+  max_ranges: number;
+  products: { product_id: HistoryProductId; months: number; max_days: number }[];
   latest_import: ReturnType<typeof importSummary> | null;
 }
 
@@ -225,24 +240,115 @@ export async function availability(app: App, userId: string, vesselId: string): 
     }
   }
 
-  const sixMonthMark = monthsBefore(start, 6);
-  const products: Availability['products'] = [];
-  if (earliest) {
-    for (const [id, months] of Object.entries(HISTORY_PRODUCTS) as [HistoryProductId, number][]) {
-      // 12 months is only worth buying when there is history older than 6 months.
-      if (months === 12 && earliest >= sixMonthMark) continue;
-      const w = importWindow({ months, trackingStartDay: start });
-      if (w) products.push({ product_id: id, months, window_from: w.from, window_to: w.to });
-    }
-  }
+  // Users pick periods anywhere in the lookback; the price follows the total days.
+  const products: Availability['products'] = earliest
+    ? (Object.entries(HISTORY_PRODUCTS) as [HistoryProductId, number][]).map(([id, months]) => ({
+        product_id: id,
+        months,
+        max_days: PRODUCT_MAX_DAYS[id],
+      }))
+    : [];
 
   return {
     available: products.length > 0,
     earliest_day: earliest,
     tracking_start_day: start,
+    range_from: monthsBefore(start, LOOKBACK_MONTHS),
+    max_ranges: MAX_RANGES,
     can_purchase: isSubscriptionActive(user.subscription_status ?? undefined, user.subscription_expires_at ?? null),
     products,
     latest_import: latest ? importSummary(latest) : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Check picked periods (before purchase, free to the user)
+// ---------------------------------------------------------------------------
+
+export interface RangeCheck {
+  checked_days: number; // days we have positions or an empty result for
+  days_with_ais: number;
+  days_underway: number;
+  verdict: CheckVerdict;
+  days: { day: string; ais: boolean; underway: boolean }[];
+}
+
+const checkLog = new Map<string, number[]>();
+
+/**
+ * Sample the picked periods so the user can see whether buying is worthwhile:
+ * every day already in the cache (free) plus up to CHECK_SAMPLE_DAYS fetched
+ * days spread through the selection. Fetched days stay cached, so the import
+ * does not pay for them again.
+ */
+export async function checkRanges(app: App, userId: string, vesselId: string, picked: DayRange[]): Promise<RangeCheck> {
+  await activeUser(app, userId);
+  const vessel = await ownedVessel(app, userId, vesselId);
+  const start = await trackingStartDay(app, vessel);
+  const norm = normaliseRanges(picked, { earliest: monthsBefore(start, LOOKBACK_MONTHS), trackingStart: start });
+  if (norm.ok === false) throw new HistoryImportError(400, norm.error);
+
+  const now = Date.now();
+  const recent = (checkLog.get(userId) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= CHECKS_PER_HOUR) throw new HistoryImportError(429, 'Too many checks. Please try again later.');
+  checkLog.set(userId, [...recent, now]);
+
+  const days = rangeDays(norm.ranges);
+  const first = days[0];
+  const end = addDays(days[days.length - 1], 1);
+  const since = now - EMPTY_DAY_RECHECK_MS;
+  let cache = await cachedDays(app, vessel.mmsi, first, end);
+
+  const toFetch = sampleDays(days, CHECK_SAMPLE_DAYS).filter((d) => !isFresh(cache.get(d), since));
+  if (toFetch.length) {
+    const remaining = await creditsRemaining();
+    if (remaining === null || remaining >= CREDIT_FLOOR) {
+      for (const run of dayRuns(toFetch, CHUNK_DAYS)) await fetchAndStore(app, vessel.mmsi, run.from, run.to);
+      cache = await cachedDays(app, vessel.mmsi, first, end);
+    } else {
+      app.logger.warn({ remaining, floor: CREDIT_FLOOR }, 'History check using cache only: Datalastic credits below floor');
+    }
+  }
+
+  const wanted = new Set(days);
+  const known = [...cache.entries()].filter(([d, row]) => wanted.has(d) && isFresh(row, since)).map(([d, row]) => ({ day: d, count: row.position_count }));
+  const withData = known.filter((k) => k.count > 0).map((k) => k.day);
+
+  let moving = new Set<string>();
+  if (withData.length) {
+    const rows = await app.db
+      .select()
+      .from(schema.ais_history_positions)
+      .where(and(
+        eq(schema.ais_history_positions.mmsi, vessel.mmsi),
+        gte(schema.ais_history_positions.position_time, dayToDate(first)),
+        lt(schema.ais_history_positions.position_time, dayToDate(end)),
+      ))
+      .orderBy(asc(schema.ais_history_positions.position_time));
+    const dataDays = new Set(withData);
+    moving = underwayDays(rows.filter((r) => dataDays.has(utcDay(r.position_time))).map(toFix));
+  }
+
+  const out = known
+    .sort((a, b) => (a.day < b.day ? -1 : 1))
+    .map((k) => ({ day: k.day, ais: k.count > 0, underway: moving.has(k.day) }));
+  const underway = out.filter((d) => d.underway).length;
+  return {
+    checked_days: out.length,
+    days_with_ais: withData.length,
+    days_underway: underway,
+    verdict: checkVerdict(out.length, withData.length, underway),
+    days: out,
+  };
+}
+
+function toFix(r: typeof schema.ais_history_positions.$inferSelect): HistoryFix {
+  return {
+    time: r.position_time,
+    latitude: Number(r.latitude),
+    longitude: Number(r.longitude),
+    speed_knots: r.speed_knots != null ? Number(r.speed_knots) : null,
+    destination: r.destination,
   };
 }
 
@@ -277,7 +383,7 @@ export async function redeem(app: App, params: {
   vesselId: string;
   productId: HistoryProductId;
   transactionId?: string | null;
-  joinedDay?: string | null;
+  ranges: DayRange[];
   platform?: string | null;
 }) {
   const user = await activeUser(app, params.userId);
@@ -285,6 +391,13 @@ export async function redeem(app: App, params: {
     throw new HistoryImportError(403, 'An active subscription or trial is needed');
   }
   const vessel = await ownedVessel(app, params.userId, params.vesselId);
+  const start = await trackingStartDay(app, vessel);
+  // Checked before RevenueCat so a bad selection costs nothing and the purchase stays unredeemed.
+  const norm = normaliseRanges(params.ranges, { earliest: monthsBefore(start, LOOKBACK_MONTHS), trackingStart: start });
+  if (norm.ok === false) throw new HistoryImportError(422, norm.error);
+  if (norm.days > PRODUCT_MAX_DAYS[params.productId]) {
+    throw new HistoryImportError(422, `This purchase covers up to ${PRODUCT_MAX_DAYS[params.productId]} days; ${norm.days} were picked`);
+  }
 
   const purchases = await revenueCatPurchases(params.userId, params.productId);
   const used = purchases.length
@@ -306,9 +419,8 @@ export async function redeem(app: App, params: {
   if (!purchase) throw new HistoryImportError(402, 'Purchase not found');
 
   const months = HISTORY_PRODUCTS[params.productId];
-  const start = await trackingStartDay(app, vessel);
-  const window = importWindow({ months, trackingStartDay: start, joinedDay: params.joinedDay ?? null });
-  if (!window) throw new HistoryImportError(422, 'Nothing to import before tracking started');
+  const ranges = norm.ranges;
+  const window = { from: ranges[0].from, to: ranges[ranges.length - 1].to };
 
   const [created] = await app.db
     .insert(schema.history_imports)
@@ -324,9 +436,10 @@ export async function redeem(app: App, params: {
       is_sandbox: !!purchase.is_sandbox,
       window_from: window.from,
       window_to: window.to,
+      ranges,
     })
     .returning();
-  app.logger.info({ importId: created.id, userId: params.userId, vesselId: vessel.id, productId: params.productId, window }, 'History import queued');
+  app.logger.info({ importId: created.id, userId: params.userId, vesselId: vessel.id, productId: params.productId, ranges, days: norm.days }, 'History import queued');
   return created;
 }
 
@@ -359,12 +472,18 @@ export function importSummary(i: typeof schema.history_imports.$inferSelect) {
     months: i.months,
     window_from: String(i.window_from),
     window_to: String(i.window_to),
+    ranges: importRanges(i),
     status: i.status,
     days_with_data: i.days_with_data,
     passages_created: i.passages_created,
     created_at: i.created_at,
     completed_at: i.completed_at,
   };
+}
+
+/** The periods an import covers (early imports stored only a window). */
+export function importRanges(i: typeof schema.history_imports.$inferSelect): DayRange[] {
+  return i.ranges?.length ? i.ranges : [{ from: String(i.window_from), to: String(i.window_to) }];
 }
 
 export async function latestImport(app: App, userId: string, vesselId: string) {
@@ -394,11 +513,12 @@ export async function processHistoryImports(app: App): Promise<void> {
       await app.db.update(schema.history_imports).set({ status: 'running', started_at: new Date() }).where(eq(schema.history_imports.id, job.id));
     }
 
-    const from = String(job.window_from);
-    const to = String(job.window_to);
-    const cache = await cachedDays(app, job.mmsi, from, to);
+    const days = rangeDays(importRanges(job));
+    const wanted = new Set(days);
+    const all = await cachedDays(app, job.mmsi, String(job.window_from), String(job.window_to));
+    const cache = new Map([...all].filter(([d]) => wanted.has(d)));
     const since = job.created_at.getTime() - EMPTY_DAY_RECHECK_MS;
-    const missing = daysBetween(from, to).filter((d) => !isFresh(cache.get(d), since));
+    const missing = days.filter((d) => !isFresh(cache.get(d), since));
 
     if (missing.length) {
       const remaining = await creditsRemaining();
@@ -440,13 +560,9 @@ async function buildEntries(
     ))
     .orderBy(asc(schema.ais_history_positions.position_time));
 
-  const fixes: HistoryFix[] = rows.map((r) => ({
-    time: r.position_time,
-    latitude: Number(r.latitude),
-    longitude: Number(r.longitude),
-    speed_knots: r.speed_knots != null ? Number(r.speed_knots) : null,
-    destination: r.destination,
-  }));
+  // Only the days picked: the cache may hold days in between from crewmates or checks.
+  const wanted = new Set(rangeDays(importRanges(job)));
+  const fixes: HistoryFix[] = rows.filter((r) => wanted.has(utcDay(r.position_time))).map(toFix);
 
   // Resolve each broadcast destination once, for the arrival rule.
   const ports = new Map<string, PortPosition | null>();

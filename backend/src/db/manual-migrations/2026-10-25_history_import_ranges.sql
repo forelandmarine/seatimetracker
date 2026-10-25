@@ -1,0 +1,11 @@
+-- AIS history import: the periods a user was aboard (2.3.0).
+-- Additive, nullable, idempotent. Safe to run (and re-run) on the live Supabase DB.
+--
+-- ORDERING (IMPORTANT): apply this BEFORE deploying the code that adds `ranges` to
+-- backend/src/db/schema/schema.ts. Drizzle names every schema column in its SELECTs,
+-- so deploying first would break every history_imports read. Railway runs with
+-- SKIP_MIGRATIONS=true, so this is applied by hand.
+--
+-- ranges: [{ "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" }], from inclusive, to exclusive.
+-- Null = the whole window_from..window_to (imports made before periods existed).
+ALTER TABLE history_imports ADD COLUMN IF NOT EXISTS ranges jsonb;
