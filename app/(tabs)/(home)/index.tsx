@@ -347,7 +347,12 @@ export default function SeaTimeScreen() {
       setNewEngineType('');
       await loadData();
       
-      promptHistoryImport(createdVessel.id, vesselNameTrimmed, `${vesselNameTrimmed} has been added and is now being tracked.`);
+      // The backend warns when AIS doesn't know the MMSI (or it switched to a newer one)
+      if (createdVessel.warning) {
+        Alert.alert('Vessel added', createdVessel.warning);
+      } else {
+        promptHistoryImport(createdVessel.id, vesselNameTrimmed, `${vesselNameTrimmed} has been added and is now being tracked.`);
+      }
     } catch (error: any) {
       logError('[Home] Failed to add vessel:', error);
       

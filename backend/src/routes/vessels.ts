@@ -4,7 +4,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
-import { fetchVesselAISDataWithFallback, fetchVesselSpecs } from "./ais.js";
+import { fetchVesselAISDataWithFallback, fetchVesselSpecs, fetchVesselAISDataByImo, applyMmsiChange } from "./ais.js";
 import { lookupPort } from "../utils/portDatabase.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
@@ -447,6 +447,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
+            warning: { type: 'string' },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -599,10 +600,23 @@ export function register(app: App, fastify: FastifyInstance) {
     );
 
     // Auto-fill vessel particulars from Datalastic specs API
+    let aisWarning: string | null = null;
     if (mmsi) {
       try {
         const specs = await fetchVesselSpecs(mmsi, app.logger);
-        if (specs) {
+        if (specs?.not_found) {
+          // No vessel has transmitted on this MMSI. Usually a mistype, or an old MMSI
+          // from before a reflag; the IMO (if given) leads to the current one.
+          const byImo = imo_number ? await fetchVesselAISDataByImo(imo_number, app.logger) : null;
+          if (byImo && await applyMmsiChange(app, vessel.id, userId, mmsi, byImo)) {
+            const [updated] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, vessel.id));
+            Object.assign(vessel, updated);
+            aisWarning = `MMSI ${mmsi} isn't in use any more. AIS shows IMO ${imo_number} on MMSI ${vessel.mmsi}, usually after a change of flag, so we've used that instead.`;
+          } else {
+            aisWarning = `We can't find MMSI ${mmsi} on AIS, so ${vessel_name} can't be tracked yet. Check the number on the ship's radio licence. If the vessel was renamed or reflagged it will have a new MMSI, and adding its IMO number lets us find it.`;
+          }
+          app.logger.warn({ vesselId: vessel.id, userId, mmsi, imo_number, newMmsi: vessel.mmsi }, 'New vessel MMSI not found on AIS');
+        } else if (specs) {
           const specUpdates: Record<string, any> = { updated_at: new Date() };
           if (!vessel.callsign && specs.callsign) specUpdates.callsign = specs.callsign;
           if (!vessel.flag && specs.flag) specUpdates.flag = specs.flag;
@@ -637,6 +651,8 @@ export function register(app: App, fastify: FastifyInstance) {
     const response = transformVesselForResponse(vessel);
     if (scheduledTaskFailed) {
       (response as any).warning = 'Vessel created but automatic AIS tracking could not be started. Try deactivating and reactivating the vessel.';
+    } else if (aisWarning) {
+      (response as any).warning = aisWarning;
     }
     return reply.code(201).send(response);
   });

@@ -2,7 +2,7 @@ import { eq, and, desc, isNotNull, lte, gte, isNull, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
-import { fetchVesselAISDataWithFallback } from '../routes/ais.js';
+import { fetchVesselAISDataWithFallback, AIS_NOT_FOUND } from '../routes/ais.js';
 import { processNotificationSchedules } from '../routes/notifications.js';
 import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscription.js';
 import { fetchRevenueCatSubscription } from '../routes/subscription.js';
@@ -489,9 +489,9 @@ async function processScheduledTask(
       { error: ais_data.error, taskId, vesselId, mmsi },
       `Failed to fetch AIS data for scheduled task: ${taskId}, vessel=${vessel_name} (MMSI: ${mmsi})`
     );
-    // Still update the task's next_run time even on fetch error.
-    // Use a longer retry interval (1 hour) so we don't hammer the API.
-    await updateScheduledTaskNextRun(app, taskId, '1', null);
+    // Still update the task's next_run time even on fetch error. Outages retry in
+    // 1 hour; an MMSI AIS doesn't know won't fix itself soon, so retry in 6.
+    await updateScheduledTaskNextRun(app, taskId, ais_data.error === AIS_NOT_FOUND ? '6' : '1', null);
     return;
   }
 

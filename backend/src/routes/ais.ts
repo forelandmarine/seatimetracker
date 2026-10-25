@@ -9,6 +9,7 @@ import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscr
 import { lookupPort } from "../utils/portDatabase.js";
 import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTime.js";
 import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
+import { sendPushToUser } from "../utils/push.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -153,6 +154,18 @@ interface AISVesselData {
   error: string | null;
 }
 
+// Callers turn this error into a 404 for the user, so it must only be used when
+// the provider positively said it doesn't know the vessel (not for outages).
+export const AIS_NOT_FOUND = 'Vessel not found in AIS system';
+
+function emptyAISData(error: string): AISVesselData {
+  return {
+    name: null, mmsi: null, imo: null, speed_knots: null, latitude: null, longitude: null,
+    course: null, heading: null, timestamp: null, status: null, destination: null, eta: null,
+    callsign: null, ship_type: null, flag: null, is_moving: false, error,
+  };
+}
+
 // Datalastic API response interface (may use different field names)
 interface DatalasticVesselResponse {
   // Common field variations
@@ -216,10 +229,13 @@ interface Base44VesselResponse {
   [key: string]: any;
 }
 
+// Looks the vessel up by MMSI, or by IMO when `lookupImo` is given. The IMO never changes,
+// so it still finds a vessel whose MMSI changed after a rename or reflag.
 async function fetchVesselAISDataFromDatalastic(
   mmsi: string,
   apiKey: string,
-  logger: any
+  logger: any,
+  lookupImo?: string
 ): Promise<AISVesselData | null> {
   try {
     if (!apiKey) {
@@ -230,12 +246,13 @@ async function fetchVesselAISDataFromDatalastic(
     // Build request URL with MMSI parameter
     const urlObj = new URL(DATALASTIC_API_URL);
     urlObj.searchParams.append('api-key', apiKey);
-    urlObj.searchParams.append('mmsi', mmsi);
+    if (lookupImo) urlObj.searchParams.append('imo', lookupImo);
+    else urlObj.searchParams.append('mmsi', mmsi);
     const url = urlObj.toString();
 
     // Log request details (mask API key for security)
     const maskedKey = maskAPIKey(apiKey);
-    logger.info(`Using Datalastic API as primary source - MMSI: ${mmsi}, API Key: ${maskedKey}`);
+    logger.info(`Using Datalastic API as primary source - ${lookupImo ? `IMO: ${lookupImo}` : `MMSI: ${mmsi}`}, API Key: ${maskedKey}`);
 
     let response;
     try {
@@ -254,7 +271,8 @@ async function fetchVesselAISDataFromDatalastic(
     // Handle error status codes
     if (!response.ok) {
       if (response.status === 404) {
-        logger.warn(`Datalastic API returned 404 - vessel with MMSI ${mmsi} not found`);
+        logger.warn(`Datalastic API returned 404 - vessel with ${lookupImo ? `IMO ${lookupImo}` : `MMSI ${mmsi}`} not found`);
+        return emptyAISData(AIS_NOT_FOUND);
       } else if (response.status === 401) {
         logger.warn(`Datalastic API authentication failed (401) - invalid API key`);
       } else {
@@ -405,6 +423,8 @@ export interface VesselSpecs {
   gross_tonnes: string | null;
   imo_number: string | null;
   breadth: string | null;
+  // Datalastic answered 404: no vessel has ever transmitted on this MMSI
+  not_found?: boolean;
 }
 
 export async function fetchVesselSpecs(
@@ -428,6 +448,9 @@ export async function fetchVesselSpecs(
 
     if (!response.ok) {
       logger.warn(`Datalastic vessel_info returned ${response.status} for MMSI ${mmsi}`);
+      if (response.status === 404) {
+        return { callsign: null, flag: null, type: null, length_metres: null, gross_tonnes: null, imo_number: null, breadth: null, not_found: true };
+      }
       return null;
     }
 
@@ -638,6 +661,47 @@ async function fetchVesselAISDataFromBase44(
   }
 }
 
+/** Current AIS data for a vessel found by IMO (used when its MMSI isn't found). */
+export async function fetchVesselAISDataByImo(imo: string, logger: any): Promise<AISVesselData | null> {
+  if (!DATALASTIC_API_KEY || !imo) return null;
+  const result = await fetchVesselAISDataFromDatalastic('', DATALASTIC_API_KEY, logger, imo);
+  return result && !result.error && result.latitude != null && result.longitude != null ? result : null;
+}
+
+/**
+ * A vessel keeps its IMO for life but gets a new MMSI when it is reflagged (often
+ * together with a rename). If AIS shows the user's IMO under another MMSI, move the
+ * vessel record to the new MMSI so tracking resumes. Past sea time is linked to the
+ * vessel id, not the MMSI, so it is unaffected. Returns true if the MMSI was changed.
+ */
+export async function applyMmsiChange(
+  app: App,
+  vesselId: string,
+  userId: string,
+  oldMmsi: string,
+  found: AISVesselData
+): Promise<boolean> {
+  const newMmsi = found.mmsi ? String(found.mmsi).replace(/\D/g, '') : '';
+  if (!/^\d{9}$/.test(newMmsi) || newMmsi === oldMmsi) return false;
+
+  // The user may already have a separate vessel record on the new MMSI
+  const clash = await app.db
+    .select({ id: schema.vessels.id })
+    .from(schema.vessels)
+    .where(and(eq(schema.vessels.user_id, userId), eq(schema.vessels.mmsi, newMmsi)));
+  if (clash.length > 0) {
+    app.logger.warn({ vesselId, oldMmsi, newMmsi }, 'MMSI change found by IMO, but the user already has a vessel on the new MMSI');
+    return false;
+  }
+
+  const updates: Record<string, any> = { mmsi: newMmsi, updated_at: new Date() };
+  if (found.callsign) updates.callsign = found.callsign;
+  if (found.flag) updates.flag = found.flag;
+  await app.db.update(schema.vessels).set(updates).where(eq(schema.vessels.id, vesselId));
+  app.logger.info({ vesselId, userId, oldMmsi, newMmsi, imo: found.imo }, 'Vessel MMSI updated: AIS shows its IMO under a new MMSI');
+  return true;
+}
+
 export async function fetchVesselAISDataWithFallback(
   mmsi: string,
   logger: any,
@@ -658,16 +722,42 @@ export async function fetchVesselAISDataWithFallback(
     return { data: datalasticResult, apiSource: 'datalastic' };
   }
 
-  logger.warn(`[FALLBACK CHAIN] Datalastic failed or returned incomplete data, falling back to MyShipTracking`);
+  const mmsiNotFound = datalasticResult?.error === AIS_NOT_FOUND;
 
-  // Try MyShipTracking second
-  const myshipResult = await fetchVesselAISData(mmsi, MYSHIPTRACKING_API_KEY, logger, vesselId, app, extended, userId);
-  if (myshipResult && !myshipResult.error && myshipResult.latitude != null && myshipResult.longitude != null) {
-    logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from MyShipTracking API for MMSI ${mmsi}`);
-    return { data: myshipResult, apiSource: 'myshiptracking' };
+  // Unknown MMSI: the vessel may have been reflagged. Try its IMO and follow it to the new MMSI.
+  if (mmsiNotFound && vesselId && app && userId) {
+    const [vessel] = await app.db
+      .select({ imo_number: schema.vessels.imo_number, vessel_name: schema.vessels.vessel_name })
+      .from(schema.vessels)
+      .where(eq(schema.vessels.id, vesselId));
+    if (vessel?.imo_number) {
+      const byImo = await fetchVesselAISDataByImo(vessel.imo_number, logger);
+      if (byImo) {
+        logger.info(`[FALLBACK CHAIN] ✓ MMSI ${mmsi} not found, but IMO ${vessel.imo_number} is on AIS as MMSI ${byImo.mmsi}`);
+        await logAPICall(app, vesselId, userId, mmsi, `${DATALASTIC_API_URL}?imo=${vessel.imo_number}`, new Date(), '200', JSON.stringify(byImo), 'success', null, 'datalastic');
+        if (await applyMmsiChange(app, vesselId, userId, mmsi, byImo)) {
+          await sendPushToUser(app, userId, {
+            title: `${vessel.vessel_name}: MMSI updated`,
+            body: `AIS now shows ${vessel.vessel_name} on MMSI ${byImo.mmsi} (it was ${mmsi}), usually after a change of flag. We've updated it and tracking has resumed.`,
+            data: { type: 'mmsi_changed', vesselId },
+          });
+        }
+        return { data: byImo, apiSource: 'datalastic' };
+      }
+    }
   }
 
-  logger.warn(`[FALLBACK CHAIN] MyShipTracking failed or returned incomplete data, falling back to Base44`);
+  // MyShipTracking is only worth calling when its key is set (every call failed with 401 without one)
+  if (MYSHIPTRACKING_API_KEY) {
+    logger.warn(`[FALLBACK CHAIN] Datalastic failed or returned incomplete data, falling back to MyShipTracking`);
+    const myshipResult = await fetchVesselAISData(mmsi, MYSHIPTRACKING_API_KEY, logger, vesselId, app, extended, userId);
+    if (myshipResult && !myshipResult.error && myshipResult.latitude != null && myshipResult.longitude != null) {
+      logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from MyShipTracking API for MMSI ${mmsi}`);
+      return { data: myshipResult, apiSource: 'myshiptracking' };
+    }
+  }
+
+  logger.warn(`[FALLBACK CHAIN] Falling back to Base44`);
 
   // Try Base44 last
   const base44Result = await fetchVesselAISDataFromBase44(mmsi, BASE44_API_KEY, logger);
@@ -679,31 +769,41 @@ export async function fetchVesselAISDataWithFallback(
     return { data: base44Result, apiSource: 'base44' };
   }
 
-  logger.error(`[FALLBACK CHAIN] ✗ All APIs failed for MMSI ${mmsi}: Datalastic, MyShipTracking, and Base44`);
+  logger.error(`[FALLBACK CHAIN] ✗ All APIs failed for MMSI ${mmsi}${mmsiNotFound ? ' (Datalastic: MMSI not found)' : ''}`);
 
-  // All APIs failed
-  return {
-    data: {
-      name: null,
-      mmsi: null,
-      imo: null,
-      speed_knots: null,
-      latitude: null,
-      longitude: null,
-      course: null,
-      heading: null,
-      timestamp: null,
-      status: null,
-      destination: null,
-      eta: null,
-      callsign: null,
-      ship_type: null,
-      flag: null,
-      is_moving: false,
-      error: 'All AIS data sources unavailable',
-    },
-    apiSource: 'failed',
-  };
+  if (mmsiNotFound && vesselId && app && userId) {
+    await notifyVesselNotFound(app, vesselId, userId, mmsi);
+    return { data: emptyAISData(AIS_NOT_FOUND), apiSource: 'failed' };
+  }
+
+  return { data: emptyAISData('All AIS data sources unavailable'), apiSource: 'failed' };
+}
+
+// Records the miss in ais_debug_logs and, the first time only, tells the user,
+// so a wrong MMSI no longer fails silently on every scheduled check.
+async function notifyVesselNotFound(app: App, vesselId: string, userId: string, mmsi: string): Promise<void> {
+  const earlier = await app.db
+    .select({ id: schema.ais_debug_logs.id })
+    .from(schema.ais_debug_logs)
+    .where(and(
+      eq(schema.ais_debug_logs.vessel_id, vesselId),
+      eq(schema.ais_debug_logs.mmsi, mmsi),
+      eq(schema.ais_debug_logs.authentication_status, 'not_found'),
+    ))
+    .limit(1);
+  await logAPICall(app, vesselId, userId, mmsi, DATALASTIC_API_URL, new Date(), '404', null, 'not_found', AIS_NOT_FOUND, 'datalastic');
+  if (earlier.length > 0) return;
+
+  const [vessel] = await app.db
+    .select({ vessel_name: schema.vessels.vessel_name })
+    .from(schema.vessels)
+    .where(eq(schema.vessels.id, vesselId));
+  const name = vessel?.vessel_name || 'Your vessel';
+  await sendPushToUser(app, userId, {
+    title: `${name} isn't showing on AIS`,
+    body: `No AIS position for MMSI ${mmsi}. If the vessel was renamed or reflagged it will have a new MMSI: update it, or add the IMO number, in the vessel's details.`,
+    data: { type: 'mmsi_not_found', vesselId },
+  });
 }
 
 export async function fetchVesselAISData(

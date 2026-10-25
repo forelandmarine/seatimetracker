@@ -327,7 +327,12 @@ export default function SeaTimeScreen() {
 
       // Refresh data to show the new vessel
       await loadData();
-      promptHistoryImport(createdVessel.id, vesselNameTrimmed);
+      // The backend warns when AIS doesn't know the MMSI (or it switched to a newer one)
+      if (createdVessel.warning) {
+        Alert.alert('Vessel added', createdVessel.warning);
+      } else {
+        promptHistoryImport(createdVessel.id, vesselNameTrimmed);
+      }
 
       // Trigger initial AIS check in background (non-blocking)
       seaTimeApi.checkVesselAIS(createdVessel.id, true).then(() => {
