@@ -91,6 +91,7 @@ export default function SeaTimeScreen() {
   const [newVesselName, setNewVesselName] = useState('');
   const [newMMSI, setNewMMSI] = useState('');
   const [newCallSign, setNewCallSign] = useState('');
+  const [newImoNumber, setNewImoNumber] = useState('');
   const [newFlag, setNewFlag] = useState('');
   const [newOfficialNumber, setNewOfficialNumber] = useState('');
   const [newVesselType, setNewVesselType] = useState('');
@@ -298,7 +299,8 @@ export default function SeaTimeScreen() {
         length_metres: newLengthMetres,
         gross_tonnes: newGrossTonnes,
         engine_kilowatts: newEngineKilowatts,
-        engine_type: newEngineType
+        engine_type: newEngineType,
+        imo_number: newImoNumber
       });
       
       // ALWAYS activate new vessels - this ensures they become the active tracked vessel
@@ -318,7 +320,8 @@ export default function SeaTimeScreen() {
         newGrossTonnes ? parseFloat(newGrossTonnes) : undefined,
         newCallSign.trim() || undefined,
         newEngineKilowatts ? parseFloat(newEngineKilowatts) : undefined,
-        newEngineType.trim() || undefined
+        newEngineType.trim() || undefined,
+        newImoNumber.trim() || undefined
       );
       
       log('[Home] Vessel created successfully:', createdVessel.id);
@@ -338,6 +341,7 @@ export default function SeaTimeScreen() {
       setNewMMSI('');
       setNewVesselName('');
       setNewCallSign('');
+      setNewImoNumber('');
       setNewFlag('');
       setNewOfficialNumber('');
       setNewVesselType('');
@@ -964,6 +968,18 @@ export default function SeaTimeScreen() {
                     value={newCallSign}
                     onChangeText={setNewCallSign}
                     autoCapitalize="characters"
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>IMO Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., 9876543"
+                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                    value={newImoNumber}
+                    onChangeText={setNewImoNumber}
                     returnKeyType="next"
                   />
                 </View>
