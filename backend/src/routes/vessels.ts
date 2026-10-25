@@ -5,6 +5,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
 import { fetchVesselAISDataWithFallback, fetchVesselSpecs, fetchVesselAISDataByImo, applyMmsiChange } from "./ais.js";
+import { VesselIdentityError, answerPendingName } from "../services/vesselIdentity.js";
 import { lookupPort } from "../utils/portDatabase.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
@@ -252,6 +253,9 @@ function transformVesselForResponse(vessel: any) {
     engine_kilowatts: engine_kilowatts,
     engine_type: vessel.engine_type || null,
     sector: vessel.sector || null,
+    // A new name AIS reported that the user hasn't accepted or declined yet
+    pending_name: vessel.pending_name || null,
+    pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
     is_active: vessel.is_active,
     created_at: vessel.created_at,
     updated_at: vessel.updated_at,
@@ -284,6 +288,8 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              pending_name: { type: ['string', 'null'] },
+              pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
@@ -342,6 +348,8 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            pending_name: { type: ['string', 'null'] },
+            pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -444,6 +452,8 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            pending_name: { type: ['string', 'null'] },
+            pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -683,6 +693,8 @@ export function register(app: App, fastify: FastifyInstance) {
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            pending_name: { type: ['string', 'null'] },
+            pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -810,6 +822,8 @@ export function register(app: App, fastify: FastifyInstance) {
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            pending_name: { type: ['string', 'null'] },
+            pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -993,6 +1007,8 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            pending_name: { type: ['string', 'null'] },
+            pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
             created_at: { type: 'string' },
             updated_at: { type: 'string' },
@@ -1115,6 +1131,34 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId, vesselId: id, sector }, 'Vessel sector updated');
     return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/pending-name - Accept or decline the new name AIS reported.
+  // Accepting renames from the day AIS first showed it; earlier service keeps the old name.
+  fastify.put<{ Params: { id: string }; Body: { accept: boolean; name?: string | null } }>('/api/vessels/:id/pending-name', {
+    schema: {
+      description: 'Accept (optionally with your own spelling) or decline a vessel rename suggested by AIS (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: {
+        type: 'object',
+        required: ['accept'],
+        properties: { accept: { type: 'boolean' }, name: { type: ['string', 'null'] } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    try {
+      const updated = await answerPendingName(app, userId, request.params.id, request.body);
+      app.logger.info({ userId, vesselId: updated.id, accept: request.body.accept }, 'Vessel rename suggestion answered');
+      return reply.code(200).send(transformVesselForResponse(updated));
+    } catch (error) {
+      if (error instanceof VesselIdentityError) return reply.code(error.statusCode).send({ error: error.message });
+      throw error;
+    }
   });
 
   // PUT /api/vessels/:id/mmsi - Correct a vessel's MMSI (authenticated).
@@ -1246,6 +1290,8 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              pending_name: { type: ['string', 'null'] },
+              pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },
@@ -1372,6 +1418,8 @@ export function register(app: App, fastify: FastifyInstance) {
               gross_tonnes: { type: ['string', 'null'] },
               tonnage_itc: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              pending_name: { type: ['string', 'null'] },
+              pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
               created_at: { type: 'string' },
               updated_at: { type: 'string' },

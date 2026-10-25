@@ -289,6 +289,13 @@ export const updateVesselMmsi = async (vesselId: string, mmsi: string) => {
   return normalizeVessel(await res.json());
 };
 
+// Answer a rename AIS suggested (vessel.pending_name). Accepting renames from the
+// day AIS first showed the new name; earlier service keeps the old name.
+export const answerVesselRename = async (vesselId: string, accept: boolean, name?: string) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/pending-name`, { method: 'PUT', body: { accept, name: name ?? null } });
+  return normalizeVessel(await res.json());
+};
+
 // Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
 // certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
 export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {

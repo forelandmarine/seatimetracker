@@ -9,6 +9,12 @@
  * status). A day costs about 2 credits whether the vessel moved or not; empty
  * days are free. The credit allowance is a HARD cap that also stops live
  * tracking, so imports pause below CREDIT_FLOOR.
+ *
+ * Datalastic keeps a vessel's track under the vessel, not the MMSI: after a reflag
+ * (tested on Lionheart, 244770782 -> 244004647 on 31 Aug 2026) the new MMSI and the
+ * IMO both return the track from before the change, and the old MMSI returns 404.
+ * So history is asked for by MMSI, and by IMO when the MMSI on the user's record is
+ * out of date (404). Positions are cached under the record's MMSI.
  */
 
 import { and, asc, eq, gte, inArray, lt, or } from 'drizzle-orm';
@@ -82,17 +88,38 @@ interface DatalasticPosition {
   last_position_epoch?: number;
 }
 
-async function fetchHistory(mmsi: string, from: string, to: string): Promise<DatalasticPosition[]> {
+/** A vessel to fetch history for. Positions are cached under `mmsi`. */
+interface HistoryTarget {
+  mmsi: string;
+  imo?: string | null;
+}
+
+const validImo = (imo: string | null | undefined) => (imo && /^\d{7}$/.test(imo.trim()) ? imo.trim() : null);
+
+/** One vessel_history call; null when Datalastic doesn't know the vessel (404). */
+async function queryHistory(key: 'mmsi' | 'imo', value: string, from: string, to: string): Promise<DatalasticPosition[] | null> {
   const url = new URL(HISTORY_URL);
   url.searchParams.set('api-key', apiKey());
-  url.searchParams.set('mmsi', mmsi);
+  url.searchParams.set(key, value);
   url.searchParams.set('from', from);
   url.searchParams.set('to', to);
   const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  if (res.status === 404) return [];
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Datalastic vessel_history returned ${res.status}`);
   const body = (await res.json()) as any;
   return Array.isArray(body?.data?.positions) ? body.data.positions : [];
+}
+
+/**
+ * By MMSI first; by IMO only when Datalastic no longer knows the MMSI (the record
+ * is out of date after a reflag). MMSI first so a mistyped IMO can't bring in
+ * another ship's track; a 404 costs no credits.
+ */
+async function fetchHistory(target: HistoryTarget, from: string, to: string): Promise<DatalasticPosition[]> {
+  const byMmsi = await queryHistory('mmsi', target.mmsi, from, to);
+  if (byMmsi) return byMmsi;
+  const imo = validImo(target.imo);
+  return (imo && (await queryHistory('imo', imo, from, to))) || [];
 }
 
 let creditCache: { value: number | null; at: number } | null = null;
@@ -116,8 +143,9 @@ export async function creditsRemaining(): Promise<number | null> {
 }
 
 /** Fetch [from, to) for an MMSI and store positions and per-day counts in the cache. */
-async function fetchAndStore(app: App, mmsi: string, from: string, to: string): Promise<number> {
-  const positions = await fetchHistory(mmsi, from, to);
+async function fetchAndStore(app: App, target: HistoryTarget, from: string, to: string): Promise<number> {
+  const mmsi = target.mmsi;
+  const positions = await fetchHistory(target, from, to);
   const rows = positions
     .map((p) => {
       const time = p.last_position_UTC ? new Date(p.last_position_UTC) : p.last_position_epoch ? new Date(p.last_position_epoch * 1000) : null;
@@ -235,7 +263,7 @@ export async function availability(app: App, userId: string, vesselId: string): 
     for (const day of probeDays) {
       if (earliest && day >= earliest) break;
       const row = cache.get(day);
-      let count = isFresh(row, since) ? row!.position_count : await fetchAndStore(app, vessel.mmsi, day, addDays(day, 1));
+      let count = isFresh(row, since) ? row!.position_count : await fetchAndStore(app, { mmsi: vessel.mmsi, imo: vessel.imo_number }, day, addDays(day, 1));
       if (count > 0) { earliest = day; break; }
     }
   }
@@ -303,7 +331,7 @@ export async function checkRanges(app: App, userId: string, vesselId: string, pi
   if (toFetch.length) {
     const remaining = await creditsRemaining();
     if (remaining === null || remaining >= CREDIT_FLOOR) {
-      for (const run of dayRuns(toFetch, CHUNK_DAYS)) await fetchAndStore(app, vessel.mmsi, run.from, run.to);
+      for (const run of dayRuns(toFetch, CHUNK_DAYS)) await fetchAndStore(app, { mmsi: vessel.mmsi, imo: vessel.imo_number }, run.from, run.to);
       cache = await cachedDays(app, vessel.mmsi, first, end);
     } else {
       app.logger.warn({ remaining, floor: CREDIT_FLOOR }, 'History check using cache only: Datalastic credits below floor');
@@ -527,7 +555,11 @@ export async function processHistoryImports(app: App): Promise<void> {
         return;
       }
       const run = dayRuns(missing, CHUNK_DAYS)[0];
-      await fetchAndStore(app, job.mmsi, run.from, run.to);
+      const [vessel] = await app.db
+        .select({ imo_number: schema.vessels.imo_number })
+        .from(schema.vessels)
+        .where(eq(schema.vessels.id, job.vessel_id));
+      await fetchAndStore(app, { mmsi: job.mmsi, imo: vessel?.imo_number }, run.from, run.to);
       if (job.error) await app.db.update(schema.history_imports).set({ error: null }).where(eq(schema.history_imports.id, job.id));
       return; // next iteration continues
     }

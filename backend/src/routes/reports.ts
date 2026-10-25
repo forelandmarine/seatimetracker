@@ -10,6 +10,8 @@ import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifying
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
+import { identityAsOf } from '../utils/vesselIdentity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -132,6 +134,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
+    entries = await entriesWithIdentity(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -393,10 +397,12 @@ export function register(app: App, fastify: FastifyInstance) {
       return map[reason || ''] || reason || '';
     };
 
+    const leaveChanges = await identityChanges(app, csvVessels.map((v) => v.id));
     const leaveRows = leavePeriods
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((lp) => {
-        const vessel = csvVessels.find((v) => v.id === lp.vessel_id);
+        const record = csvVessels.find((v) => v.id === lp.vessel_id);
+        const vessel = record && identityAsOf(record, leaveChanges.get(record.id) ?? [], new Date(lp.start_date));
         return [
           formatDate(lp.start_date),
           formatDate(lp.end_date),
@@ -578,6 +584,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
+    entries = await entriesWithIdentity(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -749,6 +757,7 @@ export function register(app: App, fastify: FastifyInstance) {
       with: { vessel: true },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
+    entries = await entriesWithIdentity(app, entries);
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
@@ -959,6 +968,8 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
+    entries = await entriesWithIdentity(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -1015,11 +1026,16 @@ export function register(app: App, fastify: FastifyInstance) {
     let totalDays = 0;
     confirmedEntries.forEach((entry) => { if (entry.sea_days) totalDays += entry.sea_days; });
 
-    const entriesByVessel: { [vesselId: string]: typeof confirmedEntries } = {};
-    confirmedEntries.forEach((entry) => {
-      if (!entriesByVessel[entry.vessel_id]) entriesByVessel[entry.vessel_id] = [];
-      entriesByVessel[entry.vessel_id].push(entry);
-    });
+    // One block per vessel identity: a renamed or reflagged vessel gets a block for
+    // each name/flag, in date order, with the particulars in force at the time.
+    const entriesByVessel: { [vesselKey: string]: typeof confirmedEntries } = {};
+    [...confirmedEntries]
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      .forEach((entry) => {
+        const key = `${entry.vessel_id}|${(entry as { identity_period?: string }).identity_period ?? "start"}`;
+        if (!entriesByVessel[key]) entriesByVessel[key] = [];
+        entriesByVessel[key].push(entry);
+      });
 
     // --- Foreland Marine brand palette ---
     const STEEL_BLUE = '#5386B6';
@@ -1160,10 +1176,13 @@ export function register(app: App, fastify: FastifyInstance) {
       doc.moveDown(0.5);
 
       const vesselKeys = Object.keys(entriesByVessel);
-      vesselKeys.forEach((vesselId, vesselIndex) => {
-        const vesselEntries = entriesByVessel[vesselId];
-        const vessel = allVessels.find((v) => v.id === vesselId);
-        if (!vessel) return;
+      vesselKeys.forEach((vesselKey, vesselIndex) => {
+        const vesselEntries = entriesByVessel[vesselKey];
+        const vesselId = vesselKey.split('|')[0];
+        const record = allVessels.find((v) => v.id === vesselId);
+        if (!record) return;
+        // Identity fields as of this block's entries; other particulars from the record
+        const vessel = { ...record, ...(vesselEntries[0]?.vessel ?? {}) };
 
         // Build particulars
         const particulars: Array<[string, string]> = [];
@@ -1180,6 +1199,11 @@ export function register(app: App, fastify: FastifyInstance) {
         // rather than tonnage, so a testimonial without kW is missing the one
         // figure the assessor needs.
         if (vessel.engine_kilowatts) particulars.push(['Propulsion Power', `${vessel.engine_kilowatts} kW`]);
+        // A renamed or reflagged vessel is split into blocks: show which dates each covers
+        if (vesselKeys.filter((k) => k.startsWith(`${vesselId}|`)).length > 1 && vesselEntries.length) {
+          const last = vesselEntries[vesselEntries.length - 1];
+          particulars.push(['Service Dates', `${formatDate(vesselEntries[0].start_time)} to ${formatDate(last.end_time ?? last.start_time)}`]);
+        }
 
         // Calculate service types for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};
@@ -1367,10 +1391,12 @@ export function register(app: App, fastify: FastifyInstance) {
         (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
       );
 
+      const leaveChanges = await identityChanges(app, allVessels.map((v) => v.id));
       sortedLeavePeriods.forEach((lp) => {
         ensureSpace(20);
         const rowY = Math.round(doc.y);
-        const vessel = allVessels.find((v) => v.id === lp.vessel_id);
+        const record = allVessels.find((v) => v.id === lp.vessel_id);
+        const vessel = record && identityAsOf(record, leaveChanges.get(record.id) ?? [], new Date(lp.start_date));
 
         doc.font('NunitoSans').fontSize(8.5).fillColor(DEEP_NAVY);
         let x = ML;

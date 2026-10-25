@@ -24,6 +24,7 @@ let otherVesselsOnNewMmsi: any[];
 let debugLogs: any[];
 let updates: any[];
 let pushes: any[];
+let identityRows: any[];
 
 // Just enough of the drizzle query builder for the code under test
 function fakeApp() {
@@ -33,8 +34,8 @@ function fakeApp() {
       where: () => {
         const name = table?.[Symbol.for("drizzle:Name")];
         let rows: any[] = [];
-        // First vessels read is the vessel itself; the next is the clash check on the new MMSI
-        if (name === "vessels") rows = vesselReads++ === 0 ? [vesselRow] : otherVesselsOnNewMmsi;
+        // The second vessels read is the clash check on the new MMSI; every other read is the vessel itself
+        if (name === "vessels") rows = vesselReads++ === 1 ? otherVesselsOnNewMmsi : [vesselRow];
         if (name === "ais_debug_logs") rows = debugLogs.filter((l) => l.authentication_status === "not_found");
         if (name === "push_tokens") rows = [{ token: "ExponentPushToken[test]" }];
         const p: any = Promise.resolve(rows);
@@ -47,7 +48,14 @@ function fakeApp() {
     logger: { info() {}, warn() {}, error() {}, debug() {} },
     db: {
       select,
-      insert: () => ({ values: (v: any) => ({ execute: async () => { debugLogs.push(v); } }) }),
+      insert: (table: any) => ({
+        values: (v: any) => {
+          if (table?.[Symbol.for("drizzle:Name")] === "vessel_identity_changes") identityRows.push(v);
+          const p: any = Promise.resolve();
+          p.execute = async () => { debugLogs.push(v); };
+          return p;
+        },
+      }),
       update: () => ({ set: (v: any) => ({ where: async () => { updates.push(v); Object.assign(vesselRow, v); } }) }),
       delete: () => ({ where: async () => {} }),
     },
@@ -77,6 +85,7 @@ beforeEach(() => {
   debugLogs = [];
   updates = [];
   pushes = [];
+  identityRows = [];
   otherVesselsOnNewMmsi = [];
   vesselRow = { id: "v1", mmsi: OLD_MMSI, imo_number: IMO, vessel_name: "HBC" };
 });
@@ -90,9 +99,11 @@ describe("AIS lookup when the MMSI is unknown", () => {
     expect(data.error).toBeNull();
     expect(data.latitude).toBeCloseTo(39.6487);
     expect(apiSource).toBe("datalastic");
-    expect(updates[0]).toMatchObject({ mmsi: NEW_MMSI, callsign: "E5U5698", flag: "CK" });
+    expect(updates[0]).toMatchObject({ mmsi: NEW_MMSI, callsign: "E5U5698", flag: "Cook Islands", ais_flag: "CK" });
     expect(pushes).toHaveLength(1);
     expect(pushes[0].body).toContain(NEW_MMSI);
+    // The old MMSI is kept on record for earlier service (no flag was known before, so no flag change)
+    expect(identityRows).toEqual([expect.objectContaining({ vessel_id: "v1", field: "mmsi", old_value: OLD_MMSI, new_value: NEW_MMSI, source: "ais" })]);
     // No keyless MyShipTracking call
     expect(calls.some((c) => c.includes("myshiptracking"))).toBe(false);
   });
@@ -103,7 +114,8 @@ describe("AIS lookup when the MMSI is unknown", () => {
     const { data } = await fetchVesselAISDataWithFallback(OLD_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
 
     expect(data.error).toBeNull(); // the position is still recorded
-    expect(updates).toHaveLength(0);
+    expect(updates.some((u) => "mmsi" in u)).toBe(false);
+    expect(identityRows).toHaveLength(0);
     expect(pushes).toHaveLength(0);
   });
 
@@ -126,12 +138,56 @@ describe("AIS lookup when the MMSI is unknown", () => {
 
   test("a known MMSI makes one Datalastic call and changes nothing", async () => {
     mockDatalastic({ [NEW_MMSI]: hbcByImo }, {});
-    vesselRow.mmsi = NEW_MMSI;
+    Object.assign(vesselRow, { mmsi: NEW_MMSI, callsign: "E5U5698", flag: "CK", ais_flag: "CK", ais_name: "HBC" });
     const { data } = await fetchVesselAISDataWithFallback(NEW_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
 
     expect(data.error).toBeNull();
     expect(calls.filter((c) => c.includes("datalastic"))).toHaveLength(1);
     expect(updates).toHaveLength(0);
+    expect(identityRows).toHaveLength(0);
+    expect(pushes).toHaveLength(0);
+  });
+
+  test("the first AIS sighting only stores AIS's name and flag", async () => {
+    mockDatalastic({ [NEW_MMSI]: hbcByImo }, {});
+    Object.assign(vesselRow, { mmsi: NEW_MMSI, vessel_name: "MY HBC", flag: "Cook Islands", callsign: "E5U5698" });
+    await fetchVesselAISDataWithFallback(NEW_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
+
+    expect(updates).toEqual([expect.objectContaining({ ais_name: "HBC", ais_flag: "CK" })]);
+    expect(updates[0].flag).toBeUndefined(); // the user's "Cook Islands" is left alone
+    expect(identityRows).toHaveLength(0);
+    expect(pushes).toHaveLength(0);
+  });
+
+  test("a reflag seen on AIS updates the flag, keeps the old one on record and tells the user", async () => {
+    mockDatalastic({ [NEW_MMSI]: hbcByImo }, {});
+    Object.assign(vesselRow, { mmsi: NEW_MMSI, flag: "United Kingdom", ais_flag: "GB", ais_name: "HBC", callsign: "E5U5698" });
+    await fetchVesselAISDataWithFallback(NEW_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
+
+    expect(updates[0]).toMatchObject({ flag: "Cook Islands", ais_flag: "CK" });
+    expect(identityRows).toEqual([expect.objectContaining({ field: "flag", old_value: "United Kingdom", new_value: "Cook Islands", source: "ais" })]);
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0].title).toContain("flag updated");
+  });
+
+  test("a new name on AIS is suggested, not applied", async () => {
+    mockDatalastic({ [NEW_MMSI]: { data: { ...hbcByImo.data, name: "AURORA" } } }, {});
+    Object.assign(vesselRow, { mmsi: NEW_MMSI, vessel_name: "MY HBC", flag: "CK", ais_flag: "CK", ais_name: "HBC", callsign: "E5U5698" });
+    await fetchVesselAISDataWithFallback(NEW_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
+
+    expect(updates[0]).toMatchObject({ pending_name: "AURORA", ais_name: "AURORA" });
+    expect(updates[0].vessel_name).toBeUndefined();
+    expect(identityRows).toHaveLength(0); // recorded only when the user accepts
+    expect(pushes[0].title).toContain("new name");
+  });
+
+  test("AIS catching up with a rename the user already made asks nothing", async () => {
+    mockDatalastic({ [NEW_MMSI]: { data: { ...hbcByImo.data, name: "AURORA" } } }, {});
+    Object.assign(vesselRow, { mmsi: NEW_MMSI, vessel_name: "MY Aurora", flag: "CK", ais_flag: "CK", ais_name: "HBC", callsign: "E5U5698" });
+    await fetchVesselAISDataWithFallback(NEW_MMSI, fakeApp().logger, "v1", fakeApp(), "u1", true);
+
+    expect(updates[0]).toEqual(expect.objectContaining({ ais_name: "AURORA" }));
+    expect(updates[0].pending_name).toBeUndefined();
     expect(pushes).toHaveLength(0);
   });
 

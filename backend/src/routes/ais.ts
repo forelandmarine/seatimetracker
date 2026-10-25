@@ -10,6 +10,7 @@ import { lookupPort } from "../utils/portDatabase.js";
 import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTime.js";
 import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
 import { sendPushToUser } from "../utils/push.js";
+import { noteAisIdentity, recordMmsiChange } from "../services/vesselIdentity.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -694,12 +695,24 @@ export async function applyMmsiChange(
     return false;
   }
 
-  const updates: Record<string, any> = { mmsi: newMmsi, updated_at: new Date() };
-  if (found.callsign) updates.callsign = found.callsign;
-  if (found.flag) updates.flag = found.flag;
+  const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, vesselId));
+  if (!vessel) return false;
+  // Keeps the old MMSI, flag and call sign on record for earlier service.
+  const identity = await recordMmsiChange(app, vessel, { mmsi: newMmsi, flag: found.flag, callsign: found.callsign });
+  const updates: Record<string, any> = { ...identity, mmsi: newMmsi, updated_at: new Date() };
   await app.db.update(schema.vessels).set(updates).where(eq(schema.vessels.id, vesselId));
   app.logger.info({ vesselId, userId, oldMmsi, newMmsi, imo: found.imo }, 'Vessel MMSI updated: AIS shows its IMO under a new MMSI');
   return true;
+}
+
+/** Picks up flag, call sign and name changes from a successful AIS lookup (never fails the lookup). */
+async function noteIdentity(app: App | undefined, vesselId: string | undefined, userId: string | undefined, data: AISVesselData, logger: any) {
+  if (!app || !vesselId || !userId) return;
+  try {
+    await noteAisIdentity(app, vesselId, userId, { name: data.name, flag: data.flag, callsign: data.callsign });
+  } catch (error) {
+    logger.error({ err: error, vesselId }, 'Could not check vessel identity changes');
+  }
 }
 
 export async function fetchVesselAISDataWithFallback(
@@ -719,6 +732,7 @@ export async function fetchVesselAISDataWithFallback(
     if (vesselId && app && userId) {
       await logAPICall(app, vesselId, userId, mmsi, DATALASTIC_API_URL, new Date(), '200', JSON.stringify(datalasticResult), 'success', null, 'datalastic');
     }
+    await noteIdentity(app, vesselId, userId, datalasticResult, logger);
     return { data: datalasticResult, apiSource: 'datalastic' };
   }
 
@@ -742,6 +756,7 @@ export async function fetchVesselAISDataWithFallback(
             data: { type: 'mmsi_changed', vesselId },
           });
         }
+        await noteIdentity(app, vesselId, userId, byImo, logger);
         return { data: byImo, apiSource: 'datalastic' };
       }
     }
@@ -753,6 +768,7 @@ export async function fetchVesselAISDataWithFallback(
     const myshipResult = await fetchVesselAISData(mmsi, MYSHIPTRACKING_API_KEY, logger, vesselId, app, extended, userId);
     if (myshipResult && !myshipResult.error && myshipResult.latitude != null && myshipResult.longitude != null) {
       logger.info(`[FALLBACK CHAIN] ✓ Successfully retrieved data from MyShipTracking API for MMSI ${mmsi}`);
+      await noteIdentity(app, vesselId, userId, myshipResult, logger);
       return { data: myshipResult, apiSource: 'myshiptracking' };
     }
   }
@@ -766,6 +782,7 @@ export async function fetchVesselAISDataWithFallback(
     if (vesselId && app && userId) {
       await logAPICall(app, vesselId, userId, mmsi, BASE44_API_URL, new Date(), '200', JSON.stringify(base44Result), 'success', null, 'base44');
     }
+    await noteIdentity(app, vesselId, userId, base44Result, logger);
     return { data: base44Result, apiSource: 'base44' };
   }
 

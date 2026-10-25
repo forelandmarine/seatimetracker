@@ -20,6 +20,13 @@ export const vessels = pgTable('vessels', {
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),
+  // Last name and flag AIS reported. Changes are detected against these, not the
+  // user's own spelling ("SY Lionheart" vs AIS "LIONHEART"), so only a real change shows up.
+  ais_name: text('ais_name'),
+  ais_flag: text('ais_flag'),
+  // A new AIS name the user hasn't accepted or declined yet (we ask before renaming).
+  pending_name: text('pending_name'),
+  pending_name_since: date('pending_name_since'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => [
@@ -115,6 +122,26 @@ export const ais_checks = pgTable('ais_checks', {
 export const vesselsRelations = relations(vessels, ({ many }) => ({
   sea_time_entries: many(sea_time_entries),
   ais_checks: many(ais_checks),
+  identity_changes: many(vessel_identity_changes),
+}));
+
+// Dated history of a vessel's MMSI, name, flag and call sign. Reports use it to print
+// the identity in force on each day of service (a reflag or rename splits the record).
+export const vessel_identity_changes = pgTable('vessel_identity_changes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  field: text('field').notNull(), // 'mmsi' | 'vessel_name' | 'flag' | 'callsign'
+  old_value: text('old_value'),
+  new_value: text('new_value'),
+  effective_date: date('effective_date').notNull(), // first day the new value applies (when AIS first showed it, or the user's date)
+  source: text('source').notNull(), // 'ais' | 'user'
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('vessel_identity_changes_vessel_id_idx').on(table.vessel_id),
+]);
+
+export const vessel_identity_changesRelations = relations(vessel_identity_changes, ({ one }) => ({
+  vessel: one(vessels, { fields: [vessel_identity_changes.vessel_id], references: [vessels.id] }),
 }));
 
 export const sea_time_entriesRelations = relations(sea_time_entries, ({ one }) => ({
