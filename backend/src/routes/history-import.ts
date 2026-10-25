@@ -72,18 +72,20 @@ export function register(app: App, fastify: FastifyInstance) {
   });
 
   // POST /api/history-import - Redeem a completed store purchase against a vessel
-  fastify.post<{ Body: { vessel_id: string; product_id: string; transaction_id?: string | null; ranges: DayRange[]; platform?: string | null } }>("/api/history-import", {
+  fastify.post<{ Body: { vessel_id: string; product_id: string; transaction_id?: string | null; ranges?: DayRange[] | null; joined_date?: string | null; platform?: string | null } }>("/api/history-import", {
     schema: {
       description: "Redeem an AIS history purchase (verified with RevenueCat) and queue the import",
       tags: ["history-import"],
       body: {
         type: "object",
-        required: ["vessel_id", "product_id", "ranges"],
+        // ranges from 2.3.0 build 27 on; joined_date from build 26 (TestFlight) only
+        required: ["vessel_id", "product_id"],
         properties: {
           vessel_id: { type: "string" },
           product_id: { type: "string", enum: Object.keys(HISTORY_PRODUCTS) },
           transaction_id: { type: ["string", "null"] },
           ranges: rangesSchema,
+          joined_date: { type: ["string", "null"] },
           platform: { type: ["string", "null"] },
         },
       },
@@ -92,10 +94,10 @@ export function register(app: App, fastify: FastifyInstance) {
   }, async (request, reply) => {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) return reply.code(401).send({ error: "Authentication required" });
-    const { vessel_id, product_id, transaction_id, ranges, platform } = request.body;
+    const { vessel_id, product_id, transaction_id, ranges, joined_date, platform } = request.body;
     if (!isHistoryProduct(product_id)) return reply.code(400).send({ error: "Unknown product" });
     try {
-      const created = await redeem(app, { userId, vesselId: vessel_id, productId: product_id, transactionId: transaction_id, ranges, platform });
+      const created = await redeem(app, { userId, vesselId: vessel_id, productId: product_id, transactionId: transaction_id, ranges, joinedDay: joined_date, platform });
       return reply.code(200).send(importSummary(created));
     } catch (error) {
       return sendError(app, reply, error, "redeem");

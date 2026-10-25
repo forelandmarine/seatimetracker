@@ -240,7 +240,8 @@ export interface Availability {
   can_purchase: boolean; // subscription or trial active
   range_from: string; // first day that can be picked
   max_ranges: number;
-  products: { product_id: HistoryProductId; months: number; max_days: number }[];
+  // window_from / window_to: the fixed windows build 26 (TestFlight, joining-date screen) still reads
+  products: { product_id: HistoryProductId; months: number; max_days: number; window_from: string; window_to: string }[];
   latest_import: ReturnType<typeof importSummary> | null;
 }
 
@@ -274,6 +275,8 @@ export async function availability(app: App, userId: string, vesselId: string): 
         product_id: id,
         months,
         max_days: PRODUCT_MAX_DAYS[id],
+        window_from: monthsBefore(start, months),
+        window_to: start,
       }))
     : [];
 
@@ -382,6 +385,13 @@ function toFix(r: typeof schema.ais_history_positions.$inferSelect): HistoryFix 
 
 // ---------------------------------------------------------------------------
 // Redeem a purchase
+
+/** The single period an older app means by a product and optional joining day. */
+function legacyWindow(productId: HistoryProductId, start: string, joinedDay?: string | null): DayRange[] {
+  const from = monthsBefore(start, HISTORY_PRODUCTS[productId]);
+  const joined = joinedDay && /^\d{4}-\d{2}-\d{2}$/.test(joinedDay) && joinedDay > from ? joinedDay : from;
+  return joined < start ? [{ from: joined, to: start }] : [];
+}
 // ---------------------------------------------------------------------------
 
 interface RcPurchase {
@@ -411,7 +421,9 @@ export async function redeem(app: App, params: {
   vesselId: string;
   productId: HistoryProductId;
   transactionId?: string | null;
-  ranges: DayRange[];
+  ranges?: DayRange[] | null;
+  /** Build 26 (joining-date screen) sends this instead of ranges: the product's window, cut by the joining day. */
+  joinedDay?: string | null;
   platform?: string | null;
 }) {
   const user = await activeUser(app, params.userId);
@@ -421,7 +433,8 @@ export async function redeem(app: App, params: {
   const vessel = await ownedVessel(app, params.userId, params.vesselId);
   const start = await trackingStartDay(app, vessel);
   // Checked before RevenueCat so a bad selection costs nothing and the purchase stays unredeemed.
-  const norm = normaliseRanges(params.ranges, { earliest: monthsBefore(start, LOOKBACK_MONTHS), trackingStart: start });
+  const picked = params.ranges?.length ? params.ranges : legacyWindow(params.productId, start, params.joinedDay);
+  const norm = normaliseRanges(picked, { earliest: monthsBefore(start, LOOKBACK_MONTHS), trackingStart: start });
   if (norm.ok === false) throw new HistoryImportError(422, norm.error);
   if (norm.days > PRODUCT_MAX_DAYS[params.productId]) {
     throw new HistoryImportError(422, `This purchase covers up to ${PRODUCT_MAX_DAYS[params.productId]} days; ${norm.days} were picked`);

@@ -5,7 +5,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
 import { fetchVesselAISDataWithFallback, fetchVesselSpecs, fetchVesselAISDataByImo, applyMmsiChange } from "./ais.js";
-import { VesselIdentityError, answerPendingName } from "../services/vesselIdentity.js";
+import { VesselIdentityError, answerPendingName, renameFromDetails } from "../services/vesselIdentity.js";
 import { lookupPort } from "../utils/portDatabase.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
@@ -1072,6 +1072,7 @@ export function register(app: App, fastify: FastifyInstance) {
     if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
     if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts != null ? String(engine_kilowatts) : null;
     if (engine_type !== undefined) updateData.engine_type = engine_type || null;
+    Object.assign(updateData, await renameFromDetails(app, vessel[0], vessel_name));
 
     const [updated] = await app.db
       .update(schema.vessels)
@@ -1375,6 +1376,7 @@ export function register(app: App, fastify: FastifyInstance) {
       if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
       if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts != null ? String(engine_kilowatts) : null;
       if (engine_type !== undefined) updateData.engine_type = engine_type;
+      Object.assign(updateData, await renameFromDetails(app, vessel[0], vessel_name));
 
       // Auto-fill blank fields from recent AIS data
       const autoFilledData = await autoFillVesselParticularsFromAIS(app, id, updateData);

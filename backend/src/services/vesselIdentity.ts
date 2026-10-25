@@ -108,7 +108,7 @@ export async function noteAisIdentity(
       updates.pending_name_since = today();
       await sendPushToUser(app, userId, {
         title: `${vessel.vessel_name} has a new name on AIS`,
-        body: `AIS now shows it as ${ais.name}. Open SeaTime to rename it in your records.`,
+        body: `AIS now shows it as ${ais.name}. You can rename it in SeaTime; earlier service keeps the old name.`,
         data: { type: 'name_changed', vesselId },
       });
     }
@@ -151,6 +151,17 @@ export async function answerPendingName(
   }
   const [updated] = await app.db.update(schema.vessels).set(updates).where(eq(schema.vessels.id, vessel.id)).returning();
   return updated;
+}
+
+/**
+ * A rename done by editing the vessel's details (how the 2.2.0 app, which has no
+ * rename banner, can take up a suggested name): if the new name is the suggested
+ * one, record it from the day AIS first showed it and clear the suggestion.
+ */
+export async function renameFromDetails(app: App, vessel: Vessel, newName: string | null | undefined): Promise<Record<string, any>> {
+  if (!vessel.pending_name || !newName || !sameName(newName, vessel.pending_name) || newName === vessel.vessel_name) return {};
+  await record(app, vessel.id, 'vessel_name', vessel.vessel_name, newName, 'user', String(vessel.pending_name_since ?? today()));
+  return { pending_name: null, pending_name_since: null };
 }
 
 export async function identityChanges(app: App, vesselIds: string[]) {
