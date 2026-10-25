@@ -30,10 +30,9 @@ interface SectorOption {
 }
 
 // Commercial is selectable: it unlocks the manual shift clock-in (log your own
-// on-duty hours). Sea-area/tidal classification and the CTV/workboat certificate
-// pathways are not live yet (the classifier is off behind COMMERCIAL_PATHWAYS_ENABLED
-// and nothing in the app displays it), so the bullets say so rather than implying
-// they are. The comingSoon flag is retained for
+// on-duty hours) and workboat tagging for Master (Workboat) <500 GT progress
+// (MGN 496). Sea-area/tidal classification is not shown anywhere yet, so the
+// bullets say so rather than implying it is. The comingSoon flag is retained for
 // future use but is off for both sectors today.
 const SECTOR_OPTIONS: SectorOption[] = [
   {
@@ -57,8 +56,8 @@ const SECTOR_OPTIONS: SectorOption[] = [
     icon_android: 'directions-boat',
     bullets: [
       'Clock in and out to log your actual shift hours',
+      'Master (Workboat) <500 GT progress from your workboat time',
       'Sea-area and tidal classification coming soon',
-      'CTV / workboat certificate pathways in development',
     ],
     comingSoon: false,
   },
@@ -297,7 +296,9 @@ export default function SelectVesselSectorScreen() {
   const [selected, setSelected] = useState<VesselSector>('yachting');
   const [initialSector, setInitialSector] = useState<VesselSector>('yachting');
   const [department, setDepartment] = useState<string | null>(null);
-  const [vessels, setVessels] = useState<{ id: string; vessel_name: string; sector: VesselSector | null }[]>([]);
+  const [vessels, setVessels] = useState<{ id: string; vessel_name: string; sector: VesselSector | null; is_workboat?: boolean | null }[]>([]);
+  // Workboat flag per vessel id as the user leaves it on this screen (MGN 496 progress).
+  const [workboats, setWorkboats] = useState<Record<string, boolean>>({});
   // Sector per vessel id as the user leaves it on this screen.
   const [vesselSectors, setVesselSectors] = useState<Record<string, VesselSector>>({});
   const [loading, setLoading] = useState(true);
@@ -324,6 +325,7 @@ export default function SelectVesselSectorScreen() {
           setVesselSectors(
             Object.fromEntries(usable.map((v: any) => [v.id, v.sector === 'commercial' || v.sector === 'yachting' ? v.sector : fallback])),
           );
+          setWorkboats(Object.fromEntries(usable.map((v: any) => [v.id, v.is_workboat === true])));
         }
       } catch (err) {
         logError('[SelectVesselSector] Failed to load profile:', err);
@@ -351,6 +353,8 @@ export default function SelectVesselSectorScreen() {
   // may or may not carry over, so only then are the vessels shown for tagging.
   const showCarryOver = initialSector === 'commercial' && selected === 'yachting' && vessels.length > 0;
   const isEngineering = department?.toLowerCase() === 'engineering';
+  // Master (Workboat) <500 GT is a deck certificate, so only deck crew working commercially are asked.
+  const showWorkboats = selected === 'commercial' && !isEngineering && vessels.length > 0;
 
   const handleSave = async () => {
     setSaving(true);
@@ -365,6 +369,11 @@ export default function SelectVesselSectorScreen() {
         const changed = vessels.filter((v) => vesselSectors[v.id] && vesselSectors[v.id] !== v.sector);
         await Promise.all(changed.map((v) => seaTimeApi.updateVesselSector(v.id, vesselSectors[v.id])));
         log('[SelectVesselSector] Tagged vessels:', changed.length);
+      }
+      if (showWorkboats) {
+        const changed = vessels.filter((v) => (v.is_workboat === true) !== (workboats[v.id] === true));
+        await Promise.all(changed.map((v) => seaTimeApi.updateVesselWorkboat(v.id, workboats[v.id] === true)));
+        log('[SelectVesselSector] Workboat flags changed:', changed.length);
       }
       router.back();
     } catch (err: any) {
@@ -496,11 +505,48 @@ export default function SelectVesselSectorScreen() {
           </View>
         )}
 
+        {showWorkboats && (
+          <View style={styles.carryOverBox}>
+            <Text style={styles.carryOverTitle}>Which vessels are workboats?</Text>
+            <Text style={[styles.infoText, { marginBottom: 10 }]}>
+              Master (Workboat) &lt;500 GT needs 6 months on a workboat of 15m or over (MGN 496). A workboat is a
+              vessel under 500 GT doing multipurpose support work, such as a CTV, multicat, survey or crew boat.
+              Mark yours so that time is counted:
+            </Text>
+            {vessels.map((v) => (
+              <View key={v.id} style={styles.vesselRow}>
+                <Text style={styles.vesselName} numberOfLines={1}>
+                  {v.vessel_name}
+                </Text>
+                <View style={styles.chipGroup}>
+                  {[true, false].map((value) => {
+                    const on = (workboats[v.id] === true) === value;
+                    return (
+                      <TouchableOpacity
+                        key={String(value)}
+                        style={[styles.chip, on && styles.chipSelected]}
+                        onPress={() => setWorkboats((prev) => ({ ...prev, [v.id]: value }))}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: on }}
+                        accessibilityLabel={`${v.vessel_name}: ${value ? 'workboat' : 'not a workboat'}`}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextSelected]}>
+                          {value ? 'Workboat' : 'Other'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Commercial adds a manual shift clock-in so you log your own on-duty hours. Sea-area and tidal
-            classification and the CTV and workboat certificate pathways are still in development. You can
-            switch sector any time, and it never changes sea time you have already logged.
+            Commercial adds a manual shift clock-in so you log your own on-duty hours, and Master (Workboat)
+            &lt;500 GT progress in your profile. Sea-area and tidal classification is still in development. You
+            can switch sector any time, and it never changes sea time you have already logged.
           </Text>
         </View>
 

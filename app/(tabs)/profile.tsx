@@ -1,6 +1,6 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress, CommercialServiceSummary } from '@/components/CertificationProgress';
+import { CertificationProgress, CommercialServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
   getAuthorityServiceDefinitions,
@@ -81,6 +81,7 @@ interface SeaTimeSummary {
     engineering_watch: number;
   } | null;
   commercial_service?: CommercialServiceSummary;
+  workboat_service?: WorkboatServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -1304,6 +1305,7 @@ export default function ProfileScreen() {
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
                   commercialService={summary.commercial_service ?? null}
+                  workboatService={summary.workboat_service ?? null}
                   hasRecordBook={hasRecordBook}
                   isDark={isDark}
                   onChangeTarget={() =>

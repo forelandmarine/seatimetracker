@@ -73,6 +73,19 @@ export interface CommercialServiceSummary {
   yacht_entries_by_service_type: ServiceTypeDays[];
 }
 
+/** Master (Workboat) <500 GT figures (MGN 496), from the summary endpoint. */
+export interface WorkboatServiceSummary {
+  sea_service: number;
+  sea_service_15m: number;
+  watchkeeping_15m: number;
+  workboat_15m: number;
+  recent_sea_service: number;
+  workboats_without_length: number;
+}
+
+/** MGN 496 4.3: at least 6 months of service in the 5 years before applying. */
+const WORKBOAT_RECENCY_DAYS = 180;
+
 /** Share of the required service AMSA lets you gain while not underway. */
 const AMSA_NOT_UNDERWAY_CAP = { deck: 0.15, engineering: 0.33 } as const;
 
@@ -98,6 +111,8 @@ export interface CertificationProgressProps {
   mnzService?: MNZServiceSummary | null;
   /** Service on commercial vessels, used to decide what carries over to MCA yacht CoCs. */
   commercialService?: CommercialServiceSummary | null;
+  /** Master (Workboat) figures. Required for the MGN 496 routes. */
+  workboatService?: WorkboatServiceSummary | null;
   /**
    * Whether the user holds the record of training their authority reduces sea
    * service for: an AMSA task book, or an MNZ training record book or cadet
@@ -160,6 +175,7 @@ export function CertificationProgress({
   amsaService,
   mnzService,
   commercialService,
+  workboatService,
   hasRecordBook = false,
   isDark,
   onChangeTarget,
@@ -224,6 +240,23 @@ export function CertificationProgress({
           required: requirement.totalDays,
         },
       ];
+    }
+
+    if (resolvedAuthority === 'mca' && requirement?.workboatRoute) {
+      // Without the workboat figures there is no honest bar to draw.
+      if (!workboatService) return [];
+      const route = requirement.workboatRoute;
+      const out: ProgressRow[] = [];
+      if (route.seaServiceDays) {
+        out.push({ label: 'Sea Service', current: workboatService.sea_service, required: route.seaServiceDays });
+      }
+      if (route.seaService15mDays) {
+        out.push({ label: 'Sea Service, Vessels 15m+', current: workboatService.sea_service_15m, required: route.seaService15mDays });
+      }
+      out.push({ label: 'Watchkeeping, Vessels 15m+', current: workboatService.watchkeeping_15m, required: route.watchkeeping15mDays });
+      out.push({ label: 'Workboat Service, 15m+', current: workboatService.workboat_15m, required: route.workboat15mDays });
+      out.push({ label: 'In the Last 5 Years', current: workboatService.recent_sea_service, required: WORKBOAT_RECENCY_DAYS });
+      return out;
     }
 
     if (resolvedAuthority === 'mca') {
@@ -302,6 +335,7 @@ export function CertificationProgress({
     mnzService,
     serviceTypes,
     commercialService,
+    workboatService,
     excludeCommercial,
     resolvedAuthority,
     dept,
@@ -382,7 +416,9 @@ export function CertificationProgress({
         <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
           {isUSCG && !uscgService
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
-            : isAMSA && !amsaService
+            : requirement?.workboatRoute && !workboatService
+              ? 'Your workboat day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 496.'
+              : isAMSA && !amsaService
               ? 'Your AMSA day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under Marine Order 505.'
               : isMNZ && !mnzService
                 ? 'Your Maritime NZ day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under SeaCert.'
@@ -460,7 +496,22 @@ export function CertificationProgress({
         </View>
       )}
 
-      {commercialDays > 0 && requirement?.commercialService && (
+      {requirement?.workboatRoute && workboatService && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted under MGN 496, with months at 30 days. Workboat service counts vessels you have
+            marked as workboats in Settings, Vessel Sector. The 15m figures use each vessel's recorded
+            length; the MCA goes by load line length. Watchkeeping counts only days you logged as
+            watchkeeping service. Service must also fall after you gained your entry certificate, which
+            the app cannot check.
+            {workboatService.workboats_without_length > 0
+              ? ` ${workboatService.workboats_without_length} ${workboatService.workboats_without_length === 1 ? 'workboat has' : 'workboats have'} no length recorded, so ${workboatService.workboats_without_length === 1 ? 'it is' : 'they are'} left out of the 15m figures. Add the length in the vessel's details.`
+              : ''}
+          </Text>
+        </View>
+      )}
+
+      {commercialDays > 0 && requirement?.commercialService && !requirement?.workboatRoute && (
         <View
           style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}
         >

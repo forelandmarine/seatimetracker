@@ -53,6 +53,18 @@ export interface MCARequirement {
    * does not split service by sector for it.
    */
   commercialService?: 'counts' | 'yacht_only';
+  /**
+   * Master (Workboat) <500 GT entry route (MGN 496 section 11). Progress is
+   * measured against the route's own gates (15 m vessels, workboat service,
+   * watchkeeping) from the summary's workboat figures. Day targets use 30-day
+   * months (MSF 4257).
+   */
+  workboatRoute?: {
+    seaServiceDays?: number;
+    seaService15mDays?: number;
+    watchkeeping15mDays: number;
+    workboat15mDays: number;
+  };
   requirements: {
     label: string;
     value: string;
@@ -483,6 +495,115 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       },
     ],
     notes: ['Pass the Master Unlimited GT Yacht oral examination'],
+  },
+  // ── Master (Workboat) <500 GT: MGN 496 (M+F) section 11 ─────────────
+  // Still the live MCA notice (2013). Gates are taken as written; day targets
+  // use 30-day months as MSF 4257 reckons them. Service "whilst holding" or
+  // "since gaining" the entry CoC cannot be dated by the app, so that is a note.
+  {
+    id: 'master-workboat-500gt-from-master-code',
+    title: 'Master (Workboat) <500 GT, from Master (Code Vessels) <200 GT',
+    regulation: 'MGN 496',
+    category: 'Workboats',
+    description: 'Workboat master route for holders of Master (Code Vessels) <200 GT (MGN 496, section 11.2)',
+    commercialService: 'counts',
+    workboatRoute: { seaServiceDays: 1080, seaService15mDays: 360, watchkeeping15mDays: 120, workboat15mDays: 180 },
+    requirements: [
+      {
+        label: 'Sea Service',
+        value: '36 months',
+        details: [
+          'In vessels of any size',
+          'Including at least 12 months sea service and 120 days watchkeeping in vessels 15m or over load line length, while holding Master (Code Vessels) <200 GT',
+          'Including 6 months sea service on a workboat of 15m or over (it can sit inside the 12 months)',
+        ],
+      },
+    ],
+    notes: [
+      'Sea service includes time at anchor, river or canal transits and time in port associated with the work on a workboat (MGN 496, 4.1)',
+      'At least 6 months of the service within the 5 years before you apply',
+      'Complete the approved Workboat Training Record Book',
+      'Yachtmaster Ocean (with shore-based course), GMDSS GOC, Advanced Fire Fighting, Medical First Aid, Medical Care, EDH, the OOW and Master (Yachts) modules, HELM (Management) and the Workboat Operations module and exam',
+      'With Yachtmaster Offshore instead of Ocean, the CoC is issued for UK near coastal waters only',
+      'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
+    ],
+  },
+  {
+    id: 'master-workboat-500gt-from-oow-yachts',
+    title: 'Master (Workboat) <500 GT, from OOW (Yachts) <3000 GT',
+    regulation: 'MGN 496',
+    category: 'Workboats',
+    description: 'Workboat master route for holders of OOW (Yachts) <3000 GT (MGN 496, section 11.4)',
+    commercialService: 'counts',
+    workboatRoute: { seaServiceDays: 360, watchkeeping15mDays: 120, workboat15mDays: 180 },
+    requirements: [
+      {
+        label: 'Sea Service',
+        value: '12 months',
+        details: [
+          'Since gaining OOW (Yachts) <3000 GT',
+          'Including at least 120 days watchkeeping in vessels 15m or over load line length',
+          'Including 6 months sea service on a workboat of 15m or over (it can sit inside the 12 months)',
+        ],
+      },
+    ],
+    notes: [
+      'At least 6 months of the service within the 5 years before you apply',
+      'Complete the approved Workboat Training Record Book',
+      'Yachtmaster Ocean (with shore-based course), EDH, Advanced Fire Fighting, Medical Care, the Master (Yachts) modules, HELM (Management) and the Workboat Operations module and exam',
+      'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
+    ],
+  },
+  {
+    id: 'master-workboat-500gt-from-oow-unlimited',
+    title: 'Master (Workboat) <500 GT, from OOW Unlimited',
+    regulation: 'MGN 496',
+    category: 'Workboats',
+    description: 'Workboat master route for holders of a UK OOW Unlimited CoC (MGN 496, section 11.3)',
+    commercialService: 'counts',
+    workboatRoute: { seaServiceDays: 360, watchkeeping15mDays: 120, workboat15mDays: 180 },
+    requirements: [
+      {
+        label: 'Sea Service',
+        value: '12 months',
+        details: [
+          'While holding OOW Unlimited',
+          'Including at least 120 days watchkeeping in vessels 15m or over load line length',
+          'Including 6 months sea service on a workboat of 15m or over (it can sit inside the 12 months)',
+        ],
+      },
+    ],
+    notes: [
+      'At least 6 months of the service within the 5 years before you apply',
+      'Complete the approved Workboat Training Record Book',
+      'Medical Care, GMDSS GOC, the Business and Law (Master Yachts) module, HELM (Management) and the Workboat Operations module and exam',
+      'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
+    ],
+  },
+  {
+    id: 'master-workboat-500gt-from-fishing',
+    title: 'Master (Workboat) <500 GT, from Class 1 Fishing',
+    regulation: 'MGN 496',
+    category: 'Workboats',
+    description: 'Workboat master route for holders of a UK Class 1 Fishing CoC (MGN 496, section 11.5)',
+    commercialService: 'counts',
+    workboatRoute: { watchkeeping15mDays: 120, workboat15mDays: 180 },
+    requirements: [
+      {
+        label: 'Sea Service',
+        value: '6 months',
+        details: [
+          'In a workboat of 15m or over load line length',
+          'Including at least 120 days watchkeeping in vessels 15m or over load line length',
+        ],
+      },
+    ],
+    notes: [
+      'At least 6 months of the service within the 5 years before you apply',
+      'Complete the approved Workboat Training Record Book',
+      'STCW basic training, Security Awareness, Medical Care, PSC&RB, Advanced Fire Fighting, Medical First Aid and the Workboat Operations module and exam',
+      'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
+    ],
   },
 ];
 

@@ -296,6 +296,13 @@ export const answerVesselRename = async (vesselId: string, accept: boolean, name
   return normalizeVessel(await res.json());
 };
 
+// Mark a vessel as a workboat (MGN 496). Service on workboats of 15m or over
+// counts toward Master (Workboat) <500 GT.
+export const updateVesselWorkboat = async (vesselId: string, isWorkboat: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/workboat`, { method: 'PUT', body: { is_workboat: isWorkboat } });
+  return normalizeVessel(await res.json());
+};
+
 // Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
 // certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
 export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {

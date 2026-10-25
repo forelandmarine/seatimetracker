@@ -253,6 +253,8 @@ function transformVesselForResponse(vessel: any) {
     engine_kilowatts: engine_kilowatts,
     engine_type: vessel.engine_type || null,
     sector: vessel.sector || null,
+    // Marked by the user as a workboat (MGN 496: under 500 GT, multipurpose support work)
+    is_workboat: vessel.is_workboat ?? null,
     // A new name AIS reported that the user hasn't accepted or declined yet
     pending_name: vessel.pending_name || null,
     pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
@@ -288,6 +290,7 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              is_workboat: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -348,6 +351,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            is_workboat: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -452,6 +456,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            is_workboat: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -693,6 +698,7 @@ export function register(app: App, fastify: FastifyInstance) {
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            is_workboat: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -822,6 +828,7 @@ export function register(app: App, fastify: FastifyInstance) {
             gross_tonnes: { type: ['string', 'null'] },
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            is_workboat: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1007,6 +1014,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_kilowatts: { type: ['number', 'null'] },
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
+            is_workboat: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1131,6 +1139,35 @@ export function register(app: App, fastify: FastifyInstance) {
       .returning();
 
     app.logger.info({ userId, vesselId: id, sector }, 'Vessel sector updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/workboat - Mark a vessel as a workboat, for Master (Workboat) <500 GT progress (MGN 496)
+  fastify.put<{ Params: { id: string }; Body: { is_workboat: boolean } }>('/api/vessels/:id/workboat', {
+    schema: {
+      description: 'Mark whether a vessel is a workboat (MGN 496). Service on workboats of 15 m or over counts toward Master (Workboat). (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_workboat'], properties: { is_workboat: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_workboat: request.body.is_workboat, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_workboat: request.body.is_workboat }, 'Vessel workboat flag updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
@@ -1291,6 +1328,7 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_kilowatts: { type: ['number', 'null'] },
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              is_workboat: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -1420,6 +1458,7 @@ export function register(app: App, fastify: FastifyInstance) {
               gross_tonnes: { type: ['string', 'null'] },
               tonnage_itc: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
+              is_workboat: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },

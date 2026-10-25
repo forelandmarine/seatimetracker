@@ -6,6 +6,7 @@ import type { App } from "../index.js";
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { workboatService } from "../utils/workboat.js";
 import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
@@ -560,6 +561,17 @@ export function register(app: App, fastify: FastifyInstance) {
                 },
               },
             },
+            workboat_service: {
+              type: 'object',
+              properties: {
+                sea_service: { type: 'number' },
+                sea_service_15m: { type: 'number' },
+                watchkeeping_15m: { type: 'number' },
+                workboat_15m: { type: 'number' },
+                recent_sea_service: { type: 'number' },
+                workboats_without_length: { type: 'number' },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -690,6 +702,9 @@ export function register(app: App, fastify: FastifyInstance) {
       })),
     };
 
+    // Master (Workboat) <500 GT gates (MGN 496): any vessel, 15 m and over, workboats, recency
+    const workboat_service = workboatService(entries as any);
+
     app.logger.info(
       {
         total_days,
@@ -710,6 +725,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entries_by_month,
       entries_by_service_type,
       commercial_service,
+      workboat_service,
     });
   });
 
