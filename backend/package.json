@@ -13,6 +13,7 @@
     "db:push": "npm run db:generate && npm run db:migrate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.2.0",
     "@fastify/aws-lambda": "6.1.1",
     "@fastify/multipart": "9.3.0",
     "@fastify/websocket": "11.2.0",

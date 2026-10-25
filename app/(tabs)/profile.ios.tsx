@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { CertificationProgress, CommercialServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { AskPathwayButton } from '@/components/AskPathwayButton';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
   getAuthorityServiceDefinitions,
@@ -1147,6 +1148,8 @@ export default function ProfileScreen() {
                     })
                   }
                 />
+
+                <AskPathwayButton authority={profile.maritime_authority} isDark={isDark} />
 
                 {authorityUsesRecordBook(profile.maritime_authority) && (
                   <View

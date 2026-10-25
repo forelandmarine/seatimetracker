@@ -619,6 +619,80 @@ export const submitExitSurvey = async (answer: ExitSurveyAnswer): Promise<void> 
   await authFetch('/api/exit-survey', { method: 'POST', body: answer });
 };
 
+export interface PathwaySource {
+  id: string;
+  title: string;
+  ref: string | null;
+  section: string | null;
+  url: string | null;
+  source_type: 'official' | 'provider' | 'app_rules' | string;
+}
+
+export interface PathwayAnswer {
+  in_scope: boolean;
+  short_answer: string;
+  steps: { title: string; detail: string }[];
+  applies_to_you: string | null;
+  follow_ups: string[];
+  sources: PathwaySource[];
+}
+
+export interface PathwayQuota {
+  status: string;
+  allowed: boolean;
+  limit: number | null;
+  used: number;
+  remaining: number;
+  period: 'trial' | 'day' | null;
+  /** Which certification body's library answers: 'mca' | 'uscg' | 'amsa' | 'mnz'. */
+  authority: string;
+  supported: boolean;
+}
+
+export interface PathwayAskResult {
+  id: string;
+  conversation_id: string;
+  answer: PathwayAnswer;
+  remaining: number;
+  period: 'trial' | 'day' | null;
+}
+
+/** Thrown when the user is out of questions; `code` says which limit. */
+export class PathwayLimitError extends Error {
+  code: 'trial_limit_reached' | 'daily_limit_reached' | 'subscription_required' | 'authority_not_supported';
+  constructor(code: PathwayLimitError['code'], message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+export const getPathwayQuota = async (): Promise<PathwayQuota> => {
+  const res = await authFetch('/api/pathway-assistant/quota');
+  return res.json();
+};
+
+export const askPathwayQuestion = async (question: string, conversationId?: string): Promise<PathwayAskResult> => {
+  try {
+    // Answers search the library first, so allow well beyond the default timeout.
+    const res = await authFetch('/api/pathway-assistant/ask', {
+      method: 'POST',
+      body: { question, ...(conversationId ? { conversation_id: conversationId } : {}) },
+      timeout: 90_000,
+    });
+    return res.json();
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 400 || err.status === 403 || err.status === 429)) {
+      const code = (() => { try { return JSON.parse(err.body)?.code; } catch { return null; } })();
+      if (code) throw new PathwayLimitError(code, err.message);
+    }
+    throw err;
+  }
+};
+
+export const ratePathwayAnswer = async (id: string, rating: 1 | -1, comment?: string): Promise<void> => {
+  await authFetch(`/api/pathway-assistant/${id}/rating`, { method: 'POST', body: { rating, ...(comment ? { comment } : {}) } });
+};
+
 export type HistoryProductId = 'seatime_history_6m' | 'seatime_history_12m';
 
 /** A period of days, YYYY-MM-DD: `from` inclusive, `to` exclusive. */

@@ -45,6 +45,7 @@ import { register as registerMarketingConsentRoutes } from './routes/marketing-c
 import { register as registerHistoryImportRoutes } from './routes/history-import.js';
 import { register as registerFeedbackRoutes } from './routes/feedback.js';
 import { register as registerPublicRoutes } from './routes/public.js';
+import { register as registerPathwayAssistantRoutes } from './routes/pathway-assistant.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
@@ -87,6 +88,7 @@ registerMarketingConsentRoutes(app, app.fastify);
 registerHistoryImportRoutes(app, app.fastify);
 registerFeedbackRoutes(app, app.fastify);
 registerPublicRoutes(app, app.fastify);
+registerPathwayAssistantRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
 app.fastify.get('/api/health', async () => ({ status: 'ok' }));

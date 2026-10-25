@@ -1,5 +1,7 @@
-import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex, date, jsonb } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, text, timestamp, uuid, boolean, decimal, index, integer, uniqueIndex, date, jsonb, smallint, customType } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+
+const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
 
 export const vessels = pgTable('vessels', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -366,4 +368,50 @@ export const exit_surveys = pgTable('exit_surveys', {
 }, (table) => [
   index('exit_surveys_user_id_idx').on(table.user_id),
   uniqueIndex('exit_surveys_user_key_uq').on(table.user_id, table.cancellation_key),
+]);
+
+// Library the pathway assistant answers from, one row per passage. Loaded by
+// scripts/ingest-knowledge.ts; searched with Postgres full-text search on `tsv`.
+export const knowledge_chunks = pgTable('knowledge_chunks', {
+  id: text('id').primaryKey(), // `${doc_id}#${n}`
+  authority: text('authority').notNull(), // 'mca' (more later)
+  source_type: text('source_type').notNull(), // 'official' | 'provider' | 'app_rules'
+  doc_id: text('doc_id').notNull(),
+  doc_title: text('doc_title').notNull(),
+  doc_ref: text('doc_ref'), // e.g. 'MSN 1858 (M) Amendment 2'
+  url: text('url'),
+  version_date: text('version_date'),
+  section: text('section'), // heading path inside the document
+  currency_note: text('currency_note'), // whether the document is current, from its frontmatter
+  expired: boolean('expired').notNull().default(false), // lapsed by its own text: kept as history, ranked down
+  content: text('content').notNull(),
+  tsv: tsvector('tsv').generatedAlwaysAs(sql`setweight(to_tsvector('english', coalesce("doc_title", '') || ' ' || coalesce("doc_ref", '') || ' ' || coalesce("section", '')), 'A') || setweight(to_tsvector('english', "content"), 'B')`),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_chunks_tsv_idx').using('gin', table.tsv),
+  index('knowledge_chunks_authority_idx').on(table.authority),
+  index('knowledge_chunks_doc_id_idx').on(table.doc_id),
+]);
+
+// One row per pathway-assistant question: the trial allowance and daily cap count these.
+export const pathway_questions = pgTable('pathway_questions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  conversation_id: uuid('conversation_id').notNull(),
+  authority: text('authority').notNull(),
+  question: text('question').notNull(),
+  answer: jsonb('answer'), // PathwayAnswer, null if the call failed
+  model: text('model').notNull(),
+  subscription_status: text('subscription_status').notNull(), // 'trial' | 'active' at the time asked
+  input_tokens: integer('input_tokens').notNull().default(0),
+  output_tokens: integer('output_tokens').notNull().default(0),
+  cache_read_tokens: integer('cache_read_tokens').notNull().default(0),
+  cache_write_tokens: integer('cache_write_tokens').notNull().default(0),
+  cost_usd: decimal('cost_usd', { precision: 10, scale: 5 }).notNull().default('0'),
+  rating: smallint('rating'), // 1 helpful, -1 not helpful
+  rating_comment: text('rating_comment'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('pathway_questions_user_created_idx').on(table.user_id, table.created_at),
+  index('pathway_questions_conversation_idx').on(table.conversation_id),
 ]);

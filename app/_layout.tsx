@@ -178,6 +178,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="pathway-assistant"
+          options={{
+            title: 'Ask about training',
+            headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
           name="select-pathway"
           options={{
             title: t('navigation.selectPathway'),
