@@ -39,6 +39,7 @@ import {
 } from '@/utils/biometricAuth';
 import { log, warn, error as logError } from '@/utils/log';
 import { useTranslation } from 'react-i18next';
+import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -1597,6 +1598,42 @@ export default function ProfileScreen() {
                   />
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity style={styles.menuItem} onPress={openManageSubscription}>
+                <IconSymbol
+                  ios_icon_name="creditcard"
+                  android_material_icon_name="credit-card"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Manage subscription</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuItem} onPress={openWriteReview}>
+                <IconSymbol
+                  ios_icon_name="star"
+                  android_material_icon_name="star-outline"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Rate SeaTime Tracker</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.menuItem, styles.menuItemLast]}

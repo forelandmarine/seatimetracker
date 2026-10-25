@@ -580,6 +580,38 @@ export const setMarketingConsent = async (
   return res.json();
 };
 
+export type ExitReason =
+  | 'too_expensive'
+  | 'not_at_sea'
+  | 'tracking_issues'
+  | 'missing_feature'
+  | 'hard_to_use'
+  | 'other_app'
+  | 'short_term_need'
+  | 'other';
+
+export interface ExitSurveyAnswer {
+  key: string;
+  trigger: 'cancelled' | 'lapsed';
+  period_type?: string;
+  product_id?: string;
+  platform?: 'ios' | 'android' | 'web';
+  reasons?: ExitReason[];
+  comment?: string;
+  skipped?: boolean;
+}
+
+/** Whether the exit survey for this cancellation was already answered or skipped. */
+export const getExitSurveyAnswered = async (key: string): Promise<boolean> => {
+  const res = await authFetch(`/api/exit-survey?key=${encodeURIComponent(key)}`);
+  const data = await res.json();
+  return !!data.answered;
+};
+
+export const submitExitSurvey = async (answer: ExitSurveyAnswer): Promise<void> => {
+  await authFetch('/api/exit-survey', { method: 'POST', body: answer });
+};
+
 export type HistoryProductId = 'seatime_history_6m' | 'seatime_history_12m';
 
 /** A period of days, YYYY-MM-DD: `from` inclusive, `to` exclusive. */

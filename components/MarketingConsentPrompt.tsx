@@ -7,6 +7,8 @@ import { error as logError } from '@/utils/log';
 interface Props {
   /** Hold the prompt back (e.g. while the first-run Add Vessel form is open). */
   enabled: boolean;
+  /** Called once it is known there is nothing to ask, or the user has answered. */
+  onSettled?: () => void;
 }
 
 /**
@@ -14,7 +16,7 @@ interface Props {
  * marketing email (consent date is null). Both answers are recorded, so it
  * is not shown again. Hidden if the server does not support consent yet.
  */
-export function MarketingConsentPrompt({ enabled }: Props) {
+export function MarketingConsentPrompt({ enabled, onSettled }: Props) {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
   const [neverAsked, setNeverAsked] = useState(false);
@@ -25,12 +27,17 @@ export function MarketingConsentPrompt({ enabled }: Props) {
     let cancelled = false;
     getMarketingConsent()
       .then((c) => {
-        if (!cancelled && c && 'consented_at' in c && c.consented_at === null) setNeverAsked(true);
+        if (cancelled) return;
+        if (c && 'consented_at' in c && c.consented_at === null) setNeverAsked(true);
+        else onSettled?.();
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) onSettled?.();
+      });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const answer = async (optIn: boolean) => {
@@ -42,6 +49,7 @@ export function MarketingConsentPrompt({ enabled }: Props) {
     } finally {
       setSaving(false);
       setNeverAsked(false);
+      onSettled?.();
     }
   };
 

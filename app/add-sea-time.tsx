@@ -26,7 +26,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
-import { recordSeaTimeEntrySaved } from '@/utils/reviewPrompt';
 
 interface Vessel {
   id: string;
@@ -629,7 +628,6 @@ export default function AddSeaTimeScreen() {
       savedRef.current = true;
       showFeedback('Success', 'Sea time entry added successfully', 'success', () => {
         router.back();
-        recordSeaTimeEntrySaved();
       });
     } catch (error: any) {
       logError('[AddSeaTimeScreen] Error saving entry:', error);

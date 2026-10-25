@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
+import { ExitSurveyPrompt } from '@/components/ExitSurveyPrompt';
 import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import Purchases, { INTRO_ELIGIBILITY_STATUS, type PurchasesPackage } from 'react-native-purchases';
@@ -378,6 +379,8 @@ export default function PaywallScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+      {/* Plan just ended: ask once why (trial or subscription) */}
+      <ExitSurveyPrompt trigger="lapsed" enabled={!isLoading} />
       <SafeAreaView edges={['bottom']} style={[styles.container, { backgroundColor: isDark ? colors.background : colors.backgroundLight }]}>
         {/* X Button - Top Right (only visible during active trial) */}
         {hasActiveTrial && (

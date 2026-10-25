@@ -348,3 +348,22 @@ export const ais_history_positions = pgTable('ais_history_positions', {
 }, (table) => [
   uniqueIndex('ais_history_positions_mmsi_time_uq').on(table.mmsi, table.position_time),
 ]);
+
+// Why a user cancelled (or let lapse) a trial or subscription. One row per cancellation
+// (cancellation_key), whether answered or skipped, so each one is asked about once.
+export const exit_surveys = pgTable('exit_surveys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  cancellation_key: text('cancellation_key').notNull(), // RevenueCat unsubscribe/expiry time the survey is about
+  trigger: text('trigger').notNull(), // 'cancelled' (auto-renew off, still active) | 'lapsed' (expired)
+  period_type: text('period_type'), // 'trial' | 'normal' | 'intro' | 'prepaid'
+  product_id: text('product_id'),
+  platform: text('platform'), // 'ios' | 'android'
+  reasons: text('reasons').array().notNull().default([]), // EXIT_REASONS keys
+  comment: text('comment'),
+  skipped: boolean('skipped').notNull().default(false),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('exit_surveys_user_id_idx').on(table.user_id),
+  uniqueIndex('exit_surveys_user_key_uq').on(table.user_id, table.cancellation_key),
+]);

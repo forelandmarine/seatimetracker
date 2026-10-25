@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { ShiftClockCard } from '@/components/ShiftClockCard';
 import { VesselSetupCard, useFirstVesselPrompt } from '@/components/VesselSetupCard';
 import { SeaTimeProgressCard } from '@/components/SeaTimeProgressCard';
-import { MarketingConsentPrompt } from '@/components/MarketingConsentPrompt';
+import { HomePrompts } from '@/components/HomePrompts';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { VesselRenameBanner } from '@/components/VesselRenameBanner';
 import { OnBoardCard } from '@/components/OnBoardCard';
@@ -882,8 +882,8 @@ export default function SeaTimeScreen() {
         )}
       </ScrollView>
 
-      {/* One-time marketing email question (users never asked); not during first-run vessel setup */}
-      <MarketingConsentPrompt enabled={!loading && vessels.length > 0 && !modalVisible} />
+      {/* Marketing email question, exit survey, store review: one at a time; not during first-run vessel setup */}
+      <HomePrompts enabled={!loading && vessels.length > 0 && !modalVisible} />
 
       {/* Add Vessel Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
