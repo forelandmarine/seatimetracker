@@ -1135,6 +1135,7 @@ function createStyles(isDark: boolean) {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? colors.border : colors.borderLight,
+      marginBottom: 16,
     },
     headerTitleContainer: {
       flexDirection: 'row',
@@ -1591,7 +1592,7 @@ function createStyles(isDark: boolean) {
       fontWeight: '500',
     },
     noVesselsContainer: {
-      paddingTop: 8,
+      paddingTop: 0,
       paddingBottom: 40,
     },
     noVesselsTitle: {

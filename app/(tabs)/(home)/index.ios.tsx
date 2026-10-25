@@ -1120,6 +1120,7 @@ function createStyles(isDark: boolean, topInset: number) {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? colors.border : colors.borderLight,
+      marginBottom: 16,
     },
     headerTitleContainer: {
       flexDirection: 'row',

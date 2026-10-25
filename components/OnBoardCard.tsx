@@ -369,8 +369,7 @@ const createStyles = (isDark: boolean) =>
     card: {
       backgroundColor: isDark ? colors.cardBackground : colors.card,
       borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      padding: 18,
       marginHorizontal: 16,
       marginBottom: 16,
       borderWidth: 1,
