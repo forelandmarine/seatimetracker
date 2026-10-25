@@ -1,4 +1,4 @@
-import { eq, and, desc, isNotNull, lte, gte, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNotNull, lte, gte, isNull, sql, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
@@ -11,6 +11,8 @@ import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
+import { processPassageRefinements } from './passageRefinement.js';
+import { extendableStatuses, newLiveEntryStatus } from '../utils/passageRefinement.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -164,6 +166,13 @@ async function runSchedulerIteration(app: App): Promise<void> {
       await processHistoryImports(app);
     } catch (error) {
       app.logger.error({ err: error }, 'Error processing history imports');
+    }
+
+    // Check finished passages against the AIS track before they go to the user
+    try {
+      await processPassageRefinements(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing passage refinements');
     }
 
     // Find all due scheduled tasks that are active AND for active vessels only
@@ -393,7 +402,8 @@ async function runSchedulerIteration(app: App): Promise<void> {
  * Adaptive interval: shorter checks when underway, longer when stationary.
  * Saves API credits and gives sub-hour resolution to active voyages.
  *
- * - Underway (moving): 30 minutes
+ * - Underway (moving): 60 minutes. Passage start and end are corrected afterwards
+ *   from the AIS track (services/passageRefinement.ts), so finer checks buy nothing.
  * - Stationary in port: 6 hours
  * - Default (no movement data yet): use task's configured interval
  */
@@ -402,7 +412,7 @@ function computeNextRunInterval(
   isMoving: boolean | null
 ): number {
   if (isMoving === true) {
-    return 0.5; // 30 minutes
+    return 1; // 60 minutes
   }
   if (isMoving === false) {
     return 6; // 6 hours
@@ -1099,7 +1109,7 @@ async function handleSeaTimeEntries(
     .where(
       and(
         eq(schema.sea_time_entries.vessel_id, vesselId),
-        eq(schema.sea_time_entries.status, entryStatus)
+        inArray(schema.sea_time_entries.status, extendableStatuses(entryStatus))
       )
     );
 
@@ -1190,6 +1200,8 @@ async function handleSeaTimeEntries(
           distance_nm: String(totalDistance),
           is_stationary: isStationary,
           notes: updatedNotes,
+          // Its times change, so a passage already released for review is checked again
+          status: existingEntryForDay.status === 'off_board' ? 'off_board' : newLiveEntryStatus(entryStatus),
         })
         .where(eq(schema.sea_time_entries.id, existingEntryForDay.id))
         .returning();
@@ -1252,7 +1264,7 @@ async function handleSeaTimeEntries(
           start_longitude: String(oldLng),
           end_latitude: String(currentLat),
           end_longitude: String(currentLng),
-          status: entryStatus,
+          status: newLiveEntryStatus(entryStatus),
           service_type: 'actual_sea_service',
           mca_compliant: isMCACompliant,
           distance_nm: String(distanceNm),

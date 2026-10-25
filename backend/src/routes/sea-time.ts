@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, ne, isNull, isNotNull, desc, lte, gte } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, lte, gte, notInArray, inArray, or } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { HIDDEN_ENTRY_STATUSES } from "../utils/passageRefinement.js";
 import {
   calculateDurationHours,
   calculateSeaDays,
@@ -228,7 +229,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Passages logged while the user was off board stay hidden until claimed
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
@@ -433,7 +434,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
         eq(schema.sea_time_entries.vessel_id, vesselId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       with: {
         vessel: true,
@@ -612,7 +613,17 @@ export function register(app: App, fastify: FastifyInstance) {
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        gte(schema.sea_time_entries.created_at, cutoffTime),
+        // New since the cutoff: created then, or released for review then after the AIS track check
+        or(
+          gte(schema.sea_time_entries.created_at, cutoffTime),
+          inArray(
+            schema.sea_time_entries.id,
+            app.db
+              .select({ id: schema.passage_refinements.entry_id })
+              .from(schema.passage_refinements)
+              .where(gte(schema.passage_refinements.refined_at, cutoffTime))
+          )
+        ),
         // Filter for complete entries (mca_compliant is set by AIS handler, duration_hours may be null)
         isNotNull(schema.sea_time_entries.end_time),
         isNotNull(schema.sea_time_entries.start_latitude),
@@ -1836,7 +1847,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Passages logged while the user was off board stay hidden until claimed
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
