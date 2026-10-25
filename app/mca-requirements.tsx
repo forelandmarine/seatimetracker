@@ -13,6 +13,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { AskPathwayButton } from '@/components/AskPathwayButton';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   AUTHORITY_FULL_NAMES,
@@ -407,6 +408,7 @@ export default function CertificationRequirementsScreen() {
                 and Marine Engineer Class 6 are counted in hours rather than days.
               </Text>
             )}
+            {authority === 'mca' && <AskPathwayButton authority={authority} isDark={isDark} />}
           </View>
 
           {requirements.length > 6 && (
