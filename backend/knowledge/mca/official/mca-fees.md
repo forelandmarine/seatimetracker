@@ -10,7 +10,7 @@ first_published: 2018-10-22
 licence: OGL v3
 licence_note: Contains public sector information licensed under the Open Government Licence v3.0. Source Maritime and Coastguard Agency, gov.uk.
 retrieved: 2026-10-23
-currency_note: "Fees guide dated November 2018; MCA fees may have changed since. Check current fees before quoting amounts."
+currency_note: "CURRENT (checked 2026-10-25). The guide is dated November 2018, but the statutory amounts it summarises are still in force: the Merchant Shipping (Fees) Regulations 2018 have not changed their fee amounts and were extended to 12 November 2028 by S.I. 2025/1103. Some item wording predates the 2021 and 2022 amendments (for example Certificate of Proficiency fees and the £150 CoC premium service), so use fees-regulations-2018-seafarer-certification.md for exact items."
 ---
 
 # Maritime and Coastguard Agency fees

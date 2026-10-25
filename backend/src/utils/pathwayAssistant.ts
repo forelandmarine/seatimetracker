@@ -16,7 +16,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
-import { countDistinctSeaDays, qualifyingSeaDays } from './seaTime.js';
+import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays } from './seaTime.js';
 
 // Sonnet 5.5 at medium effort matched Opus 5.5 on the eval at about a third of the cost
 // (scripts/eval-pathway-assistant.ts, 2026-10-25); Haiku 5.5 got stage-specific rules wrong.
@@ -35,9 +35,48 @@ const PRICING: Record<string, { input: number; output: number; cacheRead: number
   'claude-haiku-5-5': { input: 0.1, output: 0.5, cacheRead: 0.01 },
 };
 
-export const AUTHORITY_NAMES: Record<string, string> = {
-  mca: 'the UK Maritime and Coastguard Agency (MCA)',
+/**
+ * Authorities with a library. `short` is how answers refer to the body that decides,
+ * `stages` names its own application milestones for the stage-search rule, and
+ * `spelling` matches what its crew read in their own guidance.
+ */
+export const AUTHORITIES: Record<string, { name: string; short: string; stages: string; spelling: string }> = {
+  mca: {
+    name: 'the UK Maritime and Coastguard Agency (MCA)',
+    short: 'the MCA',
+    stages: 'the Notice of Eligibility (NoE), the oral exam, issue of the CoC, revalidation',
+    spelling: 'British English',
+  },
+  uscg: {
+    name: 'the United States Coast Guard (USCG) and its National Maritime Center (NMC)',
+    short: 'the Coast Guard (NMC)',
+    stages: 'the MMC application, approval to test, the exam, issue of the credential, renewal',
+    spelling: 'American English',
+  },
+  amsa: {
+    name: 'the Australian Maritime Safety Authority (AMSA)',
+    short: 'AMSA',
+    stages: 'the application, the final assessment or oral exam, issue of the certificate, revalidation',
+    spelling: 'Australian English',
+  },
+  mnz: {
+    name: 'Maritime New Zealand',
+    short: 'Maritime NZ',
+    stages: 'the application, the oral exam or assessment, issue of the certificate, revalidation',
+    spelling: 'New Zealand English',
+  },
 };
+
+/**
+ * Authorities answered in production. Maritime NZ has a library, but its guidance is
+ * licensed for personal use only, so it stays off until Maritime NZ agrees to this use.
+ * Override with PATHWAY_ASSISTANT_AUTHORITIES (comma-separated) once it does.
+ */
+const ENABLED_AUTHORITIES = new Set(
+  (process.env.PATHWAY_ASSISTANT_AUTHORITIES || 'mca,uscg,amsa').split(',').map((a) => a.trim()).filter(Boolean),
+);
+
+export const isAuthorityEnabled = (authority: string) => !!AUTHORITIES[authority] && ENABLED_AUTHORITIES.has(authority);
 
 export interface PathwaySource {
   id: string;
@@ -138,19 +177,22 @@ async function loadSystemPrompt(db: Db, authority: string) {
     .orderBy(asc(schema.knowledge_chunks.id));
 
   const table = rows.map((r) => `<rule id="${r.id}">\n${r.content}\n</rule>`).join('\n');
-  const text = `You explain seafarer training and certification pathways inside SeaTime Tracker, an app crew use to log sea service. You answer for ${AUTHORITY_NAMES[authority] ?? authority.toUpperCase()}.
+  const body = AUTHORITIES[authority];
+  const text = `You explain seafarer training and certification pathways inside SeaTime Tracker, an app crew use to log sea service. You answer for ${body.name}.
 
 How to answer:
 - Answer only from the certificate table below and from passages returned by search_library. Do not rely on your own memory of the rules: they change, and an out-of-date answer can cost a crew member months. Search before answering anything the table does not settle (courses, exams, evidence, applications, what counts as sea service, edge cases).
-- When a question is about a stage of the process (the Notice of Eligibility, the oral exam, issue of the CoC, revalidation), search for that stage by name and answer for that stage only. What must be done before the NoE is often less than what is needed before the CoC is issued; say which applies.
-- Official passages (source_type official) outrank provider notes. If they disagree, follow the official text and say the provider note differs.
-- A passage marked status="expired" comes from a notice that has lapsed. Never present it as the current rule. Prefer current documents; if only an expired notice covers the point, say so and suggest checking with the MCA.
-- If neither the table nor the passages cover the question, set in_scope to false, say plainly that you could not find it in the guidance you hold, and suggest asking the MCA or an approved training provider. Never guess.
+- When a question is about a stage of the process (${body.stages}), search for that stage by name and answer for that stage only. What must be done at an early stage is often less than what is needed before the certificate is issued; say which applies.
+- Official passages (source_type official) outrank provider notes. If they disagree, follow the official text.
+- Provider notes are training providers' own explanations, not ${body.short}'s. Never state a requirement on a provider note alone: if only a provider note covers a point, say it is the provider's guidance and not confirmed by ${body.short}. Prefer saying the official guidance doesn't cover it over filling the gap from a provider.
+- A passage's currency note can say that a newer policy letter, notice or amendment changes what it says (for example a longer grace period than the regulation text). The newer document wins: give the current rule, and search for the newer document by name if it is not already in front of you.
+- A passage marked status="expired" comes from a notice that has lapsed. Never present it as the current rule. Prefer current documents; if only an expired notice covers the point, say so and suggest checking with ${body.short}.
+- If neither the table nor the passages cover the question, set in_scope to false, say plainly that you could not find it in the guidance you hold, and suggest asking ${body.short} or an approved training provider. Never guess.
 - Questions outside seafarer training and certification are out of scope; say so briefly.
-- Write for a deckhand or engineer reading on a phone: short sentences, plain words, British English, no jargon without a short explanation. Do not use em dashes. Keep short_answer to three sentences at most and each step to one or two sentences.
+- Write for a deckhand or engineer reading on a phone: short sentences, plain words, ${body.spelling}, no jargon without a short explanation. Do not use em dashes. Keep short_answer to three sentences at most and each step to one or two sentences.
 - applies_to_you is for questions where the user's own figures change the answer, such as whether their logged service counts or how many more days they need. Leave it null when the answer is the same for everyone (courses, exams, forms, definitions, what a certificate is). When you use it, keep it to two sentences and compare like with like: seagoing days against a seagoing requirement, additional service against an additional requirement. Use the figures exactly as given and do simple subtraction only. Never invent service the user has not logged.
 - Treat the user's figures as correct. Do not check them against each other or point out that totals differ: per-vessel days include every logged day, while qualifying totals leave some out by rule.
-- The app's day counts are estimates from logged entries. An MCA assessor makes the final decision on what counts, so do not promise eligibility.
+- The app's day counts are estimates from logged entries, counted under ${body.short}'s own day rules. ${body.short.charAt(0).toUpperCase() + body.short.slice(1)} makes the final decision on what counts, so do not promise eligibility.
 - Cite every passage or rule you relied on in source_ids, using the ids exactly as shown.
 
 Certificate table (the same rules the app's progress bars use):
@@ -208,7 +250,10 @@ function renderPassages(rows: ChunkRow[]): string {
   return rows
     .map((r) => {
       const where = [r.doc_ref, r.section].filter(Boolean).join(', ');
-      const status = r.expired ? ` status="expired: ${r.currency_note}"` : '';
+      // The currency note travels with every passage, not just expired ones: it is where
+      // the library records that a newer policy changes what older regulation text says.
+      const note = (r.currency_note || '').replace(/"/g, "'").slice(0, 400);
+      const status = r.expired ? ` status="expired: ${note}"` : note ? ` currency="${note}"` : '';
       return `<passage id="${r.id}" source_type="${r.source_type}" document="${r.doc_title}"${where ? ` where="${where}"` : ''}${status}>\n${r.content}\n</passage>`;
     })
     .join('\n');
@@ -216,8 +261,10 @@ function renderPassages(rows: ChunkRow[]): string {
 
 /**
  * The user's own figures, counted the way /api/reports/summary counts them
- * (confirmed entries only, calendar days deduplicated, yard capped, port excluded),
- * split by vessel sector because MCA yacht deck CoCs only credit yacht service.
+ * (confirmed entries only, calendar days deduplicated), under the authority's own
+ * day rules: MCA 4 hours per date with yard capped, USCG and AMSA an 8-hour day,
+ * Maritime NZ inside a 10-year window. Each figure is labelled with what it can
+ * answer, because the cheaper models otherwise subtract the wrong total.
  */
 export async function buildUserContext(db: Db, user: any, authority: string, targetId: string | null): Promise<string> {
   const entries = (
@@ -226,23 +273,6 @@ export async function buildUserContext(db: Db, user: any, authority: string, tar
       where: eq(schema.sea_time_entries.user_id, user.id),
     })
   ).filter((e: any) => e.status === 'confirmed');
-
-  const isCommercial = (e: any) => e.vessel?.sector === 'commercial';
-  const yacht = entries.filter((e: any) => !isCommercial(e));
-  const commercial = entries.filter(isCommercial);
-
-  const describe = (label: string, list: any[]) => {
-    const b = qualifyingSeaDays(list);
-    const byType = new Map<string, any[]>();
-    for (const e of list) {
-      const type = e.service_type || 'actual_sea_service';
-      byType.set(type, [...(byType.get(type) ?? []), e]);
-    }
-    const types = [...byType.entries()].map(([t, es]) => `${t} ${countDistinctSeaDays(es)}`).join(', ');
-    // Labelled so each figure is matched to the right rule: the combined total is not
-    // "seagoing service", and only actual sea days answer a seagoing requirement.
-    return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days ${b.standby}. Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
-  };
 
   const vessels = new Map<string, any>();
   for (const e of entries) if (e.vessel) vessels.set(e.vessel.id, e.vessel);
@@ -255,12 +285,64 @@ export async function buildUserContext(db: Db, user: any, authority: string, tar
   return [
     `Authority: ${authority.toUpperCase()}. Department: ${user.department || 'not set (treat as deck)'}. Sector chosen in the app: ${user.vessel_sector || 'yachting'}.`,
     `Target certificate: ${targetId ? `rule id ${authority}/app/${targetId}` : 'not chosen'}.`,
-    entries.length === 0 ? 'No confirmed sea service logged yet.' : describe('Yacht service', yacht),
-    commercial.length ? describe('Commercial vessel service', commercial) : null,
+    entries.length === 0 ? 'No confirmed sea service logged yet.' : serviceLines(authority, entries, user),
     vesselLines.length ? `Vessels:\n${vesselLines.join('\n')}` : null,
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function serviceLines(authority: string, entries: any[], user: any): string {
+  switch (authority) {
+    case 'uscg': {
+      const u = uscgCreditableDays(entries);
+      return [
+        `USCG creditable days (8-hour day, 46 CFR 10.107): ${u.creditable}. Use this for any days of service requirement.`,
+        `Provisional days (4 to 8 hours on vessels under 100 GRT, creditable only if the Coast Guard accepts the schedule): ${u.provisional}.`,
+        `Days of 4 to 8 hours on vessels of 100 GRT or more (do not make a day): ${u.short_of_standard_day}. Under 4 hours: ${u.below_minimum}.`,
+        u.awaiting_tonnage ? `Days waiting for the vessel tonnage to be recorded: ${u.awaiting_tonnage} (${u.vessels_awaiting_tonnage.join(', ')}).` : null,
+        `Stand-by days ${u.standby} and yard days ${u.yard} are logged but not credited as USCG sea service.`,
+      ].filter(Boolean).join('\n');
+    }
+    case 'amsa': {
+      const a = amsaCreditableDays(entries);
+      return [
+        `AMSA days underway (8-hour day, Marine Order 505): ${a.underway}. Use this for any sea service requirement.`,
+        `Days gained while not underway (stand-by, yard, port): ${a.not_underway}. These count only up to 15 per cent of required deck service or 33 per cent of engineering service.`,
+        `Leftover qualifying hours not yet making a whole day: ${a.part_day_hours}.`,
+        `Days from logged navigational watch hours: ${a.navigational_watch}. From engine-room watch hours: ${a.engineering_watch}.`,
+        `Holds a completed AMSA task book: ${user.has_record_book ? 'yes' : 'no'}.`,
+      ].join('\n');
+    }
+    case 'mnz': {
+      const m = mnzCreditableDays(entries);
+      return [
+        `Maritime NZ days inside the 10-year window: actual sea ${m.actual}, stand-by ${m.standby}, yard ${m.yard}, in port ${m.port} (not credited).`,
+        `Combined sea + stand-by + yard: ${m.qualifying_total} (the combination the yacht certificates use; not sea service on its own).`,
+        `Watchkeeping days from logged watch hours: ${m.watchkeeping}. Hours on board (for certificates stated in hours): ${m.hours}.`,
+        m.outside_window ? `Days older than 10 years, not counted: ${m.outside_window}.` : null,
+        `Holds a training record book or completed cadet programme: ${user.has_record_book ? 'yes' : 'no'}.`,
+      ].filter(Boolean).join('\n');
+    }
+    default: {
+      // MCA yacht deck CoCs only credit yacht service, so the sectors are counted apart.
+      const isCommercial = (e: any) => e.vessel?.sector === 'commercial';
+      const yacht = entries.filter((e) => !isCommercial(e));
+      const commercial = entries.filter(isCommercial);
+      return [mcaLine('Yacht service', yacht), commercial.length ? mcaLine('Commercial vessel service', commercial) : null].filter(Boolean).join('\n');
+    }
+  }
+}
+
+function mcaLine(label: string, list: any[]): string {
+  const b = qualifyingSeaDays(list);
+  const byType = new Map<string, any[]>();
+  for (const e of list) {
+    const type = e.service_type || 'actual_sea_service';
+    byType.set(type, [...(byType.get(type) ?? []), e]);
+  }
+  const types = [...byType.entries()].map(([t, es]) => `${t} ${countDistinctSeaDays(es)}`).join(', ');
+  return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days ${b.standby}. Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
 }
 
 function costUsd(model: string, u: { input: number; output: number; cacheRead: number; cacheWrite: number }) {

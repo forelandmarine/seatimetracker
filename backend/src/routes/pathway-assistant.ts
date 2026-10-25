@@ -7,7 +7,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { formatSubscriptionStatus, safeParseDateValue } from "../utils/subscription.js";
-import { AUTHORITY_NAMES, askPathwayQuestion, buildUserContext, type PathwayAnswer } from "../utils/pathwayAssistant.js";
+import { askPathwayQuestion, isAuthorityEnabled, buildUserContext, type PathwayAnswer } from "../utils/pathwayAssistant.js";
 
 const errorSchema = { type: "object", properties: { error: { type: "string" }, code: { type: "string" } } };
 
@@ -66,6 +66,8 @@ const quotaSchema = {
     used: { type: "number" },
     remaining: { type: "number" },
     period: { type: ["string", "null"] },
+    authority: { type: "string" },
+    supported: { type: "boolean" },
   },
 };
 
@@ -87,7 +89,9 @@ export function register(app: App, fastify: FastifyInstance) {
     if (!userId) return reply.code(401).send({ error: "Authentication required" });
     const user = await loadUser(userId);
     if (!user) return reply.code(401).send({ error: "User not found" });
-    return reply.code(200).send(await getQuota(app, user));
+    // The authority decides which library answers, so the app can name it on screen.
+    const authority = user.maritime_authority || "mca";
+    return reply.code(200).send({ ...(await getQuota(app, user)), authority, supported: isAuthorityEnabled(authority) });
   });
 
   // POST /api/pathway-assistant/ask - Answer one question about training pathways
@@ -118,10 +122,10 @@ export function register(app: App, fastify: FastifyInstance) {
     const user = await loadUser(userId);
     if (!user) return reply.code(401).send({ error: "User not found" });
 
-    // MCA only for now; other authorities get a clear message rather than MCA answers.
+    // An authority without a library gets a clear message rather than another body's rules.
     const authority = user.maritime_authority || "mca";
-    if (!AUTHORITY_NAMES[authority]) {
-      return reply.code(400).send({ error: "Pathway answers are only available for MCA certificates for now.", code: "authority_not_supported" });
+    if (!isAuthorityEnabled(authority)) {
+      return reply.code(400).send({ error: "Pathway answers aren't available for your certification authority yet.", code: "authority_not_supported" });
     }
 
     const quota = await getQuota(app, user);

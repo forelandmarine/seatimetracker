@@ -3,6 +3,7 @@
  *
  *   DATABASE_URL=... npx tsx scripts/ingest-knowledge.ts mca            # write
  *   npx tsx scripts/ingest-knowledge.ts mca --dry-run                   # print stats only
+ *   ... --include-unofficial    # also load files marked UNOFFICIAL (local testing only)
  *
  * Reads every markdown file under knowledge/<authority>/ (official/ and providers/),
  * plus the app's own requirement tables from constants/, splits them into passages
@@ -123,13 +124,41 @@ function splitLong(text: string): string[] {
   return pieces;
 }
 
+/** Set by --include-unofficial, for local experiments only. */
+let INCLUDE_UNOFFICIAL = false;
+/** Files left out by the last docsFromMarkdown() call, for the summary line. */
+export const skipped: string[] = [];
+
+/**
+ * Provider answers flagged during research as contradicting the authority's own
+ * text, or as out of date, are wrong by definition. They are dropped rather than
+ * shown to the model, so a provider's mistake can never be repeated as advice.
+ * Text before the first "## " heading (the file's introduction) is kept.
+ */
+export function dropFlaggedSections(body: string): string {
+  const parts = body.split(/^(?=## )/m);
+  return parts.filter((part, i) => i === 0 || !/CONFLICTS WITH OFFICIAL|OUT OF DATE|OUTDATED/i.test(part)).join('');
+}
+
 export function docsFromMarkdown(authority: string): Chunk[] {
   const chunks: Chunk[] = [];
+  skipped.length = 0;
   for (const folder of ['official', 'providers'] as const) {
     const dir = path.join(KNOWLEDGE_ROOT, authority, folder);
     if (!fs.existsSync(dir)) continue;
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
-      const { meta, body } = parseFrontmatter(fs.readFileSync(path.join(dir, file), 'utf8'));
+      // PDF and OCR extraction can leave NUL and other control characters, which
+      // Postgres rejects in text columns; tabs and newlines are kept.
+      const raw = fs.readFileSync(path.join(dir, file), 'utf8').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+      const { meta, body: rawBody } = parseFrontmatter(raw);
+      // Only material confirmed by the authority or a reputable provider is loaded:
+      // forums, press reports and similar second-hand files stay in the repo for
+      // reference but never reach the assistant.
+      if (/^UNOFFICIAL\b/i.test(meta.currency_note || '') && !INCLUDE_UNOFFICIAL) {
+        skipped.push(`${authority}/${folder}/${file}`);
+        continue;
+      }
+      const body = folder === 'providers' ? dropFlaggedSections(rawBody) : rawBody;
       const docId = `${authority}/${folder}/${file.replace(/\.md$/, '')}`;
       chunkMarkdown(body).forEach((c, i) => {
         chunks.push({
@@ -197,12 +226,13 @@ function renderRequirement(req: MCARequirement, department: string): string {
 async function main() {
   const authority = (process.argv[2] || 'mca') as MaritimeAuthority;
   const dryRun = process.argv.includes('--dry-run');
+  INCLUDE_UNOFFICIAL = process.argv.includes('--include-unofficial');
   const chunks = [...docsFromMarkdown(authority), ...docsFromAppRules(authority)];
 
   const byDoc = new Map<string, Chunk[]>();
   for (const c of chunks) byDoc.set(c.doc_id, [...(byDoc.get(c.doc_id) ?? []), c]);
   const chars = chunks.reduce((n, c) => n + c.content.length, 0);
-  console.log(`${authority}: ${byDoc.size} documents, ${chunks.length} passages, ~${Math.round(chars / 4 / 1000)}k tokens`);
+  console.log(`${authority}: ${byDoc.size} documents, ${chunks.length} passages, ~${Math.round(chars / 4 / 1000)}k tokens; ${skipped.length} unofficial files left out`);
   if (dryRun) return;
 
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');

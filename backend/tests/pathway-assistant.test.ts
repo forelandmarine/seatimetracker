@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { chunkMarkdown, promoteNumberedTitle } from "../scripts/ingest-knowledge";
+import { chunkMarkdown, dropFlaggedSections, promoteNumberedTitle } from "../scripts/ingest-knowledge";
 
 describe("chunkMarkdown", () => {
   test("keeps the heading path as the section", () => {
@@ -35,5 +35,16 @@ describe("numbered section titles", () => {
     const toc = "**1.** Introduction\n**2.** Certificate Structure";
     expect(promoteNumberedTitle(toc)).toBe(toc);
     expect(promoteNumberedTitle("**10.2** You will be issued with an NOE.")).toBe("**10.2** You will be issued with an NOE.");
+  });
+});
+
+describe("dropFlaggedSections", () => {
+  test("drops provider answers flagged as wrong or out of date, keeps the intro", () => {
+    const body = "# Notes\n\nIntro says flags look like OUT OF DATE.\n\n## Q: Good\nFine.\n\n## Q: Bad\nCONFLICTS WITH OFFICIAL: wrong figure.\n\n## Q: Old\nOUT OF DATE: old rule.\n";
+    const kept = dropFlaggedSections(body);
+    expect(kept).toContain("Intro says");
+    expect(kept).toContain("## Q: Good");
+    expect(kept).not.toContain("## Q: Bad");
+    expect(kept).not.toContain("## Q: Old");
   });
 });

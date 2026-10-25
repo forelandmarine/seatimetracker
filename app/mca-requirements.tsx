@@ -408,7 +408,7 @@ export default function CertificationRequirementsScreen() {
                 and Marine Engineer Class 6 are counted in hours rather than days.
               </Text>
             )}
-            {authority === 'mca' && <AskPathwayButton authority={authority} isDark={isDark} />}
+            <AskPathwayButton authority={authority} isDark={isDark} />
           </View>
 
           {requirements.length > 6 && (

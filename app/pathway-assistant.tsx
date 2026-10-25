@@ -19,13 +19,49 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import type { PathwayAnswer, PathwayQuota } from '@/utils/seaTimeApi';
 import { error as logError } from '@/utils/log';
 
-const SUGGESTIONS = [
-  'What do I need for OOW Yachts less than 3000 GT?',
-  'Does yard time count as sea service?',
-  'How do I get my testimonials signed?',
-  'What is a Notice of Eligibility and when do I apply?',
-  'Which courses do I need before my oral exam?',
-];
+/** What each certification body is called on screen, and starter questions its crew ask. */
+const AUTHORITY_COPY: Record<string, { label: string; suggestions: string[] }> = {
+  mca: {
+    label: 'MCA',
+    suggestions: [
+      'What do I need for OOW Yachts less than 3000 GT?',
+      'Does yard time count as sea service?',
+      'How do I get my testimonials signed?',
+      'What is a Notice of Eligibility and when do I apply?',
+      'Which courses do I need before my oral exam?',
+    ],
+  },
+  uscg: {
+    label: 'USCG',
+    suggestions: [
+      'What do I need for a 100 ton Master license?',
+      'How does the Coast Guard count a day of sea service?',
+      'How do I document sea time on a private yacht?',
+      'What do I need to renew my MMC?',
+      'Do I need STCW to work on a foreign-flag yacht?',
+    ],
+  },
+  amsa: {
+    label: 'AMSA',
+    suggestions: [
+      'What do I need for Master less than 24 metres?',
+      'How do I move up from Coxswain Grade 1?',
+      'Does time on a foreign yacht count toward my AMSA certificate?',
+      'What is a task book and do I need one?',
+      'How do I revalidate my certificate?',
+    ],
+  },
+  mnz: {
+    label: 'Maritime NZ',
+    suggestions: [
+      'What do I need for Skipper Restricted Limits?',
+      'How do I go from SRL to Skipper Coastal/Offshore?',
+      'Does sea time older than 10 years count?',
+      'Can I use my MCA yacht time in New Zealand?',
+      'How do I revalidate my certificate?',
+    ],
+  },
+};
 
 const MAX_LENGTH = 500;
 
@@ -153,8 +189,8 @@ const createStyles = (isDark: boolean) => {
 };
 
 /**
- * "Explain training pathways": plain-language questions answered from the MCA
- * guidance library, personalised with the user's logged service where it matters.
+ * "Explain training pathways": plain-language questions answered from the
+ * certification body's guidance library (MCA, USCG, AMSA or Maritime NZ), personalised with the user's logged service where it matters.
  * Shared by iOS and Android; trial users get 5 questions, subscribers a daily cap.
  */
 export default function PathwayAssistantScreen() {
@@ -168,13 +204,16 @@ export default function PathwayAssistantScreen() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [asking, setAsking] = useState(false);
   const [blocked, setBlocked] = useState<Blocked>(null);
+  const copy = AUTHORITY_COPY[quota?.authority ?? 'mca'] ?? AUTHORITY_COPY.mca;
 
   useEffect(() => {
     seaTimeApi
       .getPathwayQuota()
       .then((q) => {
         setQuota(q);
-        if (!q.allowed) {
+        if (!q.supported) {
+          setBlocked({ code: 'authority_not_supported', message: "Pathway answers aren't available for your certification authority yet." });
+        } else if (!q.allowed) {
           setBlocked(
             q.period === 'trial'
               ? { code: 'trial_limit_reached', message: `You've used your ${q.limit} trial questions. Subscribe to keep asking.` }
@@ -281,14 +320,14 @@ export default function PathwayAssistantScreen() {
             <>
               <Text style={styles.title}>Explain my pathway</Text>
               <Text style={styles.subtitle}>
-                Ask anything about MCA certificates, courses and sea time in plain words. Answers come from official MCA
-                guidance and use your logged sea time where it helps.
+                Ask anything about {copy.label} certificates, courses and sea time in plain words. Answers come from
+                official {copy.label} guidance and use your logged sea time where it helps.
               </Text>
               {quotaLine && <Text style={styles.quota}>{quotaLine}</Text>}
               {!blocked && (
                 <>
                   <Text style={styles.sectionLabel}>Try asking</Text>
-                  {SUGGESTIONS.map((s) => (
+                  {copy.suggestions.map((s) => (
                     <TouchableOpacity key={s} style={styles.chip} onPress={() => ask(s)}>
                       <Text style={styles.chipText}>{s}</Text>
                     </TouchableOpacity>
@@ -352,7 +391,8 @@ export default function PathwayAssistantScreen() {
                   )}
 
                   <Text style={styles.disclaimer}>
-                    Guidance only, based on published MCA documents. The MCA makes the final decision, so confirm before you apply.
+                    Guidance only, based on published {copy.label} documents. {copy.label} makes the final decision, so confirm
+                    before you apply.
                   </Text>
 
                   <View style={styles.ratingRow}>
@@ -376,7 +416,7 @@ export default function PathwayAssistantScreen() {
           {asking && (
             <View style={styles.thinking}>
               <ActivityIndicator color={colors.primary} />
-              <Text style={styles.thinkingText}>Reading MCA guidance...</Text>
+              <Text style={styles.thinkingText}>Reading {copy.label} guidance...</Text>
             </View>
           )}
 

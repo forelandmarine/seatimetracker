@@ -637,6 +637,9 @@ export interface PathwayQuota {
   used: number;
   remaining: number;
   period: 'trial' | 'day' | null;
+  /** Which certification body's library answers: 'mca' | 'uscg' | 'amsa' | 'mnz'. */
+  authority: string;
+  supported: boolean;
 }
 
 export interface PathwayAskResult {
