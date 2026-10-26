@@ -24,6 +24,18 @@ import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import {
+  useBulkSelection,
+  SelectToggle,
+  SelectionHeader,
+  SelectCircle,
+  BulkActionBar,
+  BulkConfirmModal,
+  bulkConfirm,
+  bulkReject,
+  askBulkReject,
+  BulkServiceType,
+} from '@/components/BulkReview';
 
 import { log, warn, error as logError } from '@/utils/log';
 
@@ -51,6 +63,7 @@ interface SeaTimeEntry {
   service_type?: string | null;
   mca_compliant?: boolean | null;
   detection_window_hours?: number | string | null;
+  to_port?: string | null;
 }
 
 type ServiceType = 'actual_sea_service' | 'watchkeeping_service';
@@ -73,6 +86,9 @@ export default function ConfirmationsScreen() {
   const notifiedEntriesRef = useRef<Set<string>>(new Set());
   // pollIntervalRef removed — replaced by AppState foreground listener
   const { triggerRefresh } = useAuth();
+  const bulk = useBulkSelection(entries);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const toNumber = (value: number | string | null | undefined): number => {
     if (value === null || value === undefined) return 0;
@@ -287,6 +303,29 @@ export default function ConfirmationsScreen() {
     );
   };
 
+  // Bulk accept / reject: anything that fails stays selected for another go.
+  const runBulk = async (action: (ids: string[]) => Promise<{ failed: { id: string }[] }>) => {
+    setBulkBusy(true);
+    try {
+      const { failed } = await action(Array.from(bulk.selected));
+      await loadData();
+      triggerRefresh();
+      if (failed.length === 0) bulk.cancel();
+      else bulk.setSelected(new Set(failed.map((f) => f.id)));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkConfirm = (serviceType: BulkServiceType) => {
+    setShowBulkConfirm(false);
+    runBulk((ids) => bulkConfirm(ids, serviceType));
+  };
+
+  const handleBulkReject = () => {
+    askBulkReject(bulk.selectedEntries, () => runBulk((ids) => bulkReject(ids)));
+  };
+
   const toggleExpanded = (entryId: string) => {
     log('[Confirmations iOS] Toggling expanded state for entry:', entryId);
     setExpandedEntries(prev => {
@@ -441,7 +480,19 @@ export default function ConfirmationsScreen() {
                 {entries.length} {entries.length === 1 ? 'entry' : 'entries'} pending confirmation
               </Text>
             </View>
+            {!bulk.selecting && entries.length >= 2 && (
+              <SelectToggle isDark={isDark} onPress={bulk.start} />
+            )}
           </View>
+          {bulk.selecting && (
+            <SelectionHeader
+              isDark={isDark}
+              count={bulk.selected.size}
+              allSelected={bulk.allSelected}
+              onCancel={bulk.cancel}
+              onToggleAll={bulk.toggleAll}
+            />
+          )}
         </View>
 
         <View style={styles.content}>
@@ -464,9 +515,10 @@ export default function ConfirmationsScreen() {
               const isProcessing = processingEntryId === entry.id;
               const mcaCompliant = isMCACompliant(entry);
               const warningText = getMCAWarningText(entry);
+              const isChecked = bulk.selected.has(entry.id);
               
               return (
-                <View key={entry.id} style={styles.entryCard}>
+                <View key={entry.id} style={[styles.entryCard, bulk.selecting && isChecked && styles.entryCardSelected]}>
                   {!mcaCompliant && (
                     <View style={styles.warningBanner}>
                       <IconSymbol
@@ -483,9 +535,10 @@ export default function ConfirmationsScreen() {
 
                   <TouchableOpacity
                     style={styles.entryHeader}
-                    onPress={() => toggleExpanded(entry.id)}
-                    disabled={isProcessing}
+                    onPress={() => (bulk.selecting ? bulk.toggle(entry.id) : toggleExpanded(entry.id))}
+                    disabled={isProcessing || bulkBusy}
                   >
+                    {bulk.selecting && <SelectCircle checked={isChecked} isDark={isDark} />}
                     <View style={styles.entryHeaderLeft}>
                       <Text style={styles.vesselName}>
                         {entry.vessel?.vessel_name || 'Unknown Vessel'}
@@ -499,15 +552,17 @@ export default function ConfirmationsScreen() {
                         </Text>
                       </View>
                     </View>
-                    <IconSymbol
-                      ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
-                      android_material_icon_name={isExpanded ? 'expand-less' : 'expand-more'}
-                      size={24}
-                      color={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    />
+                    {!bulk.selecting && (
+                      <IconSymbol
+                        ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
+                        android_material_icon_name={isExpanded ? 'expand-less' : 'expand-more'}
+                        size={24}
+                        color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      />
+                    )}
                   </TouchableOpacity>
 
-                  {isExpanded && (
+                  {isExpanded && !bulk.selecting && (
                     <View style={styles.entryDetails}>
                       {warningText && (
                         <View style={styles.warningBox}>
@@ -576,6 +631,7 @@ export default function ConfirmationsScreen() {
                     </View>
                   )}
 
+                  {!bulk.selecting && (
                   <View style={styles.entryActions}>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.confirmButton, { width: '100%' }, isProcessing && styles.disabledButton]}
@@ -604,12 +660,31 @@ export default function ConfirmationsScreen() {
                       <Text style={{ color: colors.error, fontSize: 14, fontWeight: '600' }}>Reject Entry</Text>
                     </TouchableOpacity>
                   </View>
+                  )}
                 </View>
               );
             })
           )}
         </View>
       </ScrollView>
+
+      {bulk.selecting && (
+        <BulkActionBar
+          isDark={isDark}
+          count={bulk.selected.size}
+          busy={bulkBusy}
+          onReject={handleBulkReject}
+          onConfirm={() => setShowBulkConfirm(true)}
+        />
+      )}
+
+      <BulkConfirmModal
+        visible={showBulkConfirm}
+        isDark={isDark}
+        entries={bulk.selectedEntries}
+        onCancel={() => setShowBulkConfirm(false)}
+        onConfirm={handleBulkConfirm}
+      />
 
       <Modal
         visible={showServiceTypeModal}
@@ -762,6 +837,10 @@ function createStyles(isDark: boolean, topInset: number) {
       borderWidth: 1,
       borderColor: isDark ? colors.border : colors.borderLight,
       overflow: 'hidden',
+    },
+    entryCardSelected: {
+      borderColor: colors.primary,
+      borderWidth: 2,
     },
     warningBanner: {
       flexDirection: 'row',
