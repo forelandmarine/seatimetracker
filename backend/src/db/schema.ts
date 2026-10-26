@@ -3,3 +3,4 @@
 // points to the ./src/db/schema/ directory for schema files
 export * from './schema/schema.js';
 export * from './schema/passage-refinements.js';
+export * from './schema/course-dates.js';
