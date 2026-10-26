@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "733279083565",
+    "project_id": "seatime-revenuecat",
+    "storage_bucket": "seatime-revenuecat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:733279083565:android:1a92fdaab073bdd899eca4",
+        "android_client_info": {
+          "package_name": "com.forelandmarine.seatimetracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWUSCxowgpMbRIzUFShsK5VyWsxscyKNQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
