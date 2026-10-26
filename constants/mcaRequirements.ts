@@ -468,7 +468,6 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'Complete nine management-level academic modules at an MCA approved nautical college (exempt with an approved management-level qualification such as an HND or degree)',
       'Pass the MCA Chief Mate Navigation and Stability (Yacht Unlimited) assessments and an MCA oral exam',
-      'Master (Yachts) <3000 GT and Chief Mate Unlimited holders are exempt from this oral',
     ],
   },
   {
@@ -494,7 +493,10 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
         ],
       },
     ],
-    notes: ['Pass the Master Unlimited GT Yacht oral examination'],
+    notes: [
+      'Pass the Master Unlimited GT Yacht oral examination',
+      'Holders of Master (Yachts) <3000 GT or a Chief Mate Unlimited CoC are exempt from the Chief Mate Yacht Unlimited oral for this CoC, but still sit the Master Unlimited GT Yacht oral (MSN 1858, footnote 10)',
+    ],
   },
   // ── Master (Workboat) <500 GT: MGN 496 (M+F) section 11 ─────────────
   // Still the live MCA notice (2013). Gates are taken as written; day targets
@@ -550,7 +552,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'At least 6 months of the service within the 5 years before you apply',
       'Complete the approved Workboat Training Record Book',
-      'Yachtmaster Ocean (with shore-based course), EDH, Advanced Fire Fighting, Medical Care, the Master (Yachts) modules, HELM (Management) and the Workboat Operations module and exam',
+      'Yachtmaster Ocean (with shore-based course), EDH, Advanced Fire Fighting, Medical Care, the Master (Yachts) modules, HELM (Management), the Workboat Operations module and exam, and GMDSS GOC (MSF 4257)',
       'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
     ],
   },
@@ -601,7 +603,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'At least 6 months of the service within the 5 years before you apply',
       'Complete the approved Workboat Training Record Book',
-      'STCW basic training, Security Awareness, Medical Care, PSC&RB, Advanced Fire Fighting, Medical First Aid and the Workboat Operations module and exam',
+      'STCW basic training, Security Awareness, Medical Care, PSC&RB, Advanced Fire Fighting, Medical First Aid, the Workboat Operations module and exam, HELM (Management) and GMDSS GOC',
       'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
     ],
   },

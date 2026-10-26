@@ -107,8 +107,12 @@ export const CERTIFICATE_TYPES = [
 
 const ALLOWED_TYPES_SET = new Set<string>(CERTIFICATE_TYPES);
 
+// Course records from the oral checklist (2.4.0) use "course_<code>", e.g.
+// course_pscrb. Codes come from the app's course catalogue.
+const COURSE_TYPE = /^course_[a-z0-9_]{2,60}$/;
+
 function isValidCertificateType(t: string): boolean {
-  return ALLOWED_TYPES_SET.has(t);
+  return ALLOWED_TYPES_SET.has(t) || COURSE_TYPE.test(t);
 }
 
 /**

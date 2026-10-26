@@ -1,3 +1,4 @@
+import { COURSE_CATALOG, ADD_AS_TYPE, EXTRA_COURSE_LABELS } from '@/constants/courseChecklists';
 import { authFetch } from "./api";
 
 export interface Certificate {
@@ -110,6 +111,19 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   seaman_book: "Seaman's Discharge Book",
   other: "Other",
 };
+
+// Course records from the oral checklist are saved as "course_<code>".
+const COURSE_TYPES: string[] = [];
+for (const [code, def] of Object.entries(COURSE_CATALOG)) {
+  if (ADD_AS_TYPE[code]) continue;
+  CERTIFICATE_TYPE_LABELS[`course_${code}`] = def.label;
+  COURSE_TYPES.push(`course_${code}`);
+}
+for (const [code, label] of Object.entries(EXTRA_COURSE_LABELS)) {
+  if (ADD_AS_TYPE[code] || CERTIFICATE_TYPE_LABELS[`course_${code}`]) continue;
+  CERTIFICATE_TYPE_LABELS[`course_${code}`] = label;
+  COURSE_TYPES.push(`course_${code}`);
+}
 
 export const CERTIFICATE_TYPES = Object.keys(CERTIFICATE_TYPE_LABELS);
 
@@ -243,6 +257,7 @@ export const CERTIFICATE_TYPE_GROUPS: CertificateTypeGroup[] = [
       "uscg_vso",
     ],
   },
+  { title: "Courses and modules", types: COURSE_TYPES },
   { title: "Identity & Other", types: ["passport", "seaman_book", "other"] },
 ];
 
