@@ -30,7 +30,7 @@ function LinkRow({
       onPress={onPress}
       accessibilityRole="button"
     >
-      <IconSymbol ios_icon_name={icon} android_material_icon_name={androidIcon} size={20} color={colors.primary} />
+      <IconSymbol ios_icon_name={icon as any} android_material_icon_name={androidIcon as any} size={20} color={colors.primary} />
       <View style={styles.body}>
         <Text style={[styles.title, { color: isDark ? colors.text : colors.textLight }]}>{title}</Text>
         <Text style={[styles.subtitle, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>{subtitle}</Text>
