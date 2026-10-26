@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -739,7 +740,7 @@ export default function ConfirmationsScreen() {
                       {entry.notes && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Notes:</Text>
-                          <Text style={styles.detailValue}>{entry.notes}</Text>
+                          <Text style={styles.detailValue}>{formatEntryNotes(entry.notes)}</Text>
                         </View>
                       )}
                     </View>

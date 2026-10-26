@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { formatEntryNotes } from '../utils/duration.js';
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
@@ -261,7 +262,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.engine_watch_hours ?? '',
       entry.night_watch_hours ?? '',
       entry.status,
-      entry.notes || '',
+      formatEntryNotes(entry.notes),
     ]);
 
     const summarySection = [
@@ -361,7 +362,7 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.bridge_watch_hours ?? '',
         entry.engine_watch_hours ?? '',
         entry.night_watch_hours ?? '',
-        entry.notes || '',
+        formatEntryNotes(entry.notes),
       ];
     });
 
@@ -834,7 +835,7 @@ export function register(app: App, fastify: FastifyInstance) {
           serviceType: e.service_type || '',
           days: e.sea_days ?? 0,
           hours: e.duration_hours ?? '',
-          notes: e.notes || '',
+          notes: formatEntryNotes(e.notes),
         });
       });
 

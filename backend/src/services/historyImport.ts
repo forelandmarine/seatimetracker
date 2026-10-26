@@ -17,6 +17,7 @@
  * out of date (404). Positions are cached under the record's MMSI.
  */
 
+import { formatHoursMinutes } from '../utils/duration.js';
 import { and, asc, eq, gte, inArray, lt, or } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
@@ -643,7 +644,7 @@ async function buildEntries(
         mca_compliant: p.duration_hours >= 4,
         distance_nm: String(p.distance_nm),
         is_stationary: false,
-        notes: `Imported from AIS history: vessel moved ${p.distance_nm} nm over ${p.duration_hours} hours`,
+        notes: `Imported from AIS history: vessel moved ${p.distance_nm} nm over ${formatHoursMinutes(p.duration_hours)}`,
       })));
     }
     await tx

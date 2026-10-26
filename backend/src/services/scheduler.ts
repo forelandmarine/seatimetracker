@@ -1,4 +1,5 @@
 import { eq, and, desc, isNotNull, lte, gte, isNull, sql, inArray } from 'drizzle-orm';
+import { formatHoursMinutes } from '../utils/duration.js';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
@@ -1243,7 +1244,7 @@ async function handleSeaTimeEntries(
     }
 
     // CREATE a new pending sea time entry
-    const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${durationHours} hours`;
+    const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${formatHoursMinutes(durationHours)}`;
 
     // Determine MCA compliance based on duration
     const isMCACompliant = durationHours >= 4.0;

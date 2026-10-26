@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -1049,7 +1050,7 @@ export default function LogbookScreen() {
                             color={isDark ? colors.textSecondary : colors.textSecondaryLight}
                             style={styles.entryIcon}
                           />
-                          <Text style={styles.entryText}>{entry.notes}</Text>
+                          <Text style={styles.entryText}>{formatEntryNotes(entry.notes)}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -1226,7 +1227,7 @@ export default function LogbookScreen() {
                                   color={isDark ? colors.textSecondary : colors.textSecondaryLight}
                                   style={styles.entryIcon}
                                 />
-                                <Text style={styles.entryText}>{entry.notes}</Text>
+                                <Text style={styles.entryText}>{formatEntryNotes(entry.notes)}</Text>
                               </View>
                             )}
                           </TouchableOpacity>

@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import {
   View,
   Text,
@@ -625,7 +626,7 @@ export default function ConfirmationsScreen() {
                       {entry.notes && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Notes:</Text>
-                          <Text style={styles.detailValue}>{entry.notes}</Text>
+                          <Text style={styles.detailValue}>{formatEntryNotes(entry.notes)}</Text>
                         </View>
                       )}
                     </View>

@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -809,7 +810,7 @@ export default function VesselDetailScreen() {
                           {entry.notes && (
                             <View style={styles.expandedDetailRow}>
                               <Text style={styles.expandedDetailLabel}>Notes:</Text>
-                              <Text style={styles.expandedDetailValue}>{entry.notes}</Text>
+                              <Text style={styles.expandedDetailValue}>{formatEntryNotes(entry.notes)}</Text>
                             </View>
                           )}
                         </View>

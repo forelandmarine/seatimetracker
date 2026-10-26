@@ -11,6 +11,7 @@ import {
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { formatHoursMinutes } from '@/utils/entryNotes';
 
 /**
  * Bulk accept / reject for the Review tab. Shared by confirmations.tsx and
@@ -34,15 +35,6 @@ const toNumber = (v: number | string | null | undefined): number => {
   const n = typeof v === 'number' ? v : parseFloat(v);
   return isNaN(n) ? 0 : n;
 };
-
-export function formatHoursMinutes(hours: number): string {
-  const totalMinutes = Math.round(hours * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m.toString().padStart(2, '0')}m`;
-}
 
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
