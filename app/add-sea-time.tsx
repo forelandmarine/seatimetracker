@@ -1261,7 +1261,11 @@ export default function AddSeaTimeScreen() {
                   />
                   <TouchableOpacity
                     style={styles.datePickerButton}
-                    onPress={() => setShowStartDatePicker(false)}
+                    onPress={() => {
+                      // The wheel opens on now without firing onChange, so Done keeps what it shows
+                      if (!startDate) setStartDate(new Date());
+                      setShowStartDatePicker(false);
+                    }}
                   >
                     <Text style={styles.datePickerButtonText}>{doneButtonText}</Text>
                   </TouchableOpacity>
@@ -1312,7 +1316,11 @@ export default function AddSeaTimeScreen() {
                   />
                   <TouchableOpacity
                     style={styles.datePickerButton}
-                    onPress={() => setShowEndDatePicker(false)}
+                    onPress={() => {
+                      // The wheel opens on now without firing onChange, so Done keeps what it shows
+                      if (!endDate) setEndDate(new Date());
+                      setShowEndDatePicker(false);
+                    }}
                   >
                     <Text style={styles.datePickerButtonText}>{doneButtonText}</Text>
                   </TouchableOpacity>

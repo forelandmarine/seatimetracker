@@ -508,7 +508,8 @@ export default function CertificationRequirementsScreen() {
                       </View>
                     )}
 
-                    {requirement.totalDays != null && (
+                    {/* Measurable targets only: a day total, or a Master (Workboat) route with its own bars */}
+                    {(requirement.totalDays != null || requirement.workboatRoute != null) && (
                       <View style={styles.targetRow}>
                         <Text style={styles.detailText}>
                           {isTarget ? 'Tracking progress toward this' : 'Track progress toward this'}
