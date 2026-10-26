@@ -125,7 +125,7 @@ interface AuthFetchOptions {
 
 const DEFAULT_TIMEOUT = 15_000;
 
-const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): Promise<Response> => {
+export const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): Promise<Response> => {
   const { method = 'GET', body, formData = false, timeout = DEFAULT_TIMEOUT, signal } = opts;
 
   const token = await getToken();

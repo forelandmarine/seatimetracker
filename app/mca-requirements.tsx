@@ -14,6 +14,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
+import { PathwayLinks } from '@/components/PathwayLinks';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   AUTHORITY_FULL_NAMES,
@@ -409,6 +410,7 @@ export default function CertificationRequirementsScreen() {
               </Text>
             )}
             <AskPathwayButton authority={authority} isDark={isDark} />
+            <PathwayLinks isDark={isDark} />
           </View>
 
           {requirements.length > 6 && (

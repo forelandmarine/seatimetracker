@@ -161,7 +161,7 @@ export default function OralChecklistScreen() {
           {line ? <Text style={[styles.rowSub, lineColor ? { color: lineColor } : null]}>{line}</Text> : null}
           {s.status === 'todo' && s.item.type !== 'manual' && (
             <TouchableOpacity
-              onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } })}
+              onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } } as any)}
             >
               <Text style={styles.findLink}>Find a course</Text>
             </TouchableOpacity>
