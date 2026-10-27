@@ -144,7 +144,13 @@ export default function TrainingProvidersScreen() {
         ]);
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+      // A rough fix is enough to sort by distance; don't leave the chip spinning.
+      const pos =
+        (await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+        ])) ?? (await Location.getLastKnownPositionAsync());
+      if (!pos) throw new Error('no fix');
       setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     } catch {
       Alert.alert("Couldn't find your location", 'Search by town or country instead.');
