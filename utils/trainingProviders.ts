@@ -1,12 +1,16 @@
+import { useCallback, useEffect, useState } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import { authFetch } from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
+import { OFFERED_COURSES } from '@/constants/offeredCourses';
 
 /**
- * Training provider directory for "Find a course". The directory ships with
- * the app (constants/trainingProviders.json, built from the 2.4.0 research by
- * scripts/gen-training-providers.mjs) so search works offline. Course dates
- * come from the backend where a provider publishes a calendar we can read;
- * everywhere else the app links to the provider's own dates page.
+ * Training provider directory for "Find a course". The directory (built from
+ * the 2.4.0 research by scripts/gen-training-providers.mjs) is downloaded from
+ * the backend the first time it's needed and kept on the phone, so search works
+ * offline after that and the list can be corrected without an app release.
+ * Course dates come from the backend where a provider publishes a calendar we
+ * can read; everywhere else the app links to the provider's own dates page.
  */
 
 export interface Provider {
@@ -41,9 +45,92 @@ export interface CourseDate {
   booking_url: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const RAW: { v: number; providers: Provider[] } = require('@/constants/trainingProviders.json');
-export const PROVIDERS: Provider[] = RAW.providers;
+// Saved copy of the directory, plus its ETag. The ETag file's modified time is
+// when the copy was last checked against the backend.
+const CACHE_FILE = `${FileSystem.documentDirectory}training-providers.json`;
+const ETAG_FILE = `${FileSystem.documentDirectory}training-providers.etag`;
+const RECHECK_MS = 7 * 24 * 3600 * 1000;
+
+let providers: Provider[] | null = null;
+let loading: Promise<Provider[]> | null = null;
+
+function parseDirectory(text: string): Provider[] {
+  const data = JSON.parse(text);
+  if (!Array.isArray(data?.providers)) throw new Error('Bad provider directory');
+  return data.providers;
+}
+
+/** Fetches the directory; null when the saved copy (etag) is still current. */
+async function download(etag: string | null): Promise<Provider[] | null> {
+  try {
+    const res = await authFetch('/api/training/providers', { timeout: 30_000, headers: etag ? { 'If-None-Match': etag } : {} });
+    const text = await res.text();
+    const list = parseDirectory(text);
+    await FileSystem.writeAsStringAsync(CACHE_FILE, text);
+    await FileSystem.writeAsStringAsync(ETAG_FILE, res.headers.get('etag') ?? '');
+    return list;
+  } catch (e) {
+    if ((e as { status?: number })?.status === 304) {
+      await FileSystem.writeAsStringAsync(ETAG_FILE, etag ?? '').catch(() => {});
+      return null;
+    }
+    throw e;
+  }
+}
+
+async function readSaved(): Promise<{ list: Provider[]; etag: string | null; checkedAt: number } | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(ETAG_FILE);
+    if (!info.exists) return null;
+    const list = parseDirectory(await FileSystem.readAsStringAsync(CACHE_FILE));
+    const etag = (await FileSystem.readAsStringAsync(ETAG_FILE)) || null;
+    return { list, etag, checkedAt: (info.modificationTime ?? 0) * 1000 };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The directory, from memory, the saved copy or the backend (in that order).
+ * A saved copy older than a week is used straight away and refreshed behind it.
+ */
+export function loadProviders(): Promise<Provider[]> {
+  if (providers) return Promise.resolve(providers);
+  if (!loading) {
+    loading = (async () => {
+      const saved = await readSaved();
+      if (saved) {
+        providers = saved.list;
+        if (Date.now() - saved.checkedAt > RECHECK_MS) {
+          download(saved.etag).then((l) => { if (l) providers = l; }).catch(() => {});
+        }
+        return saved.list;
+      }
+      const list = (await download(null))!;
+      providers = list;
+      return list;
+    })().finally(() => {
+      loading = null;
+    });
+  }
+  return loading;
+}
+
+/** Directory for a screen: null while loading, with an error and retry if the first download fails. */
+export function useProviders(): { providers: Provider[] | null; error: string | null; retry: () => void } {
+  const [list, setList] = useState<Provider[] | null>(providers);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setError(null);
+    loadProviders()
+      .then(setList)
+      .catch(() => setError("Couldn't load the course directory. Check your connection and try again."));
+  }, []);
+  useEffect(() => {
+    if (!list) load();
+  }, [list, load]);
+  return { providers: list, error, retry: load };
+}
 
 export const APPROVAL_LABELS: Record<string, string> = {
   mca: 'MCA',
@@ -138,9 +225,9 @@ function matchesQuery(p: Provider, q: string): boolean {
     .every((word) => hay.includes(word));
 }
 
-export function searchProviders(f: ProviderFilters): ProviderHit[] {
+export function searchProviders(list: Provider[], f: ProviderFilters): ProviderHit[] {
   const hits: ProviderHit[] = [];
-  for (const p of PROVIDERS) {
+  for (const p of list) {
     if (f.course && !p.courses.includes(f.course)) continue;
     if (f.sector && !p.sectors.includes(f.sector)) continue;
     if (f.approval && !p.approvals.includes(f.approval)) continue;
@@ -159,16 +246,14 @@ export function searchProviders(f: ProviderFilters): ProviderHit[] {
   return hits;
 }
 
-/** Course codes that at least one provider offers, for the course picker. */
+/** Course codes that at least one provider offers, for the course picker. Ships with the app. */
 export function offeredCourses(): string[] {
-  const set = new Set<string>();
-  PROVIDERS.forEach((p) => p.courses.forEach((c) => set.add(c)));
-  return Array.from(set).sort((a, b) => courseLabel(a).localeCompare(courseLabel(b)));
+  return [...OFFERED_COURSES].sort((a, b) => courseLabel(a).localeCompare(courseLabel(b)));
 }
 
-export function offeredApprovals(): string[] {
+export function offeredApprovals(list: Provider[]): string[] {
   const set = new Set<string>();
-  PROVIDERS.forEach((p) => p.approvals.forEach((a) => set.add(a)));
+  list.forEach((p) => p.approvals.forEach((a) => set.add(a)));
   // Main bodies first, then national administrations alphabetically.
   const known = Object.keys(APPROVAL_LABELS).filter((a) => set.has(a));
   const others = Array.from(set)
@@ -177,7 +262,6 @@ export function offeredApprovals(): string[] {
   return [...known, ...others];
 }
 
-export const getProvider = (id: string) => PROVIDERS.find((p) => p.id === id) ?? null;
 
 // Dates for one course across every provider, fetched once per course while the app is open.
 const datesByCourse = new Map<string, Promise<CourseDate[]>>();

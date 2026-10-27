@@ -29,7 +29,7 @@ import {
   formatDistance,
   usesMiles,
   courseDatesFor,
-  PROVIDERS,
+  useProviders,
   type CourseDate,
   type ProviderHit,
 } from '@/utils/trainingProviders';
@@ -67,22 +67,26 @@ export default function TrainingProvidersScreen() {
   const [picker, setPicker] = useState<'course' | 'approval' | null>(null);
   const [pickerQuery, setPickerQuery] = useState('');
   const [dates, setDates] = useState<CourseDate[]>([]);
+  const { providers, error: loadError, retry } = useProviders();
+  const directory = useMemo(() => providers ?? [], [providers]);
+  const approvals = useMemo(() => offeredApprovals(directory), [directory]);
 
   // Start on the user's own authority where providers carry that approval.
   useEffect(() => {
+    if (!providers) return;
     seaTimeApi
       .getUserProfile()
       .then((p) => {
         const auth = p?.maritime_authority;
-        if (auth && offeredApprovals().includes(auth)) setApproval(auth);
+        if (auth && approvals.includes(auth)) setApproval(auth);
       })
       .catch(() => {});
-  }, []);
+  }, [providers, approvals]);
 
   const radiusKm = RADII_KM[radiusIdx];
   const hits = useMemo(
-    () => searchProviders({ query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null }),
-    [query, course, sector, approval, origin, radiusKm],
+    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null }),
+    [directory, query, course, sector, approval, origin, radiusKm],
   );
 
   // Dates for the chosen course, across every provider (one request per course).
@@ -212,7 +216,7 @@ export default function TrainingProvidersScreen() {
     picker === 'course'
       ? offeredCourses().map((c) => ({ key: c, label: courseLabel(c) }))
       : picker === 'approval'
-        ? offeredApprovals().map((a) => ({ key: a, label: approvalLabel(a) }))
+        ? approvals.map((a) => ({ key: a, label: approvalLabel(a) }))
         : [];
   const filteredPicker = pickerItems.filter((i) => i.label.toLowerCase().includes(pickerQuery.trim().toLowerCase()));
 
@@ -245,16 +249,18 @@ export default function TrainingProvidersScreen() {
         {SECTORS.map((s) => chip(s.label, sector === s.key, () => setSector(sector === s.key ? null : s.key), s.key))}
         {chip(approval ? `Approved by ${approvalLabel(approval)}` : 'Any approval', !!approval, () => setPicker('approval'), 'approval')}
       </ScrollView>
-      <View style={styles.resultsBar}>
-        <Text style={styles.count}>
-          {hits.length} {hits.length === 1 ? 'provider' : 'providers'}
-          {origin ? ' · nearest first' : ''}
-        </Text>
-        <TouchableOpacity onPress={() => setShowMap(!showMap)}>
-          <Text style={styles.link}>{showMap ? 'Show list' : 'Show on map'}</Text>
-        </TouchableOpacity>
-      </View>
-      {showMap && <ProviderMap hits={hits} origin={origin} onOpen={(id) => router.push({ pathname: '/training-provider/[id]', params: { id, course: course ?? '' } } as any)} />}
+      {providers && (
+        <View style={styles.resultsBar}>
+          <Text style={styles.count}>
+            {hits.length} {hits.length === 1 ? 'provider' : 'providers'}
+            {origin ? ' · nearest first' : ''}
+          </Text>
+          <TouchableOpacity onPress={() => setShowMap(!showMap)}>
+            <Text style={styles.link}>{showMap ? 'Show list' : 'Show on map'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {showMap && providers && <ProviderMap hits={hits} origin={origin} onOpen={(id) => router.push({ pathname: '/training-provider/[id]', params: { id, course: course ?? '' } } as any)} />}
     </View>
   );
 
@@ -280,7 +286,7 @@ export default function TrainingProvidersScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         initialNumToRender={15}
         ListFooterComponent={
-          showMap ? null : (
+          showMap || !providers ? null : (
             <>
               {withoutDates.length > 0 && (
                 <>
@@ -289,14 +295,30 @@ export default function TrainingProvidersScreen() {
                 </>
               )}
               <Text style={styles.footnote}>
-                {PROVIDERS.length.toLocaleString()} providers listed from MCA, USCG, AMSA, Maritime NZ, SAMSA, RYA, IYT, GWO and OPITO
+                {directory.length.toLocaleString()} providers listed from MCA, USCG, AMSA, Maritime NZ, SAMSA, RYA, IYT, GWO and OPITO
                 registers and providers' own sites. Check approval and dates with the provider before booking.
               </Text>
             </>
           )
         }
         ListEmptyComponent={
-          showMap ? null : withoutDates.length > 0 ? (
+          !providers ? (
+            <View style={styles.empty}>
+              {loadError ? (
+                <>
+                  <Text style={styles.emptyText}>{loadError}</Text>
+                  <TouchableOpacity onPress={retry} style={{ marginTop: 12 }}>
+                    <Text style={styles.link}>Try again</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={styles.emptyText}>Loading the course directory</Text>
+                </>
+              )}
+            </View>
+          ) : showMap ? null : withoutDates.length > 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>No published dates in that window. These providers may still run it.</Text>
             </View>

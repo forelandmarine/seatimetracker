@@ -121,6 +121,8 @@ interface AuthFetchOptions {
   timeout?: number;
   /** Pass an external AbortSignal (e.g. from component unmount) */
   signal?: AbortSignal;
+  /** Extra request headers (e.g. If-None-Match) */
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_TIMEOUT = 15_000;
@@ -130,7 +132,7 @@ export const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): 
 
   const token = await getToken();
 
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = { ...opts.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!formData && body !== undefined) headers['Content-Type'] = 'application/json';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, Linking, Platform, ActivityIndicator } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -8,7 +8,7 @@ import { listCertificates } from '@/utils/certificatesApi';
 import { localDate, todayIso } from '@/utils/localDate';
 import { courseLabel, evaluateChecklist } from '@/utils/courseChecklist';
 import {
-  getProvider,
+  useProviders,
   approvalLabel,
   SECTOR_LABELS,
   fetchCourseDates,
@@ -26,7 +26,8 @@ export default function TrainingProviderScreen() {
   const { id, course } = useLocalSearchParams<{ id: string; course?: string }>();
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
-  const provider = getProvider(String(id));
+  const { providers, error: loadError, retry } = useProviders();
+  const provider = useMemo(() => providers?.find((p) => p.id === String(id)) ?? null, [providers, id]);
   const focusCourse = course ? String(course) : null;
 
   const [dates, setDates] = useState<CourseDate[]>([]);
@@ -66,7 +67,18 @@ export default function TrainingProviderScreen() {
   if (!provider) {
     return (
       <View style={[styles.container, { padding: 24 }]}>
-        <Text style={styles.sub}>This provider is no longer listed.</Text>
+        {providers ? (
+          <Text style={styles.sub}>This provider is no longer listed.</Text>
+        ) : loadError ? (
+          <>
+            <Text style={styles.sub}>{loadError}</Text>
+            <TouchableOpacity onPress={retry} style={{ marginTop: 12 }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>Try again</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <ActivityIndicator color={colors.primary} />
+        )}
       </View>
     );
   }

@@ -1,12 +1,42 @@
 import type { FastifyInstance } from 'fastify';
+import { createHash } from 'crypto';
+import { gzipSync } from 'zlib';
 import { and, gte, inArray, eq, asc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { extractUserIdFromRequest } from '../middleware/auth.js';
+import { TRAINING_PROVIDERS_JSON } from '../data/training-providers.js';
 
 const errorSchema = { type: 'object', properties: { error: { type: 'string' } } };
 
+// The directory is the same for every user, so it is compressed once (about
+// 1.6 MB of JSON, 0.3 MB gzipped) and tagged so phones only re-download it
+// when it changes. The app keeps its own copy, so HTTP caches are told not to
+// store a second one.
+const PROVIDERS_ETAG = `"${createHash('sha1').update(TRAINING_PROVIDERS_JSON).digest('hex').slice(0, 16)}"`;
+let providersGzip: Buffer | null = null;
+
 export function register(app: App, fastify: FastifyInstance) {
+  // GET /api/training/providers - the "Find a course" directory. The app keeps it on the phone.
+  fastify.get('/api/training/providers', {
+    schema: {
+      description: 'Training provider directory for Find a course (ETag / If-None-Match supported)',
+      tags: ['training'],
+      response: { 304: { type: 'null' }, 401: errorSchema },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+    reply.header('etag', PROVIDERS_ETAG).header('cache-control', 'private, no-store').header('vary', 'accept-encoding');
+    if (request.headers['if-none-match'] === PROVIDERS_ETAG) return reply.code(304).send();
+    reply.type('application/json; charset=utf-8');
+    if (/\bgzip\b/.test(String(request.headers['accept-encoding'] ?? ''))) {
+      providersGzip ??= gzipSync(TRAINING_PROVIDERS_JSON, { level: 9 });
+      return reply.header('content-encoding', 'gzip').send(providersGzip);
+    }
+    return reply.send(TRAINING_PROVIDERS_JSON);
+  });
+
   // GET /api/training/course-dates?course=pscrb (every provider) or ?providers=a,b[&course=]
   fastify.get<{ Querystring: { providers?: string; course?: string } }>('/api/training/course-dates', {
     schema: {
