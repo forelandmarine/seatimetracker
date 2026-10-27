@@ -1,1 +1,97 @@
-[]
+[
+ {
+  "provider_id": "dart-marine-academy-dartmouth-gb",
+  "dates_url": "https://dartmarine.co.uk/rya-powerboat-training/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "ipowerboat-limited-greenock-greenock-gb",
+  "dates_url": "https://ipowerboat.arlo.co/w/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "ipowerboat-limited-kinlochleven-kinlochleven-gb",
+  "dates_url": "https://ipowerboat.arlo.co/w/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "maritime-skills-academy-dover-dover-gb",
+  "dates_url": "https://www.maritimeskillsacademy.com/upcoming/region-DV/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "safewater-training-ltd-wallasey-gb",
+  "dates_url": "https://safewater.co.uk/timetable/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "seafood-cornwall-training-penzance-gb",
+  "dates_url": "https://www.seafoodcornwalltraining.co.uk/course-dates/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "seafood-cornwall-training-ltd-looe-gb",
+  "dates_url": "https://www.seafoodcornwalltraining.co.uk/course-dates/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "seafood-cornwall-training-ltd-newquay-gb",
+  "dates_url": "https://www.seafoodcornwalltraining.co.uk/course-dates/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "searegs-training-ltd-plymouth-gb",
+  "dates_url": "https://ipowerboat.arlo.co/w/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "south-west-maritime-academy-wotton-under-edge-gb",
+  "dates_url": "https://southwestmaritimeacademy.com/courses/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "stcw-training-uk-ltd-buckfastleigh-gb",
+  "dates_url": "https://stcw-training-uk.com/events/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "taskmasters-uk-limited-old-romney-gb",
+  "dates_url": "https://taskmasters-uk.com/calendar/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "western-maritime-training-ltd-plymouth-gb",
+  "dates_url": "https://westernmaritimetraining.co.uk/course-calendar/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "vhf-and-chartplotter-training-moher-technologies-doolin-co-clare-ie",
+  "dates_url": "https://www.vhf.ie/events/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "maritime-mt-birzebbuga-mt",
+  "dates_url": "https://maritimemt.edu.mt/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "training-4-safety-whangarei-nz",
+  "dates_url": "https://training4safetylimited.arlo.co/w/upcoming/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "swat-elektronowa-lodz-pl",
+  "dates_url": "https://swat.info.pl/kalendarz-szkolen/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "c2-vertical-safety-ab-hoganas-hoganas-se",
+  "dates_url": "https://www.c2safety.com/produkt/gwo-bst-basic-safety-training/",
+  "parser": "jsonld"
+ },
+ {
+  "provider_id": "bluewater-maritime-school-jacksonville-us",
+  "dates_url": "https://maritimeschool.org/upcoming/",
+  "parser": "jsonld"
+ }
+]
