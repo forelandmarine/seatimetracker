@@ -532,6 +532,27 @@ export const confirmSeaTimeEntry = async (entryId: string, serviceType?: string)
   return res.json();
 };
 
+/**
+ * Confirm or reject many entries in one request (backend 2.4.0+). Returns null
+ * when the backend predates the endpoint, so the caller can fall back to one
+ * request per entry.
+ */
+export const bulkUpdateSeaTimeEntries = async (
+  ids: string[],
+  action: 'confirm' | 'reject',
+  serviceType?: string
+): Promise<{ done: string[]; failed: { id: string; error: string }[] } | null> => {
+  try {
+    const body: any = { ids, action };
+    if (serviceType) body.service_type = serviceType;
+    const res = await authFetch('/api/sea-time/bulk', { method: 'POST', body, timeout: 60000 });
+    return res.json();
+  } catch (e: any) {
+    if (e?.status === 404) return null;
+    throw e;
+  }
+};
+
 export const rejectSeaTimeEntry = async (entryId: string) => {
   const res = await authFetch(`/api/sea-time/${entryId}/reject`, { method: 'PUT', body: {} });
   return res.json();

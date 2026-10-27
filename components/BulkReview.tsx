@@ -15,9 +15,9 @@ import { formatHoursMinutes } from '@/utils/entryNotes';
 
 /**
  * Bulk accept / reject for the Review tab. Shared by confirmations.tsx and
- * confirmations.ios.tsx. Entries are confirmed or rejected one at a time with
- * the existing per-entry endpoints, so no backend change is needed; any that
- * fail stay selected and the reason is reported.
+ * confirmations.ios.tsx. The selection goes to POST /api/sea-time/bulk in one
+ * request (one per entry on older backends); any that fail stay selected and
+ * the reason is reported.
  */
 
 export type BulkServiceType = 'actual_sea_service' | 'watchkeeping_service';
@@ -136,14 +136,30 @@ function reportOutcome(verb: 'confirmed' | 'rejected', outcome: Outcome) {
   );
 }
 
+/**
+ * One request for the whole selection; backends older than 2.4.0 have no bulk
+ * endpoint, so fall back to one request per entry there.
+ */
+async function runBulk(ids: string[], action: 'confirm' | 'reject', serviceType?: BulkServiceType): Promise<Outcome> {
+  try {
+    const res = await seaTimeApi.bulkUpdateSeaTimeEntries(ids, action, serviceType);
+    if (res) return { done: res.done.length, failed: res.failed.map((f) => ({ id: f.id, message: f.error })) };
+  } catch (error: any) {
+    return { done: 0, failed: ids.map((id) => ({ id, message: backendMessage(error) })) };
+  }
+  return runEach(ids, (id) =>
+    action === 'confirm' ? seaTimeApi.confirmSeaTimeEntry(id, serviceType) : seaTimeApi.rejectSeaTimeEntry(id)
+  );
+}
+
 export async function bulkConfirm(ids: string[], serviceType: BulkServiceType) {
-  const outcome = await runEach(ids, (id) => seaTimeApi.confirmSeaTimeEntry(id, serviceType));
+  const outcome = await runBulk(ids, 'confirm', serviceType);
   reportOutcome('confirmed', outcome);
   return outcome;
 }
 
 export async function bulkReject(ids: string[]) {
-  const outcome = await runEach(ids, (id) => seaTimeApi.rejectSeaTimeEntry(id));
+  const outcome = await runBulk(ids, 'reject');
   reportOutcome('rejected', outcome);
   return outcome;
 }
