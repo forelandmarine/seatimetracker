@@ -23,7 +23,7 @@ const clean = (v) => (typeof v === 'string' && v.trim() && !/^(null|n\/a|unknown
 const uniq = (a) => Array.from(new Set((a || []).filter(Boolean)));
 
 const raw = [];
-for (const f of fs.readdirSync(pdir).filter((f) => f.endsWith('.json') && !f.startsWith('geocode'))) {
+for (const f of fs.readdirSync(pdir).filter((f) => f.endsWith('.json') && !f.startsWith('geocode') && !f.startsWith('merged'))) {
   const data = JSON.parse(fs.readFileSync(path.join(pdir, f), 'utf8'));
   for (const p of Array.isArray(data) ? data : data.providers || []) {
     if (p.open_to_public === false) continue; // in-house programmes crew can't book
@@ -105,6 +105,15 @@ async function geocode(p) {
 
 await bulkUkPostcodes(Array.from(merged.values()).filter((p) => UK.has(String(p.country).toUpperCase()) && clean(p.postcode)).map((p) => clean(p.postcode)));
 
+const regionNames = new Intl.DisplayNames(['en-GB'], { type: 'region' });
+const countryName = (cc) => {
+  try {
+    return regionNames.of(cc === 'UK' ? 'GB' : cc) ?? cc;
+  } catch {
+    return cc;
+  }
+};
+
 const out = [];
 const ids = new Set();
 let n = 0;
@@ -120,6 +129,7 @@ for (const p of merged.values()) {
     city: clean(p.city),
     postcode: clean(p.postcode),
     country: String(p.country).toUpperCase(),
+    countryName: countryName(String(p.country).toUpperCase()),
     region: clean(p.region),
     lat,
     lng,

@@ -96,7 +96,7 @@ export default function TrainingProviderScreen() {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.head}>
           <Text style={styles.title}>{provider.name}</Text>
-          <Text style={styles.sub}>{[address, provider.country].filter(Boolean).join(' · ')}</Text>
+          <Text style={styles.sub}>{[address, provider.countryName].filter(Boolean).join(' · ')}</Text>
           <View style={styles.tags}>
             {provider.approvals.map((a) => (
               <View key={a} style={styles.tag}>

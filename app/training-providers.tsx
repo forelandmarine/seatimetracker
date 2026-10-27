@@ -52,8 +52,7 @@ export default function TrainingProvidersScreen() {
   const params = useLocalSearchParams<{ course?: string }>();
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
-  const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-  const miles = usesMiles(locale);
+  const miles = usesMiles();
 
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState<string | null>(typeof params.course === 'string' ? params.course : null);
@@ -181,7 +180,7 @@ export default function TrainingProvidersScreen() {
           {item.distanceKm != null && <Text style={styles.distance}>{formatDistance(item.distanceKm, miles)}</Text>}
         </View>
         <Text style={styles.cardSub} numberOfLines={1}>
-          {[p.city, p.region, p.country].filter(Boolean).join(', ')}
+          {[p.city, p.region, p.countryName].filter(Boolean).join(', ')}
           {p.approvals.length ? ` · ${p.approvals.slice(0, 3).map(approvalLabel).join(', ')}` : ''}
         </Text>
         {course ? (

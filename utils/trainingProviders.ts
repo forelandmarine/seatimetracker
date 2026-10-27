@@ -16,6 +16,8 @@ export interface Provider {
   city: string | null;
   postcode: string | null;
   country: string;
+  /** English country name, e.g. "United Kingdom". */
+  countryName: string;
   region: string | null;
   lat: number | null;
   lng: number | null;
@@ -91,9 +93,16 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
-/** Miles for the UK and US, kilometres elsewhere. */
-export function usesMiles(locale: string | undefined): boolean {
-  return !!locale && /-(GB|US|LR|MM)$/i.test(locale);
+/** Miles where the phone's region is the UK, US, Liberia or Myanmar; kilometres elsewhere. */
+export function usesMiles(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getLocales } = require('expo-localization');
+    const region = getLocales()?.[0]?.regionCode;
+    return ['GB', 'US', 'LR', 'MM'].includes(String(region).toUpperCase());
+  } catch {
+    return false;
+  }
 }
 
 export function formatDistance(km: number, miles: boolean): string {
@@ -118,7 +127,7 @@ export interface ProviderHit {
 
 function matchesQuery(p: Provider, q: string): boolean {
   if (!q) return true;
-  const hay = [p.name, p.city, p.region, p.country, p.postcode, ...p.courses.map(courseLabel)]
+  const hay = [p.name, p.city, p.region, p.country, p.countryName, p.postcode, ...p.courses.map(courseLabel)]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
