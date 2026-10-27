@@ -11,6 +11,7 @@ import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
+import { isInShiftMode } from './shifts.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
 const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
@@ -610,11 +611,18 @@ async function processScheduledTask(
 
   // Handle sea time entry lifecycle based on movement analysis (only if AIS check was successful)
   if (ais_check) {
-    // First check for offshore passages (long gaps with significant distance)
-    await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId, entryStatus);
+    // A commercial user who logs shifts has those as their record: no AIS passage
+    // is logged to them (see services/shifts.ts).
+    const shiftMode = user_id ? await isInShiftMode(app, user_id, user.vessel_sector) : false;
+    if (shiftMode) {
+      app.logger.info({ vesselId, userId: user_id }, 'Shift mode: AIS passage tracking skipped');
+    } else {
+      // First check for offshore passages (long gaps with significant distance)
+      await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId, entryStatus);
 
-    // Then handle regular 2-hour window detections
-    await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus);
+      // Then handle regular 2-hour window detections
+      await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus);
+    }
 
     if (ais_data.is_moving === true && user.on_board === false) {
       await maybeSendUnderwayAlert(app, user, vessel_name, check_time);
