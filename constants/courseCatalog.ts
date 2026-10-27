@@ -84,6 +84,7 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   aec1: { label: 'Approved Engine Course 1', group: 'Engineering', validity: 'none' },
   aec2: { label: 'Approved Engine Course 2', group: 'Engineering', validity: 'none' },
   meol_sv: { label: 'Marine Engine Operator Licence (Small Vessel) course', group: 'Engineering', validity: 'none' },
+  pssr_vh_module: { label: 'PSSR violence and harassment module (MGN 718)', group: 'Other', validity: 'none' },
   food_hygiene: { label: 'Food hygiene', group: 'Other', validity: 'none' },
   ship_cook: { label: "Ship's cook", group: 'Other', validity: 'none' },
 };

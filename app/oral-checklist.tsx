@@ -28,6 +28,7 @@ import {
   type ItemState,
 } from '@/utils/courseChecklist';
 import { COURSE_CATALOG } from '@/constants/courseCatalog';
+import { PROVIDERS } from '@/utils/trainingProviders';
 import { error as logError } from '@/utils/log';
 
 const AUTHORITIES = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
@@ -115,6 +116,8 @@ export default function OralChecklistScreen() {
   }, [authority, targetId]);
 
   const result = useMemo(() => (targetId ? evaluateChecklist(targetId, certs) : null), [targetId, certs]);
+  // Only offer "Find a course" where a listed provider runs it.
+  const offered = useMemo(() => new Set(PROVIDERS.flatMap((p) => p.courses)), []);
 
   const groups = useMemo(() => {
     const states = result?.states ?? [];
@@ -177,7 +180,7 @@ export default function OralChecklistScreen() {
               </Text>
             ) : null}
           </TouchableOpacity>
-          {s.status === 'todo' && s.item.type !== 'manual' && (
+          {s.status === 'todo' && s.item.type !== 'manual' && offered.has(s.item.code) && (
             <TouchableOpacity
               onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } } as any)}
             >
