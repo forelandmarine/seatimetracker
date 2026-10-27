@@ -142,6 +142,9 @@ function RootLayoutContent() {
             headerBackTitle: t('common.back'),
           }}
         />
+        <Stack.Screen name="oral-checklist" options={{ title: 'Before your oral', headerBackTitle: t('common.back') }} />
+        <Stack.Screen name="training-providers" options={{ title: 'Find a course', headerBackTitle: t('common.back') }} />
+        <Stack.Screen name="training-provider/[id]" options={{ title: '', headerBackTitle: t('common.back') }} />
         <Stack.Screen
           name="manual-tracking"
           options={{
