@@ -20,6 +20,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import ProviderMap from '@/components/ProviderMap';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
+import { localDate, todayIso } from '@/utils/localDate';
 import {
   searchProviders,
   offeredCourses,
@@ -27,7 +28,7 @@ import {
   approvalLabel,
   formatDistance,
   usesMiles,
-  fetchCourseDates,
+  courseDatesFor,
   PROVIDERS,
   type CourseDate,
   type ProviderHit,
@@ -45,7 +46,7 @@ const SECTORS = [
   { key: 'offshore_wind', label: 'Offshore wind' },
 ];
 
-const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const fmtDay = (iso: string) => localDate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 export default function TrainingProvidersScreen() {
   const router = useRouter();
@@ -84,23 +85,23 @@ export default function TrainingProvidersScreen() {
     [query, course, sector, approval, origin, radiusKm],
   );
 
-  // Dates for the providers on screen, when a course is chosen.
+  // Dates for the chosen course, across every provider (one request per course).
   useEffect(() => {
     let cancelled = false;
     if (!course) {
       setDates([]);
       return;
     }
-    fetchCourseDates(hits.slice(0, 50).map((h) => h.provider.id), course).then((d) => {
+    courseDatesFor(course).then((d) => {
       if (!cancelled) setDates(d);
     });
     return () => {
       cancelled = true;
     };
-  }, [course, hits]);
+  }, [course]);
 
   const nextDate = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     const map = new Map<string, CourseDate>();
     for (const d of dates) {
       if (d.start_date < today) continue;
@@ -113,7 +114,7 @@ export default function TrainingProvidersScreen() {
   const windowDays = DATE_WINDOWS[windowIdx].days;
   const { withDates, withoutDates } = useMemo(() => {
     if (!course || windowDays == null) return { withDates: hits, withoutDates: [] as ProviderHit[] };
-    const limit = new Date(Date.now() + windowDays * 86_400_000).toISOString().slice(0, 10);
+    const limit = todayIso(new Date(Date.now() + windowDays * 86_400_000));
     const yes: ProviderHit[] = [];
     const no: ProviderHit[] = [];
     hits.forEach((h) => {
@@ -295,7 +296,11 @@ export default function TrainingProvidersScreen() {
           )
         }
         ListEmptyComponent={
-          showMap ? null : (
+          showMap ? null : withoutDates.length > 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No published dates in that window. These providers may still run it.</Text>
+            </View>
+          ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No providers match</Text>
               <Text style={styles.emptyText}>Try a wider distance, another course, or clear a filter.</Text>

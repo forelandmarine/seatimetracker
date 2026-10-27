@@ -731,6 +731,20 @@ export function samsaCreditableDays(entries: MNZEntry[], now: Date = new Date())
   };
 }
 
+/**
+ * Calendar dates one entry puts on the SAMSA count (any time on the date, port
+ * included). Used to store per-entry sea_days without two entries both
+ * claiming the same date.
+ */
+export function samsaEntryDates(entry: MNZEntry, now: Date = new Date()): string[] {
+  const windowStart = new Date(now);
+  windowStart.setUTCFullYear(windowStart.getUTCFullYear() - SAMSA_SERVICE_WINDOW_YEARS);
+  const windowStartDay = getCalendarDay(windowStart);
+  return Array.from(unionHoursByDate([entry]).entries())
+    .filter(([d, h]) => h > 0 && d >= windowStartDay)
+    .map(([d]) => d);
+}
+
 /** Maritime authorities a user can choose, matching user.maritime_authority. */
 export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
 export const MARITIME_AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
@@ -753,7 +767,9 @@ export const MARITIME_AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa',
 export function entrySeaDays(
   entry: USCGEntry & AMSAEntry & MNZEntry,
   authority: string | null | undefined,
-  now: Date = new Date()
+  now: Date = new Date(),
+  /** SAMSA only: dates other entries already hold. Dates this entry adds are recorded here. */
+  claimedDates?: Set<string>
 ): number {
   switch (authority) {
     case 'uscg':
@@ -765,8 +781,9 @@ export function entrySeaDays(
     case 'mnz':
       return mnzCreditableDays([entry], now).qualifying_total;
     case 'samsa': {
-      const s = samsaCreditableDays([entry], now);
-      return s.seagoing + s.standby_yard;
+      const dates = samsaEntryDates(entry, now).filter((d) => !claimedDates?.has(d));
+      dates.forEach((d) => claimedDates?.add(d));
+      return dates.length;
     }
     default: {
       const q = qualifyingSeaDays([entry]);

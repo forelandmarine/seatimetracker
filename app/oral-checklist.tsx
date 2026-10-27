@@ -30,15 +30,14 @@ import {
 import { COURSE_CATALOG } from '@/constants/courseCatalog';
 import { PROVIDERS } from '@/utils/trainingProviders';
 import { error as logError } from '@/utils/log';
+import { localDate, daysUntil } from '@/utils/localDate';
 
 const AUTHORITIES = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  localDate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-function daysFrom(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
-}
+const daysFrom = (iso: string) => daysUntil(iso);
 
 function statusLine(s: ItemState): string | null {
   switch (s.status) {

@@ -11,5 +11,7 @@ export function formatHoursMinutes(hours: number): string {
 /** Rewrites "over 3.89 hours" in notes written before 2.4.0 (reports, exports). */
 export function formatEntryNotes(notes: string | null | undefined): string {
   if (!notes) return '';
+  // Only the notes the app writes itself; a crew member's own "over 12 hours" stays as typed.
+  if (!/^(Movement detected|Imported from AIS history)/.test(notes)) return notes;
   return notes.replace(/\bover (\d+(?:\.\d+)?) hours?\b/g, (_m, h) => `over ${formatHoursMinutes(parseFloat(h))}`);
 }

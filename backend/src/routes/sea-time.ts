@@ -9,6 +9,7 @@ import {
   calculateDurationHours,
   calculateSeaDays,
   entrySeaDays,
+  samsaEntryDates,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
@@ -28,7 +29,7 @@ async function validateCertificateOwnership(app: App, certificateId: string | nu
 async function storedSeaDays(
   app: App,
   userId: string,
-  entry: { vessel_id: string; start_time: Date; end_time: Date | null; service_type?: string | null; sea_days?: number | null; status?: string | null; is_stationary?: boolean | null }
+  entry: { id?: string; vessel_id: string; start_time: Date; end_time: Date | null; service_type?: string | null; sea_days?: number | null; status?: string | null; is_stationary?: boolean | null }
 ): Promise<number> {
   const [u] = await app.db
     .select({ authority: authSchema.user.maritime_authority })
@@ -38,7 +39,31 @@ async function storedSeaDays(
     .select({ vessel_name: schema.vessels.vessel_name, gross_tonnes: schema.vessels.gross_tonnes, tonnage_itc: schema.vessels.tonnage_itc })
     .from(schema.vessels)
     .where(eq(schema.vessels.id, entry.vessel_id));
-  return entrySeaDays({ ...entry, vessel: vessel ?? null }, u?.authority);
+  const claimed = u?.authority === 'samsa' ? await samsaClaimedDates(app, userId, entry) : undefined;
+  return entrySeaDays({ ...entry, vessel: vessel ?? null }, u?.authority, undefined, claimed);
+}
+
+// SAMSA counts any day touched, so a date already held by another confirmed
+// entry must not be stored again on this one (per-entry sums would double count).
+export async function samsaClaimedDates(
+  app: App,
+  userId: string,
+  entry: { id?: string; start_time: Date; end_time: Date | null }
+): Promise<Set<string>> {
+  const from = new Date(new Date(entry.start_time).getTime() - 86_400_000);
+  const to = new Date(new Date(entry.end_time ?? entry.start_time).getTime() + 86_400_000);
+  const others = await app.db
+    .select()
+    .from(schema.sea_time_entries)
+    .where(and(
+      eq(schema.sea_time_entries.user_id, userId),
+      eq(schema.sea_time_entries.status, 'confirmed'),
+      lte(schema.sea_time_entries.start_time, to),
+      or(isNull(schema.sea_time_entries.end_time), gte(schema.sea_time_entries.end_time, from)),
+    ));
+  const claimed = new Set<string>();
+  for (const o of others) if (o.id !== entry.id) samsaEntryDates(o as any).forEach((d) => claimed.add(d));
+  return claimed;
 }
 
 const VALID_TRADE_AREAS = ['unlimited', 'near_coastal', 'coastal', 'inland'] as const;

@@ -64,7 +64,12 @@ export default function CertificateEditScreen() {
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
 
   // The oral checklist opens this screen with the course already chosen.
-  const presetType = typeof params.type === 'string' && CERTIFICATE_TYPE_LABELS[params.type] ? params.type : null;
+  // A course_ code is accepted even without a label, rather than quietly
+  // switching to STCW basic safety and recording the wrong certificate.
+  const presetType =
+    typeof params.type === 'string' && (CERTIFICATE_TYPE_LABELS[params.type] || params.type.startsWith('course_'))
+      ? params.type
+      : null;
   const [type, setType] = useState<string>(presetType ?? 'stcw_basic_safety');
   const [number, setNumber] = useState('');
   const [issuingBody, setIssuingBody] = useState('');

@@ -7,29 +7,27 @@ import { extractUserIdFromRequest } from '../middleware/auth.js';
 const errorSchema = { type: 'object', properties: { error: { type: 'string' } } };
 
 export function register(app: App, fastify: FastifyInstance) {
-  // GET /api/training/course-dates?providers=a,b&course=pscrb - upcoming dates for "Find a course"
-  fastify.get<{ Querystring: { providers: string; course?: string } }>('/api/training/course-dates', {
+  // GET /api/training/course-dates?course=pscrb (every provider) or ?providers=a,b[&course=]
+  fastify.get<{ Querystring: { providers?: string; course?: string } }>('/api/training/course-dates', {
     schema: {
       description: 'Upcoming course dates for training providers in the app directory',
       tags: ['training'],
       querystring: {
         type: 'object',
-        required: ['providers'],
         properties: { providers: { type: 'string', maxLength: 4000 }, course: { type: 'string', maxLength: 80 } },
       },
-      response: { 401: errorSchema },
+      response: { 400: errorSchema, 401: errorSchema },
     },
   }, async (request, reply) => {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
-    const ids = request.query.providers.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50);
-    if (ids.length === 0) return reply.send({ dates: [] });
+    const ids = (request.query.providers ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50);
+    const course = request.query.course;
+    if (ids.length === 0 && !course) return reply.code(400).send({ error: 'Give a course or providers' });
     const today = new Date().toISOString().slice(0, 10);
-    const where = [
-      inArray(schema.training_course_dates.provider_id, ids),
-      gte(schema.training_course_dates.start_date, today),
-    ];
-    if (request.query.course) where.push(eq(schema.training_course_dates.course_code, request.query.course));
+    const where = [gte(schema.training_course_dates.start_date, today)];
+    if (ids.length) where.push(inArray(schema.training_course_dates.provider_id, ids));
+    if (course) where.push(eq(schema.training_course_dates.course_code, course));
     const rows = await app.db
       .select({
         provider_id: schema.training_course_dates.provider_id,

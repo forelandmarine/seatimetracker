@@ -30,3 +30,12 @@ describe('parseJsonLd', () => {
     expect(d[1]).toMatchObject({ course_code: 'aff', start_date: '2099-12-08' });
   });
 });
+
+describe('matchCourseCode refreshers', () => {
+  it('keeps specific refreshers apart from the basic one', () => {
+    expect(matchCourseCode('STCW Advanced Fire Fighting Refresher')).toBe('aff_refresher');
+    expect(matchCourseCode('STCW PSCRB Refresher')).toBe('pscrb_refresher');
+    expect(matchCourseCode('STCW Medical Care Refresher')).toBe('medical_care_refresher');
+    expect(matchCourseCode('STCW Basic Training Refresher')).toBe('stcw_basic_refresher');
+  });
+});

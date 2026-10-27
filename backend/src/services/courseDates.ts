@@ -1,13 +1,13 @@
 import { eq, inArray } from 'drizzle-orm';
-import fs from 'fs';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { matchCourseCode } from '../utils/courseMatch.js';
+import { COURSE_DATE_SOURCES } from '../data/course-date-sources.js';
 
 /**
  * Reads upcoming course dates from training providers that publish them in a
  * machine-readable way (2.4.0 "Find a course"). Sources live in
- * src/data/course-date-sources.json, built from the provider research. Each
+ * src/data/course-date-sources.ts, written by scripts/probe-course-dates.ts. Each
  * provider is re-read weekly, one request at a time, and its rows replaced.
  * Kill switch: COURSE_DATES=off.
  */
@@ -31,11 +31,17 @@ const WEEK_MS = 7 * 24 * 3600 * 1000;
 const USER_AGENT = 'SeaTimeTrackerCourseDates/1.0 (+https://forelandmarine.com; course dates for seafarers)';
 
 function loadSources(): DateSource[] {
+  return COURSE_DATE_SOURCES;
+}
+
+/** Absolute http(s) URL or null; anything else in the page's data is ignored. */
+function httpUrl(v: unknown, base: string): string | null {
+  if (typeof v !== 'string') return null;
   try {
-    const url = new URL('../data/course-date-sources.json', import.meta.url);
-    return JSON.parse(fs.readFileSync(url, 'utf8'));
+    const u = new URL(v, base);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -86,7 +92,7 @@ export function parseJsonLd(html: string, pageUrl: string): ParsedDate[] {
           end_date: isoDay(node.endDate),
           price_text: priceText(node.offers),
           availability_text: availability(node.offers, node),
-          booking_url: typeof node.url === 'string' ? new URL(node.url, pageUrl).toString() : (node.offers?.url ?? null),
+          booking_url: httpUrl(node.url, pageUrl) ?? httpUrl((Array.isArray(node.offers) ? node.offers[0] : node.offers)?.url, pageUrl),
         });
       }
     }

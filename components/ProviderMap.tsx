@@ -3,6 +3,9 @@ import { View, StyleSheet, useColorScheme } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { ProviderHit } from '@/utils/trainingProviders';
 
+// JSON inside a <script> tag: escape "<" so a value can't close the tag.
+const safeJson = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
+
 /**
  * Map of search results for "Find a course". Same Esri basemaps as CartoMap.
  * Tapping a marker's popup posts the provider id back so the screen can open it.
@@ -35,8 +38,8 @@ export default function ProviderMap({
 <style>html,body,#map{margin:0;padding:0;height:100%;width:100%;background:${isDark ? '#1a1a1a' : '#fff'}}
 .pop{font:14px -apple-system,system-ui,sans-serif}.pop a{color:#0077BE;font-weight:600;text-decoration:none}</style>
 </head><body><div id="map"></div><script>
-const pts = ${JSON.stringify(points)};
-const origin = ${JSON.stringify(origin)};
+const pts = ${safeJson(points)};
+const origin = ${safeJson(origin)};
 const map = L.map('map', { zoomControl: true });
 const svc = '${isDark ? 'Canvas/World_Dark_Gray' : 'Ocean/World_Ocean'}';
 const url = (l) => 'https://server.arcgisonline.com/ArcGIS/rest/services/' + svc + '_' + l + '/MapServer/tile/{z}/{y}/{x}';
@@ -47,7 +50,15 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const bounds = [];
 pts.forEach((p) => {
   const m = L.marker([p.la, p.lo], { icon: dot('#0077BE') }).addTo(map);
-  m.bindPopup('<div class="pop"><b>' + esc(p.n) + '</b><br>' + esc(p.c) + '<br><a href="#" onclick="window.ReactNativeWebView.postMessage(\\'' + p.id + '\\');return false;">Open</a></div>');
+  const div = document.createElement('div');
+  div.className = 'pop';
+  div.innerHTML = '<b>' + esc(p.n) + '</b><br>' + esc(p.c) + '<br>';
+  const a = document.createElement('a');
+  a.href = '#';
+  a.textContent = 'Open';
+  a.onclick = (ev) => { ev.preventDefault(); window.ReactNativeWebView.postMessage(p.id); };
+  div.appendChild(a);
+  m.bindPopup(div);
   bounds.push([p.la, p.lo]);
 });
 if (origin) { L.marker([origin.lat, origin.lng], { icon: dot('#FF6F00') }).addTo(map); bounds.push([origin.lat, origin.lng]); }
@@ -63,6 +74,7 @@ else map.setView([30, 0], 2);
         style={styles.webview}
         javaScriptEnabled
         domStorageEnabled
+        nestedScrollEnabled
         onMessage={(e) => onOpen(e.nativeEvent.data)}
       />
     </View>

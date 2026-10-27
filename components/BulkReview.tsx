@@ -133,6 +133,8 @@ export function useBulkSelection<T extends { id: string }>(entries: T[]) {
 
 type Outcome = { done: number; failed: { id: string; message: string }[]; alreadyReviewed?: number };
 
+const BULK_BATCH = 500;
+
 // Reviewed elsewhere (another device, or a refresh that hadn't landed): not an error.
 const ALREADY = /^Entry is already (confirmed|rejected)/;
 
@@ -170,22 +172,27 @@ function reportOutcome(verb: 'confirmed' | 'rejected', outcome: Outcome) {
  * endpoint, so fall back to one request per entry there.
  */
 async function runBulk(ids: string[], action: 'confirm' | 'reject', serviceType?: BulkServiceType): Promise<Outcome> {
-  try {
-    const res = await seaTimeApi.bulkUpdateSeaTimeEntries(ids, action, serviceType);
-    if (res) {
-      const already = res.failed.filter((f) => ALREADY.test(f.error));
-      return {
-        done: res.done.length,
-        alreadyReviewed: already.length,
-        failed: res.failed.filter((f) => !ALREADY.test(f.error)).map((f) => ({ id: f.id, message: f.error })),
-      };
+  // The endpoint takes up to 500 ids per request.
+  const total: Outcome = { done: 0, failed: [] };
+  let alreadyReviewed = 0;
+  for (let i = 0; i < ids.length; i += BULK_BATCH) {
+    const batch = ids.slice(i, i + BULK_BATCH);
+    try {
+      const res = await seaTimeApi.bulkUpdateSeaTimeEntries(batch, action, serviceType);
+      if (!res) {
+        if (i > 0) break; // shouldn't happen: the endpoint vanished between batches
+        return runEach(ids, (id) =>
+          action === 'confirm' ? seaTimeApi.confirmSeaTimeEntry(id, serviceType) : seaTimeApi.rejectSeaTimeEntry(id)
+        );
+      }
+      total.done += res.done.length;
+      alreadyReviewed += res.failed.filter((f) => ALREADY.test(f.error)).length;
+      total.failed.push(...res.failed.filter((f) => !ALREADY.test(f.error)).map((f) => ({ id: f.id, message: f.error })));
+    } catch (error: any) {
+      total.failed.push(...batch.map((id) => ({ id, message: backendMessage(error) })));
     }
-  } catch (error: any) {
-    return { done: 0, failed: ids.map((id) => ({ id, message: backendMessage(error) })) };
   }
-  return runEach(ids, (id) =>
-    action === 'confirm' ? seaTimeApi.confirmSeaTimeEntry(id, serviceType) : seaTimeApi.rejectSeaTimeEntry(id)
-  );
+  return { ...total, alreadyReviewed };
 }
 
 export async function bulkConfirm(ids: string[], serviceType: BulkServiceType) {

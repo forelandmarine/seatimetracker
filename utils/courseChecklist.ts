@@ -1,4 +1,5 @@
 import type { Certificate } from '@/utils/certificatesApi';
+import { daysUntil } from '@/utils/localDate';
 import {
   COURSE_CATALOG,
   CHECKLISTS,
@@ -43,10 +44,13 @@ export function courseLabel(code: string): string {
 
 const YEARS: Record<string, number> = { '5y_update': 5, '3y': 3, '1y': 1, '2y': 2 };
 
+// Date-only arithmetic, so the result doesn't move with the phone's time zone.
+// 29 Feb plus a non-leap number of years lands on 28 Feb.
 function addYears(iso: string, years: number): string {
-  const d = new Date(iso);
-  d.setFullYear(d.getFullYear() + years);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const year = y + years;
+  const last = new Date(Date.UTC(year, m, 0)).getUTCDate();
+  return `${year}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
 }
 
 function validUntilFor(cert: Certificate, validity: Validity): string | null {
@@ -78,7 +82,7 @@ export function evaluateItem(item: ChecklistItem, certificates: Certificate[], n
   }
   if (!best.until) return { item, status: 'done_no_date', certificate: best.c, validUntil: null };
 
-  const days = Math.ceil((new Date(best.until).getTime() - now.getTime()) / 86_400_000);
+  const days = daysUntil(best.until.slice(0, 10), now);
   const status: ItemStatus = days < 0 ? 'expired' : days <= SOON_DAYS ? 'soon' : 'done';
   return { item, status, certificate: best.c, validUntil: best.until };
 }

@@ -5,6 +5,7 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { listCertificates } from '@/utils/certificatesApi';
+import { localDate, todayIso } from '@/utils/localDate';
 import { courseLabel, evaluateChecklist } from '@/utils/courseChecklist';
 import {
   getProvider,
@@ -16,9 +17,9 @@ import {
 
 const fmtRange = (a: string, b: string | null) => {
   const o: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-  const start = new Date(a).toLocaleDateString('en-GB', o);
+  const start = localDate(a).toLocaleDateString('en-GB', o);
   if (!b || b === a) return start;
-  return `${new Date(a).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to ${new Date(b).toLocaleDateString('en-GB', o)}`;
+  return `${localDate(a).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to ${localDate(b).toLocaleDateString('en-GB', o)}`;
 };
 
 export default function TrainingProviderScreen() {
@@ -35,7 +36,7 @@ export default function TrainingProviderScreen() {
   useEffect(() => {
     if (!provider) return;
     fetchCourseDates([provider.id]).then((d) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayIso();
       setDates(d.filter((x) => x.start_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date)));
     });
     // Which of the user's missing checklist courses this provider runs.

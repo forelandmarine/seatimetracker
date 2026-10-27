@@ -35,3 +35,12 @@ describe('samsaCreditableDays', () => {
     expect(entrySeaDays(e('2026-10-01T10:00:00Z', '2026-10-01T11:00:00Z') as any, 'mca', now)).toBe(0);
   });
 });
+
+describe('SAMSA per-entry dates are claimed once', () => {
+  test('six entries on one date store 1 day in total', () => {
+    const claimed = new Set<string>();
+    let sum = 0;
+    for (let h = 6; h < 18; h += 2) sum += entrySeaDays(e(`2026-10-01T${String(h).padStart(2, '0')}:00:00Z`, `2026-10-01T${String(h + 2).padStart(2, '0')}:00:00Z`) as any, 'samsa', new Date('2026-10-27T00:00:00Z'), claimed);
+    expect(sum).toBe(1);
+  });
+});

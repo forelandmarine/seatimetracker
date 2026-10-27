@@ -509,7 +509,17 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "uscg_toar": "Towing Officer Assessment Record (TOAR) programs",
   "uscg_towing_officer": "Apprentice Mate (Steersman) / Mate (Pilot) of Towing Vessels, route courses",
   "uscg_visual_communications": "USCG Visual Communications (flashing light)",
-  "yacht_interior": "Yacht interior / superyacht hospitality courses"
+  "yacht_interior": "Yacht interior / superyacht hospitality courses",
+  "ym_offshore_sb": "Yachtmaster Offshore / Coastal Skipper shore-based course",
+  "ym_ocean_sb": "Yachtmaster Ocean shore-based course",
+  "ym_offshore": "RYA Yachtmaster Offshore certificate",
+  "ym_ocean": "RYA Yachtmaster Ocean certificate",
+  "master_yachts_business_law": "Business and Law (Master Yachts) module and MCA exam",
+  "aec1": "Approved Engine Course 1 completion",
+  "aec2": "Approved Engine Course 2 completion",
+  "ship_cook": "Ship's Cook course",
+  "sv_firefighting_1day": "Small vessel fire fighting, 1 day",
+  "sv_firefighting_2day": "Small vessel fire fighting, 2 days (commercial)"
 };
 
 /** Existing certificate types that already count as holding a course. */

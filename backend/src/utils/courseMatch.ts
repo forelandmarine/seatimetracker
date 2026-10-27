@@ -1,11 +1,11 @@
 // Maps a provider's course title to the app's course codes (constants/courseCatalog.ts
 // in the app). Order matters: refreshers and specific courses before the general ones.
 const RULES: [RegExp, string][] = [
-  [/basic.*(refresher|update)|stcw.*(refresher|update)|bst\s*refresher/i, 'stcw_basic_refresher'],
   [/(pscrb|survival craft).*(refresher|update)/i, 'pscrb_refresher'],
   [/advanced fire.*(refresher|update)/i, 'aff_refresher'],
   [/gwo.*(refresher|bstr)/i, 'gwo_bst_refresher'],
   [/medical care.*(refresher|update)/i, 'medical_care_refresher'],
+  [/(basic|bst).*(refresher|update)|(refresher|update).*basic/i, 'stcw_basic_refresher'],
   [/(pscrb|survival craft).*(other than lifeboat|otl)|pscrb.?otl/i, 'pscrb_otl'],
   [/pscrb|survival craft and rescue boat|cop\s*sc\s*&?\s*rb/i, 'pscrb'],
   [/fast rescue boat/i, 'frb'],

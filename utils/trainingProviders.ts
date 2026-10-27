@@ -179,15 +179,27 @@ export function offeredApprovals(): string[] {
 
 export const getProvider = (id: string) => PROVIDERS.find((p) => p.id === id) ?? null;
 
+// Dates for one course across every provider, fetched once per course while the app is open.
+const datesByCourse = new Map<string, Promise<CourseDate[]>>();
+export function courseDatesFor(course: string): Promise<CourseDate[]> {
+  let p = datesByCourse.get(course);
+  if (!p) {
+    p = fetchCourseDates([], course);
+    datesByCourse.set(course, p);
+  }
+  return p;
+}
+
 /**
  * Upcoming dates from the backend (2.4.0+). Returns [] when the backend has
  * none for these providers or is an older version, so callers fall back to
  * linking out.
  */
 export async function fetchCourseDates(providerIds: string[], course?: string | null): Promise<CourseDate[]> {
-  if (providerIds.length === 0) return [];
+  if (providerIds.length === 0 && !course) return [];
   try {
-    const params = new URLSearchParams({ providers: providerIds.slice(0, 50).join(',') });
+    const params = new URLSearchParams();
+    if (providerIds.length) params.set('providers', providerIds.slice(0, 50).join(','));
     if (course) params.set('course', course);
     const res = await authFetch(`/api/training/course-dates?${params.toString()}`);
     if (!res.ok) return [];

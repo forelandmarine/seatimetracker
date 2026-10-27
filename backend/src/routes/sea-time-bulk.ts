@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { calculateDurationHours, entrySeaDays, isValidServiceType, VALID_SERVICE_TYPES } from "../utils/seaTime.js";
+import { calculateDurationHours, entrySeaDays, isValidServiceType, samsaEntryDates, VALID_SERVICE_TYPES } from "../utils/seaTime.js";
 
 const MAX_IDS = 500;
 const errorSchema = { type: "object", properties: { error: { type: "string" } } };
@@ -95,37 +95,72 @@ export function register(app: App, fastify: FastifyInstance) {
             .where(inArray(schema.vessels.id, vesselIds))
         : [];
       const vesselById = new Map(vessels.map((v) => [v.id, v]));
-      seaDaysFor = (e) => entrySeaDays({ ...e, vessel: vesselById.get(e.vessel_id) ?? null }, u?.authority);
+      // SAMSA: each date counts once across entries (already-confirmed ones first, then in time order).
+      let claimed: Set<string> | undefined;
+      if (u?.authority === "samsa" && entries.length) {
+        const times = entries.map((e) => [new Date(e.start_time).getTime(), new Date(e.end_time ?? e.start_time).getTime()]);
+        const from = new Date(Math.min(...times.map((t) => t[0])) - 86_400_000);
+        const to = new Date(Math.max(...times.map((t) => t[1])) + 86_400_000);
+        const confirmed = await app.db
+          .select()
+          .from(schema.sea_time_entries)
+          .where(and(
+            eq(schema.sea_time_entries.user_id, userId),
+            eq(schema.sea_time_entries.status, "confirmed"),
+            lte(schema.sea_time_entries.start_time, to),
+            or(isNull(schema.sea_time_entries.end_time), gte(schema.sea_time_entries.end_time, from)),
+          ));
+        claimed = new Set<string>();
+        for (const c of confirmed) samsaEntryDates(c as any).forEach((d) => claimed!.add(d));
+      }
+      seaDaysFor = (e) => entrySeaDays({ ...e, vessel: vesselById.get(e.vessel_id) ?? null }, u?.authority, undefined, claimed);
     }
 
     const failed: BulkFailure[] = [];
     const updates: { id: string; set: Record<string, unknown> }[] = [];
-    for (const id of ids) {
+    // Time order, so the earliest entry on a shared date is the one that holds it.
+    const ordered = [...ids].sort((a, b) => {
+      const ta = byId.get(a)?.start_time, tb = byId.get(b)?.start_time;
+      return (ta ? new Date(ta).getTime() : 0) - (tb ? new Date(tb).getTime() : 0);
+    });
+    for (const id of ordered) {
       const plan = planBulkUpdate(byId.get(id) as any, userId, action, service_type, seaDaysFor);
       if ("error" in plan) failed.push({ id, error: plan.error });
       else updates.push({ id, set: plan.update });
     }
 
+    const done: string[] = [];
     if (updates.length) {
       await app.db.transaction(async (tx) => {
         if (action === "reject") {
-          await tx
+          const rows = await tx
             .update(schema.sea_time_entries)
             .set({ status: "rejected" })
-            .where(and(inArray(schema.sea_time_entries.id, updates.map((u) => u.id)), eq(schema.sea_time_entries.user_id, userId)));
+            .where(and(inArray(schema.sea_time_entries.id, updates.map((u) => u.id)), eq(schema.sea_time_entries.user_id, userId)))
+            .returning({ id: schema.sea_time_entries.id });
+          rows.forEach((r) => done.push(r.id));
         } else {
-          // Each confirmed entry keeps its own end time, duration and sea days.
+          // Each confirmed entry keeps its own end time, duration and sea days. The
+          // pending check is repeated here so a confirm from another device in the
+          // meantime isn't overwritten.
           for (const u of updates) {
-            await tx
+            const rows = await tx
               .update(schema.sea_time_entries)
               .set(u.set as any)
-              .where(and(eq(schema.sea_time_entries.id, u.id), eq(schema.sea_time_entries.user_id, userId)));
+              .where(and(
+                eq(schema.sea_time_entries.id, u.id),
+                eq(schema.sea_time_entries.user_id, userId),
+                eq(schema.sea_time_entries.status, "pending"),
+              ))
+              .returning({ id: schema.sea_time_entries.id });
+            if (rows.length) done.push(u.id);
+            else failed.push({ id: u.id, error: "Entry is already confirmed" });
           }
         }
       });
     }
 
-    app.logger.info({ userId, action, requested: ids.length, done: updates.length, failed: failed.length }, "Bulk sea time update");
-    return reply.code(200).send({ done: updates.map((u) => u.id), failed });
+    app.logger.info({ userId, action, requested: ids.length, done: done.length, failed: failed.length }, "Bulk sea time update");
+    return reply.code(200).send({ done, failed });
   });
 }

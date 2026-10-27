@@ -23,3 +23,9 @@ describe('formatEntryNotes', () => {
     expect(formatEntryNotes(null)).toBe('');
   });
 });
+
+describe('formatEntryNotes leaves crew notes alone', () => {
+  it('only rewrites app-written notes', () => {
+    expect(formatEntryNotes('Engine watch over 12 hours')).toBe('Engine watch over 12 hours');
+  });
+});

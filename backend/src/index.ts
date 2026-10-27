@@ -108,4 +108,6 @@ import('./services/scheduler.js').then(({ startScheduler }) => {
 });
 
 // Weekly re-read of training providers' published course dates ("Find a course")
-import('./services/courseDates.js').then(({ startCourseDateRefresh }) => startCourseDateRefresh(app));
+import('./services/courseDates.js')
+  .then(({ startCourseDateRefresh }) => startCourseDateRefresh(app))
+  .catch((err) => app.logger.error({ err }, 'Failed to start course dates refresh'));
