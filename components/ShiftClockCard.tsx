@@ -27,6 +27,7 @@ import {
 } from '@/utils/seaTimeApi';
 import { sendLocalNotification, scheduleShiftReminder, cancelShiftReminder } from '@/utils/notifications';
 import { useOnBoard } from '@/hooks/useOnBoard';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { formatHoursMinutes } from '@/utils/entryNotes';
 import { log, error as logError } from '@/utils/log';
 
@@ -74,6 +75,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
   const { on_board } = useOnBoard();
+  const { triggerRefresh } = useGlobalRefresh();
 
   const [commercial, setCommercial] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -183,6 +185,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
       setEndSheet(false);
       cancelShiftReminder();
       lastReminder.current = { onboard: 0, disembark: 0 };
+      triggerRefresh(); // the sea-days total and logbook now include this shift
       Alert.alert('Shift logged', `${formatHoursMinutes(res.durationHours)} recorded as sea time.`);
     } catch (e: any) {
       if (apiErrorCode(e) === 'needs_end_time') {
@@ -312,7 +315,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
         <>
           <Text style={styles.detail}>
             Clocked in at {startedAt!.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {elapsedLabel} on duty
-            {shift.vessel_id !== vesselId ? ' (on another vessel)' : ''}
+            {vesselId && shift.vessel_id !== vesselId ? ' (on another vessel)' : ''}
           </Text>
           {(overCap || !on_board) && (
             <Text style={styles.warning}>
