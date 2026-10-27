@@ -12,6 +12,7 @@ import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
 import { sendPushToUser } from "../utils/push.js";
 import { noteAisIdentity, recordMmsiChange } from "../services/vesselIdentity.js";
 import { extendableStatuses } from "../utils/passageRefinement.js";
+import { isInShiftMode } from "../services/shifts.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
 const MYSHIPTRACKING_API_URL = 'https://api.myshiptracking.com/api/v2/vessel';
@@ -1465,6 +1466,20 @@ export function register(app: App, fastify: FastifyInstance) {
 
     let sea_time_entry_created = false;
     let sea_time_entry_ended = false;
+
+    // A commercial user who logs shifts has those as their record: no AIS passage
+    // is opened or closed for them (see services/shifts.ts).
+    if (await isInShiftMode(app, userId, (users[0] as any)?.vessel_sector)) {
+      app.logger.info({ vesselId, userId }, 'Shift mode: AIS passage tracking skipped');
+      return reply.code(200).send({
+        check_id: ais_check.id,
+        is_moving: ais_data.is_moving,
+        speed_knots: ais_data.speed_knots,
+        latitude: ais_data.latitude,
+        longitude: ais_data.longitude,
+        sea_time_entry_created,
+      });
+    }
 
     // Handle sea time entry lifecycle
     // Only an entry with no end_time is an open voyage. An entry that already has

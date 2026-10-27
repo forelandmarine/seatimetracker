@@ -15,6 +15,8 @@ import {
   isValidServiceType,
   VALID_SERVICE_TYPES,
 } from "../utils/seaTime.js";
+import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
+import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
 
 // Validate certificate belongs to the authenticated user
 async function validateCertificateOwnership(app: App, certificateId: string | null | undefined, userId: string): Promise<boolean> {
@@ -2537,7 +2539,8 @@ export function register(app: App, fastify: FastifyInstance) {
   // Records the crew member's ACTUAL on-duty hours, not the vessel's 24h AIS
   // activity, so a 12-hour shift on a 24-hour vessel is attributed correctly.
   // An open shift is a sea_time_entry with status 'active' and end_time null;
-  // clock-out finalises it. Reuses existing columns, so no migration is needed.
+  // clock-out finalises it. Rules in utils/shifts.ts, database helpers in
+  // services/shifts.ts (one open shift per user, AIS passages held back).
   // -------------------------------------------------------------------------
 
   const shiftResponse = (e: any) => ({
@@ -2554,15 +2557,11 @@ export function register(app: App, fastify: FastifyInstance) {
   fastify.get('/api/sea-time/shift/active', async (request, reply) => {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
-    const [active] = await app.db
-      .select()
-      .from(schema.sea_time_entries)
-      .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
-      .limit(1);
-    return reply.code(200).send({ shift: active ? shiftResponse(active) : null });
+    const active = await findOpenShift(app, userId);
+    return reply.code(200).send({ shift: active ? shiftResponse(active) : null, max_shift_hours: MAX_SHIFT_HOURS });
   });
 
-  // Clock in: start a shift. Idempotent — returns the existing open shift if one exists.
+  // Clock in: start a shift. Idempotent: returns the existing open shift if one exists.
   fastify.post<{ Body: { vessel_id?: string; latitude?: number | null; longitude?: number | null } }>(
     '/api/sea-time/shift/start',
     async (request, reply) => {
@@ -2570,75 +2569,124 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!userId) return reply.code(401).send({ error: 'Authentication required' });
       const { vessel_id, latitude, longitude } = request.body || {};
       if (!vessel_id) return reply.code(400).send({ error: 'vessel_id is required' });
+      if (!UUID_RE.test(vessel_id)) return reply.code(400).send({ error: 'vessel_id must be a UUID' });
 
-      const [existing] = await app.db
-        .select()
-        .from(schema.sea_time_entries)
-        .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
-        .limit(1);
+      const [vessel] = await app.db
+        .select({ id: schema.vessels.id })
+        .from(schema.vessels)
+        .where(and(eq(schema.vessels.id, vessel_id), eq(schema.vessels.user_id, userId)));
+      if (!vessel) return reply.code(404).send({ error: 'Vessel not found' });
+
+      const existing = await findOpenShift(app, userId);
       if (existing) return reply.code(200).send({ shift: shiftResponse(existing), alreadyActive: true });
 
-      const [created] = await app.db
-        .insert(schema.sea_time_entries)
-        .values({
-          user_id: userId,
-          vessel_id,
-          start_time: new Date(),
-          end_time: null,
-          status: 'active',
-          service_type: 'actual_sea_service',
-          start_latitude: latitude != null ? String(latitude) : null,
-          start_longitude: longitude != null ? String(longitude) : null,
-          notes: 'Manual shift — clocked in',
-        })
-        .returning();
+      // A shift is time on board: clocking in while switched off board would log
+      // sea time for a period the user has said they are away.
+      const [u] = await app.db
+        .select({ on_board: authSchema.user.on_board })
+        .from(authSchema.user)
+        .where(eq(authSchema.user.id, userId));
+      if (u && u.on_board === false) {
+        return reply.code(409).send({
+          error: 'You are switched off board. Switch back on board before clocking in.',
+          code: 'off_board',
+        });
+      }
+
+      const start = new Date();
+      let created;
+      try {
+        [created] = await app.db
+          .insert(schema.sea_time_entries)
+          .values({
+            user_id: userId,
+            vessel_id,
+            start_time: start,
+            end_time: null,
+            status: 'active',
+            service_type: 'actual_sea_service',
+            start_latitude: latitude != null ? String(latitude) : null,
+            start_longitude: longitude != null ? String(longitude) : null,
+            notes: `${MANUAL_SHIFT_NOTE_PREFIX}: clocked in`,
+          })
+          .returning();
+      } catch (err: any) {
+        // 23505: a concurrent clock-in won the one-open-shift-per-user index.
+        if (err?.code !== '23505' && err?.cause?.code !== '23505') throw err;
+        const winner = await findOpenShift(app, userId);
+        if (winner) return reply.code(200).send({ shift: shiftResponse(winner), alreadyActive: true });
+        throw err;
+      }
+      // Without the unique index (not yet applied in prod) a race can insert two.
+      const kept = (await dedupeOpenShifts(app, userId)) ?? created;
+      if (kept.id !== created.id) {
+        return reply.code(200).send({ shift: shiftResponse(kept), alreadyActive: true });
+      }
+
+      await closeOpenAisPassages(app, userId, start);
       app.logger.info({ userId, vessel_id, entryId: created.id }, 'Shift clock-in');
       return reply.code(200).send({ shift: shiftResponse(created) });
     },
   );
 
   // Clock out (disembark): finalise the open shift into a confirmed sea-time entry.
-  fastify.post<{ Body: { latitude?: number | null; longitude?: number | null } }>(
+  // end_time (optional, ISO) lets the user log a shift they forgot to close; it is
+  // required once the shift has been open longer than MAX_SHIFT_HOURS.
+  fastify.post<{ Body: { latitude?: number | null; longitude?: number | null; end_time?: string | null } }>(
     '/api/sea-time/shift/stop',
     async (request, reply) => {
       const userId = await extractUserIdFromRequest(request, app);
       if (!userId) return reply.code(401).send({ error: 'Authentication required' });
-      const { latitude, longitude } = request.body || {};
+      const { latitude, longitude, end_time } = request.body || {};
 
-      const [active] = await app.db
-        .select()
-        .from(schema.sea_time_entries)
-        .where(and(eq(schema.sea_time_entries.user_id, userId), eq(schema.sea_time_entries.status, 'active')))
-        .limit(1);
+      const active = await findOpenShift(app, userId);
       if (!active) return reply.code(404).send({ error: 'No active shift to clock out of' });
 
-      const end = new Date();
-      const durationHours = Math.round(((end.getTime() - active.start_time.getTime()) / 3_600_000) * 100) / 100;
+      const resolved = resolveShiftEnd(active.start_time, end_time);
+      if (!resolved.ok) {
+        return reply.code(resolved.code === 'needs_end_time' ? 409 : 400).send({
+          error: resolved.error,
+          code: resolved.code,
+          start_time: active.start_time.toISOString(),
+          max_shift_hours: MAX_SHIFT_HOURS,
+        });
+      }
+      const end = resolved.end;
+      // A position taken now says nothing about where a back-dated shift ended.
+      const backDated = end_time != null && end_time !== '';
+      const endLat = backDated ? null : latitude;
+      const endLon = backDated ? null : longitude;
+
+      const durationHours = calculateDurationHours(active.start_time, end);
       let distanceNm = 0;
-      if (active.start_latitude != null && active.start_longitude != null && latitude != null && longitude != null) {
+      if (active.start_latitude != null && active.start_longitude != null && endLat != null && endLon != null) {
         distanceNm = calculateDistanceNauticalMiles(
           parseFloat(String(active.start_latitude)),
           parseFloat(String(active.start_longitude)),
-          Number(latitude),
-          Number(longitude),
+          Number(endLat),
+          Number(endLon),
         );
       }
       const [updated] = await app.db
         .update(schema.sea_time_entries)
         .set({
           end_time: end,
-          end_latitude: latitude != null ? String(latitude) : null,
-          end_longitude: longitude != null ? String(longitude) : null,
+          end_latitude: endLat != null ? String(endLat) : null,
+          end_longitude: endLon != null ? String(endLon) : null,
           duration_hours: String(durationHours),
           sea_days: await storedSeaDays(app, userId, { ...active, end_time: end, status: 'confirmed' }),
           mca_compliant: durationHours >= 4,
           distance_nm: String(distanceNm),
           status: 'confirmed',
-          notes: `Manual shift — ${durationHours}h on duty`,
+          notes: `${MANUAL_SHIFT_NOTE_PREFIX}: ${durationHours}h on duty`,
         })
-        .where(eq(schema.sea_time_entries.id, active.id))
+        // Only while still open, so a double tap cannot close it twice.
+        .where(and(eq(schema.sea_time_entries.id, active.id), eq(schema.sea_time_entries.status, 'active')))
         .returning();
-      app.logger.info({ userId, entryId: active.id, durationHours }, 'Shift clock-out');
+      if (!updated) return reply.code(404).send({ error: 'No active shift to clock out of' });
+
+      const rejected = await rejectAisPassagesCoveredByShift(app, userId, active.start_time, end);
+      app.logger.info({ userId, entryId: active.id, durationHours, rejectedAisPassages: rejected }, 'Shift clock-out');
       return reply.code(200).send({ shift: shiftResponse(updated), durationHours, sea_days: updated.sea_days });
     },
   );
