@@ -654,6 +654,27 @@ export async function cancelNoVesselReminder(): Promise<void> {
   await cancelById(NO_VESSEL_REMINDER_ID);
 }
 
+const SHIFT_REMINDER_ID = 'shift-clock-out-reminder';
+const SHIFT_REMINDER_HOURS = 12;
+
+/**
+ * Reminder to clock out, 12 hours after clocking in. Scheduled with the OS, so
+ * it fires even if the app is closed; cancelled at clock-out.
+ */
+export async function scheduleShiftReminder(clockedInAt: Date, vesselName?: string | null): Promise<void> {
+  await scheduleOneOff(
+    SHIFT_REMINDER_ID,
+    new Date(clockedInAt.getTime() + SHIFT_REMINDER_HOURS * 3_600_000),
+    'Still on shift?',
+    `You clocked in on ${vesselName || 'your vessel'} ${SHIFT_REMINDER_HOURS} hours ago. Clock out when you disembark.`,
+    '/(tabs)/(home)'
+  );
+}
+
+export async function cancelShiftReminder(): Promise<void> {
+  await cancelById(SHIFT_REMINDER_ID);
+}
+
 /**
  * Expo push token for server-sent alerts (e.g. "your vessel is underway").
  * Null on web, simulators, without permission, or if push credentials are missing.

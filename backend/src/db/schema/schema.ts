@@ -93,6 +93,8 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   index('sea_time_entries_mca_compliant_idx').on(table.mca_compliant),
   index('sea_time_entries_from_port_idx').on(table.from_port),
   index('sea_time_entries_to_port_idx').on(table.to_port),
+  // One open manual shift per user (manual-migrations/2026-10-28_one_open_shift_per_user.sql)
+  uniqueIndex('sea_time_entries_one_open_shift_per_user_uq').on(table.user_id).where(sql`status = 'active'`),
 ]);
 
 export const ais_checks = pgTable('ais_checks', {
