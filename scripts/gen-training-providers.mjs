@@ -25,7 +25,10 @@ const uniq = (a) => Array.from(new Set((a || []).filter(Boolean)));
 const raw = [];
 for (const f of fs.readdirSync(pdir).filter((f) => f.endsWith('.json') && !f.startsWith('geocode'))) {
   const data = JSON.parse(fs.readFileSync(path.join(pdir, f), 'utf8'));
-  for (const p of Array.isArray(data) ? data : data.providers || []) raw.push({ ...p, _file: f });
+  for (const p of Array.isArray(data) ? data : data.providers || []) {
+    if (p.open_to_public === false) continue; // in-house programmes crew can't book
+    raw.push({ ...p, _file: f });
+  }
 }
 
 // Same site = same name (minus legal suffixes) and same city and country.
@@ -47,12 +50,38 @@ for (const p of raw) {
   cur.course_pages = { ...(p.course_pages || {}), ...(cur.course_pages || {}) };
 }
 
+// UK, Channel Islands and Isle of Man postcodes: postcodes.io bulk lookup (100 a call).
+const UK = new Set(['GB', 'UK', 'JE', 'GG', 'IM']);
+async function bulkUkPostcodes(list) {
+  const todo = Array.from(new Set(list.filter((pc) => !(`pc:${pc}` in cache))));
+  for (let i = 0; i < todo.length; i += 100) {
+    const batch = todo.slice(i, i + 100);
+    try {
+      const res = await fetch('https://api.postcodes.io/postcodes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ postcodes: batch }),
+      });
+      const j = await res.json();
+      for (const r of j.result || []) {
+        cache[`pc:${r.query}`] = r.result ? [Number(r.result.latitude.toFixed(5)), Number(r.result.longitude.toFixed(5))] : null;
+      }
+    } catch {
+      // leave for the town lookup
+    }
+  }
+  fs.writeFileSync(cacheFile, JSON.stringify(cache));
+}
+
 async function geocode(p) {
   if (typeof p.lat === 'number' && typeof p.lng === 'number') return [p.lat, p.lng];
+  const pc = clean(p.postcode);
+  if (pc && UK.has(String(p.country).toUpperCase()) && cache[`pc:${pc}`]) return cache[`pc:${pc}`];
+  // Town level is enough to sort by distance, and towns repeat, so the cache does most of the work.
   const tries = [
-    [p.address, p.city, p.postcode, p.country],
-    [p.postcode, p.city, p.country],
     [p.city, p.region, p.country],
+    [p.city, p.country],
+    [p.postcode, p.country],
   ].map((parts) => parts.map(clean).filter(Boolean).join(', '));
   for (const q of Array.from(new Set(tries)).filter((q) => q.split(',').length >= 2)) {
     if (q in cache) {
@@ -73,6 +102,8 @@ async function geocode(p) {
   }
   return [null, null];
 }
+
+await bulkUkPostcodes(Array.from(merged.values()).filter((p) => UK.has(String(p.country).toUpperCase()) && clean(p.postcode)).map((p) => clean(p.postcode)));
 
 const out = [];
 const ids = new Set();

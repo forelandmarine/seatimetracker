@@ -59,8 +59,18 @@ export const APPROVAL_LABELS: Record<string, string> = {
   opito: 'OPITO',
 };
 
-export const approvalLabel = (a: string) =>
-  APPROVAL_LABELS[a] ?? (a.startsWith('other:') ? a.slice(6).trim() : a.toUpperCase());
+// National administrations arrive as "other:<body>_<country>", e.g. other:dgmm_spain.
+const COUNTRY_WORDS = new Set(['spain', 'france', 'italy', 'india', 'singapore', 'croatia', 'portugal', 'netherlands', 'denmark', 'finland', 'cyprus', 'greece', 'malta', 'philippines', 'nigeria', 'kenya', 'brazil', 'chile', 'argentina', 'ireland', 'canada', 'kong', 'hong']);
+export const approvalLabel = (a: string): string => {
+  if (APPROVAL_LABELS[a]) return APPROVAL_LABELS[a];
+  if (!a.startsWith('other:')) return a.toUpperCase();
+  return a
+    .slice(6)
+    .trim()
+    .split(/[_\s]+/)
+    .map((w) => (COUNTRY_WORDS.has(w.toLowerCase()) ? w[0].toUpperCase() + w.slice(1) : w.length <= 5 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
+    .join(' ');
+};
 
 export const SECTOR_LABELS: Record<string, string> = {
   yacht: 'Yacht',
@@ -150,8 +160,12 @@ export function offeredCourses(): string[] {
 export function offeredApprovals(): string[] {
   const set = new Set<string>();
   PROVIDERS.forEach((p) => p.approvals.forEach((a) => set.add(a)));
+  // Main bodies first, then national administrations alphabetically.
   const known = Object.keys(APPROVAL_LABELS).filter((a) => set.has(a));
-  return known;
+  const others = Array.from(set)
+    .filter((a) => !APPROVAL_LABELS[a])
+    .sort((x, y) => approvalLabel(x).localeCompare(approvalLabel(y)));
+  return [...known, ...others];
 }
 
 export const getProvider = (id: string) => PROVIDERS.find((p) => p.id === id) ?? null;

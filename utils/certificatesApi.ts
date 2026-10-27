@@ -1,4 +1,4 @@
-import { COURSE_CATALOG, ADD_AS_TYPE, EXTRA_COURSE_LABELS } from '@/constants/courseChecklists';
+import { COURSE_CATALOG, ADD_AS_TYPE, EXTRA_COURSE_LABELS, CHECKLIST_CODES } from '@/constants/courseChecklists';
 import { authFetch } from "./api";
 
 export interface Certificate {
@@ -119,8 +119,10 @@ for (const [code, def] of Object.entries(COURSE_CATALOG)) {
   CERTIFICATE_TYPE_LABELS[`course_${code}`] = def.label;
   COURSE_TYPES.push(`course_${code}`);
 }
+// Codes that only appear in provider listings stay out of the picker.
+const CHECKLIST_SET = new Set(CHECKLIST_CODES);
 for (const [code, label] of Object.entries(EXTRA_COURSE_LABELS)) {
-  if (ADD_AS_TYPE[code] || CERTIFICATE_TYPE_LABELS[`course_${code}`]) continue;
+  if (!CHECKLIST_SET.has(code) || ADD_AS_TYPE[code] || CERTIFICATE_TYPE_LABELS[`course_${code}`]) continue;
   CERTIFICATE_TYPE_LABELS[`course_${code}`] = label;
   COURSE_TYPES.push(`course_${code}`);
 }
