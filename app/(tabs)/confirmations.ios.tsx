@@ -308,7 +308,7 @@ export default function ConfirmationsScreen() {
   const runBulk = async (action: (ids: string[]) => Promise<{ failed: { id: string }[] }>) => {
     setBulkBusy(true);
     try {
-      const { failed } = await action(Array.from(bulk.selected));
+      const { failed } = await action(bulk.selectedIds);
       await loadData();
       triggerRefresh();
       if (failed.length === 0) bulk.cancel();
@@ -488,7 +488,7 @@ export default function ConfirmationsScreen() {
           {bulk.selecting && (
             <SelectionHeader
               isDark={isDark}
-              count={bulk.selected.size}
+              count={bulk.count}
               allSelected={bulk.allSelected}
               onCancel={bulk.cancel}
               onToggleAll={bulk.toggleAll}
@@ -672,7 +672,7 @@ export default function ConfirmationsScreen() {
       {bulk.selecting && (
         <BulkActionBar
           isDark={isDark}
-          count={bulk.selected.size}
+          count={bulk.count}
           busy={bulkBusy}
           onReject={handleBulkReject}
           onConfirm={() => setShowBulkConfirm(true)}

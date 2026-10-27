@@ -7,6 +7,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -90,23 +91,50 @@ export function useBulkSelection<T extends { id: string }>(entries: T[]) {
     });
   }, []);
 
-  const allSelected = entries.length > 0 && selected.size === entries.length;
+  // Only ids still on the list count; the set can briefly hold ones a refresh removed.
+  const selectedEntries = useMemo(() => entries.filter((e) => selected.has(e.id)), [entries, selected]);
+  const count = selectedEntries.length;
+  const allSelected = entries.length > 0 && count === entries.length;
   const toggleAll = useCallback(() => {
     setSelected(allSelected ? new Set() : new Set(entries.map((e) => e.id)));
   }, [allSelected, entries]);
 
   const start = useCallback(() => setSelecting(true), []);
+  // Android back button leaves select mode rather than the screen.
+  useEffect(() => {
+    if (!selecting) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelecting(false);
+      setSelected(new Set());
+      return true;
+    });
+    return () => sub.remove();
+  }, [selecting]);
   const cancel = useCallback(() => {
     setSelecting(false);
     setSelected(new Set());
   }, []);
 
-  const selectedEntries = useMemo(() => entries.filter((e) => selected.has(e.id)), [entries, selected]);
-
-  return { selecting, selected, selectedEntries, toggle, toggleAll, allSelected, start, cancel, setSelected };
+  return {
+    // Select mode ends by itself once nothing is left to review.
+    selecting: selecting && entries.length > 0,
+    selected,
+    selectedIds: selectedEntries.map((e) => e.id),
+    selectedEntries,
+    count,
+    toggle,
+    toggleAll,
+    allSelected,
+    start,
+    cancel,
+    setSelected,
+  };
 }
 
-type Outcome = { done: number; failed: { id: string; message: string }[] };
+type Outcome = { done: number; failed: { id: string; message: string }[]; alreadyReviewed?: number };
+
+// Reviewed elsewhere (another device, or a refresh that hadn't landed): not an error.
+const ALREADY = /^Entry is already (confirmed|rejected)/;
 
 async function runEach(ids: string[], action: (id: string) => Promise<unknown>): Promise<Outcome> {
   const failed: Outcome['failed'] = [];
@@ -123,10 +151,11 @@ async function runEach(ids: string[], action: (id: string) => Promise<unknown>):
 }
 
 function reportOutcome(verb: 'confirmed' | 'rejected', outcome: Outcome) {
-  const { done, failed } = outcome;
+  const { done, failed, alreadyReviewed = 0 } = outcome;
   const noun = (n: number) => (n === 1 ? 'entry' : 'entries');
+  const extra = alreadyReviewed ? `${alreadyReviewed} ${alreadyReviewed === 1 ? 'was' : 'were'} already reviewed.` : undefined;
   if (failed.length === 0) {
-    Alert.alert(`${done} ${noun(done)} ${verb}`);
+    Alert.alert(`${done} ${noun(done)} ${verb}`, extra);
     return;
   }
   const reasons = Array.from(new Set(failed.map((f) => f.message))).slice(0, 3).join('\n');
@@ -143,7 +172,14 @@ function reportOutcome(verb: 'confirmed' | 'rejected', outcome: Outcome) {
 async function runBulk(ids: string[], action: 'confirm' | 'reject', serviceType?: BulkServiceType): Promise<Outcome> {
   try {
     const res = await seaTimeApi.bulkUpdateSeaTimeEntries(ids, action, serviceType);
-    if (res) return { done: res.done.length, failed: res.failed.map((f) => ({ id: f.id, message: f.error })) };
+    if (res) {
+      const already = res.failed.filter((f) => ALREADY.test(f.error));
+      return {
+        done: res.done.length,
+        alreadyReviewed: already.length,
+        failed: res.failed.filter((f) => !ALREADY.test(f.error)).map((f) => ({ id: f.id, message: f.error })),
+      };
+    }
   } catch (error: any) {
     return { done: 0, failed: ids.map((id) => ({ id, message: backendMessage(error) })) };
   }
@@ -297,10 +333,16 @@ export function BulkConfirmModal({
   onConfirm: (serviceType: BulkServiceType) => void;
 }) {
   const [serviceType, setServiceType] = useState<BulkServiceType>('actual_sea_service');
+  // Keep what was shown when it opened, so the closing fade doesn't read "Confirm 0".
+  const [shown, setShown] = useState<BulkEntry[]>(entries);
   useEffect(() => {
-    if (visible) setServiceType('actual_sea_service');
+    if (visible) {
+      setServiceType('actual_sea_service');
+      setShown(entries);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
-  const n = entries.length;
+  const n = shown.length;
   const text = isDark ? colors.text : colors.textLight;
   const muted = isDark ? colors.textSecondary : colors.textSecondaryLight;
   const option = (value: BulkServiceType, label: string) => {
@@ -328,7 +370,7 @@ export function BulkConfirmModal({
           <Text style={[shared.sheetTitle, { color: text }]}>
             Confirm {n} {n === 1 ? 'entry' : 'entries'}?
           </Text>
-          <Text style={[shared.sheetSummary, { color: muted }]}>{summarise(entries)}</Text>
+          <Text style={[shared.sheetSummary, { color: muted }]}>{summarise(shown)}</Text>
           <Text style={[shared.logAs, { color: text }]}>Log all as</Text>
           {option('actual_sea_service', 'Actual sea service')}
           {option('watchkeeping_service', 'Watchkeeping service')}
