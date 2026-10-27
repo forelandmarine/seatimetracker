@@ -16,6 +16,7 @@ import {
   VALID_SERVICE_TYPES,
 } from "../utils/seaTime.js";
 import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
+import { formatHoursMinutes } from "../utils/duration.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
 
 // Validate certificate belongs to the authenticated user
@@ -2678,7 +2679,7 @@ export function register(app: App, fastify: FastifyInstance) {
           mca_compliant: durationHours >= 4,
           distance_nm: String(distanceNm),
           status: 'confirmed',
-          notes: `${MANUAL_SHIFT_NOTE_PREFIX}: ${durationHours}h on duty`,
+          notes: `${MANUAL_SHIFT_NOTE_PREFIX}: ${formatHoursMinutes(durationHours)} on duty`,
         })
         // Only while still open, so a double tap cannot close it twice.
         .where(and(eq(schema.sea_time_entries.id, active.id), eq(schema.sea_time_entries.status, 'active')))

@@ -27,6 +27,7 @@ import {
 } from '@/utils/seaTimeApi';
 import { sendLocalNotification, scheduleShiftReminder, cancelShiftReminder } from '@/utils/notifications';
 import { useOnBoard } from '@/hooks/useOnBoard';
+import { formatHoursMinutes } from '@/utils/entryNotes';
 import { log, error as logError } from '@/utils/log';
 
 // Proximity thresholds (nautical miles). ~0.08nm ≈ 150m aboard; ~0.25nm ≈ 460m clear of the vessel.
@@ -35,6 +36,9 @@ const DISEMBARK_NM = 0.25;
 const CHECK_INTERVAL_MS = 90_000; // re-check proximity while the app is foregrounded
 const REMINDER_COOLDOWN_MS = 30 * 60_000; // do not repeat the same reminder within 30 min
 const HOUR_MS = 3_600_000;
+// Longest wait for a GPS fix on clock in/out. Inside a steel hull a fix can take minutes,
+// and the position is optional, so fall back to the last known one rather than block.
+const POSITION_TIMEOUT_MS = 8_000;
 
 interface Props {
   vesselId?: string | null;
@@ -128,8 +132,17 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
         status = (await Location.requestForegroundPermissionsAsync()).status;
       }
       if (status !== 'granted') return null;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), POSITION_TIMEOUT_MS);
+      });
+      const fresh = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null),
+        timedOut,
+      ]);
+      clearTimeout(timer);
+      const pos = fresh ?? (await Location.getLastKnownPositionAsync());
+      return pos ? { lat: pos.coords.latitude, lon: pos.coords.longitude } : null;
     } catch (e) {
       logError('[ShiftClock] location failed:', e);
       return null;
@@ -170,7 +183,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
       setEndSheet(false);
       cancelShiftReminder();
       lastReminder.current = { onboard: 0, disembark: 0 };
-      Alert.alert('Shift logged', `${res.durationHours} hours recorded as sea time.`);
+      Alert.alert('Shift logged', `${formatHoursMinutes(res.durationHours)} recorded as sea time.`);
     } catch (e: any) {
       if (apiErrorCode(e) === 'needs_end_time') {
         openEndSheet();
