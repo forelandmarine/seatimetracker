@@ -9,6 +9,8 @@ import {
   MNZ_ENGINEERING_REQUIREMENTS,
   MNZ_SERVICE_DEFINITIONS,
 } from './mnzRequirements';
+import { SAMSA_DECK_REQUIREMENTS, SAMSA_ENGINEERING_REQUIREMENTS } from './samsaRequirements';
+import { SAMSA_SERVICE_DEFINITIONS } from './samsaDefinitions';
 
 export type VesselSector = 'yachting' | 'commercial';
 
@@ -2671,7 +2673,7 @@ const USCG_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
 
 // ── Combined exports ────────────────────────────────────────────────
 
-export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
 
 // MCA (all pathways)
 export const MCA_DECK = MCA_REQUIREMENTS;
@@ -2689,6 +2691,10 @@ export const AMSA_ENGINEERING = AMSA_ENGINEERING_REQUIREMENTS;
 export const MNZ_DECK = MNZ_DECK_REQUIREMENTS;
 export const MNZ_ENGINEERING = MNZ_ENGINEERING_REQUIREMENTS;
 
+// SAMSA (South Africa)
+export const SAMSA_DECK = SAMSA_DECK_REQUIREMENTS;
+export const SAMSA_ENGINEERING = SAMSA_ENGINEERING_REQUIREMENTS;
+
 // Legacy exports (backwards compatibility)
 export const DECK_REQUIREMENTS = MCA_REQUIREMENTS;
 export const ENGINEERING_REQUIREMENTS_LIST = ENGINEERING_REQUIREMENTS;
@@ -2701,6 +2707,8 @@ export const ALL_REQUIREMENTS = [
   ...AMSA_ENGINEERING_REQUIREMENTS,
   ...MNZ_DECK_REQUIREMENTS,
   ...MNZ_ENGINEERING_REQUIREMENTS,
+  ...SAMSA_DECK_REQUIREMENTS,
+  ...SAMSA_ENGINEERING_REQUIREMENTS,
 ];
 
 export const getRequirementById = (id: string): MCARequirement | undefined => {
@@ -2732,6 +2740,8 @@ export const getRequirementsByAuthority = (
       return department === 'deck' ? AMSA_DECK : AMSA_ENGINEERING;
     case 'mnz':
       return department === 'deck' ? MNZ_DECK : MNZ_ENGINEERING;
+    case 'samsa':
+      return department === 'deck' ? SAMSA_DECK : SAMSA_ENGINEERING;
     default:
       return department === 'deck' ? MCA_DECK : MCA_ENGINEERING;
   }
@@ -2751,6 +2761,7 @@ export const AUTHORITY_LABELS: Record<MaritimeAuthority, string> = {
   uscg: 'USCG',
   amsa: 'AMSA',
   mnz: 'Maritime NZ',
+  samsa: 'SAMSA',
 };
 
 /** Full titles, used for screen headings and report headers. */
@@ -2759,6 +2770,7 @@ export const AUTHORITY_FULL_NAMES: Record<MaritimeAuthority, string> = {
   uscg: 'United States Coast Guard',
   amsa: 'Australian Maritime Safety Authority',
   mnz: 'Maritime New Zealand',
+  samsa: 'South African Maritime Safety Authority',
 };
 
 export interface RequirementGroup {
@@ -2813,6 +2825,8 @@ export const DEFAULT_TARGET_BY_PATHWAY: Record<string, string> = {
   'amsa:engineering': 'amsa-med3-nc',
   'mnz:deck': 'mnz-srl',
   'mnz:engineering': 'mnz-mec6',
+  'samsa:deck': 'samsa-oow-unlimited',
+  'samsa:engineering': 'samsa-eoow',
 };
 
 export const getDefaultTargetId = (
@@ -2920,6 +2934,8 @@ export const getAuthorityServiceDefinitions = (
       return AMSA_SERVICE_DEFINITIONS;
     case 'mnz':
       return MNZ_SERVICE_DEFINITIONS;
+    case 'samsa':
+      return SAMSA_SERVICE_DEFINITIONS;
     default:
       return null;
   }
@@ -2981,6 +2997,12 @@ export const getServiceDefinitionsHeading = (
         title: `${dept} Department - Maritime NZ Service Definitions (SeaCert)`,
         intro:
           'How Maritime NZ counts service toward a certificate, under Maritime Rules Part 32. Service is stated in 30-day months and must be gained in the 10 years before you apply.',
+      };
+    case 'samsa':
+      return {
+        title: `${dept} Department - SAMSA Service Definitions (2021 Regulations)`,
+        intro:
+          'How SAMSA counts service toward a certificate of competency, under the Merchant Shipping (Training, Certification and Safe Manning) Regulations 2021. Any day signed on counts, inside a 10-year window.',
       };
     default:
       return {

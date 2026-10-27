@@ -537,7 +537,7 @@ export default function EditSeaTimeScreen() {
         if (cancelled) return;
         const authority = userProfile?.maritime_authority ?? null;
         setPathway({
-          authority: (['mca', 'uscg', 'amsa', 'mnz'].includes(authority) ? authority : null) as MaritimeAuthority | null,
+          authority: (['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(authority) ? authority : null) as MaritimeAuthority | null,
           department: userProfile?.department?.toLowerCase() || 'deck',
         });
       } catch (error) {

@@ -12,6 +12,7 @@ export interface ReportSummaryTotals {
   uscg_service?: { creditable: number } | null;
   amsa_service?: { underway: number; not_underway: number } | null;
   mnz_service?: { qualifying_total: number } | null;
+  samsa_service?: { seagoing: number; standby_yard: number } | null;
   entries_by_vessel?: { vessel_name: string; total_days: number }[];
 }
 
@@ -30,6 +31,8 @@ export function headlineSeaDays(
         : summary.total_days;
     case 'mnz':
       return summary.mnz_service?.qualifying_total ?? summary.total_days;
+    case 'samsa':
+      return summary.samsa_service ? summary.samsa_service.seagoing + summary.samsa_service.standby_yard : summary.total_days;
     default:
       return summary.total_days;
   }

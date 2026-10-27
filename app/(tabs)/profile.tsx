@@ -633,6 +633,9 @@ export default function ProfileScreen() {
       // applicant needs a sea service letter, not an MCA testimonial.
       if (data?.maritime_authority && ['mca', 'uscg', 'mnz', 'amsa'].includes(data.maritime_authority)) {
         setReportTemplate(data.maritime_authority);
+      } else if (data?.maritime_authority === 'samsa') {
+        // No SAMSA-specific form yet; the generic testimonial suits it.
+        setReportTemplate('generic');
       }
       setLoading(false);
       setLoadError(false);
@@ -1306,6 +1309,7 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
+                  samsaService={(summary as any).samsa_service ?? null}
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
                   hasRecordBook={hasRecordBook}

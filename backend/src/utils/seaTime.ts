@@ -179,7 +179,7 @@ function bucketOf(e: { service_type?: string | null }): Bucket {
  * service type worked that day (actual > stand-by > yard). Service in port is
  * not sea service, so it never helps a date qualify and is reported apart.
  */
-function classifyCalendarDays(entries: PeriodEntry[]): {
+function classifyCalendarDays(entries: PeriodEntry[], minHours: number = MCA_MINIMUM_HOURS_PER_DAY): {
   actual: Set<string>; standby: Set<string>; yard: Set<string>; port: Set<string>; hours: Map<string, number>;
 } {
   const byBucket: Record<Bucket, PeriodEntry[]> = { actual: [], standby: [], yard: [], port: [] };
@@ -194,13 +194,13 @@ function classifyCalendarDays(entries: PeriodEntry[]): {
 
   const actual = new Set<string>(), standby = new Set<string>(), yard = new Set<string>(), port = new Set<string>();
   for (const [d, h] of seaHours) {
-    if (!meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY)) continue;
+    if (!(h > 0) || !meetsHours(h, minHours)) continue;
     if ((present.actual.get(d) ?? 0) > 0) actual.add(d);
     else if ((present.standby.get(d) ?? 0) > 0) standby.add(d);
     else yard.add(d);
   }
   for (const [d, h] of portHours) {
-    if (meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY) && !actual.has(d) && !standby.has(d) && !yard.has(d)) port.add(d);
+    if (h > 0 && meetsHours(h, minHours) && !actual.has(d) && !standby.has(d) && !yard.has(d)) port.add(d);
   }
   const hours = unionHoursByDate(entries);
   return { actual, standby, yard, port, hours };
@@ -676,8 +676,64 @@ export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): 
   };
 }
 
+// ── SAMSA (South Africa) ────────────────────────────────────────────
+// Merchant Shipping (Training, Certification and Safe Manning) Regulations 2021.
+// A day of service is any calendar day signed on, with no hours threshold, and
+// port days on articles count. Stand-by in construction or refit counts in full
+// up to a third of the required service (the app applies that cap against the
+// target). Service older than 10 years does not count. Watchkeeping is 8 hours
+// in every 24, taken here as logged watch hours at 8 to the day.
+const SAMSA_SERVICE_WINDOW_YEARS = 10;
+
+export interface SAMSAServiceBreakdown {
+  /** Calendar days at sea or in port on articles, inside the 10-year window. */
+  seagoing: number;
+  /** Stand-by and yard days (capped at a third of the target by the app). */
+  standby_yard: number;
+  /** Days from logged watchkeeping hours, at 8 hours to the day. */
+  watchkeeping: number;
+  /** Hours on board inside the window (small vessel skipper certificates). */
+  hours: number;
+  /** Days that fall outside the 10-year window. */
+  outside_window: number;
+}
+
+export function samsaCreditableDays(entries: MNZEntry[], now: Date = new Date()): SAMSAServiceBreakdown {
+  const windowStart = new Date(now);
+  windowStart.setUTCFullYear(windowStart.getUTCFullYear() - SAMSA_SERVICE_WINDOW_YEARS);
+  const windowStartDay = getCalendarDay(windowStart);
+  const c = classifyCalendarDays(entries, 0);
+  const inWindow = (d: string) => d >= windowStartDay;
+  let outside = 0;
+  const count = (set: Set<string>) => {
+    let n = 0;
+    for (const d of set) inWindow(d) ? n++ : outside++;
+    return n;
+  };
+  const seagoing = count(c.actual) + count(c.port);
+  const standby_yard = count(c.standby) + count(c.yard);
+
+  let totalHours = 0;
+  for (const [d, h] of c.hours) if (inWindow(d)) totalHours += h;
+  let watchHours = 0;
+  for (const e of entries) {
+    const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
+    if (last.getTime() < windowStart.getTime()) continue;
+    watchHours +=
+      toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
+  }
+  return {
+    seagoing,
+    standby_yard,
+    watchkeeping: Math.floor(watchHours / 8),
+    hours: Math.round(totalHours * 100) / 100,
+    outside_window: outside,
+  };
+}
+
 /** Maritime authorities a user can choose, matching user.maritime_authority. */
-export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
+export const MARITIME_AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
 
 /**
  * The sea_days value stored on a single entry: the days that entry earns on
@@ -692,6 +748,7 @@ export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
  *   small-vessel days and stand-by, yard and port time are not credited.
  * - AMSA: whole 8-hour days, underway and not underway. Part days carry over
  *   only in the running total, so a short entry alone earns 0 here.
+ * - SAMSA: every calendar date touched, port days included, inside 10 years.
  */
 export function entrySeaDays(
   entry: USCGEntry & AMSAEntry & MNZEntry,
@@ -707,6 +764,10 @@ export function entrySeaDays(
     }
     case 'mnz':
       return mnzCreditableDays([entry], now).qualifying_total;
+    case 'samsa': {
+      const s = samsaCreditableDays([entry], now);
+      return s.seagoing + s.standby_yard;
+    }
     default: {
       const q = qualifyingSeaDays([entry]);
       return q.actual + q.standby + q.yard;

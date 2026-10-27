@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { log, error as logError } from '@/utils/log';
 
 type Department = 'Deck' | 'Engineering';
-type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
 
 interface AuthorityOption {
   value: MaritimeAuthority;
@@ -208,6 +208,7 @@ export default function SelectPathwayScreen() {
     { value: 'uscg', label: 'USCG', subtitle: 'United States Coast Guard', icon_ios: 'flag', icon_android: 'flag' },
     { value: 'amsa', label: 'AMSA', subtitle: 'Australian Maritime Safety Authority', icon_ios: 'flag', icon_android: 'flag' },
     { value: 'mnz', label: 'Maritime NZ', subtitle: 'Maritime New Zealand', icon_ios: 'flag', icon_android: 'flag' },
+    { value: 'samsa', label: 'SAMSA', subtitle: 'South African Maritime Safety Authority', icon_ios: 'flag', icon_android: 'flag' },
   ];
 
   // CRITICAL: Check subscription status before allowing pathway selection

@@ -38,8 +38,8 @@ for (const f of files) {
   const notes = path.join(dir, f.replace(/\.json$/, '_notes.md').replace('samsa_pathways_notes', 'SAMSA_Pathway_Spec'));
   if (fs.existsSync(notes)) {
     const md = fs.readFileSync(notes, 'utf8');
-    const block = md.split(/## NEW CODES/i)[1]?.split(/\n## /)[0] ?? '';
-    for (const m of block.matchAll(/^- `([a-z0-9_]+)` (.+)$/gm)) newCodes[m[1]] = m[2].trim();
+    const block = md.split(/NEW CODES[^\n]*\n/)[1]?.split(/\n## /)[0] ?? '';
+    for (const m of block.matchAll(/^- `([a-z0-9_]+)`:? (.+)$/gm)) newCodes[m[1]] = m[2].trim();
   }
 }
 

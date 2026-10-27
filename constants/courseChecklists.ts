@@ -84,7 +84,24 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "eto_gmdss_radio_maint": "GMDSS Radio Maintenance",
   "eto_enem": "Electronic Navigation Equipment Maintenance",
   "pssr_vh_module": "OneOcean \"Prevention and Response to Violence and Harassment\" module 0900 (MGN 718), needed by holders of a PSSR dated before 1 January 2026, deadline 31 March 2027",
-  "first_aid_at_sea": "First Aid at Sea certificate (MSF 4257 accepts it in place of Medical First Aid)"
+  "first_aid_at_sea": "First Aid at Sea certificate (MSF 4257 accepts it in place of Medical First Aid)",
+  "samsa_ens_op": "SAMSA Electronic Navigation Systems (Operational), incl. simulator (radar/ARPA/ECDIS-type module on F-DU, F-D500, F-DP)",
+  "samsa_ens_mgmt": "SAMSA Electronic Navigation Systems (Management), incl. simulator",
+  "samsa_ens_non_stcw": "Electronic Navigation Systems (Non STCW), for Skipper <200 GT Port Ops",
+  "samsa_comms_1": "SAMSA \"Communications 1\" academic/radio module listed on deck L3A forms",
+  "samsa_able_seafarer_deck": "Able Seafarer Deck course completion certificate (STA-03-101b), required on several officer forms",
+  "samsa_able_seafarer_engine": "Able Seafarer Engine course completion (STA-03-102b)",
+  "high_voltage": "High Voltage course, required for all engineer officer CoCs on F-EU",
+  "samsa_workshop_skills": "approved practical workshop skills training (first engineer certificate, reg 11(8)(b))",
+  "samsa_academic_results": "certificate of results for the academic subjects from an accredited institution",
+  "samsa_trb": "approved training record book (manual, not a course)",
+  "samsa_medical": "SAMSA seafarer medical certificate (2 years; 1 year under 18)",
+  "samsa_eyesight": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+  "samsa_steering_cert": "steering certificate from onboard training (OS Deck)",
+  "sv_liferaft": "small vessel liferaft course (1 day) / Proficiency in Liferafts",
+  "sv_first_aid": "First Aid Level 1 (pleasure) or First Aid at Sea (commercial)",
+  "sv_rt_restricted": "restricted R/T certificate (being replaced by SRC, reg 125(5))",
+  "sv_doctors_cert": "doctor's certificate for small vessel certificates"
 };
 
 /** Existing certificate types that already count as holding a course. */
@@ -2924,6 +2941,2627 @@ export const CHECKLISTS: Record<string, Checklist> = {
     "sources": [
       "MSN 1860",
       "MGN 718"
+    ]
+  },
+  "samsa-master": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (STA-06-402)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "sso",
+        "label": "Ship Security Officer (STA-05-503)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_mgmt",
+        "label": "Electronic Navigation Systems (Management), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 402a"
+    ]
+  },
+  "samsa-chief-mate": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (STA-06-402)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "sso",
+        "label": "Ship Security Officer (STA-05-503)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_mgmt",
+        "label": "Electronic Navigation Systems (Management), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 402a"
+    ]
+  },
+  "samsa-master-3000": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (STA-06-402)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "sso",
+        "label": "Ship Security Officer (STA-05-503)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_mgmt",
+        "label": "Electronic Navigation Systems (Management), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 402a",
+      "0e and QMS OF 1006.0a"
+    ]
+  },
+  "samsa-chief-mate-3000": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (STA-06-402)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "sso",
+        "label": "Ship Security Officer (STA-05-503)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_mgmt",
+        "label": "Electronic Navigation Systems (Management), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 402a",
+      "0e and QMS OF 1006.0a"
+    ]
+  },
+  "samsa-oow-unlimited": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_comms_1",
+        "label": "Communications 1",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1005.0a (L3A Deck Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "0e; no revalidation rule found"
+    ]
+  },
+  "samsa-master-500-nc": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (STA-06-402)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_comms_1",
+        "label": "Communications 1",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 402a",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "0e; no revalidation rule found",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a"
+    ]
+  },
+  "samsa-oow-500-nc": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_comms_1",
+        "label": "Communications 1",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "ecdis",
+        "label": "ECDIS Generic Course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "0e; no revalidation rule found",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a"
+    ]
+  },
+  "samsa-master-200-nc": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "lrc",
+        "label": "Long Range Certificate (STA-04-102)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D",
+      "Required on SAMSA form QMS OF 1005.0e (L3A Deck <500 GT), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156"
+    ]
+  },
+  "samsa-master-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "src",
+        "label": "Short Range Certificate (STA-04-103)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D"
+    ]
+  },
+  "samsa-master-1600-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "src",
+        "label": "Short Range Certificate (STA-04-103)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_op",
+        "label": "Electronic Navigation Systems (Operational), incl. simulator",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156",
+      "RwPvAob%2BhmTb3aQY34q6IQ%3D%3D"
+    ]
+  },
+  "samsa-skipper-200-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "src",
+        "label": "Short Range Certificate (STA-04-103)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_ens_non_stcw",
+        "label": "Electronic Navigation Systems (Non STCW)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0g (L3A Deck Port Ops), section E; validity per Listed on QMS OF 1005.0g; no revalidation rule found"
+    ]
+  },
+  "samsa-gmdss-goc": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a), p 28 of 156; refresher STA 04 101a"
+    ]
+  },
+  "samsa-lrc": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "lrc",
+        "label": "Long Range Certificate (STA-04-102)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156"
+    ]
+  },
+  "samsa-src": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "src",
+        "label": "Short Range Certificate (STA-04-103)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(a) excludes reg 2(4)(d), p 28 of 156"
+    ]
+  },
+  "samsa-chief-engineer": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found"
+    ]
+  },
+  "samsa-second-engineer": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found"
+    ]
+  },
+  "samsa-chief-engineer-3000": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found"
+    ]
+  },
+  "samsa-second-engineer-3000": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found"
+    ]
+  },
+  "samsa-eoow": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_workshop_skills",
+        "label": "Practical workshop skills training (approved workshop course)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 11(8)(b), p 35 of 156; QMS OF 1005.0b"
+    ]
+  },
+  "samsa-eto": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "high_voltage",
+        "label": "High Voltage course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_workshop_skills",
+        "label": "Practical workshop skills training (approved workshop course)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_goc",
+        "label": "GMDSS General Operator's Certificate (STA-04-101)",
+        "type": "course",
+        "validity": "5y_update"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per Listed on QMS OF 1005.0b and QMS OF 1007.0.b; revalidation rule not found",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "Required on SAMSA form QMS OF 1005.0b (L3A Engine Unlimited), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 11(8)(b), p 35 of 156; QMS OF 1005.0b",
+      "QMS OF 1005.0b: GMDSS GOC listed 'if applicable' for ETO"
+    ]
+  },
+  "samsa-chief-engineer-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (STA-06-301)",
+        "type": "course",
+        "validity": "5y_update"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 301a"
+    ]
+  },
+  "samsa-chief-engineer-1500-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-chief-engineer-750-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_academic_results",
+        "label": "Academic requirements: certificate of results from an accredited institution",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MN 20 of 2016 Annex 2 para 8 (proof of pass valid indefinitely unless SAMSA determines otherwise)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1005.0h (L3A Engine Port Ops), section E; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-eoow-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-chief-engineer-750": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156"
+    ]
+  },
+  "samsa-eoow-750": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156"
+    ]
+  },
+  "samsa-os-deck": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_steering_cert",
+        "label": "Steering certificate (onboard training)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 66(2)(a)(iii), p 69 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)"
+    ]
+  },
+  "samsa-ab-deck": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a"
+    ]
+  },
+  "samsa-os-deck-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_steering_cert",
+        "label": "Steering certificate (onboard training)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 66(2)(a)(iii), p 69 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)"
+    ]
+  },
+  "samsa-ab-deck-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)"
+    ]
+  },
+  "samsa-os-engine": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-ab-engine": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pscrb",
+        "label": "Survival Craft and Rescue Boats other than Fast Rescue Boats (STA-06-201)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; refresher STA 06 201a",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-os-engine-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156"
+    ]
+  },
+  "samsa-ab-engine-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63"
+    ]
+  },
+  "samsa-etr": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "dsd",
+        "label": "Designated Security Duties (STA-06-602)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.1b (Revalidation of a CoP, engine ratings); validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)"
+    ]
+  },
+  "samsa-gpr-port-ops": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_trb",
+        "label": "Approved training record book (not a course; manual)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_deck",
+        "label": "Able Seafarer Deck course completion (STA-03-101b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "samsa_able_seafarer_engine",
+        "label": "Able Seafarer Engine course completion (STA-03-102b)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 1 definition and regs 28, 30, 51, 63",
+      "0e and QMS OF 1006.0a",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per Listed on QMS OF 1006.0a for GP rating",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)"
+    ]
+  },
+  "samsa-ships-cook": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "ship_cook",
+        "label": "Ship's Cook course",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (STA-06-101)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (STA-06-102)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (STA-06-401)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (STA-06-104)",
+        "type": "course",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 69, p 71 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156; STA 06 102 para 5 (re attend every 5 years)",
+      "Required on SAMSA form QMS OF 1006.0a (Issue of a CoP, ratings), supporting documents; validity per MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)"
+    ]
+  },
+  "samsa-skipper-inland-restricted": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-skipper-inland": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-day-skipper-local": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-day-skipper-e": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-day-skipper-c": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-day-skipper-b": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-coastal-skipper-u9": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D"
+    ]
+  },
+  "samsa-skipper-offshore-u9": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "sv_doctors_cert",
+        "label": "Doctor's certificate (any doctor, or on prescribed form)",
+        "type": "course",
+        "validity": "other: not stated"
+      },
+      {
+        "code": "sv_liferaft",
+        "label": "Small vessel liferaft course (1 day) / Proficiency in Liferafts",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_firefighting_1day",
+        "label": "Small vessel fire fighting, 1 day",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "efa",
+        "label": "Elementary First Aid (STA-06-103)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "sv_rt_restricted",
+        "label": "Restricted R/T certificate (now Short Range Certificate)",
+        "type": "course",
+        "validity": "other: restricted R/T certificates remain valid until replaced by LRC/SRC, reg 125(5)"
+      }
+    ],
+    "sources": [
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 3(3)(c), p 28 of 156 (exempt from revalidation)",
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D; MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 125(5), p 117 of 156"
+    ]
+  },
+  "samsa-coastal-skipper-9": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "sv_liferaft",
+        "label": "Small vessel liferaft course (1 day) / Proficiency in Liferafts",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_first_aid",
+        "label": "First Aid Level 1 (pleasure) / First Aid at Sea (commercial)",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_firefighting_2day",
+        "label": "Small vessel fire fighting, 2 days (commercial)",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_rt_restricted",
+        "label": "Restricted R/T certificate (now Short Range Certificate)",
+        "type": "course",
+        "validity": "other: restricted R/T certificates remain valid until replaced by LRC/SRC, reg 125(5)"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D",
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D; MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 125(5), p 117 of 156"
+    ]
+  },
+  "samsa-skipper-offshore-9": {
+    "exam": "oral",
+    "items": [
+      {
+        "code": "samsa_medical",
+        "label": "SAMSA seafarer medical certificate",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "samsa_eyesight",
+        "label": "SAMSA eyesight certificate (visual acuity 2 years, colour vision 6 years)",
+        "type": "course",
+        "validity": "2y"
+      },
+      {
+        "code": "sv_liferaft",
+        "label": "Small vessel liferaft course (1 day) / Proficiency in Liferafts",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_first_aid",
+        "label": "First Aid Level 1 (pleasure) / First Aid at Sea (commercial)",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_firefighting_2day",
+        "label": "Small vessel fire fighting, 2 days (commercial)",
+        "type": "course",
+        "validity": "other: no validity stated in MN 13 of 2011"
+      },
+      {
+        "code": "sv_rt_restricted",
+        "label": "Restricted R/T certificate (now Short Range Certificate)",
+        "type": "course",
+        "validity": "other: restricted R/T certificates remain valid until replaced by LRC/SRC, reg 125(5)"
+      }
+    ],
+    "sources": [
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(1), p 88 of 156 (1 year if under 18)",
+      "MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 86(2), p 88 of 156",
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D",
+      "60JutNB3ki%2Fsy6awZwDV2g%3D%3D; MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 125(5), p 117 of 156"
     ]
   }
 };

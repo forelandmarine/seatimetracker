@@ -30,7 +30,7 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
-              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
               vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
@@ -178,7 +178,7 @@ export function register(app: App, fastify: FastifyInstance) {
             nationality: { type: 'string' },
             pya_membership_no: { type: 'string' },
             department: { type: 'string', enum: ['deck', 'engineering'], description: 'Department: deck or engineering' },
-            maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
+            maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'], description: 'Maritime authority: mca, uscg, amsa, mnz or samsa' },
             has_record_book: { type: 'boolean', description: 'Holds a completed AMSA task book or MNZ training record book, which shortens the sea service required' },
             target_certification: { type: ['string', 'null'], maxLength: 64, description: 'Requirement id the user is working toward, e.g. uscg-master-nc-200grt' },
             vessel_sector: { type: ['string', 'null'], maxLength: 16, description: 'Vessel sector the user operates in: "yachting" or "commercial" (validated in handler; null/empty clears it)' },
@@ -201,7 +201,7 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
-              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
               vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
@@ -268,9 +268,9 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Validate maritime_authority if provided
-      if (maritime_authority && !['mca', 'uscg', 'amsa', 'mnz'].includes(maritime_authority)) {
+      if (maritime_authority && !['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(maritime_authority)) {
         app.logger.warn({ userId: user.id, maritime_authority }, 'Invalid maritime authority provided');
-        return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", or "mnz"' });
+        return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", "mnz" or "samsa"' });
       }
 
       // Validate vessel_sector if provided (null/'' clears it back to "not chosen")

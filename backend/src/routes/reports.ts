@@ -8,7 +8,7 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
-import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -502,6 +502,16 @@ export function register(app: App, fastify: FastifyInstance) {
                 engineering_watch: { type: 'number' },
               },
             },
+            samsa_service: {
+              type: 'object',
+              properties: {
+                seagoing: { type: 'number' },
+                standby_yard: { type: 'number' },
+                watchkeeping: { type: 'number' },
+                hours: { type: 'number' },
+                outside_window: { type: 'number' },
+              },
+            },
             mnz_service: {
               type: 'object',
               properties: {
@@ -639,6 +649,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // user's chosen authority.
     const amsa_service = amsaCreditableDays(entries as any);
     const mnz_service = mnzCreditableDays(entries as any);
+    const samsa_service = samsaCreditableDays(entries as any);
 
     // Group by vessel, counting distinct days within each vessel.
     const vesselGroups: { [key: string]: any[] } = {};
@@ -722,6 +733,7 @@ export function register(app: App, fastify: FastifyInstance) {
       uscg_service,
       amsa_service,
       mnz_service,
+      samsa_service,
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
@@ -1156,6 +1168,7 @@ export function register(app: App, fastify: FastifyInstance) {
         'uscg': 'USCG (USA)',
         'amsa': 'AMSA (Australia)',
         'mnz': 'MNZ (New Zealand)',
+        'samsa': 'SAMSA (South Africa)',
       };
       const authorityValue = authorityLabels[(userProfile as any).maritime_authority] || (userProfile as any).maritime_authority;
       rightY = drawDetail('Maritime Authority', authorityValue, rightColX, rightY);

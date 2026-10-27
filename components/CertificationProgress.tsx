@@ -62,6 +62,15 @@ export interface MNZServiceSummary {
   outside_window: number;
 }
 
+/** SAMSA day count from the summary endpoint (2021 Regulations). */
+export interface SAMSAServiceSummary {
+  seagoing: number;
+  standby_yard: number;
+  watchkeeping: number;
+  hours: number;
+  outside_window: number;
+}
+
 /**
  * Service on vessels tagged commercial, from the summary endpoint. MCA yacht
  * deck CoCs only credit yacht service, so the yacht-only breakdown is what
@@ -109,6 +118,8 @@ export interface CertificationProgressProps {
   amsaService?: AMSAServiceSummary | null;
   /** MNZ-rules day count from the summary endpoint. Required for MNZ progress. */
   mnzService?: MNZServiceSummary | null;
+  /** SAMSA-rules day count from the summary endpoint. Required for SAMSA progress. */
+  samsaService?: SAMSAServiceSummary | null;
   /** Service on commercial vessels, used to decide what carries over to MCA yacht CoCs. */
   commercialService?: CommercialServiceSummary | null;
   /** Master (Workboat) figures. Required for the MGN 496 routes. */
@@ -174,6 +185,7 @@ export function CertificationProgress({
   uscgService,
   amsaService,
   mnzService,
+  samsaService,
   commercialService,
   workboatService,
   hasRecordBook = false,
@@ -198,6 +210,7 @@ export function CertificationProgress({
   const isUSCG = resolvedAuthority === 'uscg';
   const isAMSA = resolvedAuthority === 'amsa';
   const isMNZ = resolvedAuthority === 'mnz';
+  const isSAMSA = resolvedAuthority === 'samsa';
 
   // Commercial-vessel days only matter for MCA, where the rules split by
   // vessel type. For a yacht-only CoC they are left out of the bars; for one
@@ -322,6 +335,24 @@ export function CertificationProgress({
       return out;
     }
 
+    if (isSAMSA) {
+      if (!samsaService) return [];
+      // Small vessel skipper certificates are stated in hours.
+      if (requirement?.totalHours) {
+        return [{ label: 'Sea Service', current: Math.floor(samsaService.hours), required: requirement.totalHours, unit: 'hours' }];
+      }
+      if (!targetDays) return [];
+      // Stand-by in construction or refit counts for at most a third of the service required.
+      const standbyCounted = Math.min(samsaService.standby_yard, Math.floor(targetDays / 3));
+      const out: ProgressRow[] = [
+        { label: 'Qualifying Service', current: samsaService.seagoing + standbyCounted, required: targetDays },
+      ];
+      if (targetWatchkeeping) {
+        out.push({ label: 'Watchkeeping Service', current: samsaService.watchkeeping, required: targetWatchkeeping });
+      }
+      return out;
+    }
+
     if (!requirement?.totalDays) return [];
     const total = serviceTypes.reduce((sum, s) => sum + s.total_days, 0);
     return [{ label: 'Qualifying Service', current: total, required: requirement.totalDays }];
@@ -329,10 +360,12 @@ export function CertificationProgress({
     isUSCG,
     isAMSA,
     isMNZ,
+    isSAMSA,
     requirement,
     uscgService,
     amsaService,
     mnzService,
+    samsaService,
     serviceTypes,
     commercialService,
     workboatService,
@@ -422,6 +455,8 @@ export function CertificationProgress({
               ? 'Your AMSA day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under Marine Order 505.'
               : isMNZ && !mnzService
                 ? 'Your Maritime NZ day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under SeaCert.'
+                : isSAMSA && !samsaService
+                ? 'Your SAMSA day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the SAMSA rules.'
                 : 'This certificate is not measured in days of sea service. Open the requirements list to see what it asks for.'}
         </Text>
       )}

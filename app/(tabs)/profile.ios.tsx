@@ -1133,6 +1133,7 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
+                  samsaService={(summary as any).samsa_service ?? null}
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
                   hasRecordBook={hasRecordBook}

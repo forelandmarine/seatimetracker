@@ -30,7 +30,7 @@ import {
 
 import { log, error as logError } from '@/utils/log';
 
-const AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz'];
+const AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
 
 const isAuthority = (value: unknown): value is MaritimeAuthority =>
   typeof value === 'string' && (AUTHORITIES as string[]).includes(value);
