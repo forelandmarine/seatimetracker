@@ -24,8 +24,10 @@ import {
 import {
   evaluateChecklist,
   certificateTypeFor,
+  courseLabel,
   type ItemState,
 } from '@/utils/courseChecklist';
+import { COURSE_CATALOG } from '@/constants/courseCatalog';
 import { error as logError } from '@/utils/log';
 
 const AUTHORITIES = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
@@ -55,6 +57,16 @@ function statusLine(s: ItemState): string | null {
       if (s.item.type === 'manual') return 'Mark done when complete';
       return s.item.note ?? null;
   }
+}
+
+/** Short name for the row; the full wording from the notice is one tap away. */
+function rowTitle(s: ItemState): string {
+  return COURSE_CATALOG[s.item.code] ? courseLabel(s.item.code) : s.item.label;
+}
+
+function showDetail(s: ItemState) {
+  const parts = [s.item.label, s.item.note].filter(Boolean);
+  Alert.alert(rowTitle(s), parts.join('\n\n'));
 }
 
 export default function OralChecklistScreen() {
@@ -157,8 +169,14 @@ export default function OralChecklistScreen() {
           ) : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.rowTitle}>{s.item.label}</Text>
-          {line ? <Text style={[styles.rowSub, lineColor ? { color: lineColor } : null]}>{line}</Text> : null}
+          <TouchableOpacity onPress={() => showDetail(s)} accessibilityHint="Shows the full requirement">
+            <Text style={styles.rowTitle}>{rowTitle(s)}</Text>
+            {line ? (
+              <Text style={[styles.rowSub, lineColor ? { color: lineColor } : null]} numberOfLines={2}>
+                {line}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
           {s.status === 'todo' && s.item.type !== 'manual' && (
             <TouchableOpacity
               onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } } as any)}
