@@ -382,15 +382,30 @@ export const startShift = async (
   return data.shift;
 };
 
+// Longest shift the server will log; past this the user must say when it ended.
+export const MAX_SHIFT_HOURS = 16;
+
+// endTime: when the shift actually ended, for a forgotten clock-out. Omit to end it now.
 export const stopShift = async (
   latitude?: number | null,
   longitude?: number | null,
+  endTime?: Date | null,
 ): Promise<{ shift: ActiveShift; durationHours: number; sea_days: number }> => {
   const res = await authFetch('/api/sea-time/shift/stop', {
     method: 'POST',
-    body: { latitude: latitude ?? null, longitude: longitude ?? null },
+    body: { latitude: latitude ?? null, longitude: longitude ?? null, end_time: endTime ? endTime.toISOString() : null },
   });
   return res.json();
+};
+
+/** The server's error code (e.g. 'off_board', 'needs_end_time') from a failed request. */
+export const apiErrorCode = (e: any): string | null => {
+  if (!e || typeof e.body !== 'string') return null;
+  try {
+    return JSON.parse(e.body)?.code ?? null;
+  } catch {
+    return null;
+  }
 };
 
 // --- On/off board toggle (rotational crew and leave) ---

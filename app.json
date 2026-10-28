@@ -3,7 +3,7 @@
     "name": "SeaTime Tracker",
     "slug": "seatime-tracker",
     "owner": "forelandmarine",
-    "version": "2.3.0",
+    "version": "2.3.1",
     "orientation": "portrait",
     "icon": "./assets/images/brandmark-design-1024x1024.png",
     "scheme": "seatimetracker",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "27",
+      "buildNumber": "35",
       "bundleIdentifier": "com.forelandmarine.seatimetracker",
       "appleTeamId": "43GZCFFPR9",
       "usesAppleSignIn": true,
@@ -32,7 +32,7 @@
         "monochromeImage": "./assets/images/adaptive-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 27,
+      "versionCode": 35,
       "package": "com.forelandmarine.seatimetracker",
       "permissions": [
         "android.permission.CAMERA",
