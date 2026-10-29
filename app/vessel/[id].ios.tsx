@@ -141,7 +141,7 @@ export default function VesselDetailScreen() {
         if (currentVessel.is_active) {
           try {
             log('[VesselDetail iOS] Fetching AIS location for active vessel');
-            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
+            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId);
             log('[VesselDetail iOS] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
@@ -281,7 +281,7 @@ export default function VesselDetailScreen() {
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
-      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
+      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id);
       log('[VesselDetail iOS] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
@@ -464,8 +464,8 @@ export default function VesselDetailScreen() {
     return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
   };
 
-  const formatCoordinateDMS = (lat: number | null, lon: number | null): string => {
-    if (lat === null || lon === null || (lat === 0 && lon === 0)) return 'No coordinates';
+  const formatCoordinateDMS = (lat: number | null | undefined, lon: number | null | undefined): string => {
+    if (lat == null || lon == null || (lat === 0 && lon === 0)) return 'No coordinates';
     return `${convertToDMS(lat, true)}, ${convertToDMS(lon, false)}`;
   };
 

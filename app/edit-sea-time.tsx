@@ -479,7 +479,7 @@ export default function EditSeaTimeScreen() {
       let extractedTo = '';
       let remainingNotes: string[] = [];
       
-      lines.forEach(line => {
+      lines.forEach((line: string) => {
         if (line.startsWith('From:')) {
           extractedFrom = line.replace('From:', '').trim();
         } else if (line.startsWith('To:')) {

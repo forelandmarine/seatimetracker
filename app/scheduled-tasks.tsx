@@ -159,7 +159,6 @@ export default function ScheduledTasksScreen() {
           title: 'Scheduled Tasks',
           headerShown: true,
           headerBackTitle: 'Back',
-          headerBackTitleVisible: true,
           headerStyle: {
             backgroundColor: backgroundColor,
           },

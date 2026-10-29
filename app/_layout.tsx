@@ -243,13 +243,6 @@ function RootLayoutContent() {
             headerBackTitle: t('common.back'),
           }}
         />
-        <Stack.Screen
-          name="two-factor"
-          options={{
-            title: t('navigation.verifyIdentity'),
-            headerBackTitle: t('common.back'),
-          }}
-        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

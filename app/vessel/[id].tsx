@@ -141,7 +141,7 @@ export default function VesselDetailScreen() {
         if (currentVessel.is_active) {
           try {
             log('[VesselDetail] Fetching AIS location for active vessel');
-            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
+            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId);
             log('[VesselDetail] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
@@ -310,7 +310,7 @@ export default function VesselDetailScreen() {
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
-      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
+      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id);
       log('[VesselDetail] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
@@ -514,7 +514,7 @@ export default function VesselDetailScreen() {
     }
   };
 
-  const formatCoordinateDMS = (lat: number | null, lon: number | null): string => {
+  const formatCoordinateDMS = (lat: number | null | undefined, lon: number | null | undefined): string => {
     // CRITICAL: Safe coordinate formatting to prevent crashes
     try {
       if (lat === null || lat === undefined || lon === null || lon === undefined) {

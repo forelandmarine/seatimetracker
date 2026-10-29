@@ -87,7 +87,6 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
           allowCriticalAlerts: false,
           provideAppNotificationSettings: false,
           allowProvisional: false,
-          allowAnnouncements: false,
         },
       });
       finalStatus = status;

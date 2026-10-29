@@ -36,6 +36,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  resetKey?: number;
 }
 
 export class ErrorBoundary extends Component<Props, State> {

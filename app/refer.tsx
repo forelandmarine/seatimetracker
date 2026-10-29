@@ -121,7 +121,7 @@ export default function ReferScreen() {
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : loadError ? (
           <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <Text style={[styles.intro, { marginBottom: 16 }]}>{t('refer.unableToLoad')}</Text>
+            <Text style={[styles.subtitle, { marginBottom: 16 }]}>{t('refer.unableToLoad')}</Text>
             <TouchableOpacity style={styles.shareButton} onPress={refresh}>
               <Text style={styles.shareButtonText}>{t('common.retry')}</Text>
             </TouchableOpacity>

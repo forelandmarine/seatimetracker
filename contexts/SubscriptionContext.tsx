@@ -193,13 +193,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
 
         // Configure RevenueCat
-        // usesStoreKit2IfAvailable: true enables StoreKit 2 on iOS 15+, which is
-        // required for Purchases.presentCodeRedemptionSheet() to work correctly.
+        // react-native-purchases 9 uses StoreKit 2 by default (needed for
+        // Purchases.presentCodeRedemptionSheet()) and lets RevenueCat complete
+        // purchases by default, so neither option needs setting.
         await Purchases.configure({
           apiKey,
           appUserID: user?.id || undefined,
-          usesStoreKit2IfAvailable: true,
-          observerMode: false, // We want RevenueCat to handle purchases
         });
 
         log('[Subscription] SDK initialized for user:', user?.id || 'anonymous');

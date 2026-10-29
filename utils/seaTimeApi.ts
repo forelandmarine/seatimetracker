@@ -279,7 +279,8 @@ export const createVessel = async (
 
 export const updateVesselParticulars = async (
   vesselId: string,
-  updates: { vessel_name?: string; imo_number?: string; flag?: string; official_number?: string; type?: string; length_metres?: number; gross_tonnes?: number; tonnage_itc?: number; callsign?: string; engine_kilowatts?: number; engine_type?: string; }
+  // null clears a field
+  updates: { vessel_name?: string; imo_number?: string | null; flag?: string | null; official_number?: string | null; type?: string | null; length_metres?: number | null; gross_tonnes?: number | null; tonnage_itc?: number | null; callsign?: string | null; engine_kilowatts?: number | null; engine_type?: string | null; }
 ) => {
   const res = await authFetch(`/api/vessels/${vesselId}/particulars`, { method: 'PUT', body: updates });
   return normalizeVessel(await res.json());

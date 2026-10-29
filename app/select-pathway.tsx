@@ -28,7 +28,7 @@ interface AuthorityOption {
   label: string;
   subtitle: string;
   icon_ios: string;
-  icon_android: string;
+  icon_android: React.ComponentProps<typeof IconSymbol>['android_material_icon_name'];
 }
 
 function createStyles(isDark: boolean) {

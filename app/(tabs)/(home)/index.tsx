@@ -132,7 +132,7 @@ export default function SeaTimeScreen() {
       setLocationError(null);
       log('[Home] Loading location for vessel:', vesselId, 'forceRefresh:', forceRefresh);
 
-      const locationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+      const locationData = await seaTimeApi.getVesselAISLocation(vesselId);
       if (!isMountedRef.current) return;
       setActiveVesselLocation({
         latitude: locationData.latitude,
@@ -148,7 +148,7 @@ export default function SeaTimeScreen() {
           await seaTimeApi.checkVesselAIS(vesselId, true);
           if (!isMountedRef.current) return;
 
-          const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+          const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId);
           if (!isMountedRef.current) return;
           setActiveVesselLocation({
             latitude: freshLocationData.latitude,
@@ -176,7 +176,7 @@ export default function SeaTimeScreen() {
     try {
       log('[Home] Loading vessels...');
       setLoadError(null);
-      const vesselsData = await seaTimeApi.getVessels();
+      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
       
       setVessels(vesselsData || []);
@@ -252,7 +252,7 @@ export default function SeaTimeScreen() {
     setRefreshing(true);
     try {
       // Reload vessels first
-      const vesselsData = await seaTimeApi.getVessels();
+      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       setVessels(vesselsData);
       
       // Load location for the active vessel with force refresh

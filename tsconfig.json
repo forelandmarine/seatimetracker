@@ -18,6 +18,7 @@
     "workbox-config.js"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "backend"
   ]
 }

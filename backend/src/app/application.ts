@@ -26,6 +26,23 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
   private authInstance: ReturnType<typeof betterAuth> | null = null;
   private initialized = false;
 
+  /**
+   * Profile image storage is not configured in this build. Every call throws,
+   * and every caller in routes/profile.ts already catches and degrades
+   * (no image URL, or a 400 on upload).
+   */
+  readonly storage = {
+    async getSignedUrl(_key: string): Promise<{ url: string }> {
+      throw new Error('Storage not configured');
+    },
+    async upload(_key: string, _body: Buffer): Promise<string> {
+      throw new Error('Storage not configured');
+    },
+    async delete(_key: string): Promise<void> {
+      throw new Error('Storage not configured');
+    },
+  };
+
   get db() {
     return this._db;
   }

@@ -201,7 +201,7 @@ export default function NotificationSettingsScreen() {
       { label: '9:00 PM', value: '21:00' },
     ];
 
-    const buttons = timeOptions.map(option => ({
+    const buttons: { text: string; onPress: () => void | Promise<void> }[] = timeOptions.map(option => ({
       text: option.label,
       onPress: async () => {
         log('[NotificationSettings] Setting new time:', option.value);
@@ -269,7 +269,6 @@ export default function NotificationSettingsScreen() {
             title: 'Notification Settings',
             headerShown: true,
             headerBackTitle: t('common.back'),
-            headerBackTitleVisible: true,
           }}
         />
         <View style={styles.container}>
@@ -289,7 +288,6 @@ export default function NotificationSettingsScreen() {
           title: 'Notification Settings',
           headerShown: true,
           headerBackTitle: t('common.back'),
-          headerBackTitleVisible: true,
         }}
       />
       <View style={styles.container}>
