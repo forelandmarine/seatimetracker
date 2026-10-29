@@ -11,12 +11,17 @@ import Fastify, { FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import postgres from 'postgres';
+import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { bearer } from 'better-auth/plugins';
 
 const DATABASE_URL = process.env.DATABASE_URL;
+
+// Profile images are re-signed on every profile fetch, so a day is plenty.
+const SIGNED_URL_TTL_SECONDS = 24 * 60 * 60;
 
 export class Application<TSchema extends Record<string, unknown> = Record<string, unknown>> {
   fastify!: FastifyInstance;
@@ -27,15 +32,15 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
   private initialized = false;
 
   /**
-   * Profile image storage is not configured in this build. Every call throws,
-   * and every caller in routes/profile.ts already catches and degrades
-   * (no image URL, or a 400 on upload).
+   * Profile image storage. Stays a throwing stub until withStorage() wires up
+   * the S3-compatible bucket; every caller in routes/profile.ts already catches
+   * and degrades (no image URL, or a 400 on upload).
    */
-  readonly storage = {
+  storage = {
     async getSignedUrl(_key: string): Promise<{ url: string }> {
       throw new Error('Storage not configured');
     },
-    async upload(_key: string, _body: Buffer): Promise<string> {
+    async upload(_key: string, _body: Buffer, _contentType?: string): Promise<string> {
       throw new Error('Storage not configured');
     },
     async delete(_key: string): Promise<void> {
@@ -73,8 +78,42 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
    * S3 storage in production. Profile image upload is unimplemented.
    * Kept as a chainable no-op for compatibility with existing index.ts.
    */
+  /**
+   * Point app.storage at an S3-compatible bucket (a Railway Storage Bucket in
+   * production). Reads AWS_S3_BUCKET, AWS_ENDPOINT_URL_S3, AWS_REGION,
+   * AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. Objects stay private and are
+   * served through short-lived presigned URLs.
+   */
   withStorage() {
-    this.fastify.log.info('withStorage() called — no-op (storage not configured in this build)');
+    const bucket = process.env.AWS_S3_BUCKET;
+    if (!bucket) throw new Error('AWS_S3_BUCKET is not set');
+
+    const client = new S3Client({
+      region: process.env.AWS_REGION || 'auto',
+      endpoint: process.env.AWS_ENDPOINT_URL_S3 || undefined,
+      forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE === 'true',
+    });
+
+    this.storage = {
+      async getSignedUrl(key: string) {
+        // Social sign-in can leave a full avatar URL in user.image
+        if (/^https?:\/\//.test(key)) return { url: key };
+        const url = await getS3SignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+          expiresIn: SIGNED_URL_TTL_SECONDS,
+        });
+        return { url };
+      },
+      async upload(key: string, body: Buffer, contentType?: string) {
+        await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
+        return key;
+      },
+      async delete(key: string) {
+        if (/^https?:\/\//.test(key)) return;
+        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      },
+    };
+
+    this.fastify.log.info({ bucket }, 'Storage enabled (S3-compatible bucket)');
     return this;
   }
 
@@ -224,7 +263,9 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
     });
 
     // Plugins
-    await fastify.register(multipart);
+    // 5 MB matches the limit the upload route reports; the default is 1 MB,
+    // which rejected most camera photos from builds that don't resize first.
+    await fastify.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } });
     await fastify.register(websocket);
 
     // Health endpoint (the framework registered /health, our routes register /api/health)

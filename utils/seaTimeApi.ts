@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
 import { log, error } from '@/utils/log';
 
@@ -212,8 +213,13 @@ export const updateUserProfile = async (updates: {
 };
 
 export const uploadProfileImage = async (imageUri: string) => {
+  // Shrink to a 512px JPEG first: camera photos are several MB, an avatar needs ~60 KB
+  const resized = await ImageManipulator.manipulateAsync(imageUri, [{ resize: { width: 512 } }], {
+    compress: 0.8,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
   const formData = new FormData();
-  formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'profile.jpg' } as any);
+  formData.append('image', { uri: resized.uri, type: 'image/jpeg', name: 'profile.jpg' } as any);
   const res = await authFetch('/api/profile/upload-image', { method: 'POST', body: formData, formData: true });
   return res.json();
 };

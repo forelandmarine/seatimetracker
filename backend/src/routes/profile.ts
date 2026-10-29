@@ -693,22 +693,12 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(413).send({ error: 'File too large (max 5MB)' });
       }
 
-      // Delete old image if exists
-      if (user.image) {
-        try {
-          await app.storage.delete(user.image);
-          app.logger.debug({ userId: user.id, oldImageKey: user.image }, 'Old profile image deleted');
-        } catch (error) {
-          app.logger.warn({ userId: user.id, oldImageKey: user.image, err: error }, 'Failed to delete old profile image');
-        }
-      }
-
       // Upload new image
-      const filename = data.filename || `image-${Date.now()}`;
+      const filename = (data.filename || 'image').replace(/[^A-Za-z0-9._-]/g, '_');
       const imageKey = `profile-images/${user.id}/${Date.now()}-${filename}`;
       let uploadedKey: string;
       try {
-        uploadedKey = await app.storage.upload(imageKey, buffer);
+        uploadedKey = await app.storage.upload(imageKey, buffer, data.mimetype);
         app.logger.info({ userId: user.id, imageKey: uploadedKey, filename }, 'Profile image uploaded successfully');
       } catch (error) {
         app.logger.error({ userId: user.id, imageKey, filename, err: error }, 'Failed to upload profile image to storage');
@@ -721,6 +711,16 @@ export function register(app: App, fastify: FastifyInstance) {
         .set({ image: uploadedKey, updatedAt: new Date() })
         .where(eq(authSchema.user.id, user.id))
         .returning();
+
+      // Delete the old image only once the new one is stored and saved
+      if (user.image) {
+        try {
+          await app.storage.delete(user.image);
+          app.logger.debug({ userId: user.id, oldImageKey: user.image }, 'Old profile image deleted');
+        } catch (error) {
+          app.logger.warn({ userId: user.id, oldImageKey: user.image, err: error }, 'Failed to delete old profile image');
+        }
+      }
 
       // Generate signed URL for the new image
       let imageUrl: string | null = null;
