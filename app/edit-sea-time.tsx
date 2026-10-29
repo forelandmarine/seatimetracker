@@ -698,8 +698,9 @@ export default function EditSeaTimeScreen() {
     : 'Up to 90 days total (continuous or split)';
   const serviceTypeLabel = 'Service Type';
   const vesselLabel = 'Vessel';
-  const startDateLabel = 'Start Date & Time';
-  const endDateLabel = 'End Date & Time';
+  const isYard = serviceType === 'yard';
+  const startDateLabel = isYard ? 'Start Date' : 'Start Date & Time';
+  const endDateLabel = isYard ? 'End Date' : 'End Date & Time';
   const voyageLocationsLabel = 'Voyage Locations';
   const voyageHelperText = 'Enter location names or coordinates (e.g., "51.5074, -0.1278")';
   const fromLabel = 'From';
@@ -771,9 +772,12 @@ export default function EditSeaTimeScreen() {
     );
   }
 
-  const startDateDisplay = `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`;
-  const endDateDisplay = entry.end_time 
-    ? `${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`
+  // Yard time is logged by date only, so its times are not shown
+  const startDateDisplay = isYard
+    ? formatDate(entry.start_time)
+    : `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`;
+  const endDateDisplay = entry.end_time
+    ? (isYard ? formatDate(entry.end_time) : `${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`)
     : 'Not set';
 
   return (

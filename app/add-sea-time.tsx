@@ -331,6 +331,28 @@ const formatDateTime = (date: Date | null) => {
   });
 };
 
+const formatDateOnly = (date: Date | null) => {
+  if (!date) return '';
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+// Yard time is logged by date only. Each chosen day becomes the overlap of its
+// local day and its UTC day, so the logbook shows the right date and the
+// backend's UTC day counting credits exactly the dates picked, in any timezone.
+const yardDayStart = (date: Date) => {
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  return new Date(Math.max(Date.UTC(y, m, d), new Date(y, m, d).getTime()));
+};
+
+const yardDayEnd = (date: Date) => {
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  return new Date(Math.min(Date.UTC(y, m, d + 1), new Date(y, m, d + 1).getTime()) - 60 * 1000);
+};
+
 export default function AddSeaTimeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -358,6 +380,7 @@ export default function AddSeaTimeScreen() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType>('seagoing');
+  const isYard = serviceType === 'yard';
   const [rankCapacity, setRankCapacity] = useState<RankCapacity | null>(null);
   const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
   const [watchkeepingHours, setWatchkeepingHours] = useState('');
@@ -532,18 +555,21 @@ export default function AddSeaTimeScreen() {
     }
     
     if (!startDate) {
-      showFeedback('Error', 'Please select a start date and time', 'error');
+      showFeedback('Error', isYard ? 'Please select a start date' : 'Please select a start date and time', 'error');
       return;
     }
 
-    if (endDate && endDate <= startDate) {
-      showFeedback('Error', 'End date must be after start date', 'error');
+    const saveStart = isYard ? yardDayStart(startDate) : startDate;
+    const saveEnd = isYard && endDate ? yardDayEnd(endDate) : endDate;
+
+    if (saveEnd && saveEnd <= saveStart) {
+      showFeedback('Error', isYard ? 'End date cannot be before start date' : 'End date must be after start date', 'error');
       return;
     }
 
     // Validate that duration is not 0 hours if end date is provided
-    if (endDate) {
-      const durationMs = endDate.getTime() - startDate.getTime();
+    if (saveEnd) {
+      const durationMs = saveEnd.getTime() - saveStart.getTime();
       const durationHours = durationMs / (1000 * 60 * 60);
       
       if (durationHours === 0) {
@@ -555,7 +581,7 @@ export default function AddSeaTimeScreen() {
     }
 
     // Future dates are allowed, but ask first.
-    if (!futureDatesConfirmed && confirmFutureDates(startDate, endDate, () => handleSave(true))) {
+    if (!futureDatesConfirmed && confirmFutureDates(saveStart, saveEnd, () => handleSave(true))) {
       return;
     }
 
@@ -598,8 +624,8 @@ export default function AddSeaTimeScreen() {
         },
         body: JSON.stringify({
           vessel_id: selectedVessel.id,
-          start_time: startDate.toISOString(),
-          end_time: endDate?.toISOString() || null,
+          start_time: saveStart.toISOString(),
+          end_time: saveEnd?.toISOString() || null,
           notes: fullNotes || null,
           start_latitude: fromCoords.lat,
           start_longitude: fromCoords.lon,
@@ -657,12 +683,14 @@ export default function AddSeaTimeScreen() {
   const serviceTypeLabel = 'Service Type';
   const vesselLabel = 'Vessel';
   const selectVesselPlaceholder = 'Select a vessel';
-  const startDateLabel = 'Start Date & Time';
-  const startDatePlaceholder = 'Select start date & time';
-  const endDateLabel = 'End Date & Time';
+  const startDateLabel = isYard ? 'Start Date' : 'Start Date & Time';
+  const startDatePlaceholder = isYard ? 'Select start date' : 'Select start date & time';
+  const endDateLabel = isYard ? 'End Date' : 'End Date & Time';
   const optionalText = '(Optional)';
-  const endDatePlaceholder = 'Select end date & time';
-  const endDateHelperText = 'Leave blank to log a single sea day.';
+  const endDatePlaceholder = isYard ? 'Select end date' : 'Select end date & time';
+  const endDateHelperText = isYard
+    ? 'Each day from start to end counts. Leave blank for a single day.'
+    : 'Leave blank to log a single sea day.';
   const voyageLocationsLabel = 'Voyage Locations';
   const voyageHelperText = 'Enter location names or coordinates (e.g., "51.5074, -0.1278")';
   const fromLabel = 'From';
@@ -675,8 +703,8 @@ export default function AddSeaTimeScreen() {
   const noVesselsText = 'No vessels available';
   const noVesselsSubtext = 'Add a vessel first from the Home tab';
   const selectVesselTitle = 'Select Vessel';
-  const startDatePickerTitle = 'Select Start Date & Time';
-  const endDatePickerTitle = 'Select End Date & Time';
+  const startDatePickerTitle = isYard ? 'Select Start Date' : 'Select Start Date & Time';
+  const endDatePickerTitle = isYard ? 'Select End Date' : 'Select End Date & Time';
   const doneButtonText = 'Done';
   const loadingText = 'Loading vessels...';
   const headerTitleText = 'Add Sea Time Entry';
@@ -955,7 +983,7 @@ export default function AddSeaTimeScreen() {
               }}
             >
               <Text style={startDate ? styles.dateTimeText : styles.dateTimePlaceholder}>
-                {startDate ? formatDateTime(startDate) : startDatePlaceholder}
+                {startDate ? (isYard ? formatDateOnly(startDate) : formatDateTime(startDate)) : startDatePlaceholder}
               </Text>
               <IconSymbol
                 ios_icon_name="calendar"
@@ -982,7 +1010,7 @@ export default function AddSeaTimeScreen() {
               }}
             >
               <Text style={endDate ? styles.dateTimeText : styles.dateTimePlaceholder}>
-                {endDate ? formatDateTime(endDate) : endDatePlaceholder}
+                {endDate ? (isYard ? formatDateOnly(endDate) : formatDateTime(endDate)) : endDatePlaceholder}
               </Text>
               <IconSymbol
                 ios_icon_name="calendar"
@@ -1247,18 +1275,37 @@ export default function AddSeaTimeScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.datePickerContainer}>
+                  {/* Separate date and time wheels: the combined datetime spinner has no year column */}
                   <DateTimePicker
                     value={startDate || new Date()}
-                    mode="datetime"
+                    mode="date"
                     display="spinner"
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
                         log('[AddSeaTimeScreen] Start date selected:', selectedDate);
-                        setStartDate(selectedDate);
+                        const newDate = startDate ? new Date(startDate) : new Date();
+                        newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                        setStartDate(newDate);
                       }
                     }}
                     textColor={isDark ? colors.text : colors.textLight}
                   />
+                  {!isYard && (
+                    <DateTimePicker
+                      value={startDate || new Date()}
+                      mode="time"
+                      display="spinner"
+                      onChange={(event, selectedTime) => {
+                        if (selectedTime) {
+                          log('[AddSeaTimeScreen] Start time selected:', selectedTime);
+                          const newDate = startDate ? new Date(startDate) : new Date();
+                          newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+                          setStartDate(newDate);
+                        }
+                      }}
+                      textColor={isDark ? colors.text : colors.textLight}
+                    />
+                  )}
                   <TouchableOpacity
                     style={styles.datePickerButton}
                     onPress={() => {
@@ -1302,18 +1349,37 @@ export default function AddSeaTimeScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.datePickerContainer}>
+                  {/* Separate date and time wheels: the combined datetime spinner has no year column */}
                   <DateTimePicker
                     value={endDate || new Date()}
-                    mode="datetime"
+                    mode="date"
                     display="spinner"
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
                         log('[AddSeaTimeScreen] End date selected:', selectedDate);
-                        setEndDate(selectedDate);
+                        const newDate = endDate ? new Date(endDate) : new Date();
+                        newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                        setEndDate(newDate);
                       }
                     }}
                     textColor={isDark ? colors.text : colors.textLight}
                   />
+                  {!isYard && (
+                    <DateTimePicker
+                      value={endDate || new Date()}
+                      mode="time"
+                      display="spinner"
+                      onChange={(event, selectedTime) => {
+                        if (selectedTime) {
+                          log('[AddSeaTimeScreen] End time selected:', selectedTime);
+                          const newDate = endDate ? new Date(endDate) : new Date();
+                          newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+                          setEndDate(newDate);
+                        }
+                      }}
+                      textColor={isDark ? colors.text : colors.textLight}
+                    />
+                  )}
                   <TouchableOpacity
                     style={styles.datePickerButton}
                     onPress={() => {
@@ -1343,7 +1409,7 @@ export default function AddSeaTimeScreen() {
                 newDate.setMonth(selectedDate.getMonth());
                 newDate.setDate(selectedDate.getDate());
                 setStartDate(newDate);
-                setShowStartTimePicker(true);
+                if (!isYard) setShowStartTimePicker(true);
               }
             }}
           />
@@ -1379,7 +1445,7 @@ export default function AddSeaTimeScreen() {
                 newDate.setMonth(selectedDate.getMonth());
                 newDate.setDate(selectedDate.getDate());
                 setEndDate(newDate);
-                setShowEndTimePicker(true);
+                if (!isYard) setShowEndTimePicker(true);
               }
             }}
           />
