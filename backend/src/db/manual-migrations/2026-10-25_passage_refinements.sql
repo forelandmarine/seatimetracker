@@ -33,3 +33,7 @@ CREATE INDEX IF NOT EXISTS "passage_refinements_outcome_idx" ON "passage_refinem
 CREATE INDEX IF NOT EXISTS "sea_time_entries_checking_idx"
   ON "sea_time_entries" ("vessel_id")
   WHERE "status" = 'checking';
+
+-- RLS on with no policies, like every other public table (2026-10-27 advisor fix).
+-- The backend connects as postgres (BYPASSRLS), so it is unaffected.
+ALTER TABLE public.passage_refinements ENABLE ROW LEVEL SECURITY;

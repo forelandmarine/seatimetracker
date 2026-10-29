@@ -27,3 +27,8 @@ CREATE TABLE IF NOT EXISTS "training_date_sources" (
   "last_count" text,
   "last_error" text
 );
+
+-- RLS on with no policies, like every other public table (2026-10-27 advisor fix).
+-- The backend connects as postgres (BYPASSRLS), so it is unaffected.
+ALTER TABLE public.training_course_dates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_date_sources ENABLE ROW LEVEL SECURITY;
