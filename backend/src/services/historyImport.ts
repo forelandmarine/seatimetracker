@@ -281,6 +281,8 @@ export async function availability(app: App, userId: string, vesselId: string): 
       }))
     : [];
 
+  logCheck(app, { user_id: userId, vessel_id: vessel.id, mmsi: vessel.mmsi, kind: 'availability', available: products.length > 0 });
+
   return {
     available: products.length > 0,
     earliest_day: earliest,
@@ -365,13 +367,25 @@ export async function checkRanges(app: App, userId: string, vesselId: string, pi
     .sort((a, b) => (a.day < b.day ? -1 : 1))
     .map((k) => ({ day: k.day, ais: k.count > 0, underway: moving.has(k.day) }));
   const underway = out.filter((d) => d.underway).length;
+  const verdict = checkVerdict(out.length, withData.length, underway);
+  logCheck(app, {
+    user_id: userId, vessel_id: vessel.id, mmsi: vessel.mmsi, kind: 'periods',
+    verdict, days_picked: days.length, days_with_ais: withData.length, days_underway: underway,
+  });
   return {
     checked_days: out.length,
     days_with_ais: withData.length,
     days_underway: underway,
-    verdict: checkVerdict(out.length, withData.length, underway),
+    verdict,
     days: out,
   };
+}
+
+/** Record a free check for the purchases dashboard. Never blocks or fails the check itself. */
+function logCheck(app: App, row: typeof schema.history_checks.$inferInsert) {
+  app.db.insert(schema.history_checks).values(row).catch((error: unknown) => {
+    app.logger.warn({ err: error }, 'Could not log history check');
+  });
 }
 
 function toFix(r: typeof schema.ais_history_positions.$inferSelect): HistoryFix {

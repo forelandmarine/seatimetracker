@@ -329,6 +329,25 @@ export const history_imports = pgTable('history_imports', {
   uniqueIndex('history_imports_transaction_id_uq').on(table.transaction_id),
 ]);
 
+// Free AIS history checks (before purchase): one row per availability look-up or period check,
+// so the purchases dashboard can count checks and how many lead to an import.
+export const history_checks = pgTable('history_checks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  mmsi: text('mmsi').notNull(),
+  kind: text('kind').notNull(), // 'availability' (import screen opened) | 'periods' (picked periods checked)
+  available: boolean('available'), // availability: any history found
+  verdict: text('verdict'), // periods: the verdict shown to the user
+  days_picked: integer('days_picked'),
+  days_with_ais: integer('days_with_ais'),
+  days_underway: integer('days_underway'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('history_checks_created_at_idx').on(table.created_at),
+  index('history_checks_user_id_idx').on(table.user_id),
+]);
+
 // Days of Datalastic vessel_history already fetched, per MMSI (shared by everyone on that
 // vessel, so no day is ever paid for twice). position_count 0 = fetched, no positions.
 export const ais_history_days = pgTable('ais_history_days', {
