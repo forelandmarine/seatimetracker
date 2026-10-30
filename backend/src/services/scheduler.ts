@@ -13,7 +13,7 @@ import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shou
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
 import { processPassageRefinements } from './passageRefinement.js';
-import { extendableStatuses, newLiveEntryStatus, refinementEnabled } from '../utils/passageRefinement.js';
+import { extendableStatuses, newLiveEntryStatus } from '../utils/passageRefinement.js';
 import { isInShiftMode } from './shifts.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
@@ -404,9 +404,8 @@ async function runSchedulerIteration(app: App): Promise<void> {
  * Adaptive interval: shorter checks when underway, longer when stationary.
  * Saves API credits and gives sub-hour resolution to active voyages.
  *
- * - Underway (moving): 60 minutes while passage refinement is on (start and end are
- *   corrected afterwards from the AIS track, services/passageRefinement.ts, so finer
- *   checks buy nothing); 30 minutes while it is off, as before refinement existed.
+ * - Underway (moving): 30 minutes, whether or not passage refinement is on, so the
+ *   live position stays fresh
  * - Stationary in port: 6 hours
  * - Default (no movement data yet): use task's configured interval
  */
@@ -415,7 +414,7 @@ function computeNextRunInterval(
   isMoving: boolean | null
 ): number {
   if (isMoving === true) {
-    return refinementEnabled() ? 1 : 0.5; // 60 or 30 minutes
+    return 0.5; // 30 minutes
   }
   if (isMoving === false) {
     return 6; // 6 hours
