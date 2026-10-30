@@ -27,11 +27,6 @@ const INACTIVE_RECHECK_HOURS = 12;
 // While a user is off board, at most one "your vessel is underway" push per this many hours.
 const UNDERWAY_ALERT_COOLDOWN_HOURS = 24;
 
-// Track which users have received drip emails (in-memory cache; resets on restart
-// but the database createdAt window prevents double-sends across restarts).
-const day3Sent = new Set<string>();
-const day7Sent = new Set<string>();
-
 let schedulerInterval: NodeJS.Timeout | null = null;
 let isSchedulerRunning = false;
 
@@ -74,65 +69,75 @@ export function stopScheduler(app: App): void {
 /**
  * Process the welcome email drip sequence.
  *
- * Sends day-3 email to users created 3-4 days ago that haven't received it.
- * Sends day-7 email to users created 7-8 days ago that haven't received it.
+ * Sends the day-3 email to users created 3-4 days ago, and the day-7 email
+ * (Lightship, which is marketing) to users created 7-8 days ago who opted in
+ * to marketing email.
  *
- * Uses an in-memory cache to avoid double-sending within the same process
- * lifetime. The createdAt window prevents the same user being eligible across
- * multiple iterations on the same day.
+ * Each send is claimed in the database first (day3_email_sent_at /
+ * day7_email_sent_at set only while still null), so a restart, or two
+ * instances overlapping during a deploy, can't send the same email twice.
+ * A failed send releases the claim so the next iteration can retry.
  */
-async function processDripEmails(app: App): Promise<void> {
+export async function processDripEmails(app: App): Promise<void> {
   const now = new Date();
-  const day3Start = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
-  const day3End = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-  const day7Start = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
-  const day7End = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const day = 24 * 60 * 60 * 1000;
 
-  // Day 3: users created 3-4 days ago
-  const day3Users = await app.db
-    .select()
-    .from(authSchema.user)
-    .where(
-      and(
-        gte(authSchema.user.createdAt, day3Start),
-        lte(authSchema.user.createdAt, day3End)
-      )
-    );
+  const drips = [
+    {
+      label: 'Day-3',
+      column: authSchema.user.day3_email_sent_at,
+      key: 'day3_email_sent_at' as const,
+      from: new Date(now.getTime() - 4 * day),
+      to: new Date(now.getTime() - 3 * day),
+      marketingOnly: false,
+      send: (u: typeof authSchema.user.$inferSelect) => sendDay3Email({ email: u.email, name: u.name }, app.logger),
+    },
+    {
+      label: 'Day-7',
+      column: authSchema.user.day7_email_sent_at,
+      key: 'day7_email_sent_at' as const,
+      from: new Date(now.getTime() - 8 * day),
+      to: new Date(now.getTime() - 7 * day),
+      marketingOnly: true,
+      send: (u: typeof authSchema.user.$inferSelect) =>
+        sendDay7Email({ email: u.email, name: u.name, userId: u.id }, app.logger),
+    },
+  ];
 
-  for (const u of day3Users) {
-    if (!u.email || day3Sent.has(u.id)) continue;
-    try {
-      const result = await sendDay3Email({ email: u.email, name: u.name }, app.logger);
-      if (result.success) {
-        day3Sent.add(u.id);
-        app.logger.info({ userId: u.id, email: u.email }, 'Day-3 drip email sent');
+  for (const drip of drips) {
+    const users = await app.db
+      .select()
+      .from(authSchema.user)
+      .where(
+        and(
+          gte(authSchema.user.createdAt, drip.from),
+          lte(authSchema.user.createdAt, drip.to),
+          isNull(drip.column),
+          drip.marketingOnly ? eq(authSchema.user.marketing_consent, true) : undefined
+        )
+      );
+
+    for (const u of users) {
+      if (!u.email) continue;
+      const claimed = await app.db
+        .update(authSchema.user)
+        .set({ [drip.key]: new Date() })
+        .where(and(eq(authSchema.user.id, u.id), isNull(drip.column)))
+        .returning({ id: authSchema.user.id });
+      if (claimed.length === 0) continue; // another instance got there first
+
+      let sent = false;
+      try {
+        const result = await drip.send(u);
+        sent = result.success;
+        if (sent) app.logger.info({ userId: u.id, email: u.email }, `${drip.label} drip email sent`);
+        else app.logger.warn({ userId: u.id, error: result.error }, `${drip.label} email failed`);
+      } catch (err) {
+        app.logger.warn({ err, userId: u.id }, `${drip.label} email failed`);
       }
-    } catch (err) {
-      app.logger.warn({ err, userId: u.id }, 'Day-3 email failed');
-    }
-  }
-
-  // Day 7: users created 7-8 days ago
-  const day7Users = await app.db
-    .select()
-    .from(authSchema.user)
-    .where(
-      and(
-        gte(authSchema.user.createdAt, day7Start),
-        lte(authSchema.user.createdAt, day7End)
-      )
-    );
-
-  for (const u of day7Users) {
-    if (!u.email || day7Sent.has(u.id)) continue;
-    try {
-      const result = await sendDay7Email({ email: u.email, name: u.name }, app.logger);
-      if (result.success) {
-        day7Sent.add(u.id);
-        app.logger.info({ userId: u.id, email: u.email }, 'Day-7 drip email sent');
+      if (!sent) {
+        await app.db.update(authSchema.user).set({ [drip.key]: null }).where(eq(authSchema.user.id, u.id));
       }
-    } catch (err) {
-      app.logger.warn({ err, userId: u.id }, 'Day-7 email failed');
     }
   }
 }

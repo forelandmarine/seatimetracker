@@ -7,6 +7,7 @@
  */
 
 import { Resend } from "resend";
+import { unsubscribeUrl } from "../routes/marketing-consent.js";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || "SeaTime Tracker <noreply@forelandmarine.com>";
@@ -17,6 +18,8 @@ const SUPPORT_EMAIL = "info@forelandmarine.com";
 interface SendWelcomeEmailInput {
   email: string;
   name?: string;
+  /** Needed for marketing emails, which must carry a one-click unsubscribe link. */
+  userId?: string;
 }
 
 export async function sendWelcomeEmail(
@@ -186,7 +189,12 @@ export async function sendDay7Email(
   if (!RESEND_API_KEY) {
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
+  // Marketing email: never send without an unsubscribe link.
+  if (!input.userId || !process.env.BETTER_AUTH_URL) {
+    return { success: false, error: "Day-7 email needs userId and BETTER_AUTH_URL for the unsubscribe link" };
+  }
   const firstName = (input.name || "").split(" ")[0] || "there";
+  const unsubscribe = unsubscribeUrl(process.env.BETTER_AUTH_URL, input.userId);
 
   try {
     const resend = new Resend(RESEND_API_KEY);
@@ -194,8 +202,9 @@ export async function sendDay7Email(
       from: FROM_EMAIL,
       to: input.email,
       subject: "Managing more than one yacht? Meet Lightship.",
-      html: day7Html(firstName),
-      text: day7Text(firstName),
+      html: day7Html(firstName, unsubscribe),
+      text: day7Text(firstName, unsubscribe),
+      headers: { "List-Unsubscribe": `<${unsubscribe}>` },
     });
     if (error) return { success: false, error: String(error) };
     logger?.info({ email: input.email, emailId: data?.id }, "[Day7 Email] Sent");
@@ -250,7 +259,7 @@ Smooth sailing,
 The Foreland Marine team`;
 }
 
-function day7Html(firstName: string): string {
+function day7Html(firstName: string, unsubscribe: string): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#F7F9FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -275,12 +284,13 @@ function day7Html(firstName: string): string {
       <p style="margin:24px 0 0;color:#4A5568;font-size:14px;line-height:1.6;">Not interested? No problem — keep using SeaTime Tracker for your own logbook. We won't keep pushing.</p>
 
       <p style="margin:24px 0 0;color:#4A5568;font-size:14px;">Smooth sailing,<br>The Foreland Marine team</p>
+      <p style="margin:24px 0 0;color:#A0AEC0;font-size:12px;line-height:1.5;">You're getting this because you opted in to emails from Foreland Marine. <a href="${unsubscribe}" style="color:#A0AEC0;">Unsubscribe</a></p>
     </td></tr>
   </table>
 </body></html>`;
 }
 
-function day7Text(firstName: string): string {
+function day7Text(firstName: string, unsubscribe: string): string {
   return `Hi ${firstName}, a quick introduction.
 
 SeaTime Tracker is built by Foreland Marine — a yacht management consultancy with offices in London, Antibes, Palma, and Fort Lauderdale.
@@ -294,7 +304,10 @@ See how it works: https://forelandmarine.com/tools/lightship-ism
 Not interested? No problem — keep using SeaTime Tracker for your own logbook.
 
 Smooth sailing,
-The Foreland Marine team`;
+The Foreland Marine team
+
+You're getting this because you opted in to emails from Foreland Marine.
+Unsubscribe: ${unsubscribe}`;
 }
 
 function welcomeText(firstName: string): string {

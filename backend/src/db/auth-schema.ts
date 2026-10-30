@@ -28,6 +28,8 @@ export const user = pgTable("user", {
   marketing_consent: boolean("marketing_consent").default(false).notNull(),
   marketing_consent_at: timestamp("marketing_consent_at", { withTimezone: true }), // when the user last answered
   marketing_consent_source: text("marketing_consent_source"), // 'signup' | 'prompt' | 'settings' | 'unsubscribe'
+  day3_email_sent_at: timestamp("day3_email_sent_at", { withTimezone: true }), // day-3 drip email claimed/sent
+  day7_email_sent_at: timestamp("day7_email_sent_at", { withTimezone: true }), // day-7 drip email claimed/sent (marketing, opt-in only)
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID
