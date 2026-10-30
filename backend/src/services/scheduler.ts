@@ -13,7 +13,7 @@ import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shou
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
 import { processPassageRefinements } from './passageRefinement.js';
-import { extendableStatuses, newLiveEntryStatus } from '../utils/passageRefinement.js';
+import { extendableStatuses, isCommercialSector, newLiveEntryStatus } from '../utils/passageRefinement.js';
 import { isInShiftMode } from './shifts.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
@@ -637,7 +637,7 @@ async function processScheduledTask(
       await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId, entryStatus);
 
       // Then handle regular 2-hour window detections
-      await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus);
+      await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus, user.vessel_sector);
     }
 
     if (ais_data.is_moving === true && user.on_board === false) {
@@ -973,8 +973,11 @@ async function handleSeaTimeEntries(
   check_time: Date,
   taskId: string,
   userId: string,
-  entryStatus: 'pending' | 'off_board'
+  entryStatus: 'pending' | 'off_board',
+  userSector?: string | null
 ): Promise<void> {
+  // Commercial passages aren't checked against the AIS track (see newLiveEntryStatus)
+  const commercial = isCommercialSector(vessel.sector, userSector);
   // Using 2-hour position check interval
   const twoHoursAgo = new Date(check_time.getTime() - 2 * 60 * 60 * 1000);
 
@@ -1215,7 +1218,7 @@ async function handleSeaTimeEntries(
           is_stationary: isStationary,
           notes: updatedNotes,
           // Its times change, so a passage already released for review is checked again
-          status: existingEntryForDay.status === 'off_board' ? 'off_board' : newLiveEntryStatus(entryStatus),
+          status: existingEntryForDay.status === 'off_board' ? 'off_board' : newLiveEntryStatus(entryStatus, commercial),
         })
         .where(eq(schema.sea_time_entries.id, existingEntryForDay.id))
         .returning();
@@ -1278,7 +1281,7 @@ async function handleSeaTimeEntries(
           start_longitude: String(oldLng),
           end_latitude: String(currentLat),
           end_longitude: String(currentLng),
-          status: newLiveEntryStatus(entryStatus),
+          status: newLiveEntryStatus(entryStatus, commercial),
           service_type: 'actual_sea_service',
           mca_compliant: isMCACompliant,
           distance_nm: String(distanceNm),

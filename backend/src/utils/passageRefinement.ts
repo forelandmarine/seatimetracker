@@ -71,9 +71,18 @@ export function refinementEnabled(): boolean {
   return (process.env.PASSAGE_REFINEMENT || '').toLowerCase() !== 'off';
 }
 
-/** Status for a new live-tracked passage: hidden while it is checked, unless off board. */
-export function newLiveEntryStatus(entryStatus: 'pending' | 'off_board'): string {
-  return entryStatus === 'pending' && refinementEnabled() ? CHECKING_STATUS : entryStatus;
+/**
+ * Status for a new live-tracked passage: hidden while it is checked, unless off board.
+ * Commercial vessels and users skip the check for now (Dan, 2026-10-30): workboat days
+ * (CTVs holding at turbines, harbour work under 0.5 nm) don't fit the yacht passage model.
+ */
+export function newLiveEntryStatus(entryStatus: 'pending' | 'off_board', commercial = false): string {
+  return entryStatus === 'pending' && !commercial && refinementEnabled() ? CHECKING_STATUS : entryStatus;
+}
+
+/** Commercial when either the vessel or the user's chosen sector says so. */
+export function isCommercialSector(vesselSector?: string | null, userSector?: string | null): boolean {
+  return vesselSector === 'commercial' || userSector === 'commercial';
 }
 
 /** Statuses of an open live passage that a new check may extend. */

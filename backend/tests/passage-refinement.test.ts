@@ -6,6 +6,7 @@ import {
   refinePassage,
   isSettled,
   newLiveEntryStatus,
+  isCommercialSector,
   extendableStatuses,
   CHECKING_STATUS,
   type LivePassage,
@@ -165,6 +166,15 @@ describe("entry statuses", () => {
     expect(newLiveEntryStatus("off_board")).toBe("off_board");
     expect(extendableStatuses("pending")).toEqual(["pending", CHECKING_STATUS]);
     expect(extendableStatuses("off_board")).toEqual(["off_board"]);
+  });
+
+  test("commercial passages go straight to pending", () => {
+    expect(newLiveEntryStatus("pending", true)).toBe("pending");
+    expect(newLiveEntryStatus("off_board", true)).toBe("off_board");
+    expect(isCommercialSector("commercial", null)).toBe(true);
+    expect(isCommercialSector(null, "commercial")).toBe(true);
+    expect(isCommercialSector("yachting", "yachting")).toBe(false);
+    expect(isCommercialSector(null, null)).toBe(false);
   });
 
   test("the kill switch restores straight-to-pending", () => {
