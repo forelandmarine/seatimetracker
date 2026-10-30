@@ -4,6 +4,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { CHECKING_CONFIRM_ERROR, CHECKING_STATUS } from "../utils/passageRefinement.js";
 import { calculateDurationHours, entrySeaDays, isValidServiceType, samsaEntryDates, VALID_SERVICE_TYPES } from "../utils/seaTime.js";
 
 const MAX_IDS = 500;
@@ -26,6 +27,7 @@ export function planBulkUpdate(
 ): { update: Record<string, unknown> } | { error: string } {
   if (!entry || entry.user_id !== userId) return { error: "Sea time entry not found" };
   if (action === "reject") return { update: { status: "rejected" } };
+  if (entry.status === CHECKING_STATUS) return { error: CHECKING_CONFIRM_ERROR };
   if (entry.status !== "pending") return { error: `Entry is already ${entry.status}` };
   const end_time = entry.end_time || now;
   const duration_hours = calculateDurationHours(entry.start_time, end_time);

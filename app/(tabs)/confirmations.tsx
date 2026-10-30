@@ -34,6 +34,7 @@ import {
   askBulkReject,
   BulkServiceType,
 } from '@/components/BulkReview';
+import { CheckingPassages, isChecking } from '@/components/CheckingPassages';
 
 import { log, warn, error as logError } from '@/utils/log';
 
@@ -51,7 +52,7 @@ interface SeaTimeEntry {
   start_time: string;
   end_time: string | null;
   duration_hours: number | string | null;
-  status: 'pending' | 'confirmed' | 'rejected';
+  status: 'pending' | 'checking' | 'confirmed' | 'rejected';
   notes: string | null;
   created_at: string;
   start_latitude?: number | string | null;
@@ -69,6 +70,8 @@ type ServiceType = 'actual_sea_service' | 'watchkeeping_service';
 
 export default function ConfirmationsScreen() {
   const [entries, setEntries] = useState<SeaTimeEntry[]>([]);
+  // Live passages still being checked against the AIS track: shown read-only above the pending list.
+  const [checkingEntries, setCheckingEntries] = useState<SeaTimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
@@ -134,7 +137,7 @@ export default function ConfirmationsScreen() {
   const loadData = useCallback(async () => {
     try {
       log('[Confirmations] Loading pending entries');
-      const pendingEntries = await seaTimeApi.getPendingEntries();
+      const pendingEntries = await seaTimeApi.getPendingEntries(true);
       
       log('[Confirmations] Loaded', pendingEntries.length, 'pending entries from backend');
       
@@ -147,7 +150,8 @@ export default function ConfirmationsScreen() {
       
       // Show ALL pending entries returned by the backend
       // The backend determines what should be pending, not the frontend
-      setEntries(pendingEntries);
+      setCheckingEntries(pendingEntries.filter(isChecking));
+      setEntries(pendingEntries.filter((e: SeaTimeEntry) => !isChecking(e)));
     } catch (error: any) {
       logError('[Confirmations] Failed to load data:', error);
       // CRITICAL: Don't crash on error - set empty array
@@ -613,7 +617,15 @@ export default function ConfirmationsScreen() {
         </View>
 
         <View style={styles.content}>
-          {entries.length === 0 ? (
+          {!bulk.selecting && (
+            <CheckingPassages
+              entries={checkingEntries}
+              isDark={isDark}
+              processingId={processingEntryId}
+              onReject={handleRejectEntry}
+            />
+          )}
+          {entries.length === 0 && checkingEntries.length === 0 ? (
             <View style={styles.emptyState}>
               <IconSymbol
                 ios_icon_name="checkmark.circle"

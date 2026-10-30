@@ -4,7 +4,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { HIDDEN_ENTRY_STATUSES } from "../utils/passageRefinement.js";
+import { CHECKING_CONFIRM_ERROR, CHECKING_STATUS, HIDDEN_ENTRY_STATUSES } from "../utils/passageRefinement.js";
 import {
   calculateDurationHours,
   calculateSeaDays,
@@ -475,10 +475,14 @@ export function register(app: App, fastify: FastifyInstance) {
   });
 
   // GET /api/sea-time/pending - Return pending entries awaiting confirmation
-  fastify.get('/api/sea-time/pending', {
+  fastify.get<{ Querystring: { include_checking?: string } }>('/api/sea-time/pending', {
     schema: {
-      description: 'Get pending sea time entries awaiting confirmation (requires authentication)',
+      description: 'Get pending sea time entries awaiting confirmation (requires authentication). With include_checking=true, also returns live passages still being checked against the AIS track (status checking), which cannot be confirmed yet. Older app builds omit it and never see them.',
       tags: ['sea-time'],
+      querystring: {
+        type: 'object',
+        properties: { include_checking: { type: 'string' } },
+      },
       response: {
         200: {
           type: 'array',
@@ -530,9 +534,10 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId }, 'Retrieving pending sea time entries for user');
 
+    const statuses = request.query.include_checking === 'true' ? ['pending', CHECKING_STATUS] : ['pending'];
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
-        eq(schema.sea_time_entries.status, 'pending'),
+        inArray(schema.sea_time_entries.status, statuses),
         eq(schema.sea_time_entries.user_id, userId)
       ),
       with: {
@@ -757,6 +762,9 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     // Guard: only pending entries can be confirmed
+    if (current_entry.status === CHECKING_STATUS) {
+      return reply.code(409).send({ error: CHECKING_CONFIRM_ERROR });
+    }
     if (current_entry.status !== 'pending') {
       app.logger.warn({ userId, entryId: id, status: current_entry.status }, 'Entry already processed');
       return reply.code(409).send({ error: `Entry is already ${current_entry.status}` });

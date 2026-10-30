@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { planBulkUpdate } from '../src/routes/sea-time-bulk.js';
+import { CHECKING_CONFIRM_ERROR } from '../src/utils/passageRefinement.js';
 
 const U = 'user-1';
 const base = { user_id: U, status: 'pending', start_time: new Date('2026-10-01T08:00:00Z'), end_time: new Date('2026-10-01T17:00:00Z'), service_type: 'actual_sea_service', vessel_id: 'v1' };
@@ -19,6 +20,10 @@ describe('planBulkUpdate', () => {
     expect(planBulkUpdate({ ...base, user_id: 'other' }, U, 'confirm', undefined, seaDays)).toEqual({ error: 'Sea time entry not found' });
     expect(planBulkUpdate(undefined, U, 'reject', undefined, seaDays)).toEqual({ error: 'Sea time entry not found' });
     expect('error' in planBulkUpdate({ ...base, end_time: base.start_time }, U, 'confirm', undefined, seaDays)).toBe(true);
+  });
+  test('a passage still being checked can be rejected but not confirmed', () => {
+    expect(planBulkUpdate({ ...base, status: 'checking' }, U, 'confirm', undefined, seaDays)).toEqual({ error: CHECKING_CONFIRM_ERROR });
+    expect(planBulkUpdate({ ...base, status: 'checking' }, U, 'reject', undefined, seaDays)).toEqual({ update: { status: 'rejected' } });
   });
   test('reject only sets the status', () => {
     expect(planBulkUpdate(base, U, 'reject', undefined, seaDays)).toEqual({ update: { status: 'rejected' } });

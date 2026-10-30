@@ -22,10 +22,13 @@
 import { calculateDistanceNauticalMiles } from './seaTime.js';
 import { groupPassages, cleanFixes, MIN_PASSAGE_NM, type HistoryFix } from './historyImport.js';
 
-/** Live passages wait, hidden, in this status until refined (then 'pending'). */
+/** Live passages wait in this status until refined (then 'pending'). The Review tab lists them read-only when it asks with include_checking. */
 export const CHECKING_STATUS = 'checking';
-/** Entry statuses the app never lists: off-board passages and unrefined ones. */
+/** Entry statuses the logbook, vessel and summary lists never show: off-board passages and unrefined ones. */
 export const HIDDEN_ENTRY_STATUSES = ['off_board', CHECKING_STATUS];
+/** Returned when someone tries to confirm a passage that is still being checked. */
+export const CHECKING_CONFIRM_ERROR =
+  'This passage is still being checked against the AIS track. You can confirm it once the vessel has stopped and the times are checked.';
 
 /** Datalastic history runs about 26 minutes behind; wait this long after the passage end. */
 export const HISTORY_LAG_MINUTES = 45;

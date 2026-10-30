@@ -550,8 +550,13 @@ export const getSeaTimeEntries = async () => {
   return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
 };
 
-export const getPendingEntries = async () => {
-  const res = await authFetch('/api/sea-time/pending');
+/**
+ * Entries awaiting review. With includeChecking, also live passages still being
+ * checked against the AIS track (status 'checking'), which can't be confirmed yet;
+ * backends from before passage refinement ignore the flag.
+ */
+export const getPendingEntries = async (includeChecking = false) => {
+  const res = await authFetch(includeChecking ? '/api/sea-time/pending?include_checking=true' : '/api/sea-time/pending');
   const data = await res.json();
   return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
 };
