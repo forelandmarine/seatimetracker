@@ -445,6 +445,15 @@ export default function ConfirmationsScreen() {
     }
   };
 
+  // Yard time counts by date, so yard entries show dates without times.
+  const isYardEntry = (entry: SeaTimeEntry) => entry.service_type === 'yard_service';
+
+  const formatYardDates = (entry: SeaTimeEntry) => {
+    const start = formatDate(entry.start_time);
+    const end = entry.end_time ? formatDate(entry.end_time) : null;
+    return end && end !== start ? `${start} - ${end}` : start;
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'confirmed':
@@ -659,7 +668,7 @@ export default function ConfirmationsScreen() {
                         {entry.vessel?.vessel_name || 'Unknown Vessel'}
                       </Text>
                       <Text style={styles.entryDate}>
-                        {formatDate(entry.start_time)} at {formatTime(entry.start_time)}
+                        {isYardEntry(entry) ? formatYardDates(entry) : `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`}
                       </Text>
                       <View style={styles.durationBadge}>
                         <Text style={styles.durationText}>
@@ -697,14 +706,14 @@ export default function ConfirmationsScreen() {
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Start:</Text>
                         <Text style={styles.detailValue}>
-                          {formatDate(entry.start_time)} {formatTime(entry.start_time)}
+                          {formatDate(entry.start_time)}{isYardEntry(entry) ? '' : ` ${formatTime(entry.start_time)}`}
                         </Text>
                       </View>
                       {entry.end_time && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>End:</Text>
                           <Text style={styles.detailValue}>
-                            {formatDate(entry.end_time)} {formatTime(entry.end_time)}
+                            {formatDate(entry.end_time)}{isYardEntry(entry) ? '' : ` ${formatTime(entry.end_time)}`}
                           </Text>
                         </View>
                       )}
