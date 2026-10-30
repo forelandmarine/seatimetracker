@@ -297,7 +297,8 @@ function serviceLines(authority: string, entries: any[], user: any): string {
     case 'uscg': {
       const u = uscgCreditableDays(entries);
       return [
-        `USCG creditable days (8-hour day, 46 CFR 10.107): ${u.creditable}. Use this for any days of service requirement.`,
+        `USCG creditable days (8-hour day, 46 CFR 10.107): ${u.creditable_total}. Use this for any days of service requirement.`,
+        u.two_watch_days ? `Of these, ${u.two_watch_days} days of 12 hours or more on vessels the user marked as two-watch were credited as 1.5 days each (+${u.two_watch_bonus}). The Coast Guard decides whether the vessel holds that authorisation.` : null,
         `Provisional days (4 to 8 hours on vessels under 100 GRT, creditable only if the Coast Guard accepts the schedule): ${u.provisional}.`,
         `Days of 4 to 8 hours on vessels of 100 GRT or more (do not make a day): ${u.short_of_standard_day}. Under 4 hours: ${u.below_minimum}.`,
         u.awaiting_tonnage ? `Days waiting for the vessel tonnage to be recorded: ${u.awaiting_tonnage} (${u.vessels_awaiting_tonnage.join(', ')}).` : null,

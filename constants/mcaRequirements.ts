@@ -2854,7 +2854,7 @@ export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
   {
     title: 'A Day of Service',
     description:
-      '8 hours of watchstanding or day-working, not counting overtime (46 CFR 10.107). On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days, which an evaluator applies to your application.',
+      '8 hours of watchstanding or day-working, not counting overtime (46 CFR 10.107). On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days. Mark the vessel as two-watch on its screen and the app adds the extra half days; the evaluator checks the authorisation.',
     department: 'both',
   },
   {

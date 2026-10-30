@@ -67,6 +67,9 @@ interface SeaTimeSummary {
   total_days: number;
   uscg_service?: {
     creditable: number;
+    two_watch_days?: number;
+    two_watch_bonus?: number;
+    creditable_total?: number;
     provisional: number;
     short_of_standard_day: number;
     awaiting_tonnage: number;

@@ -19,6 +19,7 @@ export const vessels = pgTable('vessels', {
   engine_kilowatts: decimal('engine_kilowatts', { precision: 10, scale: 2 }), // Engine power in kilowatts
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
   is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
+  is_two_watch: boolean('is_two_watch'), // USCG: user says the vessel is authorised to run two watches (46 USC 8104), so a 12-hour day counts 1.5 days (46 CFR 10.107)
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),

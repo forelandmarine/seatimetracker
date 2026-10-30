@@ -27,6 +27,7 @@ import {
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
+import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -44,6 +45,7 @@ interface Vessel {
   callsign?: string;
   engine_kilowatts?: number;
   engine_type?: string;
+  is_two_watch?: boolean | null;
 }
 
 interface SeaTimeEntry {
@@ -614,6 +616,16 @@ export default function VesselDetailScreen() {
             <Text style={styles.detailValue}>{formatDate(vessel.created_at)}</Text>
           </View>
         </View>
+
+        {/* USCG two-watch authorisation (hidden for other authorities) */}
+        <TwoWatchToggle
+          vesselId={vessel.id}
+          isTwoWatch={vessel.is_two_watch}
+          onChange={(isTwoWatch) => {
+            setVessel((v) => (v ? { ...v, is_two_watch: isTwoWatch } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+          }}
+        />
 
         {/* AIS Data Card */}
         <View style={styles.card}>

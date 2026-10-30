@@ -312,6 +312,13 @@ export const updateVesselWorkboat = async (vesselId: string, isWorkboat: boolean
   return normalizeVessel(await res.json());
 };
 
+// Mark a vessel as authorised to run a two-watch system (USCG). A 12-hour
+// working day on it then counts as 1.5 days (46 CFR 10.107).
+export const updateVesselTwoWatch = async (vesselId: string, isTwoWatch: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/two-watch`, { method: 'PUT', body: { is_two_watch: isTwoWatch } });
+  return normalizeVessel(await res.json());
+};
+
 // Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
 // certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
 export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {

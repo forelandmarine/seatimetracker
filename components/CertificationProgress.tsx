@@ -18,6 +18,12 @@ export interface ServiceTypeDays {
 export interface USCGServiceSummary {
   /** Days meeting the full 8-hour day of 46 CFR 10.107. */
   creditable: number;
+  /** Of those, 12-hour days on vessels the user marked two-watch, each worth 1.5 days. */
+  two_watch_days?: number;
+  /** The extra half days from two_watch_days. */
+  two_watch_bonus?: number;
+  /** creditable + two_watch_bonus. Missing from older backends. */
+  creditable_total?: number;
   /** 4 to 8 hour days on a vessel under 100 GRT, creditable at the OCMI's discretion. */
   provisional: number;
   /** 4 to 8 hour days on a vessel of 100 GRT or more. */
@@ -249,7 +255,7 @@ export function CertificationProgress({
       return [
         {
           label: 'Creditable Service',
-          current: uscgService.creditable,
+          current: uscgService.creditable_total ?? uscgService.creditable,
           required: requirement.totalDays,
         },
       ];
@@ -674,6 +680,27 @@ export function CertificationProgress({
             </View>
           )}
 
+          {(uscgService.two_watch_days ?? 0) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: 12,
+                paddingTop: 10,
+                borderTopWidth: 1,
+                borderTopColor: trackColor,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 13, color: mutedColor, flex: 1 }}>
+                Two-watch days ({uscgService.two_watch_days} at 1.5)
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: mutedColor }}>
+                +{uscgService.two_watch_bonus} days
+              </Text>
+            </View>
+          )}
+
           {uscgService.provisional > 0 && (
             <View
               style={{
@@ -716,7 +743,11 @@ export function CertificationProgress({
             {uscgService.yard + uscgService.port + uscgService.standby > 0
               ? ' Yard, port and stand-by time stays in your logbook but is not USCG sea service.'
               : ''}
-            {' On a vessel authorised to run two watches, a 12-hour day may count as 1.5 days. That depends on the vessel\u2019s authorisation, so it is never applied here.'}
+            {(uscgService.two_watch_days ?? 0) > 0
+              ? ` ${uscgService.two_watch_days} ${
+                  uscgService.two_watch_days === 1 ? 'day' : 'days'
+                } of 12 hours or more on vessels you marked as two-watch count as 1.5 days each. Keep evidence of the vessel\u2019s two-watch authorisation for your application.`
+              : ' On a vessel authorised to run two watches, a 12-hour day may count as 1.5 days. Turn on Two-watch vessel on the vessel\u2019s screen if yours is.'}
           </Text>
         </View>
       )}

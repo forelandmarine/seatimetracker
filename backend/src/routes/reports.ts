@@ -481,6 +481,9 @@ export function register(app: App, fastify: FastifyInstance) {
               type: 'object',
               properties: {
                 creditable: { type: 'number' },
+                two_watch_days: { type: 'number' },
+                two_watch_bonus: { type: 'number' },
+                creditable_total: { type: 'number' },
                 provisional: { type: 'number' },
                 short_of_standard_day: { type: 'number' },
                 awaiting_tonnage: { type: 'number' },

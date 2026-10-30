@@ -327,10 +327,13 @@ function twentyFourHourPeriods<T extends PeriodEntry>(entries: T[]): Map<string,
  *   That determination belongs to the OCMI, not to this app, so a 4-to-8 hour
  *   day on a small vessel is reported separately as provisional rather than
  *   either credited outright or thrown away.
- * - On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a
- *   12-hour working day may be credited as 1.5 days. Whether a vessel holds
- *   that authorisation is not something the app knows, so the uplift is never
- *   applied automatically.
+ * - On a vessel authorised to run a two-watch system under 46 U.S.C. 8104 and
+ *   46 CFR 15.705, a 12-hour working day may be credited as 1.5 days. Whether
+ *   a vessel holds that authorisation is not something the app can know, so
+ *   the uplift is applied only to vessels the user has marked as two-watch
+ *   (vessels.is_two_watch), and only to 24-hour periods of 12 hours or more
+ *   in which every vessel worked is so marked. The extra half days are kept
+ *   apart in `two_watch_bonus` so the whole-day count stays as it was.
  * - MODU service has its own rule: a minimum of 4 hours, with no extra credit
  *   beyond 8. The vessel record has no MODU flag, so this is not detected; MODU
  *   short days fall into the same buckets as any other vessel of their tonnage.
@@ -350,12 +353,23 @@ function twentyFourHourPeriods<T extends PeriodEntry>(entries: T[]): Map<string,
 export const USCG_STANDARD_HOURS_PER_DAY = 8;
 export const USCG_MINIMUM_HOURS_PER_DAY = 4;
 export const USCG_SMALL_VESSEL_GRT = 100;
+export const USCG_TWO_WATCH_HOURS_PER_DAY = 12;
+export const USCG_TWO_WATCH_DAY_CREDIT = 1.5;
 export const USCG_DAYS_PER_MONTH = 30;
 export const USCG_DAYS_PER_YEAR = 360;
 
 export interface USCGServiceBreakdown {
   /** Distinct days of sea service meeting the full 8-hour day. */
   creditable: number;
+  /**
+   * Of those, days of 12 hours or more on vessels the user has marked as
+   * authorised for a two-watch system, each credited as 1.5 days.
+   */
+  two_watch_days: number;
+  /** The extra half day earned by each two-watch day (two_watch_days x 0.5). */
+  two_watch_bonus: number;
+  /** creditable + two_watch_bonus: the figure progress is measured against. */
+  creditable_total: number;
   /**
    * Distinct days of 4 to 8 hours on a vessel under 100 GRT. Creditable only
    * if the Coast Guard accepts that the operating schedule makes the 8-hour
@@ -387,6 +401,7 @@ interface USCGEntry extends PeriodEntry {
     vessel_name?: string | null;
     gross_tonnes?: string | number | null;
     tonnage_itc?: string | number | null;
+    is_two_watch?: boolean | null;
   } | null;
 }
 
@@ -410,6 +425,7 @@ export function creditableTonnage(entry: USCGEntry): number | null {
  */
 export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   const full = new Set<string>();
+  const twoWatch = new Set<string>();
   const provisional = new Set<string>();
   const shortOfStandard = new Set<string>();
   const awaitingTonnage = new Set<string>();
@@ -435,7 +451,14 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
   for (const [d, p] of twentyFourHourPeriods(byBucket.actual)) {
     if (p.hours <= 0) continue;
     if (!meetsHours(p.hours, USCG_MINIMUM_HOURS_PER_DAY)) { belowMinimum.add(d); continue; }
-    if (meetsHours(p.hours, USCG_STANDARD_HOURS_PER_DAY)) { full.add(d); continue; }
+    if (meetsHours(p.hours, USCG_STANDARD_HOURS_PER_DAY)) {
+      full.add(d);
+      // 1.5 days only when every vessel worked in the period is marked two-watch.
+      if (meetsHours(p.hours, USCG_TWO_WATCH_HOURS_PER_DAY) && p.entries.every((e) => e.vessel?.is_two_watch === true)) {
+        twoWatch.add(d);
+      }
+      continue;
+    }
 
     // Between 4 and 8 hours the tonnage decides the outcome. Any vessel of 100
     // GRT or more worked in the period rules out the small-vessel allowance; an
@@ -460,8 +483,12 @@ export function uscgCreditableDays(entries: USCGEntry[]): USCGServiceBreakdown {
     }
   }
 
+  const two_watch_bonus = twoWatch.size * (USCG_TWO_WATCH_DAY_CREDIT - 1);
   return {
     creditable: full.size,
+    two_watch_days: twoWatch.size,
+    two_watch_bonus,
+    creditable_total: full.size + two_watch_bonus,
     provisional: provisional.size,
     short_of_standard_day: shortOfStandard.size,
     awaiting_tonnage: awaitingTonnage.size,
@@ -759,7 +786,8 @@ export const MARITIME_AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa',
  *   (port is not sea service). The 90-day yard cap is a total, not per entry.
  * - MNZ: as MCA, inside the 10-year window.
  * - USCG: 24-hour periods with a full 8-hour day of sea service. Provisional
- *   small-vessel days and stand-by, yard and port time are not credited.
+ *   small-vessel days and stand-by, yard and port time are not credited. The
+ *   two-watch half day is left to the running total, since sea_days is whole.
  * - AMSA: whole 8-hour days, underway and not underway. Part days carry over
  *   only in the running total, so a short entry alone earns 0 here.
  * - SAMSA: every calendar date touched, port days included, inside 10 years.

@@ -255,6 +255,8 @@ function transformVesselForResponse(vessel: any) {
     sector: vessel.sector || null,
     // Marked by the user as a workboat (MGN 496: under 500 GT, multipurpose support work)
     is_workboat: vessel.is_workboat ?? null,
+    // Marked by the user as authorised to run a two-watch system (USCG 1.5-day credit)
+    is_two_watch: vessel.is_two_watch ?? null,
     // A new name AIS reported that the user hasn't accepted or declined yet
     pending_name: vessel.pending_name || null,
     pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
@@ -291,6 +293,7 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -352,6 +355,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -457,6 +461,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -699,6 +704,7 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -829,6 +835,7 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1015,6 +1022,7 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1168,6 +1176,35 @@ export function register(app: App, fastify: FastifyInstance) {
       .where(eq(schema.vessels.id, vessel.id))
       .returning();
     app.logger.info({ userId, vesselId: vessel.id, is_workboat: request.body.is_workboat }, 'Vessel workboat flag updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/two-watch - Mark a vessel as authorised to run a two-watch system (46 U.S.C. 8104, 46 CFR 15.705)
+  fastify.put<{ Params: { id: string }; Body: { is_two_watch: boolean } }>('/api/vessels/:id/two-watch', {
+    schema: {
+      description: 'Mark whether a vessel is authorised to run a two-watch system. For USCG users a 12-hour working day on such a vessel counts as 1.5 days (46 CFR 10.107). (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_two_watch'], properties: { is_two_watch: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_two_watch: request.body.is_two_watch, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_two_watch: request.body.is_two_watch }, 'Vessel two-watch flag updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
@@ -1329,6 +1366,7 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -1459,6 +1497,7 @@ export function register(app: App, fastify: FastifyInstance) {
               tonnage_itc: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
