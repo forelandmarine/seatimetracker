@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   Linking,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +28,7 @@ import {
   authenticateWithBiometrics
 } from '@/utils/biometricAuth';
 import { getToken } from '@/utils/tokenStorage';
-import { setMarketingConsent } from '@/utils/seaTimeApi';
+import { setMarketingConsent, redeemReferralCode } from '@/utils/seaTimeApi';
 import { log, error as logError } from '@/utils/log';
 import { RETRYABLE_CODES } from '@/utils/errorCodes';
 import ErrorModal from '@/components/ErrorModal';
@@ -46,6 +47,7 @@ export default function AuthScreen() {
   const [rememberMe, setRememberMe] = useState(true);
   // Marketing opt-in at sign-up: always starts unticked (PECR consent).
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -159,6 +161,22 @@ export default function AuthScreen() {
     );
   };
 
+  /**
+   * Apply the referral code typed at sign-up. Never blocks sign-up: if the code
+   * is rejected the user is told and can enter it later from Refer a friend.
+   */
+  const applySignUpReferral = () => {
+    const code = referralCode.trim();
+    if (!code) return;
+    redeemReferralCode(code).catch((e) => {
+      logError('[AuthScreen] Referral code not applied:', e?.message);
+      Alert.alert(
+        t('refer.notAppliedTitle'),
+        t('refer.notAppliedBody', { reason: e?.message || '' })
+      );
+    });
+  };
+
   const legalText = (lead: string) => (
     <Text style={[styles.footerText, { fontSize: 12, marginTop: 4, marginBottom: 16, textAlign: 'center' }]}>
       {lead} you agree to the{' '}
@@ -204,6 +222,7 @@ export default function AuthScreen() {
       if (isSignUp) {
         await signUp(email, password, name || 'User');
         recordSignUpConsent();
+        applySignUpReferral();
       } else {
         await signIn(email, password, rememberMe);
       }
@@ -287,7 +306,10 @@ export default function AuthScreen() {
       await signInWithApple(credential.identityToken, appleUserData);
       // Only the sign-up form shows the opt-in box. Apple users who sign in from
       // the sign-in form are asked later by the one-time prompt on Home.
-      if (isSignUp) recordSignUpConsent();
+      if (isSignUp) {
+        recordSignUpConsent();
+        applySignUpReferral();
+      }
 
       log('[AuthScreen] Apple sign in successful, navigating to index');
       
@@ -419,6 +441,23 @@ export default function AuthScreen() {
             onSubmitEditing={handleEmailAuth}
           />
         </View>
+
+        {isSignUp && (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>{t('refer.signUpLabel')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={t('refer.signUpPlaceholder')}
+              placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+              value={referralCode}
+              onChangeText={(v) => setReferralCode(v.toUpperCase())}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={12}
+              accessibilityLabel="Referral code"
+            />
+          </View>
+        )}
 
         {!isSignUp && (
           <TouchableOpacity

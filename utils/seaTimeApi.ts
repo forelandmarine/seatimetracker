@@ -878,6 +878,15 @@ export const getReferralInfo = async () => {
   return res.json();
 };
 
+// Apply a friend's referral code to this (new) account. Resolves with the
+// server's message, or rejects with its reason (already used, too late, etc.).
+export const redeemReferralCode = async (code: string): Promise<string> => {
+  const res = await authFetch('/api/referral/redeem', { method: 'POST', body: { code: code.trim().toUpperCase() } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Could not apply the code');
+  return body?.message || '';
+};
+
 export const togglePublicProfile = async (enabled: boolean) => {
   const res = await authFetch('/api/profile/public-slug', {
     method: 'POST',
