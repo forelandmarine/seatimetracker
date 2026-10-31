@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, inArray } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
+import { checkReferralFor } from "../services/referrals.js";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
@@ -785,6 +786,11 @@ export function register(app: App, fastify: FastifyInstance): void {
             );
         }
 
+        // A purchase or renewal may be a referred friend's first payment
+        if (["INITIAL_PURCHASE", "RENEWAL", "PRODUCT_CHANGE", "UNCANCELLATION"].includes(event.type)) {
+          void checkReferralFor(app, user.id);
+        }
+
         return reply.code(200).send({ success: true });
       } catch (error) {
         app.logger.error(
@@ -937,24 +943,9 @@ export function register(app: App, fastify: FastifyInstance): void {
               })
               .where(eq(authSchema.user.id, userId));
 
-            // Apply bonus days (from referrals etc.) by extending expiry.
-            // We do this AFTER the RevenueCat sync so the date base is fresh.
-            const bonusDays = (user as any).bonus_days || 0;
-            if (bonusDays > 0 && subscriptionData.expiresAt) {
-              const extended = new Date(subscriptionData.expiresAt);
-              extended.setDate(extended.getDate() + bonusDays);
-              await app.db
-                .update(authSchema.user)
-                .set({
-                  subscription_expires_at: extended,
-                  bonus_days: 0, // consumed
-                  updatedAt: new Date(),
-                } as any)
-                .where(eq(authSchema.user.id, userId));
-              app.logger.info(
-                { userId, bonusDays, newExpiry: extended.toISOString() },
-                'Applied referral bonus days to subscription expiry'
-              );
+            // A referred friend's first payment earns both people a free month
+            if (subscriptionStatus === "active" && (user as any).referred_by_user_id) {
+              void checkReferralFor(app, userId);
             }
 
             app.logger.info(

@@ -4,3 +4,4 @@
 export * from './schema/schema.js';
 export * from './schema/passage-refinements.js';
 export * from './schema/course-dates.js';
+export * from './schema/referrals.js';

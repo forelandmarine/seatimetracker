@@ -13,6 +13,7 @@ import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shou
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
 import { processPassageRefinements } from './passageRefinement.js';
+import { processReferrals } from './referrals.js';
 import { extendableStatuses, isCommercialSector, newLiveEntryStatus } from '../utils/passageRefinement.js';
 import { isInShiftMode } from './shifts.js';
 
@@ -180,6 +181,13 @@ async function runSchedulerIteration(app: App): Promise<void> {
       await processPassageRefinements(app);
     } catch (error) {
       app.logger.error({ err: error }, 'Error processing passage refinements');
+    }
+
+    // Referral rewards: look for referred friends' first payments (throttled to every 10 min)
+    try {
+      await processReferrals(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing referrals');
     }
 
     // Find all due scheduled tasks that are active AND for active vessels only
