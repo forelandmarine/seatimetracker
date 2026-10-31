@@ -22,6 +22,18 @@ import {
 /** Chosen when the user does not know yet; saves no target. */
 export const TARGET_NOT_SURE = 'not_sure';
 
+/**
+ * For a tug certificate target, the usual capacity to start the first vessel on:
+ * the master certificates count officer service, the rest count rating service.
+ * Null when the target is not a tug certificate.
+ */
+export const tugCapacityForTarget = (id: string | null): 'rating' | 'officer' | null => {
+  if (!id) return null;
+  const route = getRequirementsByAuthority('mca', 'deck').find((r) => r.id === id)?.tugRoute;
+  if (!route) return null;
+  return route.officerDays != null ? 'officer' : 'rating';
+};
+
 const AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
 
 interface Props {

@@ -11,7 +11,7 @@ import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import VesselLookup from '@/components/VesselLookup';
-import TargetPathwayPicker, { TARGET_NOT_SURE } from '@/components/TargetPathwayPicker';
+import TargetPathwayPicker, { TARGET_NOT_SURE, tugCapacityForTarget } from '@/components/TargetPathwayPicker';
 import { trackEvent } from '@/utils/appEvents';
 import {
   listCertificates,
@@ -354,6 +354,16 @@ export default function SeaTimeScreen() {
 
       log('[Home] Vessel created successfully:', createdVessel.id);
       trackEvent('vessel_added', lookupMmsi && lookupMmsi === seaTimeApi.normalizeMmsi(newMMSI) ? 'lookup' : 'manual');
+      // A tug certificate means this first vessel is almost certainly a tug: mark it so its
+      // days count as tug service. The user can change both on the vessel page.
+      const tugCapacity = isFirstVessel ? tugCapacityForTarget(newTarget) : null;
+      if (tugCapacity) {
+        try {
+          await seaTimeApi.updateVesselTug(createdVessel.id, true, tugCapacity);
+        } catch (tugError) {
+          logError('[Home] Failed to mark first vessel as a tug:', tugError);
+        }
+      }
 
       // Close modal immediately and reset form
       setModalVisible(false);

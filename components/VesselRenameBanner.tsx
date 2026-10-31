@@ -104,6 +104,8 @@ export function VesselRenameBanner({ vessels, onAnswered }: Props) {
               maxLength={100}
               autoCapitalize="words"
               placeholder="New vessel name"
+              // Vessel names are proper names; autocorrect turns e.g. Svitzer into Switzerland
+              autoCorrect={false}
               placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
               accessibilityLabel="New vessel name"
             />

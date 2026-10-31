@@ -933,6 +933,8 @@ export default function VesselDetailScreen() {
                   style={styles.input}
                   value={editedVesselName}
                   onChangeText={setEditedVesselName}
+                  // Vessel names are proper names; autocorrect turns e.g. Svitzer into Switzerland
+                  autoCorrect={false}
                   placeholder="Vessel Name"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 />

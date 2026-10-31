@@ -76,6 +76,8 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
           placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
           value={name}
           onChangeText={edit(onNameChange)}
+          // Vessel names are proper names; autocorrect turns e.g. Svitzer into Switzerland
+          autoCorrect={false}
           autoCapitalize="words"
           returnKeyType="next"
         />
