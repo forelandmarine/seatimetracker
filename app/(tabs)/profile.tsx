@@ -1,6 +1,6 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress, CommercialServiceSummary, EngineServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -90,6 +90,8 @@ interface SeaTimeSummary {
   commercial_service?: CommercialServiceSummary;
   workboat_service?: WorkboatServiceSummary;
   engine_service?: EngineServiceSummary;
+  tug_service?: TugServiceSummary;
+  boatmaster_service?: BoatmasterServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -1319,6 +1321,8 @@ export default function ProfileScreen() {
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
                   engineService={summary.engine_service ?? null}
+                  tugService={summary.tug_service ?? null}
+                  boatmasterService={summary.boatmaster_service ?? null}
                   sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
                   isDark={isDark}

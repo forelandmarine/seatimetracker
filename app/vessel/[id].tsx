@@ -27,6 +27,7 @@ import * as seaTimeApi from '@/utils/seaTimeApi';
 import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
+import { TugToggle } from '@/components/TugToggle';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 import { log, error as logError } from '@/utils/log';
@@ -47,6 +48,8 @@ interface Vessel {
   engine_type?: string;
   is_two_watch?: boolean | null;
   is_sole_watchkeeper?: boolean | null;
+  is_tug?: boolean | null;
+  tug_capacity?: string | null;
   imo_number?: string;
   tonnage_itc?: number;
 }
@@ -730,6 +733,17 @@ export default function VesselDetailScreen() {
           isSoleWatchkeeper={vessel.is_sole_watchkeeper}
           onChange={(isSoleWatchkeeper) => {
             setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+          }}
+        />
+
+        {/* Tug: deck service counts as MGN 495 tug service (MCA, commercial deck crew) */}
+        <TugToggle
+          vesselId={vessel.id}
+          isTug={vessel.is_tug}
+          tugCapacity={vessel.tug_capacity}
+          onChange={(isTug, tugCapacity) => {
+            setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
           }}
         />

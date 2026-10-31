@@ -9,6 +9,9 @@ import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
 import { engineService } from "../utils/engineService.js";
+import { tugService } from "../utils/tugService.js";
+import { boatmasterService } from "../utils/boatmasterService.js";
+import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
 import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
@@ -605,6 +608,32 @@ export function register(app: App, fastify: FastifyInstance) {
                 vessels_without_power: { type: 'array', items: { type: 'string' } },
               },
             },
+            tug_service: {
+              type: 'object',
+              properties: {
+                tug_service: { type: 'number' },
+                tug_rating_service: { type: 'number' },
+                tug_officer_service: { type: 'number' },
+                outside_categorised: { type: 'number' },
+                outside_categorised_watch: { type: 'number' },
+                recent_tug_service: { type: 'number' },
+                apprentice_service: { type: 'number' },
+                apprentice_tug_service: { type: 'number' },
+                tug_vessels: { type: 'array', items: { type: 'string' } },
+              },
+            },
+            boatmaster_service: {
+              type: 'object',
+              properties: {
+                tier1_level2_days: { type: 'number' },
+                tier1_level1_days: { type: 'number' },
+                declared_inland_days: { type: 'number' },
+                beyond_limited_coastal_days: { type: 'number' },
+                unclassified_days: { type: 'number' },
+                level2_months: { type: 'number' },
+                level1_months: { type: 'number' },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -763,6 +792,33 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     const engine_service = engineService(entries as any, categorisedIds);
 
+    // Tug deck CoCs (MGN 495) and the Tier 1 Boatmasters' Licence (MSN 1853) need
+    // the sea area of each day, from the classified AIS fixes inside the user's
+    // confirmed entries. Only commercial, workboat and tug vessels are read.
+    let areaFixes: any[] = [];
+    try {
+      const rows = await app.db.execute(sql`
+        select distinct a.vessel_id, a.check_time, a.area_category, a.is_tidal, a.latitude, a.longitude
+        from sea_time_entries e
+        join vessels v on v.id = e.vessel_id
+        join ais_checks a on a.vessel_id = e.vessel_id
+          and a.check_time >= e.start_time
+          and a.check_time <= coalesce(e.end_time, e.start_time)
+        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+          and (v.is_tug = true or v.is_workboat = true or v.sector = 'commercial')
+      `);
+      areaFixes = ((rows as any).rows ?? rows).map((r: any) => ({ ...r, vessel_id: String(r.vessel_id) }));
+    } catch (err) {
+      app.logger.warn({ err }, 'Sea-area fix lookup failed; tug and BML figures exclude it');
+    }
+    const tug_service = tugService(entries as any, areaFixes);
+    const classifier = getSeaAreaClassifier();
+    const boatmaster_service = boatmasterService(
+      entries as any,
+      areaFixes,
+      classifier ? (track, departure) => classifier.classifyDay({ track, departure }).isLimitedCoastal : null,
+    );
+
     app.logger.info(
       {
         total_days,
@@ -786,6 +842,8 @@ export function register(app: App, fastify: FastifyInstance) {
       commercial_service,
       workboat_service,
       engine_service,
+      tug_service,
+      boatmaster_service,
     });
   });
 

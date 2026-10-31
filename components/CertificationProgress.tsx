@@ -117,6 +117,30 @@ export interface EngineServiceSummary {
   vessels_without_power: string[];
 }
 
+/** Tug deck certificate figures (MGN 495), from the summary endpoint. */
+export interface TugServiceSummary {
+  tug_service: number;
+  tug_rating_service: number;
+  tug_officer_service: number;
+  outside_categorised: number;
+  outside_categorised_watch: number;
+  recent_tug_service: number;
+  apprentice_service: number;
+  apprentice_tug_service: number;
+  tug_vessels: string[];
+}
+
+/** Tier 1 Boatmasters' Licence figures (MSN 1853), from the summary endpoint. */
+export interface BoatmasterServiceSummary {
+  tier1_level2_days: number;
+  tier1_level1_days: number;
+  declared_inland_days: number;
+  beyond_limited_coastal_days: number;
+  unclassified_days: number;
+  level2_months: number;
+  level1_months: number;
+}
+
 const kwKey = (minKw: number) => (minKw >= 750 ? '750kw' : minKw >= 350 ? '350kw' : minKw >= 200 ? '200kw' : 'any');
 
 /** Days inside UK categorised waters at a gate's power (a floor, from classified AIS fixes). */
@@ -142,6 +166,10 @@ const engineGateDays = (e: EngineServiceSummary, gate: EngineGate, halfRate: boo
 /** MGN 496 4.3: at least 6 months of service in the 5 years before applying. */
 const WORKBOAT_RECENCY_DAYS = 180;
 
+/** MGN 495 10.4: 12 months as a deck apprentice, at least 8 of them on tugs. */
+const TUG_APPRENTICE_DAYS = 360;
+const TUG_APPRENTICE_ON_TUGS_DAYS = 240;
+
 /** Share of the required service AMSA lets you gain while not underway. */
 const AMSA_NOT_UNDERWAY_CAP = { deck: 0.15, engineering: 0.33 } as const;
 
@@ -149,8 +177,8 @@ interface ProgressRow {
   label: string;
   current: number;
   required: number;
-  /** Maritime NZ states two certificates in hours rather than days. */
-  unit?: 'days' | 'hours';
+  /** Maritime NZ states two certificates in hours rather than days; the BML qualifying period is in months. */
+  unit?: 'days' | 'hours' | 'months';
 }
 
 export interface CertificationProgressProps {
@@ -173,6 +201,10 @@ export interface CertificationProgressProps {
   workboatService?: WorkboatServiceSummary | null;
   /** Engine figures by propulsion power. Required for the MCA engine routes. */
   engineService?: EngineServiceSummary | null;
+  /** Tug figures. Required for the MGN 495 tug routes. */
+  tugService?: TugServiceSummary | null;
+  /** Boatmasters' Licence figures. Required for the MSN 1853 routes. */
+  boatmasterService?: BoatmasterServiceSummary | null;
   /** The user's sector, which decides whether a sector-limited engine route applies. */
   sector?: VesselSector | null;
   /**
@@ -240,6 +272,8 @@ export function CertificationProgress({
   commercialService,
   workboatService,
   engineService,
+  tugService,
+  boatmasterService,
   sector,
   hasRecordBook = false,
   isDark,
@@ -336,6 +370,58 @@ export function CertificationProgress({
       out.push({ label: 'Workboat Service, 15m+', current: workboatService.workboat_15m, required: route.workboat15mDays });
       out.push({ label: 'In the Last 5 Years', current: workboatService.recent_sea_service, required: WORKBOAT_RECENCY_DAYS });
       return out;
+    }
+
+    if (resolvedAuthority === 'mca' && requirement?.tugRoute) {
+      // Without the tug figures there is no honest bar to draw.
+      if (!tugService) return [];
+      const route = requirement.tugRoute;
+      const out: ProgressRow[] = [];
+      if (route.tugDays) {
+        out.push({ label: 'Tug Service', current: tugService.tug_service, required: route.tugDays });
+      }
+      if (route.ratingDays) {
+        // A cadet is measured on the 12-month deck apprentice route instead.
+        if (route.apprenticeRoute && tugService.apprentice_service > tugService.tug_rating_service) {
+          out.push({ label: 'Deck Apprentice Service', current: tugService.apprentice_service, required: TUG_APPRENTICE_DAYS });
+          out.push({ label: 'Apprentice Service on Tugs', current: tugService.apprentice_tug_service, required: TUG_APPRENTICE_ON_TUGS_DAYS });
+        } else {
+          out.push({ label: 'Tug Service as a Rating', current: tugService.tug_rating_service, required: route.ratingDays });
+        }
+      }
+      if (route.officerDays) {
+        out.push({ label: 'Tug Service as an Officer', current: tugService.tug_officer_service, required: route.officerDays });
+      }
+      if (route.outsideDays) {
+        out.push({ label: '4h+ Outside Categorised Waters', current: tugService.outside_categorised, required: route.outsideDays });
+      }
+      if (route.outsideWatchDays) {
+        out.push({ label: '4h+ Bridge Watch Outside Categorised Waters', current: tugService.outside_categorised_watch, required: route.outsideWatchDays });
+      }
+      if (route.recentDays) {
+        out.push({ label: 'In the Last 5 Years', current: tugService.recent_tug_service, required: route.recentDays });
+      }
+      return out;
+    }
+
+    if (resolvedAuthority === 'mca' && requirement?.boatmasterRoute) {
+      // Without the boatmaster figures there is no honest bar to draw.
+      if (!boatmasterService) return [];
+      const route = requirement.boatmasterRoute;
+      const level2 = route.level === 2;
+      return [
+        {
+          label: level2 ? 'Tidal, Non-Tidal and Limited Coastal' : 'Non-Tidal Waters',
+          current: level2 ? boatmasterService.tier1_level2_days : boatmasterService.tier1_level1_days,
+          required: route.days,
+        },
+        {
+          label: 'Qualifying Period',
+          current: level2 ? boatmasterService.level2_months : boatmasterService.level1_months,
+          required: route.months,
+          unit: 'months',
+        },
+      ];
     }
 
     if (engineRoute) {
@@ -448,6 +534,8 @@ export function CertificationProgress({
     workboatService,
     engineRoute,
     engineService,
+    tugService,
+    boatmasterService,
     excludeCommercial,
     resolvedAuthority,
     dept,
@@ -530,6 +618,10 @@ export function CertificationProgress({
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
             : requirement?.workboatRoute && !workboatService
               ? 'Your workboat day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 496.'
+              : requirement?.tugRoute && !tugService
+              ? 'Your tug service count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 495.'
+              : requirement?.boatmasterRoute && !boatmasterService
+              ? "Your Boatmasters' Licence day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MSN 1853."
               : engineRoute && !engineService
               ? 'Your engine room day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled by engine power.'
               : isAMSA && !amsaService
@@ -558,7 +650,7 @@ export function CertificationProgress({
                   color: pct >= 1 ? colors.success : colors.primary,
                 }}
               >
-                {row.current}/{row.required} {row.unit === 'hours' ? 'hours' : 'days'}
+                {row.current}/{row.required} {row.unit ?? 'days'}
               </Text>
             </View>
             <View
@@ -627,6 +719,48 @@ export function CertificationProgress({
         </View>
       )}
 
+      {requirement?.tugRoute && tugService && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            {tugService.tug_vessels.length === 0
+              ? 'No vessel is marked as a tug yet, so no tug service is counted. Turn on Tug on the vessel page of each tug you have worked on. '
+              : `Counted under MGN 495 on ${formatVesselList(tugService.tug_vessels)}, with months at 30 days. `}
+            Tug service is deck service at sea, at anchor, on transits and in port with the tug's work; yard
+            time and entries logged with an engineering rank are left out.
+            {requirement.tugRoute.officerDays || requirement.tugRoute.ratingDays
+              ? ' Capacity comes from the rank on each entry, or your usual capacity set on the tug for entries without one. Officer service is a deck officer capacity or watchkeeping; the rest is rating service, and Cadet days count toward the deck apprentice route.'
+              : ''}
+            {requirement.tugRoute.outsideDays || requirement.tugRoute.outsideWatchDays
+              ? ` Time outside categorised waters comes from your AIS positions, so days without AIS cannot be counted. ${requirement.tugRoute.outsideWatchDays ? 'For the master certificates only days logged as watchkeeping service, or on a vessel where you are the sole watchkeeper, count. ' : ''}Without 90 such days the CoC is limited to 30 miles from a safe haven.`
+              : ''}
+            {' '}Service in a dual deck and engine capacity counts at half rate, and Tug Able Seafarer service must
+            follow your NWR, which the app cannot check.
+          </Text>
+        </View>
+      )}
+
+      {requirement?.boatmasterRoute && boatmasterService && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted under MSN 1853: any day with logged deck service in the licence's waters, in the last 5
+            years, going by your AIS positions. The qualifying period runs from the first of those days.
+            {requirement.boatmasterRoute.level === 1
+              ? ' Category C counts only where it is non-linked, which AIS cannot tell, so check those days.'
+              : ' Limited coastal means no more than 15 miles from the departure point and 5 miles from land.'}
+            {boatmasterService.declared_inland_days > 0 && requirement.boatmasterRoute.level === 2
+              ? ` ${boatmasterService.declared_inland_days} ${boatmasterService.declared_inland_days === 1 ? 'day has' : 'days have'} no placed AIS position and ${boatmasterService.declared_inland_days === 1 ? 'is' : 'are'} counted because you logged ${boatmasterService.declared_inland_days === 1 ? 'it' : 'them'} with the Inland trade area.`
+              : ''}
+            {boatmasterService.unclassified_days > 0
+              ? ` ${boatmasterService.unclassified_days} ${boatmasterService.unclassified_days === 1 ? 'day has' : 'days have'} no AIS position the app can place in categorised waters (manual entries, docks, small rivers and lakes), so ${boatmasterService.unclassified_days === 1 ? 'it is' : 'they are'} left out. Set the trade area to Inland on those entries if they were on inland waters.`
+              : ''}
+            {boatmasterService.beyond_limited_coastal_days > 0
+              ? ` ${boatmasterService.beyond_limited_coastal_days} ${boatmasterService.beyond_limited_coastal_days === 1 ? 'day went' : 'days went'} beyond limited coastal waters, so ${boatmasterService.beyond_limited_coastal_days === 1 ? 'it does' : 'they do'} not count.`
+              : ''}
+            {' '}Record the service in your BML Work Record (MSF 4366).
+          </Text>
+        </View>
+      )}
+
       {engineRoute && engineService && (
         <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
           <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
@@ -653,7 +787,7 @@ export function CertificationProgress({
         </View>
       )}
 
-      {commercialDays > 0 && requirement?.commercialService && !requirement?.workboatRoute && !engineRoute && (
+      {commercialDays > 0 && requirement?.commercialService && !requirement?.workboatRoute && !requirement?.tugRoute && !requirement?.boatmasterRoute && !engineRoute && (
         <View
           style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}
         >

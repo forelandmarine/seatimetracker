@@ -21,6 +21,8 @@ export const vessels = pgTable('vessels', {
   is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
   is_two_watch: boolean('is_two_watch'), // USCG: user says the vessel is authorised to run two watches (46 USC 8104), so a 12-hour day counts 1.5 days (46 CFR 10.107)
   is_sole_watchkeeper: boolean('is_sole_watchkeeper'), // User says they are the only watchkeeper in their department on this vessel (e.g. sole engineer), so every sea day is also a watchkeeping day
+  is_tug: boolean('is_tug'), // Marked by the user as a tug: MGN 495 tug service counts toward the tug deck CoCs
+  tug_capacity: text('tug_capacity'), // 'rating' | 'officer' | 'cadet': the user's usual capacity on this tug, used for entries logged without a rank (AIS)
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),

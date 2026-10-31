@@ -102,6 +102,17 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "sv_first_aid": "First Aid Level 1 (pleasure) or First Aid at Sea (commercial)",
   "sv_rt_restricted": "restricted R/T certificate (being replaced by SRC, reg 125(5))",
   "sv_doctors_cert": "doctor's certificate for small vessel certificates",
+  "tug_trb_l2": "Tug Training Record Book Level 2 (Watch Rating)",
+  "tug_trb_l3": "Tug Training Record Book Level 3",
+  "tug_trb_l4": "Tug Training Record Book Level 4",
+  "tug_msq_units": "MSQ units for tug certificates (MGN 495 Annex B)",
+  "sqa_035_21": "SQA 035-21 Chartwork and Practical Navigation",
+  "signals": "Signals certificate",
+  "coc_oow_tug_500": "OOW (Tug) <500 GT Near Coastal CoC",
+  "coc_oow_tug_3000": "OOW (Tug) <3000 GT Near Coastal CoC",
+  "bml_work_record": "BML Work Record (MSF 4366)",
+  "bml_trb": "BML Training Record Book",
+  "bml_first_aid": "Boatmasters' Licence first aid course",
   "pst": "Personal Survival Techniques (A-VI/1-1)",
   "fpff": "Fire Prevention and Fire Fighting (A-VI/1-2)",
   "efa": "Elementary First Aid (A-VI/1-3)",
@@ -5981,8 +5992,611 @@ export const CHECKLISTS: Record<string, Checklist> = {
       "60JutNB3ki%2Fsy6awZwDV2g%3D%3D",
       "60JutNB3ki%2Fsy6awZwDV2g%3D%3D; MS (Training, Certification and Safe Manning) Regulations 2021 (GN 219 of 2021, GG 44469), reg 125(5), p 117 of 156"
     ]
+  },
+  "tug-watch-rating": {
+    "exam": "none",
+    "examNote": "No MCA oral. Issued once the tug service, training record book and basic training are complete (MGN 495 10.2).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "6 months tug service in the deck department (2 months with MCA approved special training)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (A-VI/1-1)",
+        "type": "course",
+        "validity": "5y_update",
+        "note": "Or the MSQ units in MGN 495 Annex B, passed within the last 5 years."
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (A-VI/1-2)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "efa",
+        "label": "Elementary First Aid (A-VI/1-3)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (A-VI/1-4)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "psa",
+        "label": "Security Awareness (A-VI/6)",
+        "type": "course",
+        "validity": "none",
+        "note": "MGN 495 prints the reference as A-VI/6-4."
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      },
+      {
+        "code": "tug_trb_l2",
+        "label": "Watch Rating section of the tug Training Record Book Level 2",
+        "type": "manual",
+        "validity": "none",
+        "note": "From the British Tug Association."
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "tug-able-seafarer": {
+    "exam": "none",
+    "examNote": "No MCA oral. Pass the MSQ units in MGN 495 Annex B within the last 5 years (10.3).",
+    "items": [
+      {
+        "code": "coc_nwr",
+        "label": "Hold a Navigational Watch Rating Certificate (Tug Watch Rating)",
+        "type": "prerequisite_coc",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "12 months tug service while holding the NWR",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "pscrb",
+        "label": "Proficiency in Survival Craft and Rescue Boats (A-VI/2-1)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "edh",
+        "label": "Efficient Deck Hand",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "tug_msq_units",
+        "label": "MSQ units for Tug Able Seafarer (MGN 495 Annex B), within the last 5 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "oow-tug-500gt-nc": {
+    "exam": "oral",
+    "examNote": "Oral E (T), OOW (Tug) near coastal, passed within the last 3 years. Apply on MSF 4260 for the NOE; NOE valid 5 years, oral pass valid 3 years (MGN 495 6.3, 9.2).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "36 months as a tug rating, or 12 months as a deck apprentice with at least 8 months on tugs",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "90 days with at least 4 hours outside categorised waters (or the CoC is limited to 30 miles from a safe haven)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service_recent",
+        "label": "At least 6 months of the tug service within the 5 years before you apply",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "tug_trb_l3",
+        "label": "Tug Training Record Book Level 3",
+        "type": "manual",
+        "validity": "none",
+        "note": "From the British Tug Association."
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (A-VI/1-1)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (A-VI/1-2)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "efa",
+        "label": "Elementary First Aid (A-VI/1-3)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (A-VI/1-4)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "psa",
+        "label": "Security Awareness (A-VI/6)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_roc",
+        "label": "GMDSS Restricted Operator's Certificate",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pscrb",
+        "label": "Proficiency in Survival Craft and Rescue Boats (A-VI/2-1)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "edh",
+        "label": "Efficient Deck Hand",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (A-VI/3)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (A-VI/4-1)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "naest_op",
+        "label": "NAEST Operational",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "signals",
+        "label": "Signals certificate, within the last 3 years",
+        "type": "course",
+        "validity": "other: within 3 years of the CoC application"
+      },
+      {
+        "code": "helm_op",
+        "label": "HELM Operational",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "tug_msq_units",
+        "label": "MSQ units for OOW (Tug) (MGN 495 Annex B), within the last 5 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "oow-tug-3000gt-nc": {
+    "exam": "written+oral",
+    "examNote": "Everything for OOW (Tug) <500 GT, including oral E (T), plus the SQA exam 035-21 Chartwork and Practical Navigation within the last 3 years (MGN 495 10.5).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "36 months as a tug rating, or 12 months as a deck apprentice with at least 8 months on tugs",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "90 days with at least 4 hours outside categorised waters (or the CoC is limited to 30 miles from a safe haven)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service_recent",
+        "label": "At least 6 months of the tug service within the 5 years before you apply",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sqa_035_21",
+        "label": "SQA exam 035-21 Chartwork and Practical Navigation, within the last 3 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "tug_trb_l3",
+        "label": "Tug Training Record Book Level 3",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "pst",
+        "label": "Personal Survival Techniques (A-VI/1-1)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "fpff",
+        "label": "Fire Prevention and Fire Fighting (A-VI/1-2)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "efa",
+        "label": "Elementary First Aid (A-VI/1-3)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pssr",
+        "label": "Personal Safety and Social Responsibilities (A-VI/1-4)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "psa",
+        "label": "Security Awareness (A-VI/6)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_roc",
+        "label": "GMDSS Restricted Operator's Certificate",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "pscrb",
+        "label": "Proficiency in Survival Craft and Rescue Boats (A-VI/2-1)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "edh",
+        "label": "Efficient Deck Hand",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "aff",
+        "label": "Advanced Fire Fighting (A-VI/3)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "mfa",
+        "label": "Medical First Aid (A-VI/4-1)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "naest_op",
+        "label": "NAEST Operational",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "signals",
+        "label": "Signals certificate, within the last 3 years",
+        "type": "course",
+        "validity": "other: within 3 years of the CoC application"
+      },
+      {
+        "code": "helm_op",
+        "label": "HELM Operational",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "tug_msq_units",
+        "label": "MSQ units for OOW (Tug) (MGN 495 Annex B), within the last 5 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "master-tug-500gt-nc": {
+    "exam": "oral",
+    "examNote": "Oral N (T), Master (Tug) <500 GT near coastal, passed within the last 3 years. Revalidate every 5 years (MGN 495 10.6, 11.1).",
+    "items": [
+      {
+        "code": "coc_oow_tug_500",
+        "label": "Hold OOW (Tug) <500 GT CoC",
+        "type": "prerequisite_coc",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "12 months serving as an officer on tugs",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "90 days with at least 4 hours bridge watchkeeping outside categorised waters (or the CoC is limited to 30 miles from a safe haven)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service_recent",
+        "label": "At least 6 months of the tug service within the 5 years before you apply",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "tug_trb_l4",
+        "label": "Tug Training Record Book Level 4",
+        "type": "manual",
+        "validity": "none",
+        "note": "From the British Tug Association."
+      },
+      {
+        "code": "gmdss_roc",
+        "label": "GMDSS Restricted Operator's Certificate",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (A-VI/4-2)",
+        "type": "course",
+        "validity": "5y_update",
+        "note": "Masters in charge of medical care refresh it every 5 years; it must be in date when the CoC is issued (MGN 495 7.3)."
+      },
+      {
+        "code": "tug_msq_units",
+        "label": "MSQ units for Master (Tug) (MGN 495 Annex B), within the last 5 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "master-tug-3000gt-nc": {
+    "exam": "oral",
+    "examNote": "Oral P (T), Master (Tug) <3000 GT near coastal, passed within the last 3 years. Revalidate every 5 years (MGN 495 10.7, 11.1).",
+    "items": [
+      {
+        "code": "coc_oow_tug_3000",
+        "label": "Hold at least OOW (Tug) <3000 GT CoC, with all its written exams and short courses",
+        "type": "prerequisite_coc",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "24 months serving as an officer on tugs",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service",
+        "label": "90 days with at least 4 hours bridge watchkeeping outside categorised waters (or the CoC is limited to 30 miles from a safe haven)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "sea_service_recent",
+        "label": "At least 6 months of the tug service within the 5 years before you apply",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "tug_trb_l4",
+        "label": "Tug Training Record Book Level 4",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "gmdss_roc",
+        "label": "GMDSS Restricted Operator's Certificate",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "medical_care",
+        "label": "Medical Care (A-VI/4-2)",
+        "type": "course",
+        "validity": "5y_update"
+      },
+      {
+        "code": "naest_mgmt",
+        "label": "NAEST Management",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "tug_msq_units",
+        "label": "MSQ units for Master (Tug) (MGN 495 Annex B), within the last 5 years",
+        "type": "module_exam",
+        "validity": "none"
+      },
+      {
+        "code": "eng1",
+        "label": "ENG1 or accepted equivalent medical",
+        "type": "medical",
+        "validity": "as_dated"
+      }
+    ],
+    "sources": [
+      "MGN 495"
+    ]
+  },
+  "bml-tier1-level2": {
+    "exam": "oral",
+    "examNote": "MCA onboard practical and oral assessment on the generic Tier 1 syllabus, or the MSQ underpinning knowledge units in place of the oral (MSN 1853 12.5). Revalidate every 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "240 days qualifying service in tidal and non-tidal waters, over at least 24 months, within the last 5 years",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the qualifying service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, generic sections and any endorsements",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_pswt",
+        "label": "Personal Survival (BML one-day course)",
+        "type": "course",
+        "validity": "none",
+        "note": "MSQ units are accepted in place of the three one-day courses (MSN 1853 14.3)."
+      },
+      {
+        "code": "bml_first_aid",
+        "label": "First Aid (BML one-day course)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "bml_fire_safety",
+        "label": "Fire Safety (BML one-day course)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "ml5",
+        "label": "ML5 medical, or ENG1",
+        "type": "medical",
+        "validity": "as_dated",
+        "alternatives": [
+          "eng1"
+        ],
+        "note": "ENG1 is needed instead to run a passenger vessel beyond categorised waters (MSN 1853 16.5)."
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-tier1-level1": {
+    "exam": "oral",
+    "examNote": "MCA onboard practical and oral assessment on the generic Tier 1 syllabus, or the MSQ underpinning knowledge units in place of the oral (MSN 1853 12.5). Revalidate every 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days qualifying service in non-tidal waters, over at least 12 months, within the last 5 years",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the qualifying service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, generic sections",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_pswt",
+        "label": "Personal Survival (BML one-day course)",
+        "type": "course",
+        "validity": "none",
+        "note": "MSQ units are accepted in place of the three one-day courses (MSN 1853 14.3)."
+      },
+      {
+        "code": "bml_first_aid",
+        "label": "First Aid (BML one-day course)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "bml_fire_safety",
+        "label": "Fire Safety (BML one-day course)",
+        "type": "course",
+        "validity": "none"
+      },
+      {
+        "code": "ml5",
+        "label": "ML5 medical, or ENG1",
+        "type": "medical",
+        "validity": "as_dated",
+        "alternatives": [
+          "eng1"
+        ]
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
   }
 };
 
 /** Every course code some checklist asks for (offered as certificate types). */
-export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_sb","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];
+export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","bml_fire_safety","bml_first_aid","bml_pswt","bml_trb","bml_work_record","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_tug_3000","coc_oow_tug_500","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","signals","sqa_035_21","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","tug_msq_units","tug_trb_l2","tug_trb_l3","tug_trb_l4","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_sb","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];

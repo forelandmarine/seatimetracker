@@ -95,6 +95,33 @@ export interface MCARequirement {
     categorisedWater: 'limits' | 'half_rate' | 'full_rate' | 'unstated';
     sectors?: VesselSector[];
   };
+  /**
+   * Tug deck certificate route (MGN 495), measured from the summary's tug
+   * figures. Tug service counts vessels the user has marked as tugs. Day
+   * targets use 30-day months.
+   */
+  tugRoute?: {
+    /** Tug service in any deck capacity. */
+    tugDays?: number;
+    /** Tug service as a rating. */
+    ratingDays?: number;
+    /** Tug service as an officer. */
+    officerDays?: number;
+    /** Days with 4 hours or more outside UK categorised waters. */
+    outsideDays?: number;
+    /** Days with 4 hours or more of bridge watchkeeping outside UK categorised waters. */
+    outsideWatchDays?: number;
+    /** Tug service within the 5 years before applying (MGN 495 4.3). */
+    recentDays?: number;
+    /** Offer the 12-month deck apprentice route (at least 8 months on tugs) for cadets. */
+    apprenticeRoute?: boolean;
+  };
+  /**
+   * Tier 1 Boatmasters' Licence (MSN 1853 Annex 5 Table A): days of qualifying
+   * service in the licence's waters, and the minimum qualifying period in
+   * months from the first of them.
+   */
+  boatmasterRoute?: { level: 1 | 2; days: number; months: number };
   requirements: {
     label: string;
     value: string;
@@ -649,6 +676,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Entry rating certificate for tug crews (MGN 495, section 10.2)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { tugDays: 180 },
     requirements: [
       {
         label: 'Tug Service',
@@ -674,6 +702,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Senior deck rating for tug crews (MGN 495, section 10.3)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { tugDays: 360 },
     requirements: [
       {
         label: 'Tug Service',
@@ -695,6 +724,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Tug officer of the watch (MGN 495, section 10.4)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { ratingDays: 1080, outsideDays: 90, recentDays: 180, apprenticeRoute: true },
     requirements: [
       {
         label: 'Tug Service',
@@ -729,6 +759,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Tug officer of the watch, larger tugs (MGN 495, section 10.5)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { ratingDays: 1080, outsideDays: 90, recentDays: 180, apprenticeRoute: true },
     requirements: [
       {
         label: 'Tug Service',
@@ -752,6 +783,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Tug master (MGN 495, section 10.6)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { officerDays: 360, outsideWatchDays: 90, recentDays: 180 },
     requirements: [
       {
         label: 'Tug Service as Officer',
@@ -784,6 +816,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Tug master, larger tugs (MGN 495, section 10.7)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    tugRoute: { officerDays: 720, outsideWatchDays: 90, recentDays: 180 },
     requirements: [
       {
         label: 'Tug Service as Officer',
@@ -820,6 +853,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'National licence for UK inland waters (categories A to D) and limited coastal areas (MSN 1853, Annex 5)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 240, months: 24 },
     requirements: [
       {
         label: 'Qualifying Service',
@@ -850,6 +884,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'National licence for UK non-tidal waters (categories A, B and non-linked C) (MSN 1853, Annex 5)',
     sectors: ['commercial'],
     commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 120, months: 12 },
     requirements: [
       {
         label: 'Qualifying Service',

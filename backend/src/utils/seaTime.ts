@@ -258,6 +258,18 @@ export function countDistinctSeaDays(entries: PeriodEntry[]): number {
   return days;
 }
 
+/**
+ * UTC dates with any logged time, however short. For rules that set no minimum
+ * hours for a day (the Boatmasters' Licence, MSN 1853).
+ */
+export function serviceDatesAnyHours(entries: PeriodEntry[]): Set<string> {
+  const out = new Set<string>();
+  for (const [d, h] of unionHoursByDate(entries)) {
+    if (h > 0) out.add(d);
+  }
+  return out;
+}
+
 /** The dates behind countDistinctSeaDays, for counters that combine day sets. */
 export function distinctSeaDates(entries: PeriodEntry[]): Set<string> {
   const out = new Set<string>();

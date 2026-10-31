@@ -326,6 +326,21 @@ export const updateVesselSoleWatchkeeper = async (vesselId: string, isSoleWatchk
   return normalizeVessel(await res.json());
 };
 
+// Mark a vessel as a tug. Deck service on it then counts as tug service toward
+// the MGN 495 tug ratings and tug officer CoCs.
+// `capacity` is the user's usual capacity on the tug, used for entries logged
+// without a rank (AIS passages); leave it out to keep the stored one.
+export const updateVesselTug = async (
+  vesselId: string,
+  isTug: boolean,
+  capacity?: 'rating' | 'officer' | 'cadet' | null,
+) => {
+  const body: Record<string, unknown> = { is_tug: isTug };
+  if (capacity !== undefined) body.tug_capacity = capacity;
+  const res = await authFetch(`/api/vessels/${vesselId}/tug`, { method: 'PUT', body });
+  return normalizeVessel(await res.json());
+};
+
 // Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
 // certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
 export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {
