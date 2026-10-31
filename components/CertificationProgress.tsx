@@ -642,9 +642,11 @@ export function CertificationProgress({
             <View
               style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}
             >
-              <Text style={{ fontSize: 14, color: textColor }}>{row.label}</Text>
+              {/* Long labels wrap instead of pushing the figure off the card */}
+              <Text style={{ flex: 1, fontSize: 14, color: textColor, marginRight: 8 }}>{row.label}</Text>
               <Text
                 style={{
+                  flexShrink: 0,
                   fontSize: 14,
                   fontWeight: '600',
                   color: pct >= 1 ? colors.success : colors.primary,

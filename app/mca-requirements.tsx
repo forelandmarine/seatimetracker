@@ -297,14 +297,13 @@ export default function CertificationRequirementsScreen() {
   );
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return requirements;
-    return requirements.filter((req) =>
-      [req.title, req.regulation, req.description, req.category ?? '']
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
+    // Every word must appear, in any order, so "master tug 500" finds "Master (Tug) <500 GT".
+    const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return requirements;
+    return requirements.filter((req) => {
+      const text = [req.title, req.regulation, req.description, req.category ?? ''].join(' ').toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
   }, [requirements, search]);
 
   const groups = useMemo(() => groupRequirementsByCategory(filtered), [filtered]);
