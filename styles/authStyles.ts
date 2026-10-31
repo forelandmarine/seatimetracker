@@ -31,6 +31,19 @@ export function createAuthStyles(isDark: boolean) {
       fontSize: 18,
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
     },
+    modeTitle: {
+      fontSize: 22,
+      fontWeight: '600',
+      textAlign: 'center',
+      color: isDark ? colors.text : colors.textLight,
+      marginBottom: 6,
+    },
+    modeSubtitle: {
+      fontSize: 15,
+      textAlign: 'center',
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginBottom: 20,
+    },
     form: {
       width: '100%',
       maxWidth: 400,

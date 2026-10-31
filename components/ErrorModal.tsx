@@ -9,6 +9,9 @@ interface ErrorModalProps {
   isRetryable?: boolean;
   onDismiss: () => void;
   onRetry?: () => void;
+  /** Optional second button, e.g. "Create account" after a failed sign-in. */
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export default function ErrorModal({
@@ -18,6 +21,8 @@ export default function ErrorModal({
   isRetryable = false,
   onDismiss,
   onRetry,
+  actionLabel,
+  onAction,
 }: ErrorModalProps) {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
@@ -30,7 +35,16 @@ export default function ErrorModal({
         <View style={styles.content} accessibilityViewIsModal={true}>
           <Text style={styles.title}>{modalTitle}</Text>
           <Text style={styles.message} accessibilityRole="alert">{message}</Text>
-          {isRetryable && onRetry ? (
+          {actionLabel && onAction && !(isRetryable && onRetry) ? (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onDismiss}>
+                <Text style={styles.buttonSecondaryText}>Dismiss</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={onAction}>
+                <Text style={styles.buttonText}>{actionLabel}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : isRetryable && onRetry ? (
             <View style={styles.buttonRow}>
               <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onDismiss}>
                 <Text style={styles.buttonSecondaryText}>Dismiss</Text>

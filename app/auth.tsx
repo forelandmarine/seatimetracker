@@ -13,7 +13,8 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
@@ -32,14 +33,20 @@ import { setMarketingConsent, redeemReferralCode } from '@/utils/seaTimeApi';
 import { log, error as logError } from '@/utils/log';
 import { RETRYABLE_CODES } from '@/utils/errorCodes';
 import ErrorModal from '@/components/ErrorModal';
+import { trackEvent } from '@/utils/appEvents';
 import { createAuthStyles } from '@/styles/authStyles';
 
 const TERMS_URL = 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
 const PRIVACY_URL = 'https://forelandmarine.com/privacy-policy';
+// Set after any successful sign-in on this device. Without it (a new install)
+// the screen opens on Create account; most people reaching it have no account yet.
+const SIGNED_IN_BEFORE_KEY = 'seatime_signed_in_before';
+const markSignedInBefore = () => { AsyncStorage.setItem(SIGNED_IN_BEFORE_KEY, 'true').catch(() => {}); };
 
 export default function AuthScreen() {
   const { t } = useTranslation();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [isSignUp, setIsSignUp] = useState(params.mode === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -54,6 +61,8 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isRetryableError, setIsRetryableError] = useState(false);
   const pendingRetryAction = React.useRef<(() => void) | null>(null);
+  // Second button on the error popup, e.g. "Create account" after a failed sign-in.
+  const [errorAction, setErrorAction] = useState<{ label: string; run: () => void } | null>(null);
   const passwordRef = React.useRef<any>(null);
   const { user, signIn, signUp, signInWithApple, checkAuth } = useAuth();
   const router = useRouter();
@@ -63,6 +72,11 @@ export default function AuthScreen() {
   useEffect(() => {
     checkBiometricAvailability();
     checkSavedCredentials();
+    trackEvent('auth_shown', params.mode || undefined);
+    if (!params.mode) {
+      Promise.all([AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY).catch(() => null), getBiometricCredentials().catch(() => null)])
+        .then(([before, saved]) => { if (!before && !saved) setIsSignUp(true); });
+    }
     // Fire warm-up ping immediately so server is ready when user taps Sign In
     warmUpServer();
   }, []);
@@ -77,7 +91,22 @@ export default function AuthScreen() {
     setHasSavedCredentials(!!credentials);
   };
 
+  const switchMode = (toSignUp: boolean, keepEmail = false) => {
+    log('[AuthScreen] Switching mode to:', toSignUp ? 'Sign Up' : 'Sign In');
+    trackEvent('auth_mode', toSignUp ? 'signup' : 'signin');
+    setIsSignUp(toSignUp);
+    if (!keepEmail) setEmail('');
+    setPassword('');
+    setName('');
+  };
+
+  const showErrorWithAction = (message: string, label: string, run: () => void) => {
+    showError(message);
+    setErrorAction({ label, run });
+  };
+
   const showError = (message: string, retryAction?: () => void, errorCode?: string) => {
+    setErrorAction(null);
     setErrorMessage(message);
     // Use error code if available, otherwise fall back to message heuristic
     const isConnectionError = errorCode
@@ -142,6 +171,8 @@ export default function AuthScreen() {
         return;
       }
 
+      trackEvent('signed_in', 'biometric');
+      markSignedInBefore();
       router.replace('/');
     } catch (error: any) {
       logError('[AuthScreen] Biometric sign in failed:', error);
@@ -240,6 +271,8 @@ export default function AuthScreen() {
         }
       }
 
+      trackEvent(isSignUp ? 'account_created' : 'signed_in', 'email');
+      markSignedInBefore();
       log('[AuthScreen] Auth successful, navigating to index');
       router.replace('/');
     } catch (error: any) {
@@ -264,8 +297,23 @@ export default function AuthScreen() {
         ? 'Having trouble connecting. Please check your connection and try again.'
         : rawMsg;
 
-      // Only offer retry for connection errors, not credential errors
-      showError(errorMsg, isConnectionError ? () => handleEmailAuth() : undefined);
+      if (isConnectionError) {
+        trackEvent('auth_failed', 'network');
+        showError(errorMsg, () => handleEmailAuth());
+      } else if (!isSignUp && /invalid email or password/i.test(rawMsg)) {
+        // Most often a new user typing into Sign In. Offer to create the account.
+        trackEvent('auth_failed', 'signin');
+        showErrorWithAction(
+          "We couldn't sign you in with that email and password. New to SeaTime Tracker? Create a free account with this email.",
+          'Create account',
+          () => switchMode(true, true),
+        );
+      } else if (isSignUp && /already exists/i.test(rawMsg)) {
+        trackEvent('auth_failed', 'signup_exists');
+        showErrorWithAction('You already have an account with this email. Sign in instead.', 'Sign in', () => switchMode(false, true));
+      } else {
+        showError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -303,7 +351,9 @@ export default function AuthScreen() {
         } : undefined,
       };
       
-      await signInWithApple(credential.identityToken, appleUserData);
+      const created = await signInWithApple(credential.identityToken, appleUserData);
+      trackEvent(created ? 'account_created' : 'signed_in', 'apple');
+      markSignedInBefore();
       // Only the sign-up form shows the opt-in box. Apple users who sign in from
       // the sign-in form are asked later by the one-time prompt on Home.
       if (isSignUp) {
@@ -340,6 +390,7 @@ export default function AuthScreen() {
         errorMsg = error.message;
       }
 
+      trackEvent('auth_failed', 'apple');
       showError(errorMsg, isRetryable ? () => handleAppleSignIn() : undefined);
     } finally {
       // Always reset loading state so the button is never permanently stuck
@@ -370,6 +421,33 @@ export default function AuthScreen() {
       </View>
 
       <View style={styles.form}>
+        <Text style={styles.modeTitle}>{isSignUp ? 'Create your free account' : 'Welcome back'}</Text>
+        <Text style={styles.modeSubtitle}>
+          {isSignUp ? 'First month free. Takes a few seconds.' : 'Sign in to your SeaTime Tracker account.'}
+        </Text>
+
+        {Platform.OS === 'ios' && (
+          <View pointerEvents={loading ? 'none' : 'auto'} style={loading ? { opacity: 0.5 } : undefined}>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={
+                isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
+              cornerRadius={12}
+              style={styles.appleButton}
+              onPress={handleAppleSignIn}
+            />
+            {legalText('By continuing with Apple')}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{isSignUp ? 'OR WITH EMAIL' : 'OR'}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </View>
+        )}
+
         {biometricAvailable && hasSavedCredentials && !isSignUp && (
           <TouchableOpacity
             style={[styles.button, styles.biometricButton]}
@@ -510,13 +588,7 @@ export default function AuthScreen() {
 
         <TouchableOpacity
           style={styles.switchButton}
-          onPress={() => {
-            log('[AuthScreen] Switching mode to:', isSignUp ? 'Sign In' : 'Sign Up');
-            setIsSignUp(!isSignUp);
-            setEmail('');
-            setPassword('');
-            setName('');
-          }}
+          onPress={() => switchMode(!isSignUp)}
         >
           <Text style={styles.switchText}>
             {isSignUp
@@ -534,29 +606,6 @@ export default function AuthScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {Platform.OS === 'ios' && (
-          <View pointerEvents={loading ? 'none' : 'auto'} style={loading ? { opacity: 0.5 } : undefined}>
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-              buttonStyle={
-                isDark
-                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-              }
-              cornerRadius={12}
-              style={styles.appleButton}
-              onPress={handleAppleSignIn}
-            />
-            {legalText('By continuing with Apple')}
-          </View>
-        )}
-
       </View>
 
       <View style={styles.footer}>
@@ -570,11 +619,13 @@ export default function AuthScreen() {
 
       <ErrorModal
         visible={errorModalVisible}
-        title={isRetryableError ? 'Connection Problem' : 'Sign In Error'}
+        title={isRetryableError ? 'Connection Problem' : errorAction ? (isSignUp ? 'Account already exists' : "Couldn't sign you in") : 'Sign In Error'}
         message={errorMessage}
         isRetryable={isRetryableError}
         onDismiss={() => setErrorModalVisible(false)}
         onRetry={handleRetryFromModal}
+        actionLabel={errorAction?.label}
+        onAction={errorAction ? () => { setErrorModalVisible(false); errorAction.run(); } : undefined}
       />
     </ScrollView>
   );

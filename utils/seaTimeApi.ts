@@ -283,6 +283,27 @@ export const createVessel = async (
   }
 };
 
+export interface VesselCandidate {
+  mmsi: string;
+  name: string;
+  imo: string | null;
+  flag: string | null;
+  flag_iso: string | null;
+  type: string | null;
+  app_type: 'Motor' | 'Sail' | null;
+  length_metres: number | null;
+  year_built: string | null;
+}
+
+// Find a vessel's MMSI from its name and length overall (AIS data, best match first).
+// The user must confirm a match before its MMSI is used.
+export const lookupVessel = async (name: string, lengthMetres: string): Promise<VesselCandidate[]> => {
+  const q = `name=${encodeURIComponent(name.trim())}&length=${encodeURIComponent(lengthMetres.trim())}`;
+  const res = await authFetch(`/api/vessels/lookup?${q}`, { timeout: 20_000 });
+  const data = await res.json();
+  return Array.isArray(data?.candidates) ? data.candidates : [];
+};
+
 export const updateVesselParticulars = async (
   vesselId: string,
   // null clears a field

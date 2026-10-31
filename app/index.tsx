@@ -6,6 +6,7 @@ import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
 import { isOnboardingComplete } from './onboarding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -19,6 +20,12 @@ export default function Index() {
   useEffect(() => {
     isOnboardingComplete().then(setOnboardingDone);
   }, []);
+
+  // Remember that this device has had a signed-in user, so after a sign-out the
+  // account screen opens on Sign in rather than Create account.
+  useEffect(() => {
+    if (authContext?.user) AsyncStorage.setItem('seatime_signed_in_before', 'true').catch(() => {});
+  }, [authContext?.user]);
 
   useEffect(() => {
     try {
