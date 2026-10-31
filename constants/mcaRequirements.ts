@@ -637,6 +637,237 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
     ],
   },
+
+  // Tugs: MGN 495 (M+F), June 2013, still current. Tug service is time at
+  // sea, at anchor, on river or canal transits and in port with the work of a
+  // tug (4.1). Deck department only; dual deck and engine service counts at 50%.
+  {
+    id: 'tug-watch-rating',
+    title: 'Tug Watch Rating (Navigational Watch Rating)',
+    regulation: 'STCW A-II/4',
+    category: 'Tugs',
+    description: 'Entry rating certificate for tug crews (MGN 495, section 10.2)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '6 months',
+        details: [
+          'In the deck department of a tug',
+          'Reduced to 2 months with MCA approved special training (MSQ units, MGN 495 Annex B)',
+        ],
+      },
+    ],
+    notes: [
+      'Complete the Watch Rating section of the Training Record Book Level 2 (from the British Tug Association)',
+      'Requires the four STCW basic training elements and Security Awareness, or the MSQ units in Annex B',
+      'Service in a dual deck and engine capacity counts at 50% (MGN 495, 4.5)',
+      'With 6 months seagoing service and a steering certificate, a Tug Rating can enter the EDH course (MSN 1862)',
+    ],
+  },
+  {
+    id: 'tug-able-seafarer',
+    title: 'Tug Able Seafarer Rating',
+    regulation: 'STCW A-II/5',
+    category: 'Tugs',
+    description: 'Senior deck rating for tug crews (MGN 495, section 10.3)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '12 months',
+        details: ['While holding a Navigational Watch Rating Certificate'],
+      },
+    ],
+    notes: [
+      'Requires Proficiency in Survival Craft and Rescue Boats and an EDH certificate',
+      'Pass the MSQ units in MGN 495 Annex B within the last 5 years',
+      'The service must be after your NWR was issued. The app counts all your service, so check the dates',
+    ],
+  },
+  {
+    id: 'oow-tug-500gt-nc',
+    title: 'OOW (Tug) <500 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug officer of the watch (MGN 495, section 10.4)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '36 months',
+        details: [
+          'As a tug rating',
+          'Or 12 months as a deck apprentice, with at least 8 months on tugs',
+        ],
+      },
+      {
+        label: 'Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day counts only with at least 4 hours outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 3 (British Tug Association)',
+      'STCW basic training, Security Awareness, GMDSS ROC, PSC&RB, EDH, Advanced Fire Fighting, Medical First Aid, NAEST (Operational), HELM (Operational) and Signals within the last 3 years',
+      'Pass the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral E (T), OOW (Tug) near coastal, within the last 3 years',
+    ],
+  },
+  {
+    id: 'oow-tug-3000gt-nc',
+    title: 'OOW (Tug) <3000 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug officer of the watch, larger tugs (MGN 495, section 10.5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '36 months',
+        details: [
+          'The same service as OOW (Tug) <500 GT: 36 months as a tug rating, or 12 months as a deck apprentice with at least 8 months on tugs',
+          'Including 90 days with at least 4 hours outside categorised waters, or the CoC is limited to 30 miles from a safe haven',
+        ],
+      },
+    ],
+    notes: [
+      'Meet every requirement for OOW (Tug) <500 GT',
+      'Plus the SQA exam 035-21 Chartwork and Practical Navigation, passed within the last 3 years',
+    ],
+  },
+  {
+    id: 'master-tug-500gt-nc',
+    title: 'Master (Tug) <500 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug master (MGN 495, section 10.6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service as Officer',
+        value: '12 months',
+        details: ['Serving as an officer on tugs'],
+      },
+      {
+        label: 'Bridge Watchkeeping Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day with at least 4 hours bridge watchkeeping outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'Hold an OOW (Tug) <500 GT CoC',
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 4 (British Tug Association)',
+      'GMDSS ROC and Medical Care, plus the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral N (T), Master (Tug) <500 GT near coastal, within the last 3 years',
+      'Revalidate every 5 years: 12 months as an officer on vessels of 15m+ load line length in the last 5 years (MGN 495, section 11)',
+    ],
+  },
+  {
+    id: 'master-tug-3000gt-nc',
+    title: 'Master (Tug) <3000 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug master, larger tugs (MGN 495, section 10.7)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Tug Service as Officer',
+        value: '24 months',
+        details: ['Serving as an officer on tugs'],
+      },
+      {
+        label: 'Bridge Watchkeeping Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day with at least 4 hours bridge watchkeeping outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'Hold at least an OOW (Tug) <3000 GT CoC, with all its written exams and short courses passed',
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 4 (British Tug Association)',
+      'GMDSS ROC, Medical Care and NAEST (Management), plus the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral P (T), Master (Tug) <3000 GT near coastal, within the last 3 years',
+    ],
+  },
+
+  // Boatmasters' Licence: SI 2015/410 and MSN 1853 (M) Amendment 1, Annex 5.
+  // Qualifying service must be in the UK, in a deck capacity, in the waters
+  // and on vessels the licence covers, all within the 5 years before applying
+  // (reg 20). The notice sets no minimum hours for a day of service.
+  {
+    id: 'bml-tier1-level2',
+    title: "Boatmasters' Licence Tier 1 Level 2",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'National licence for UK inland waters (categories A to D) and limited coastal areas (MSN 1853, Annex 5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '240 days',
+        details: [
+          'In a deck capacity, in tidal and non-tidal waters',
+          'Over at least 24 months from the first day of service to the application',
+          'All within the 5 years before you apply',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Limited coastal means outside categorised waters but no more than 15 miles from the point of departure or arrival and 5 miles to sea. Service further offshore is not BML service',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book',
+      'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
+      'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
+      'The generic licence allows up to 12 passengers. Passenger, towing and pushing, and other operations need an endorsement, with its own service after the licence service (towing and pushing in tidal waters: 120 days over 12 months, age 21)',
+      'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth',
+      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience',
+    ],
+  },
+  {
+    id: 'bml-tier1-level1',
+    title: "Boatmasters' Licence Tier 1 Level 1",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'National licence for UK non-tidal waters (categories A, B and non-linked C) (MSN 1853, Annex 5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '120 days',
+        details: [
+          'In a deck capacity, in non-tidal waters',
+          'Over at least 12 months from the first day of service to the application',
+          'All within the 5 years before you apply',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book',
+      'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
+      'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
+    ],
+  },
 ];
 
 // ── Engineering department pathways (SV - Small Vessel) ──────────────
