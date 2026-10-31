@@ -62,6 +62,9 @@ export default function AuthScreen() {
   const [isRetryableError, setIsRetryableError] = useState(false);
   const pendingRetryAction = React.useRef<(() => void) | null>(null);
   // Second button on the error popup, e.g. "Create account" after a failed sign-in.
+  // Someone has signed in on this device before, so a failed sign-in is more
+  // likely a forgotten password than a new user.
+  const [returningDevice, setReturningDevice] = useState(false);
   const [errorAction, setErrorAction] = useState<{ label: string; run: () => void } | null>(null);
   const passwordRef = React.useRef<any>(null);
   const { user, signIn, signUp, signInWithApple, checkAuth } = useAuth();
@@ -73,10 +76,12 @@ export default function AuthScreen() {
     checkBiometricAvailability();
     checkSavedCredentials();
     trackEvent('auth_shown', params.mode || undefined);
-    if (!params.mode) {
-      Promise.all([AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY).catch(() => null), getBiometricCredentials().catch(() => null)])
-        .then(([before, saved]) => { if (!before && !saved) setIsSignUp(true); });
-    }
+    Promise.all([AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY).catch(() => null), getBiometricCredentials().catch(() => null)])
+      .then(([before, saved]) => {
+        const returning = !!before || !!saved;
+        setReturningDevice(returning);
+        if (!params.mode && !returning) setIsSignUp(true);
+      });
     // Fire warm-up ping immediately so server is ready when user taps Sign In
     warmUpServer();
   }, []);
@@ -89,6 +94,10 @@ export default function AuthScreen() {
   const checkSavedCredentials = async () => {
     const credentials = await getBiometricCredentials();
     setHasSavedCredentials(!!credentials);
+  };
+
+  const openForgotPassword = () => {
+    router.push({ pathname: '/forgot-password', params: email.trim() ? { email: email.trim() } : {} });
   };
 
   const switchMode = (toSignUp: boolean, keepEmail = false) => {
@@ -300,11 +309,19 @@ export default function AuthScreen() {
       if (isConnectionError) {
         trackEvent('auth_failed', 'network');
         showError(errorMsg, () => handleEmailAuth());
+      } else if (!isSignUp && /invalid email or password/i.test(rawMsg) && returningDevice) {
+        // Returning user: most likely a forgotten password. Offer the reset.
+        trackEvent('auth_failed', 'signin_returning');
+        showErrorWithAction(
+          "That email and password didn't match. Forgotten your password? Reset it with a code sent to your email. Your sea time is safe.",
+          'Reset password',
+          openForgotPassword,
+        );
       } else if (!isSignUp && /invalid email or password/i.test(rawMsg)) {
         // Most often a new user typing into Sign In. Offer to create the account.
         trackEvent('auth_failed', 'signin');
         showErrorWithAction(
-          "We couldn't sign you in with that email and password. New to SeaTime Tracker? Create a free account with this email.",
+          "We couldn't sign you in with that email and password. New to SeaTime Tracker? Create a free account with this email. Already have one? Use Forgot password below.",
           'Create account',
           () => switchMode(true, true),
         );
@@ -600,7 +617,7 @@ export default function AuthScreen() {
         {!isSignUp && (
           <TouchableOpacity
             style={styles.forgotPasswordButton}
-            onPress={() => router.push('/forgot-password')}
+            onPress={openForgotPassword}
           >
             <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
           </TouchableOpacity>
