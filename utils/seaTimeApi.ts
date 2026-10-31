@@ -687,6 +687,26 @@ export const setMarketingConsent = async (
   return res.json();
 };
 
+export interface PasswordStatus {
+  hasPassword: boolean;
+  hasApple: boolean;
+  email: string;
+  privateRelay: boolean;
+}
+
+export const getPasswordStatus = async (): Promise<PasswordStatus> => {
+  const res = await authFetch('/api/auth/password');
+  return res.json();
+};
+
+/** Set a password (Apple accounts) or change it (needs the current one). */
+export const setPassword = async (newPassword: string, currentPassword?: string): Promise<void> => {
+  await authFetch('/api/auth/password', {
+    method: 'PUT',
+    body: currentPassword ? { newPassword, currentPassword } : { newPassword },
+  });
+};
+
 export type ExitReason =
   | 'too_expensive'
   | 'not_at_sea'

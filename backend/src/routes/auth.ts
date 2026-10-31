@@ -1730,4 +1730,74 @@ export function register(app: App, fastify: FastifyInstance) {
     }
   );
 
+  // GET /api/auth/password - Whether the signed-in user has a password, so
+  // Settings can offer "Set a password" (Apple-only accounts) or "Change password".
+  fastify.get('/api/auth/password', {
+    schema: { description: 'Password status for the current user (Requires authentication)', tags: ['auth'] },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+    const [user] = await app.db.select().from(authSchema.user).where(eq(authSchema.user.id, userId)).limit(1);
+    if (!user) return reply.code(404).send({ error: 'User not found' });
+    const accounts = await app.db.select().from(authSchema.account).where(eq(authSchema.account.userId, userId));
+    return reply.send({
+      hasPassword: accounts.some(a => a.providerId === 'credential' && !!a.password),
+      hasApple: accounts.some(a => a.providerId === 'apple'),
+      email: user.email,
+      privateRelay: /@privaterelay\.appleid\.com$/i.test(user.email || ''),
+    });
+  });
+
+  // PUT /api/auth/password - Set a password (accounts made with Apple, so they
+  // can also sign in with email on Android or a new phone) or change it (needs
+  // the current one). Other sessions stay signed in.
+  fastify.put<{ Body: { newPassword: string; currentPassword?: string } }>('/api/auth/password', {
+    schema: {
+      description: 'Set or change the current user\'s password (Requires authentication)',
+      tags: ['auth'],
+      body: {
+        type: 'object',
+        required: ['newPassword'],
+        properties: {
+          newPassword: { type: 'string', minLength: 8, maxLength: 200 },
+          currentPassword: { type: 'string' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) return reply.code(401).send({ error: 'Authentication required' });
+    if (!checkRateLimit(`password:${userId}`, 10, 15 * 60 * 1000).allowed) {
+      return reply.code(429).send({ error: 'Too many attempts. Please try again later.' });
+    }
+    const [user] = await app.db.select().from(authSchema.user).where(eq(authSchema.user.id, userId)).limit(1);
+    if (!user) return reply.code(404).send({ error: 'User not found' });
+    const accounts = await app.db.select().from(authSchema.account).where(eq(authSchema.account.userId, userId));
+    const credential = accounts.find(a => a.providerId === 'credential');
+    const passwordHash = hashPassword(request.body.newPassword);
+
+    if (credential?.password) {
+      if (!request.body.currentPassword || !verifyPassword(request.body.currentPassword, credential.password)) {
+        return reply.code(400).send({ error: 'Your current password is not right.' });
+      }
+      await app.db.update(authSchema.account).set({ password: passwordHash, updatedAt: new Date() })
+        .where(eq(authSchema.account.id, credential.id));
+      app.logger.info({ userId }, 'Password changed from Settings');
+    } else if (credential) {
+      await app.db.update(authSchema.account).set({ password: passwordHash, updatedAt: new Date() })
+        .where(eq(authSchema.account.id, credential.id));
+      app.logger.info({ userId }, 'Password set from Settings');
+    } else {
+      await app.db.insert(authSchema.account).values({
+        id: crypto.randomUUID(),
+        userId,
+        providerId: 'credential',
+        accountId: user.email,
+        password: passwordHash,
+      });
+      app.logger.info({ userId }, 'Password set from Settings (new credential account)');
+    }
+    return reply.send({ success: true, email: user.email });
+  });
+
 }

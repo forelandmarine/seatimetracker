@@ -209,6 +209,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="password"
+          options={{
+            title: 'Password',
+            headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
           name="email-preferences"
           options={{
             title: 'Email preferences',
