@@ -30,6 +30,8 @@ if (process.env.SKIP_MIGRATIONS === 'true') {
 import { register as registerAuthRoutes } from './routes/auth.js';
 import { register as registerProfileRoutes } from './routes/profile.js';
 import { register as registerVesselsRoutes } from './routes/vessels.js';
+import { register as registerVesselLookupRoutes } from './routes/vessel-lookup.js';
+import { register as registerAppEventsRoutes } from './routes/app-events.js';
 import { register as registerSeaTimeRoutes } from './routes/sea-time.js';
 import { register as registerSeaTimeBulkRoutes } from './routes/sea-time-bulk.js';
 import { register as registerAisRoutes } from './routes/ais.js';
@@ -75,6 +77,8 @@ export type App = typeof app;
 registerAuthRoutes(app, app.fastify);
 registerProfileRoutes(app, app.fastify);
 registerVesselsRoutes(app, app.fastify);
+registerVesselLookupRoutes(app, app.fastify);
+registerAppEventsRoutes(app, app.fastify);
 registerSeaTimeRoutes(app, app.fastify);
 registerSeaTimeBulkRoutes(app, app.fastify);
 registerAisRoutes(app, app.fastify);

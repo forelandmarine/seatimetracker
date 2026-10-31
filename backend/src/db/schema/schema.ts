@@ -352,6 +352,21 @@ export const history_checks = pgTable('history_checks', {
   index('history_checks_user_id_idx').on(table.user_id),
 ]);
 
+// Anonymous first-run funnel events from the app (sign-up drop-off, 2026-10-31).
+// install_id is a random id the app makes on first launch; no user id, no IP.
+export const app_events = pgTable('app_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  event: text('event').notNull(),
+  install_id: text('install_id').notNull(),
+  platform: text('platform'),
+  app_version: text('app_version'),
+  detail: text('detail'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('app_events_created_at_idx').on(table.created_at),
+  index('app_events_event_idx').on(table.event),
+]);
+
 // Days of Datalastic vessel_history already fetched, per MMSI (shared by everyone on that
 // vessel, so no day is ever paid for twice). position_count 0 = fetched, no positions.
 export const ais_history_days = pgTable('ais_history_days', {
