@@ -14,6 +14,18 @@ import { SAMSA_SERVICE_DEFINITIONS } from './samsaDefinitions';
 
 export type VesselSector = 'yachting' | 'commercial';
 
+/**
+ * One engine-department service gate: days of a kind of service on vessels of at
+ * least `minKw` propulsion power (0 = any power). `rating` is MSN 1863 service
+ * (over 15 m, 350 kW+, last 5 years, at most a quarter not underway).
+ */
+export interface EngineGate {
+  label: string;
+  kind: 'seagoing' | 'watch' | 'onboard' | 'rating';
+  minKw: 0 | 200 | 350 | 750;
+  days: number;
+}
+
 export interface MCARequirement {
   id: string;
   title: string;
@@ -66,6 +78,22 @@ export interface MCARequirement {
     seaService15mDays?: number;
     watchkeeping15mDays: number;
     workboat15mDays: number;
+  };
+  /**
+   * MCA engineering gates by propulsion power (MSN 1904, MSN 1857, MSN 1863),
+   * measured from the summary's engine figures. Months are 30 days (MSN 1904 5.2).
+   * `sectors` limits the route to users in those sectors; the others keep the
+   * older yacht bars, which follow the MSN 1904 5.9 yacht table.
+   */
+  engineRoute?: {
+    gates: EngineGate[];
+    /**
+     * How the MCA treats service inside UK categorised waters: it limits the CoC
+     * (MSN 1904 5.7), counts at half rate (MSN 1857 5.2), counts in full
+     * (MSN 1863 4.3), or the notice does not say.
+     */
+    categorisedWater: 'limits' | 'half_rate' | 'full_rate' | 'unstated';
+    sectors?: VesselSector[];
   };
   requirements: {
     label: string;
@@ -617,6 +645,152 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
 // Replaces the discontinued Y1/Y2/Y3 yacht engineering pathway.
 
 const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
+  // Engine ratings: MSN 1863 (M+F) Amendment 1. Service on workboats, tugs,
+  // yachts and fishing vessels counts (footnote 5).
+  {
+    id: 'engine-room-watch-rating',
+    title: 'Engine Room Watch Rating (ERWR)',
+    regulation: 'STCW A-III/4',
+    category: 'Engine Ratings and Operators',
+    description: 'Rating in an engine room watch on ships of 750 kW or more (MSN 1863, section 2)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Rating Service, 350 kW+', kind: 'rating', minKw: 350, days: 180 }],
+      categorisedWater: 'full_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'In the engine department on vessels of at least 350 kW propulsion power',
+          'Vessels over 15m registered length, in category C and D waters or beyond (counted at full rate)',
+          'At least 75% underway on sea passage; up to 25% in lay-up, dry dock, at anchor or in port',
+          'All within the 5 years before you apply',
+        ],
+      },
+      {
+        label: 'Reduced Route',
+        value: '2 months',
+        details: ['With MCA approved special training, or prior engineering training the MCA accepts (section 2.2)'],
+      },
+    ],
+    notes: [
+      'Minimum age 16',
+      'Requires the four STCW basic training elements (PST, FPFF, EFA, PSSR) and ENG1',
+      'Complete the ERWR training record book (MSN 1863 Annex A)',
+      'Apply through an MCA approved company or direct to the MCA on form MSF 4371',
+    ],
+  },
+  {
+    id: 'able-seafarer-engine',
+    title: 'Able Seafarer Engine',
+    regulation: 'STCW A-III/5',
+    category: 'Engine Ratings and Operators',
+    description: 'Senior engine rating (MSN 1863, section 3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Rating Service, 350 kW+', kind: 'rating', minKw: 350, days: 360 }],
+      categorisedWater: 'full_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as ERWR',
+        value: '12 months',
+        details: [
+          'While qualified as an Engine Room Watch Rating',
+          'As a rating on vessels of at least 350 kW propulsion power',
+          'Plus an MCA approved engine course',
+        ],
+      },
+      {
+        label: 'Diploma Route',
+        value: '6 months',
+        details: ['With the Diploma in Maritime Studies Able Seafarer Engine Room'],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'The service must be after you qualified as an ERWR. The bar counts all your rating service, so check the dates',
+      'Complete the relevant sections of the MCA approved training record book',
+      'Apply through your local Marine Office',
+      'Holding Able Seafarer Engine meets the training requirement for the MEOL (MSN 1857 10.2)',
+    ],
+  },
+  // MEOL / SMEOL: MSN 1857 (M+F) Amendment 1, section 10. Non-STCW.
+  {
+    id: 'meol-merchant',
+    title: 'Marine Engine Operator Licence (MEOL)',
+    regulation: 'Non-STCW',
+    category: 'Engine Ratings and Operators',
+    description: 'Chief engineer on vessels under 750 kW within 150 miles of a safe haven (MSN 1857, section 10)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Seagoing Service', kind: 'seagoing', minKw: 0, days: 180 }],
+      categorisedWater: 'half_rate',
+    },
+    requirements: [
+      {
+        label: 'Rating Route',
+        value: '6 months',
+        details: [
+          'Diploma (level 2) in Maritime Studies Able Seafarer Engine',
+          'Plus 6 months seagoing as a trainee engine operator, or as a rating in the engineering watch while holding an ERWR',
+          'Or hold Able Seafarer Engine certification',
+        ],
+      },
+      {
+        label: 'Shore Engineering Route',
+        value: '3 months',
+        details: [
+          '24 months shore employment in engineering the MCA accepts',
+          '3 months seagoing as a trainee engine operator on a vessel of at least 200 kW',
+          'Plus the Approved Engine Course',
+        ],
+      },
+      {
+        label: 'Apprenticeship Route',
+        value: 'Set by the MCA',
+        details: [
+          'Marine, diesel, heavy vehicle or agricultural machinery apprenticeship',
+          'Seagoing service as a trainee on vessels of at least 200 kW, set after an MCA examiner assessment',
+          'Plus the Approved Engine Course',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Covers vessels of 350 to 750 kW where STCW does not apply',
+      'Under the Workboat Code (Table A5.2) it can be used above 750 kW on workboats under 24m',
+      'Requires the ancillary and safety courses in MSN 1857 section 6, ENG1 and the MCA MEOL oral',
+      'Does not need revalidating',
+    ],
+  },
+  {
+    id: 'smeol',
+    title: 'Senior Marine Engine Operator Licence (SMEOL)',
+    regulation: 'Non-STCW',
+    category: 'Engine Ratings and Operators',
+    description: 'Chief engineer on vessels under 750 kW, no area limit (MSN 1857, section 10.3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Seagoing Service, 200 kW+', kind: 'seagoing', minKw: 200, days: 180 }],
+      categorisedWater: 'half_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as MEOL',
+        value: '6 months',
+        details: ['While serving as an MEOL', 'On vessels of at least 200 kW'],
+      },
+    ],
+    notes: [
+      'The service must be after your MEOL was issued. The bar counts all your seagoing service, so check the dates',
+      'Pass the MCA SMEOL oral examination',
+      'Check that other administrations accept the SMEOL in their waters',
+      'Does not need revalidating',
+    ],
+  },
   {
     id: 'meol-sv',
     title: 'Marine Engine Operator Licence (MEOL SV)',
@@ -624,6 +798,14 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Small vessels 200-750 kW (where STCW does not apply)',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Onboard Service, 200 kW+', kind: 'onboard', minKw: 200, days: 720 },
+        { label: 'Seagoing Service, 200 kW+', kind: 'seagoing', minKw: 200, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Onboard Service',
@@ -650,6 +832,14 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: '<9,000 kW, <3,000 GT, unlimited area',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Seagoing Service, 350 kW+', kind: 'seagoing', minKw: 350, days: 330 },
+        { label: 'Watchkeeping or UMS, 350 kW+', kind: 'watch', minKw: 350, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Standard Route (section 4.3)',
@@ -699,6 +889,11 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as EOOW, 350 kW+', kind: 'watch', minKw: 350, days: 180 }],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -723,6 +918,14 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Watch or UMS as EOOW, 350 kW+', kind: 'watch', minKw: 350, days: 360 },
+        { label: 'Of Which on 750 kW+', kind: 'watch', minKw: 750, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -740,6 +943,106 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
       'Requires General Engineering Science I & II OR Diploma in Maritime Studies (SV Engineer + SV Chief Engineer)',
       'Requires HELM (Management)',
       'MCA oral examination for Chief Engineer <9,000 kW, <3,000 GT, III/2',
+    ],
+  },
+  // Small vessel to Merchant Navy: MSN 1904 section 13. All need service on
+  // vessels of 750 kW or more, in full charge of the watch or with UMS duties.
+  {
+    id: 'sv-eoow-to-eoow-unlimited',
+    title: 'EOOW Unlimited (from SV EOOW)',
+    regulation: 'STCW III/1',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV EOOW to the unlimited merchant EOOW (section 13.1)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV EOOW, 750 kW+', kind: 'watch', minKw: 750, days: 180 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV EOOW',
+        value: '6 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'EOOW exams: Engineering Knowledge General, Motor and Control Engineering, and General Engineering Science A & B (or I & II)',
+      'Pass the MCA III/1 Engineer Officer of the Watch oral',
+    ],
+  },
+  {
+    id: 'sv-chief-to-3000kw',
+    title: 'Second Engineer <3,000 kW (from SV Chief <500 GT)',
+    regulation: 'STCW III/3',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV Chief Engineer <3,000 kW, <500 GT (section 13.2)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 180 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <500 GT',
+        value: '6 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      'Section 13.2 also calls this the EOOW <3,000 kW, unlimited area, III/3 CoC',
+      '3 months approved Workshop Skills Training',
+      'Exams: Engineering Knowledge General, Motor and Control Engineering; General Engineering Science I & II; Applied Marine Engineering',
+      'Pass the MCA III/3 oral for under 3,000 kW',
+    ],
+  },
+  {
+    id: 'sv-chief-to-second-unlimited',
+    title: 'Second Engineer Unlimited (from SV Chief <3,000 GT)',
+    regulation: 'STCW III/2',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV Chief Engineer <9,000 kW, <3,000 GT (section 13.3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 360 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <3,000 GT',
+        value: '12 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'All Second Engineer (management level) exams in MSN 1857 sections 3.5.2 and 7.4.2',
+      'Pass the MCA III/2 oral',
+    ],
+  },
+  {
+    id: 'sv-chief-to-chief-3000kw',
+    title: 'Chief Engineer <3,000 kW (from SV Chief <3,000 GT)',
+    regulation: 'STCW III/3',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Unlimited area under 3,000 kW, and under 9,000 kW near coastal (section 13.4)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 360 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <3,000 GT',
+        value: '12 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'EOOW exams: Engineering Knowledge Motor and Control Engineering',
+      'Pass the MCA III/3 Chief Engineer under 3,000 kW oral',
+      'Higher Merchant Navy CoCs follow MSN 1857 (Amendment 1)',
     ],
   },
   // ETO: MSN 1860 (M) Amendment 1. Unlimited STCW CoC, not yacht restricted.

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { formatEntryNotes } from '../utils/duration.js';
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
@@ -8,6 +8,7 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
+import { engineService } from "../utils/engineService.js";
 import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
@@ -586,6 +587,24 @@ export function register(app: App, fastify: FastifyInstance) {
                 workboats_without_length: { type: 'number' },
               },
             },
+            engine_service: {
+              type: 'object',
+              properties: {
+                seagoing_any: { type: 'number' },
+                seagoing_200kw: { type: 'number' },
+                seagoing_350kw: { type: 'number' },
+                seagoing_750kw: { type: 'number' },
+                watch_350kw: { type: 'number' },
+                watch_750kw: { type: 'number' },
+                onboard_200kw: { type: 'number' },
+                rating_350kw: { type: 'number' },
+                categorised_any: { type: 'number' },
+                categorised_200kw: { type: 'number' },
+                categorised_350kw: { type: 'number' },
+                categorised_750kw: { type: 'number' },
+                vessels_without_power: { type: 'array', items: { type: 'string' } },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -723,6 +742,27 @@ export function register(app: App, fastify: FastifyInstance) {
     // Master (Workboat) <500 GT gates (MGN 496): any vessel, 15 m and over, workboats, recency
     const workboat_service = workboatService(entries as any);
 
+    // Engine-department gates by propulsion power (MSN 1904, 1857, 1863). An entry
+    // is inside categorised waters when every AIS fix the sea-area classifier saw
+    // during it was in a category A to D area (season is only set on classified fixes).
+    let categorisedIds = new Set<string>();
+    try {
+      const rows = await app.db.execute(sql`
+        select e.id
+        from sea_time_entries e
+        join ais_checks a on a.vessel_id = e.vessel_id
+          and a.check_time >= e.start_time
+          and a.check_time <= coalesce(e.end_time, e.start_time)
+        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+        group by e.id
+        having bool_and(a.area_category is not null)
+      `);
+      categorisedIds = new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
+    } catch (err) {
+      app.logger.warn({ err }, 'Categorised-water lookup failed; engine figures exclude it');
+    }
+    const engine_service = engineService(entries as any, categorisedIds);
+
     app.logger.info(
       {
         total_days,
@@ -745,6 +785,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entries_by_service_type,
       commercial_service,
       workboat_service,
+      engine_service,
     });
   });
 

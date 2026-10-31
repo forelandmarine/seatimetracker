@@ -3,8 +3,10 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
+  EngineGate,
   MCARequirement,
   MaritimeAuthority,
+  VesselSector,
   getDefaultTargetId,
   getRequirementByIdForPathway,
   getTargetDays,
@@ -98,6 +100,45 @@ export interface WorkboatServiceSummary {
   workboats_without_length: number;
 }
 
+/** MCA engineering figures by propulsion power (MSN 1904, 1857, 1863), from the summary endpoint. */
+export interface EngineServiceSummary {
+  seagoing_any: number;
+  seagoing_200kw: number;
+  seagoing_350kw: number;
+  seagoing_750kw: number;
+  watch_350kw: number;
+  watch_750kw: number;
+  onboard_200kw: number;
+  rating_350kw: number;
+  categorised_any: number;
+  categorised_200kw: number;
+  categorised_350kw: number;
+  categorised_750kw: number;
+  vessels_without_power: string[];
+}
+
+const kwKey = (minKw: number) => (minKw >= 750 ? '750kw' : minKw >= 350 ? '350kw' : minKw >= 200 ? '200kw' : 'any');
+
+/** Days inside UK categorised waters at a gate's power (a floor, from classified AIS fixes). */
+const categorisedAt = (e: EngineServiceSummary, minKw: number): number =>
+  e[`categorised_${kwKey(minKw)}` as keyof EngineServiceSummary] as number;
+
+/** Days toward one engine gate. Half-rate categorised days lose half their value (MSN 1857 5.2). */
+const engineGateDays = (e: EngineServiceSummary, gate: EngineGate, halfRate: boolean): number => {
+  switch (gate.kind) {
+    case 'rating':
+      return e.rating_350kw;
+    case 'onboard':
+      return e.onboard_200kw;
+    case 'watch':
+      return gate.minKw >= 750 ? e.watch_750kw : e.watch_350kw;
+    default: {
+      const days = e[`seagoing_${kwKey(gate.minKw)}` as keyof EngineServiceSummary] as number;
+      return halfRate ? days - Math.floor(categorisedAt(e, gate.minKw) / 2) : days;
+    }
+  }
+};
+
 /** MGN 496 4.3: at least 6 months of service in the 5 years before applying. */
 const WORKBOAT_RECENCY_DAYS = 180;
 
@@ -130,6 +171,10 @@ export interface CertificationProgressProps {
   commercialService?: CommercialServiceSummary | null;
   /** Master (Workboat) figures. Required for the MGN 496 routes. */
   workboatService?: WorkboatServiceSummary | null;
+  /** Engine figures by propulsion power. Required for the MCA engine routes. */
+  engineService?: EngineServiceSummary | null;
+  /** The user's sector, which decides whether a sector-limited engine route applies. */
+  sector?: VesselSector | null;
   /**
    * Whether the user holds the record of training their authority reduces sea
    * service for: an AMSA task book, or an MNZ training record book or cadet
@@ -194,6 +239,8 @@ export function CertificationProgress({
   samsaService,
   commercialService,
   workboatService,
+  engineService,
+  sector,
   hasRecordBook = false,
   isDark,
   onChangeTarget,
@@ -217,6 +264,19 @@ export function CertificationProgress({
   const isAMSA = resolvedAuthority === 'amsa';
   const isMNZ = resolvedAuthority === 'mnz';
   const isSAMSA = resolvedAuthority === 'samsa';
+
+  // Engine gates apply to every user for the ratings, operator licences and
+  // conversions. The small vessel CoCs use them only for commercial users, so
+  // yacht engineers keep the MSN 1904 5.9 yacht-table bars they had before.
+  const engineRoute =
+    resolvedAuthority === 'mca' &&
+    requirement?.engineRoute &&
+    (!requirement.engineRoute.sectors ||
+      requirement.engineRoute.sectors.includes(sector === 'commercial' ? 'commercial' : 'yachting'))
+      ? requirement.engineRoute
+      : undefined;
+  const categorisedDays =
+    engineRoute && engineService ? categorisedAt(engineService, engineRoute.gates[0]?.minKw ?? 0) : 0;
 
   // Commercial-vessel days only matter for MCA, where the rules split by
   // vessel type. For a yacht-only CoC they are left out of the bars; for one
@@ -276,6 +336,17 @@ export function CertificationProgress({
       out.push({ label: 'Workboat Service, 15m+', current: workboatService.workboat_15m, required: route.workboat15mDays });
       out.push({ label: 'In the Last 5 Years', current: workboatService.recent_sea_service, required: WORKBOAT_RECENCY_DAYS });
       return out;
+    }
+
+    if (engineRoute) {
+      // Without the engine figures there is no honest bar to draw.
+      if (!engineService) return [];
+      const halfRate = engineRoute.categorisedWater === 'half_rate';
+      return engineRoute.gates.map((gate) => ({
+        label: gate.label,
+        current: Math.max(0, engineGateDays(engineService, gate, halfRate)),
+        required: gate.days,
+      }));
     }
 
     if (resolvedAuthority === 'mca') {
@@ -375,6 +446,8 @@ export function CertificationProgress({
     serviceTypes,
     commercialService,
     workboatService,
+    engineRoute,
+    engineService,
     excludeCommercial,
     resolvedAuthority,
     dept,
@@ -457,6 +530,8 @@ export function CertificationProgress({
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
             : requirement?.workboatRoute && !workboatService
               ? 'Your workboat day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 496.'
+              : engineRoute && !engineService
+              ? 'Your engine room day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled by engine power.'
               : isAMSA && !amsaService
               ? 'Your AMSA day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under Marine Order 505.'
               : isMNZ && !mnzService
@@ -552,7 +627,33 @@ export function CertificationProgress({
         </View>
       )}
 
-      {commercialDays > 0 && requirement?.commercialService && !requirement?.workboatRoute && (
+      {engineRoute && engineService && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted by each vessel's recorded engine power, with months at 30 days. Watchkeeping or
+            UMS days are the ones you logged as watchkeeping service, or with 4 or more engine room
+            watch hours; your testimonial must say what watch or UMS duties you did.
+            {engineRoute.gates.some((g) => g.kind === 'rating')
+              ? ' Rating service counts vessels over 15m and 350 kW, in the last 5 years, with no more than a quarter of it in port, at anchor or in the yard.'
+              : ''}
+            {engineService.vessels_without_power.length > 0
+              ? ` ${formatVesselList(engineService.vessels_without_power)} ${engineService.vessels_without_power.length === 1 ? 'has' : 'have'} no engine power recorded, so ${engineService.vessels_without_power.length === 1 ? 'its days are' : 'their days are'} left out. Add the kW in the vessel's details.`
+              : ''}
+          </Text>
+          {categorisedDays > 0 && engineRoute.categorisedWater !== 'full_rate' && (
+            <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17, marginTop: 8 }}>
+              {`At least ${categorisedDays} ${categorisedDays === 1 ? 'sea day was' : 'sea days were'} inside UK categorised waters, going by AIS positions. `}
+              {engineRoute.categorisedWater === 'limits'
+                ? 'MSN 1904 accepts this service but limits the certificate to categorised waters until you do 3 more months outside them.'
+                : engineRoute.categorisedWater === 'half_rate'
+                  ? 'MSN 1857 counts these at half rate, and the bar already allows for that.'
+                  : 'MSN 1904 does not say how these count toward a conversion, and MSN 1857 counts them at half rate, so check with the MCA.'}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {commercialDays > 0 && requirement?.commercialService && !requirement?.workboatRoute && !engineRoute && (
         <View
           style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}
         >

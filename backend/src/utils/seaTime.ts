@@ -258,6 +258,15 @@ export function countDistinctSeaDays(entries: PeriodEntry[]): number {
   return days;
 }
 
+/** The dates behind countDistinctSeaDays, for counters that combine day sets. */
+export function distinctSeaDates(entries: PeriodEntry[]): Set<string> {
+  const out = new Set<string>();
+  for (const [d, h] of unionHoursByDate(entries)) {
+    if (meetsHours(h, MCA_MINIMUM_HOURS_PER_DAY)) out.add(d);
+  }
+  return out;
+}
+
 /**
  * MSN 1858 crediting caps for yacht sea service that are applied to the
  * headline sea-service total:

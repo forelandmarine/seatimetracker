@@ -1,6 +1,6 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress, CommercialServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { CertificationProgress, CommercialServiceSummary, EngineServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -60,6 +60,7 @@ interface UserProfile {
   department?: string | null;
   maritime_authority?: MaritimeAuthority | null;
   target_certification?: string | null;
+  vessel_sector?: 'yachting' | 'commercial' | null;
 }
 
 interface SeaTimeSummary {
@@ -88,6 +89,7 @@ interface SeaTimeSummary {
   } | null;
   commercial_service?: CommercialServiceSummary;
   workboat_service?: WorkboatServiceSummary;
+  engine_service?: EngineServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -1316,6 +1318,8 @@ export default function ProfileScreen() {
                   samsaService={(summary as any).samsa_service ?? null}
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
+                  engineService={summary.engine_service ?? null}
+                  sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
                   isDark={isDark}
                   onChangeTarget={() =>
