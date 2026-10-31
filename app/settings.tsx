@@ -26,6 +26,7 @@ import { colors } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
+import { openHistoryImportForActiveVessel } from '@/components/HistoryImportRow';
 
 const SUPPORT_EMAIL = 'info@forelandmarine.com';
 
@@ -118,9 +119,17 @@ export default function SettingsScreen() {
           <SettingsRow icon="signature" androidIcon="draw" label={t('settings.signatureForReports')} onPress={() => router.push('/signature')} isLast isDark={isDark} />
         </View>
 
+        <Text style={styles.sectionTitle}>{t('settings.certificates')}</Text>
+        <View style={styles.card}>
+          <SettingsRow icon="doc.text.fill" androidIcon="article" label={t('settings.manageCertificates')} onPress={() => router.push('/certificates')} isDark={isDark} />
+          <SettingsRow icon="doc.richtext" androidIcon="description" label={t('navigation.reports')} onPress={() => router.push('/reports' as any)} isLast isDark={isDark} />
+        </View>
+
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />
+          <SettingsRow icon="location.fill" androidIcon="my-location" label={t('settings.manualGps')} onPress={() => router.push('/manual-tracking' as any)} isDark={isDark} />
+          <SettingsRow icon="clock.arrow.circlepath" androidIcon="history" label="Import past sea time" onPress={openHistoryImportForActiveVessel} isDark={isDark} />
           <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isDark={isDark} />
           <SettingsRow icon="envelope.badge" androidIcon="mark-email-read" label="Email preferences" onPress={() => router.push('/email-preferences' as any)} isLast isDark={isDark} />
         </View>

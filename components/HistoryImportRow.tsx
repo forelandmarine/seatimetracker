@@ -3,9 +3,30 @@ import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import * as seaTimeApi from '@/utils/seaTimeApi';
 
 function openHistoryImport(vesselId: string, vesselName?: string) {
   router.push({ pathname: '/history-import', params: { vesselId, vesselName: vesselName ?? '' } } as any);
+}
+
+/** Settings/Profile entry point: opens the import for the active vessel (or the only one). */
+export async function openHistoryImportForActiveVessel() {
+  try {
+    const vessels: any[] = (await seaTimeApi.getVessels()) || [];
+    const vessel = vessels.find((v) => v.is_active) ?? (vessels.length === 1 ? vessels[0] : null);
+    if (!vessel) {
+      Alert.alert(
+        'Import past sea time',
+        vessels.length === 0
+          ? 'Add your vessel first, then we can look up its AIS history.'
+          : 'Set your active vessel first, or open the vessel page and tap "Import past sea time".'
+      );
+      return;
+    }
+    openHistoryImport(vessel.id, vessel.vessel_name);
+  } catch {
+    Alert.alert('Import past sea time', 'Could not load your vessels. Please try again.');
+  }
 }
 
 /** After a vessel is added: offer to import its sea time from before tracking started. */

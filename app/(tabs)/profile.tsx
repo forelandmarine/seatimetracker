@@ -42,6 +42,7 @@ import {
 import { log, warn, error as logError } from '@/utils/log';
 import { useTranslation } from 'react-i18next';
 import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
+import { openHistoryImportForActiveVessel } from '@/components/HistoryImportRow';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -1519,6 +1520,69 @@ export default function ProfileScreen() {
                     Upload and manage your maritime certificates
                   </Text>
                 </View>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/reports' as any)}
+              >
+                <IconSymbol
+                  ios_icon_name="doc.richtext"
+                  android_material_icon_name="description"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>{t('navigation.reports')}</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/manual-tracking' as any)}
+              >
+                <IconSymbol
+                  ios_icon_name="location.fill"
+                  android_material_icon_name="my-location"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>{t('settings.manualGps')}</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={openHistoryImportForActiveVessel}
+              >
+                <IconSymbol
+                  ios_icon_name="clock.arrow.circlepath"
+                  android_material_icon_name="history"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Import past sea time</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

@@ -5,6 +5,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
 import { HistoryImportRow } from '@/components/HistoryImportRow';
+import { ManualGpsRow } from '@/components/ManualGpsRow';
 import { countryName } from '@/utils/countryCodes';
 import {
   View,
@@ -800,57 +801,7 @@ export default function VesselDetailScreen() {
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
           ) : null}
 
-          {/* Manual GPS fallback — surfaced contextually when AIS is missing or stale */}
-          {(() => {
-            const aisIsStale = (() => {
-              if (!aisData?.timestamp) return true;
-              try {
-                const ageHours = (Date.now() - new Date(aisData.timestamp).getTime()) / (1000 * 60 * 60);
-                return ageHours > 6;
-              } catch {
-                return true;
-              }
-            })();
-            if (!aisIsStale) return null;
-            return (
-              <TouchableOpacity
-                onPress={() => router.push(`/manual-tracking?vesselId=${vessel.id}`)}
-                activeOpacity={0.7}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  backgroundColor: colors.primary + '12',
-                  borderWidth: 1,
-                  borderColor: colors.primary + '30',
-                }}
-              >
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="my-location"
-                  size={20}
-                  color={colors.primary}
-                  style={{ marginRight: 10 }}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                    Log voyage with phone GPS
-                  </Text>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    {aisData ? 'AIS data is stale - use phone GPS to log this voyage' : 'No AIS coverage for this vessel'}
-                  </Text>
-                </View>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="chevron-right"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            );
-          })()}
+          <ManualGpsRow vesselId={vessel.id} aisTimestamp={aisData?.timestamp} hasAisData={!!aisData} />
           <HistoryImportRow vesselId={vessel.id} vesselName={vessel.vessel_name} />
         </View>
 
