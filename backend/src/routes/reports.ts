@@ -8,7 +8,7 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
-import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -687,6 +687,8 @@ export function register(app: App, fastify: FastifyInstance) {
     entries.forEach((entry) => {
       const service_type = entry.service_type || 'actual_sea_service';
       (serviceTypeGroups[service_type] ||= []).push(entry);
+      // A sole watchkeeper's sea days are watchkeeping days too (days stay distinct)
+      if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
     });
 
     const entries_by_service_type = Object.entries(serviceTypeGroups)
@@ -707,6 +709,7 @@ export function register(app: App, fastify: FastifyInstance) {
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
+        if (isSoleWatchEntry(entry as any)) (yachtTypeGroups['watchkeeping_service'] ||= []).push(entry);
       });
     const commercial_service = {
       qualifying_total: qualifyingSeaDays(commercialEntries as any).qualifying_total,

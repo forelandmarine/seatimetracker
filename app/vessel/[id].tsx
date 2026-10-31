@@ -26,6 +26,7 @@ import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
+import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 import { log, error as logError } from '@/utils/log';
@@ -45,6 +46,7 @@ interface Vessel {
   engine_kilowatts?: number;
   engine_type?: string;
   is_two_watch?: boolean | null;
+  is_sole_watchkeeper?: boolean | null;
   imo_number?: string;
   tonnage_itc?: number;
 }
@@ -718,6 +720,16 @@ export default function VesselDetailScreen() {
           isTwoWatch={vessel.is_two_watch}
           onChange={(isTwoWatch) => {
             setVessel((v) => (v ? { ...v, is_two_watch: isTwoWatch } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+          }}
+        />
+
+        {/* Sole watchkeeper: sea days also count as watchkeeping (MCA, MNZ, SAMSA) */}
+        <SoleWatchToggle
+          vesselId={vessel.id}
+          isSoleWatchkeeper={vessel.is_sole_watchkeeper}
+          onChange={(isSoleWatchkeeper) => {
+            setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
           }}
         />

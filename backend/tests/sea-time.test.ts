@@ -621,6 +621,18 @@ describe("mnzCreditableDays", () => {
     ], now);
     expect(r.watchkeeping).toBe(6);
   });
+
+  test("a sole watchkeeper's sea days count as watchkeeping days", () => {
+    const sole = { is_sole_watchkeeper: true };
+    const r = mnzCreditableDays([
+      { ...day("2026-01-01"), vessel: sole },
+      // logged watch hours on a sole-watch day are not added on top
+      { ...day("2026-01-02"), vessel: sole, watchkeeping_hours: 24 },
+      { ...day("2026-01-03", "standby_service"), vessel: sole },
+      { ...day("2026-01-04"), watchkeeping_hours: 16 },
+    ], now);
+    expect(r.watchkeeping).toBe(4);
+  });
 });
 
 // ---------------------------------------------------------------------------

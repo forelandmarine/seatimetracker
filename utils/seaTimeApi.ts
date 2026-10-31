@@ -319,6 +319,13 @@ export const updateVesselTwoWatch = async (vesselId: string, isTwoWatch: boolean
   return normalizeVessel(await res.json());
 };
 
+// Mark the user as the only watchkeeper in their department on a vessel (a sole
+// engineer, say). Every sea day on it then also counts as a watchkeeping day.
+export const updateVesselSoleWatchkeeper = async (vesselId: string, isSoleWatchkeeper: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watchkeeper`, { method: 'PUT', body: { is_sole_watchkeeper: isSoleWatchkeeper } });
+  return normalizeVessel(await res.json());
+};
+
 // Tag a vessel as a yacht or a commercial vessel. The tag decides which MCA
 // certificates its sea time counts toward (MSN 1858 yacht CoCs need yacht service).
 export const updateVesselSector = async (vesselId: string, sector: 'yachting' | 'commercial') => {

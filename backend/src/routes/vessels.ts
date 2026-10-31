@@ -257,6 +257,8 @@ function transformVesselForResponse(vessel: any) {
     is_workboat: vessel.is_workboat ?? null,
     // Marked by the user as authorised to run a two-watch system (USCG 1.5-day credit)
     is_two_watch: vessel.is_two_watch ?? null,
+    // Marked by the user as the only watchkeeper in their department (sea days count as watchkeeping)
+    is_sole_watchkeeper: vessel.is_sole_watchkeeper ?? null,
     // A new name AIS reported that the user hasn't accepted or declined yet
     pending_name: vessel.pending_name || null,
     pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
@@ -294,6 +296,7 @@ export function register(app: App, fastify: FastifyInstance) {
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
               is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -356,6 +359,7 @@ export function register(app: App, fastify: FastifyInstance) {
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
             is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -462,6 +466,7 @@ export function register(app: App, fastify: FastifyInstance) {
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
             is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -705,6 +710,7 @@ export function register(app: App, fastify: FastifyInstance) {
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
             is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -836,6 +842,7 @@ export function register(app: App, fastify: FastifyInstance) {
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
             is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1023,6 +1030,7 @@ export function register(app: App, fastify: FastifyInstance) {
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
             is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1208,6 +1216,35 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
+  // PUT /api/vessels/:id/sole-watchkeeper - Mark the user as the only watchkeeper in their department on a vessel
+  fastify.put<{ Params: { id: string }; Body: { is_sole_watchkeeper: boolean } }>('/api/vessels/:id/sole-watchkeeper', {
+    schema: {
+      description: 'Mark whether the user is the only watchkeeper in their department on a vessel (a sole engineer, for example). Every sea service day on it then also counts as a watchkeeping day. (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_sole_watchkeeper'], properties: { is_sole_watchkeeper: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_sole_watchkeeper: request.body.is_sole_watchkeeper, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_sole_watchkeeper: request.body.is_sole_watchkeeper }, 'Vessel sole-watchkeeper flag updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
   // PUT /api/vessels/:id/pending-name - Accept or decline the new name AIS reported.
   // Accepting renames from the day AIS first showed it; earlier service keeps the old name.
   fastify.put<{ Params: { id: string }; Body: { accept: boolean; name?: string | null } }>('/api/vessels/:id/pending-name', {
@@ -1367,6 +1404,7 @@ export function register(app: App, fastify: FastifyInstance) {
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
               is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -1498,6 +1536,7 @@ export function register(app: App, fastify: FastifyInstance) {
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
               is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },

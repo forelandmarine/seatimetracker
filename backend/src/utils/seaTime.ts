@@ -97,6 +97,45 @@ interface PeriodEntry {
   service_type?: string | null;
 }
 
+/**
+ * True when an entry is actual sea service on a vessel where the user has said
+ * they are the only watchkeeper in their department (a sole engineer, say).
+ * Every such day at sea is also a day of watchkeeping, so it counts toward the
+ * watchkeeping figures as well as sea service. Watchkeeping entries and
+ * logged watch hours are unaffected.
+ */
+export function isSoleWatchEntry(e: PeriodEntry & { vessel?: { is_sole_watchkeeper?: boolean | null } | null }): boolean {
+  return e.vessel?.is_sole_watchkeeper === true && (e.service_type || 'actual_sea_service') === 'actual_sea_service';
+}
+
+/**
+ * Watchkeeping days for the authorities that measure it in logged watch hours
+ * at 8 to the day (MNZ, SAMSA). Sea days on a sole-watchkeeper vessel count as
+ * whole watchkeeping days instead of their hours, so the two are never added
+ * together for the same entry.
+ */
+function watchkeepingDaysFromHours(entries: MNZEntry[], from: Date | null, dayHours = MCA_MINIMUM_HOURS_PER_DAY): number {
+  let watchHours = 0;
+  const sole: MNZEntry[] = [];
+  for (const e of entries) {
+    const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
+    if (from && last.getTime() < from.getTime()) continue;
+    if (isSoleWatchEntry(e)) {
+      sole.push(e);
+      continue;
+    }
+    watchHours +=
+      toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
+  }
+  const fromDay = from ? getCalendarDay(from) : null;
+  let soleDays = 0;
+  for (const [d, h] of unionHoursByDate(sole)) {
+    if (fromDay && d < fromDay) continue;
+    if (meetsHours(h, dayHours)) soleDays++;
+  }
+  return Math.floor(watchHours / 8) + soleDays;
+}
+
 export function isDeclaredDayEntry(e: PeriodEntry): boolean {
   return e.end_time == null
     && typeof e.sea_days === 'number' && e.sea_days >= 1
@@ -650,6 +689,7 @@ export interface MNZServiceBreakdown {
 }
 
 interface MNZEntry extends PeriodEntry {
+  vessel?: { is_sole_watchkeeper?: boolean | null } | null;
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
   watchkeeping_hours?: string | number | null;
@@ -679,13 +719,6 @@ export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): 
   let totalHours = 0;
   for (const [d, h] of c.hours) if (inWindow(d)) totalHours += h;
 
-  let watchHours = 0;
-  for (const e of entries) {
-    const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
-    if (last.getTime() < windowStart.getTime()) continue;
-    watchHours +=
-      toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
-  }
 
   const actual = actualDays.size;
   const standby = standbyDays.size;
@@ -697,7 +730,7 @@ export function mnzCreditableDays(entries: MNZEntry[], now: Date = new Date()): 
     yard,
     port: portDays.size,
     qualifying_total: actual + standby + yard,
-    watchkeeping: Math.floor(watchHours / 8),
+    watchkeeping: watchkeepingDaysFromHours(entries, windowStart),
     hours: Math.round(totalHours * 100) / 100,
     outside_window: outsideDays.size,
   };
@@ -742,17 +775,10 @@ export function samsaCreditableDays(entries: MNZEntry[], now: Date = new Date())
 
   let totalHours = 0;
   for (const [d, h] of c.hours) if (inWindow(d)) totalHours += h;
-  let watchHours = 0;
-  for (const e of entries) {
-    const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
-    if (last.getTime() < windowStart.getTime()) continue;
-    watchHours +=
-      toHours(e.watchkeeping_hours) || toHours(e.bridge_watch_hours) + toHours(e.engine_watch_hours);
-  }
   return {
     seagoing,
     standby_yard,
-    watchkeeping: Math.floor(watchHours / 8),
+    watchkeeping: watchkeepingDaysFromHours(entries, windowStart, 0),
     hours: Math.round(totalHours * 100) / 100,
     outside_window: outside,
   };
