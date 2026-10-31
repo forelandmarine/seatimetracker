@@ -3296,6 +3296,14 @@ export const filterRequirementsBySector = (
   return requirements.filter((req) => !req.sectors || req.sectors.includes(effective));
 };
 
+/** Whether the app can show progress bars for this requirement, so it can be a target. */
+export const isTrackableRequirement = (req: MCARequirement): boolean =>
+  req.totalDays != null ||
+  req.workboatRoute != null ||
+  req.engineRoute != null ||
+  req.tugRoute != null ||
+  req.boatmasterRoute != null;
+
 export const getRequirementsByAuthority = (
   authority: MaritimeAuthority,
   department: 'deck' | 'engineering',

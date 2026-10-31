@@ -11,6 +11,7 @@ import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import VesselLookup from '@/components/VesselLookup';
+import TargetPathwayPicker, { TARGET_NOT_SURE } from '@/components/TargetPathwayPicker';
 import { trackEvent } from '@/utils/appEvents';
 import {
   View,
@@ -277,6 +278,10 @@ export default function SeaTimeScreen() {
   };
 
   const [addingVessel, setAddingVessel] = useState(false);
+  // First vessel only: what the user is working toward, saved as their target certificate.
+  const [newTarget, setNewTarget] = useState<string | null>(null);
+  const [newSector, setNewSector] = useState<'yachting' | 'commercial' | null>(null);
+  const isFirstVessel = vessels.length === 0;
 
   // Add Vessel: the user confirmed an AIS match for the name and length they typed.
   // Fill the MMSI and any particulars they have not filled in themselves.
@@ -305,6 +310,10 @@ export default function SeaTimeScreen() {
       Alert.alert('Check the MMSI', mmsiProblem);
       return;
     }
+    if (isFirstVessel && !newTarget) {
+      Alert.alert('What are you working toward?', "Choose the certificate you're aiming for, or Not sure yet.");
+      return;
+    }
 
     setAddingVessel(true);
     try {
@@ -329,6 +338,20 @@ export default function SeaTimeScreen() {
       
       log('[Home] New vessel will be automatically activated and tracked');
       
+      // First vessel: save where they work and what they're aiming for first, so the
+      // vessel is created with the right sector and the profile tracks the right certificate.
+      if (isFirstVessel) {
+        try {
+          await seaTimeApi.updateUserProfile({
+            ...(newSector ? { vessel_sector: newSector } : {}),
+            ...(newTarget && newTarget !== TARGET_NOT_SURE ? { target_certification: newTarget } : {}),
+          });
+        } catch (profileError) {
+          // The vessel is still added; both can be changed later in Settings and on the profile.
+          logError('[Home] Failed to save sector and target:', profileError);
+        }
+      }
+
       const createdVessel = await seaTimeApi.createVessel(
         seaTimeApi.normalizeMmsi(newMMSI), 
         vesselNameTrimmed, 
@@ -369,6 +392,7 @@ export default function SeaTimeScreen() {
       setNewLengthMetres('');
       setShowMoreDetails(false);
       setLookupMmsi('');
+      setNewTarget(null);
       setNewGrossTonnes('');
       setNewEngineKilowatts('');
       setNewEngineType('');
@@ -983,6 +1007,15 @@ export default function SeaTimeScreen() {
                     </Text>
                   )}
                 </View>
+
+                {isFirstVessel && (
+                  <TargetPathwayPicker
+                    value={newTarget}
+                    onChange={setNewTarget}
+                    sector={newSector}
+                    onSectorChange={setNewSector}
+                  />
+                )}
 
                 {!showMoreDetails ? (
                   <TouchableOpacity style={{ paddingVertical: 12, marginBottom: 8 }} onPress={() => setShowMoreDetails(true)}>
