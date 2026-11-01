@@ -142,7 +142,6 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{t('settings.growTheCrew')}</Text>
         <View style={styles.card}>
-          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referAFriend')} onPress={() => router.push('/refer')} isDark={isDark} />
           <SettingsRow icon="star" androidIcon="star-outline" label="Rate SeaTime Tracker" onPress={openWriteReview} isLast isDark={isDark} />
         </View>
 

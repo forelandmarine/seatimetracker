@@ -160,13 +160,6 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
-          name="refer"
-          options={{
-            title: t('refer.title'),
-            headerBackTitle: t('common.back'),
-          }}
-        />
-        <Stack.Screen
           name="language"
           options={{
             title: t('navigation.language'),
