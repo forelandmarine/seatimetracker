@@ -50,8 +50,10 @@ export default function Index() {
 
   const { user, loading: authLoading } = authContext;
 
-  // Show loading while checking auth or onboarding state
-  if (authLoading || !initialCheckDone || onboardingDone === null) {
+  // Show loading only for the first auth and onboarding check. authLoading also
+  // turns on during a sign-in attempt; showing the spinner then unmounts the auth
+  // screen, so a failed sign-in came back to a cleared form without its offers.
+  if (!initialCheckDone || onboardingDone === null) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />

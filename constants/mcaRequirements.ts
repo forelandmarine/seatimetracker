@@ -60,6 +60,12 @@ export interface MCARequirement {
   /** Sector lists that show this entry. Absent means both. */
   sectors?: VesselSector[];
   /**
+   * Progress comes from the fixed MCA yacht deck bars (250 days seagoing plus
+   * 115 days additional service, mcaRows in CertificationProgress), which are
+   * the OOW (Yachts) rule, so this entry can be a target without totalDays.
+   */
+  mcaYachtBars?: boolean;
+  /**
    * Whether sea time on vessels tagged commercial counts toward this
    * certificate. MSN 1858 only credits yacht service toward the yacht deck
    * CoCs; ratings (MSN 1862), small vessel engineer (MSN 1904) and ETO
@@ -380,6 +386,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Qualifying sea service to apply (NOE)',
     commercialService: 'yacht_only',
+    mcaYachtBars: true,
     requirements: [
       {
         label: 'Total Onboard Service',
@@ -3299,6 +3306,7 @@ export const filterRequirementsBySector = (
 /** Whether the app can show progress bars for this requirement, so it can be a target. */
 export const isTrackableRequirement = (req: MCARequirement): boolean =>
   req.totalDays != null ||
+  req.mcaYachtBars === true ||
   req.workboatRoute != null ||
   req.engineRoute != null ||
   req.tugRoute != null ||
