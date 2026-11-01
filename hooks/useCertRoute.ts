@@ -70,8 +70,12 @@ export function useCertRoute({ authority, department, targetId, savedRouteId, sa
   const [startDate, setStartDateState] = useState<string | null>(savedStartDate ?? null);
   const [sinceStart, setSinceStart] = useState<RouteSinceStart | null>(null);
 
-  useEffect(() => setRouteId(savedRouteId ?? null), [savedRouteId]);
-  useEffect(() => setStartDateState(savedStartDate ?? null), [savedStartDate]);
+  // Follow the saved values, and the target too: a new target saves an empty
+  // route, which leaves savedRouteId unchanged if it was already empty.
+  useEffect(() => {
+    setRouteId(savedRouteId ?? null);
+    setStartDateState(savedStartDate ?? null);
+  }, [savedRouteId, savedStartDate, requirementId]);
 
   const routes: CertRoute[] = useMemo(() => getRoutes(requirementId), [requirementId]);
   const route = useMemo(() => pickRoute(requirementId, routeId), [requirementId, routeId]);
@@ -98,15 +102,21 @@ export function useCertRoute({ authority, department, targetId, savedRouteId, sa
   }, [needsDate, startDate, refreshKey]);
 
   const selectRoute = useCallback(async (id: string) => {
-    const previous = routeId;
+    const previous = { routeId, startDate };
+    // A college registration date is not an Action Plan date, so a route that
+    // asks for a different date starts without one.
+    const next = routes.find((r) => r.id === id);
+    const keepDate = !!startDate && next?.startDate?.label === route?.startDate?.label;
     setRouteId(id);
+    if (!keepDate) setStartDateState(null);
     try {
-      await seaTimeApi.updateUserProfile({ target_route: id });
+      await seaTimeApi.updateUserProfile({ target_route: id, ...(keepDate ? {} : { route_start_date: null }) });
     } catch (e) {
       warn('[useCertRoute] could not save the route', e);
-      setRouteId(previous);
+      setRouteId(previous.routeId);
+      setStartDateState(previous.startDate);
     }
-  }, [routeId]);
+  }, [routeId, startDate, routes, route]);
 
   const setStartDate = useCallback(async (date: string | null) => {
     const previous = startDate;

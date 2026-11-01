@@ -306,7 +306,13 @@ export function register(app: App, fastify: FastifyInstance) {
         }
       }
       if (route_start_date !== undefined && route_start_date !== null && route_start_date !== '') {
-        if (typeof route_start_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(route_start_date) || isNaN(Date.parse(route_start_date))) {
+        // Date rolls 2026-02-30 over to March, so the date must survive a round trip.
+        const valid =
+          typeof route_start_date === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(route_start_date) &&
+          !isNaN(Date.parse(route_start_date)) &&
+          new Date(`${route_start_date}T00:00:00Z`).toISOString().slice(0, 10) === route_start_date;
+        if (!valid) {
           return reply.code(400).send({ error: 'Invalid route start date' });
         }
       }
