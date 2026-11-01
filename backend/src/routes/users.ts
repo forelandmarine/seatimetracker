@@ -31,6 +31,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId }, 'Starting account deletion for user');
 
+    // Profile photo key, removed from the bucket once the rows are gone
+    let imageKey: string | null = null;
+
     try {
       // Use a transaction to ensure all-or-nothing deletion
       await app.db.transaction(async (tx) => {
@@ -43,6 +46,8 @@ export function register(app: App, fastify: FastifyInstance) {
           app.logger.warn({ userId }, 'User not found during deletion');
           throw new Error('User not found');
         }
+
+        imageKey = userRecord.image ?? null;
 
         // Get all vessels owned by the user to verify ownership
         const userVessels = await tx
@@ -147,6 +152,18 @@ export function register(app: App, fastify: FastifyInstance) {
 
         app.logger.info({ userId }, 'User account deleted successfully');
       });
+
+      // Delete the profile photo only after the transaction has committed, so a
+      // failed deletion never leaves an account pointing at a missing photo.
+      // A failure here is logged, not returned: the account itself is gone.
+      if (imageKey) {
+        try {
+          await app.storage.delete(imageKey);
+          app.logger.debug({ userId, imageKey }, 'Deleted profile image');
+        } catch (error) {
+          app.logger.warn({ userId, imageKey, err: error }, 'Failed to delete profile image after account deletion');
+        }
+      }
 
       app.logger.info({ userId }, 'Account deletion completed successfully');
       return reply.code(204).send();
