@@ -82,14 +82,9 @@ const MNZ_DECK_RESTRICTED: MCARequirement[] = [
     totalDays: 180,
     requirements: [
       {
-        label: 'Sea Service (holding SRL)',
+        label: 'Sea Service',
         value: '180 days (6 months)',
-        details: ['On a commercial vessel of any length, in a deck capacity'],
-      },
-      {
-        label: 'Sea Service (not holding SRL)',
-        value: '180 days (6 months)',
-        details: ['On a commercial vessel of 12 metres or more, in a deck capacity'],
+        details: ['On a commercial ship, in a deck capacity (Part 32 rule 32.61(2))'],
       },
     ],
     notes: [
@@ -106,18 +101,27 @@ const MNZ_DECK_RESTRICTED: MCARequirement[] = [
     totalDays: 360,
     requirements: [
       {
-        label: 'Sea Service',
+        label: 'Sea Service (holding SRL 24 metres)',
         value: '360 days (12 months)',
         details: [
-          'On vessels of 12 metres or more while holding an SRL certificate endorsed to 24 metres or equivalent',
+          'On ships of 12 metres or more while holding an SRL certificate endorsed to 24 metres or equivalent',
           'Completed within the 5 years before the application',
-          'Plus an approved training record book',
+          'Including completion of an approved training record book on board',
+        ],
+      },
+      {
+        label: 'Sea Service (in command)',
+        value: '540 days (18 months)',
+        details: [
+          'In command of commercial ships of 12 metres or more',
+          'Including completion of an approved training record book on board',
         ],
       },
     ],
     notes: [
       'Master of ships under 500 GT carrying 19 passengers or fewer within restricted limits, and of fishing vessels under 500 GT within enclosed, inshore and inshore fishing limits',
       'Requires an oral examination with an approved Maritime NZ examiner',
+      'Sea service options from Part 32 rule 32.62(2)(a), consolidation of 21 September 2026',
     ],
   },
   {
@@ -206,6 +210,7 @@ const MNZ_DECK_COASTAL: MCARequirement[] = [
     description: 'Officer of the watch on ships <500 GT, coastal and offshore',
     category: 'Coastal & Offshore',
     totalDays: 1080,
+    totalDaysWithRecordBook: 360,
     requirements: [
       {
         label: 'Sea Service (option 1)',
@@ -216,11 +221,12 @@ const MNZ_DECK_COASTAL: MCARequirement[] = [
         ],
       },
       {
-        label: 'Sea Service (option 2)',
+        label: 'Sea Service (option 2, with training)',
         value: '360 days (12 months)',
         details: [
           'On vessels of 12 metres or more (required)',
           'Including at least 180 days (6 months) beyond restricted limits in a deck capacity on non-fishing vessels',
+          'Plus training the Director accepts in reduction of sea service under rule 32.175, documented in an approved training record book',
         ],
       },
     ],
@@ -778,7 +784,6 @@ const MNZ_DECK_YACHT: MCARequirement[] = [
     category: 'Yachts & Superyachts',
     totalDays: 720,
     watchkeepingDays: 240,
-    watchkeepingDaysWithRecordBook: 120,
     requirements: [
       {
         label: 'Onboard Yacht Service (option 1)',
@@ -806,6 +811,7 @@ const MNZ_DECK_YACHT: MCARequirement[] = [
     ],
     notes: [
       'The most senior superyacht command certificate of competency',
+      'Part 32 gives no training record book reduction for this certificate; the shorter figures are for holders of Master Yacht <500 GT',
       'Requires the NZ Diploma in Yacht Operations (Level 6) with the Master Yacht strand',
     ],
   },
@@ -1037,8 +1043,24 @@ const MNZ_ENGINEERING_OFFICERS: MCARequirement[] = [
           'Plus 2 years of craft, industrial or other practical training',
         ],
       },
+      {
+        label: 'Training in Reduction of Sea Service',
+        value: 'Less 90 days (3 months)',
+        details: [
+          'Any of the options above is reduced by 3 months where the Director accepts training in reduction of sea service under rule 32.175',
+        ],
+      },
+      {
+        label: 'Training Record Book',
+        value: 'Required',
+        details: [
+          'An approved training record book completed on board a steam ship in the 5 years before the application (required on every option)',
+        ],
+      },
     ],
     notes: [
+      'The 36-month options need not fall entirely in the last 10 years, but 12 months on steam must',
+      'The app does not apply the 3-month reduction through the record book setting, because every applicant completes a steam ship record book; deduct 90 days yourself if Maritime NZ has accepted your training',
       'Requires the NZ Certificate in Marine Engineering Class 6 (Level 4) with the MEC 5 strand',
       'STCW or STCW-F basic safety training',
     ],

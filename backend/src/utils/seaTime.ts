@@ -602,6 +602,13 @@ export interface AMSAServiceBreakdown {
   navigational_watch: number;
   /** Days derived from logged engine-room watch hours. */
   engineering_watch: number;
+  /**
+   * The same service counted for the STCW certificates (MO 71 s8, MO 72 and
+   * MO 74 Sch 3): a 24-hour period of under 8 hours is credited as the hours
+   * served plus 25%, never more than a whole day.
+   */
+  stcw_underway: number;
+  stcw_not_underway: number;
 }
 
 interface AMSAEntry extends PeriodEntry {
@@ -654,6 +661,15 @@ export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
     return total;
   };
 
+  // STCW: under 8 hours earns the hours plus 25%, still capped at one day.
+  const stcwCapped = (m: Map<string, number>): number => {
+    let total = 0;
+    for (const h of m.values()) {
+      total += h >= AMSA_STANDARD_HOURS_PER_DAY ? AMSA_STANDARD_HOURS_PER_DAY : Math.min(h * 1.25, AMSA_STANDARD_HOURS_PER_DAY);
+    }
+    return total;
+  };
+
   const underwayTotal = capped(underwayHours);
   const notUnderwayTotal = capped(notUnderwayHours);
   const underway = Math.floor((underwayTotal + 1e-6) / AMSA_STANDARD_HOURS_PER_DAY);
@@ -669,6 +685,8 @@ export function amsaCreditableDays(entries: AMSAEntry[]): AMSAServiceBreakdown {
     qualifying_hours: Math.round((underwayTotal + notUnderwayTotal) * 100) / 100,
     navigational_watch: Math.floor(bridgeHours / AMSA_STANDARD_HOURS_PER_DAY),
     engineering_watch: Math.floor(engineHours / AMSA_STANDARD_HOURS_PER_DAY),
+    stcw_underway: Math.floor((stcwCapped(underwayHours) + 1e-6) / AMSA_STANDARD_HOURS_PER_DAY),
+    stcw_not_underway: Math.floor((stcwCapped(notUnderwayHours) + 1e-6) / AMSA_STANDARD_HOURS_PER_DAY),
   };
 }
 

@@ -672,7 +672,7 @@ export const SAMSA_DECK_REQUIREMENTS: MCARequirement[] = [
     "requirements": [
       {
         "label": "Logged Sea Time (routes)",
-        "value": "50 hours (training institution route)",
+        "value": "50 hours (tutored)",
         "details": [
           "50 hours logged experience on appropriate vessels certified by a qualified skipper taking responsibility for tutorship"
         ]
@@ -688,7 +688,7 @@ export const SAMSA_DECK_REQUIREMENTS: MCARequirement[] = [
     ],
     "notes": [
       "Small vessel certificates are issued under the MS (National Small Vessel Safety) Regulations 2007; commercial certificate minimum age 18, pleasure 16 (NSVS reg 16(1))",
-      "Sea time is logged in hours, not days. Three routes: SAMSA approved training institution plus logged hours, hours under tuition of a certificated skipper, or untutored logged hours",
+      "Sea time is logged in hours, not days. MN 13 gives one route for this certificate: 50 hours under the tutorship of a qualified skipper",
       "MN 13 of 2011 is dated 2011; whether a later notice replaced its hour figures is UNCONFIRMED"
     ]
   },
@@ -734,7 +734,7 @@ export const SAMSA_DECK_REQUIREMENTS: MCARequirement[] = [
     "requirements": [
       {
         "label": "Logged Sea Time (routes)",
-        "value": "50 hours (training institution route)",
+        "value": "50 hours (tutored)",
         "details": [
           "50 hours logged sea service under tutorship of a qualified skipper",
           "Or 100 hours logged sea time on vessels of the appropriate length"
@@ -751,9 +751,9 @@ export const SAMSA_DECK_REQUIREMENTS: MCARequirement[] = [
     ],
     "notes": [
       "Small vessel certificates are issued under the MS (National Small Vessel Safety) Regulations 2007; commercial certificate minimum age 18, pleasure 16 (NSVS reg 16(1))",
-      "Sea time is logged in hours, not days. Three routes: SAMSA approved training institution plus logged hours, hours under tuition of a certificated skipper, or untutored logged hours",
+      "Sea time is logged in hours, not days. MN 13 gives two routes for this certificate: 50 hours under the tutorship of a qualified skipper, or 100 untutored logged hours",
       "MN 13 of 2011 is dated 2011; whether a later notice replaced its hour figures is UNCONFIRMED",
-      "Headline figure is the tutored route because no training-institution route is given"
+      "Headline figure is the tutored route; MN 13 gives no training institution route for this certificate"
     ]
   },
   {
@@ -962,7 +962,7 @@ export const SAMSA_DECK_REQUIREMENTS: MCARequirement[] = [
     "requirements": [
       {
         "label": "Logged Sea Time (routes)",
-        "value": "350 hours (training institution route)",
+        "value": "350 hours (holding Coastal Skipper >9 m)",
         "details": [
           "Holder of Coastal Skipper >9 m plus 350 hours on vessels >9 m, 50 at night, at least 3 overnight passages",
           "Or SAMSA approved training institution, or holder of Day Skipper (Local Waters) >9 m, plus 500 hours on vessels >9 m, 50 at night, 3 overnight passages",

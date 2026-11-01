@@ -1,22 +1,11 @@
-import type { EngineGate, MCARequirement } from './mcaRequirements';
+import type { EngineGate, MCARequirement, YachtBar } from './mcaRequirements';
+
+export type { YachtBar };
 import { MCA_ROUTES } from './routes/mca';
 import { USCG_ROUTES } from './routes/uscg';
 import { AMSA_ROUTES } from './routes/amsa';
 import { MNZ_ROUTES } from './routes/mnz';
 import { SAMSA_ROUTES } from './routes/samsa';
-
-/**
- * One MCA yacht progress bar, for routes that change the fixed yacht figures
- * (mcaRows in CertificationProgress). `onboard` is every day on board in any
- * service type, as MSN 1904 5.9 counts onboard yacht service.
- */
-export interface YachtBar {
-  label: string;
-  kind: 'seagoing' | 'watch' | 'additional' | 'onboard';
-  days: number;
-  /** Only service on or after the route's start date counts. */
-  afterStart?: boolean;
-}
 
 /** An engine gate that can be limited to service after the route's start date. */
 export type RouteEngineGate = EngineGate & { afterStart?: boolean };
@@ -105,6 +94,7 @@ export const applyRoute = (
     ...(route.totalHours !== undefined && { totalHours: route.totalHours }),
     ...(route.workboatRoute && { workboatRoute: route.workboatRoute }),
     ...(route.tugRoute && { tugRoute: route.tugRoute }),
+    ...(route.yachtBars && { yachtBars: route.yachtBars }),
     ...(route.engineGates &&
       requirement.engineRoute && { engineRoute: { ...requirement.engineRoute, gates: route.engineGates } }),
   };

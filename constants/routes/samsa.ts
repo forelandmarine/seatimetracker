@@ -416,9 +416,11 @@ export const SAMSA_ROUTES: Record<string, CertRoute[]> = {
   ],
 
   // ── Small vessel skippers (MN 13 of 2011, logged hours) ──────────────
-  // Three ways in: a SAMSA approved training institution plus hours, hours
-  // tutored by a certificated skipper, or untutored hours. The app counts all
-  // logged hours the same, so it cannot tell tutored from untutored time.
+  // Most have three ways in: a SAMSA approved training institution plus hours,
+  // hours tutored by a certificated skipper, or untutored hours. Day Skipper
+  // Local Waters has no training route, and Inland Waters (Restricted) has only
+  // the tutored one, so it has no routes. The app counts all logged hours the
+  // same, so it cannot tell tutored from untutored time.
 
   'samsa-skipper-inland': [
     {

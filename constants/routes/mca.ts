@@ -204,9 +204,16 @@ export const MCA_ROUTES: Record<string, CertRoute[]> = {
       label: 'Without a Training Record Book',
       summary: '36 months actual seagoing service on yachts of 24m or more instead of the Training Record Book',
       source: 'MSN 1858 3.3, MIN 521 1.2',
-      yachtBars: [{ label: 'Actual Seagoing Service', kind: 'seagoing', days: 1080 }],
+      // 3.3 (c) still applies, but 1080 days actual seagoing meets the 36 months
+      // onboard and the 250 + 115 split on its own (the 115 can all be seagoing),
+      // so the standby and yard bar is left out: it would ask for days this
+      // route does not need.
+      yachtBars: [
+        { label: 'Onboard Yacht Service', kind: 'onboard', days: 1080 },
+        { label: 'Actual Seagoing Service, Yachts 24m+', kind: 'seagoing', days: 1080 },
+      ],
       caveat:
-        'All of it must be on vessels of at least 24m load line length, which the app does not check. The MCA "may" waive the book on this basis; every other OOW requirement still applies.',
+        'All of the seagoing service must be on vessels of at least 24m load line length, which the app does not check. The MCA "may" waive the book on this basis; every other OOW requirement still applies.',
     },
   ],
 

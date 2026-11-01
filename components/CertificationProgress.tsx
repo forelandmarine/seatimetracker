@@ -3,16 +3,18 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { RoutePicker } from '@/components/RoutePicker';
-import { CertRoute, RouteEngineGate, YachtBar, applyRoute, getRoutes, pickRoute } from '@/constants/certRoutes';
+import { CertRoute, RouteEngineGate, applyRoute, getRoutes, pickRoute } from '@/constants/certRoutes';
 import {
   EngineGate,
   MCARequirement,
+  YachtBar,
   MaritimeAuthority,
   VesselSector,
   getDefaultTargetId,
   getRequirementByIdForPathway,
   getTargetDays,
 } from '@/constants/mcaRequirements';
+import { AMSA_STCW_IDS } from '@/constants/amsaRequirements';
 
 export interface ServiceTypeDays {
   service_type: string;
@@ -56,6 +58,9 @@ export interface AMSAServiceSummary {
   navigational_watch: number;
   /** Days derived from logged engine-room watch hours. */
   engineering_watch: number;
+  /** Counted for the STCW certificates (under 8 hours = hours plus 25%). Missing from older backends. */
+  stcw_underway?: number;
+  stcw_not_underway?: number;
 }
 
 /** Maritime NZ day count from the summary endpoint, counted under SeaCert. */
@@ -410,8 +415,11 @@ export function CertificationProgress({
     isAMSA && targetDays
       ? Math.floor(targetDays * AMSA_NOT_UNDERWAY_CAP[dept === 'engineering' ? 'engineering' : 'deck'])
       : 0;
+  // STCW certificates credit short days at the hours plus 25% (MO 71 s8, MO 72/74 Sch 3).
+  const amsaStcw = isAMSA && !!requirement && AMSA_STCW_IDS.has(requirement.id) && amsaService?.stcw_underway != null;
+  const amsaUnderway = amsaService ? (amsaStcw ? amsaService.stcw_underway! : amsaService.underway) : 0;
   const amsaNotUnderwayCounted = amsaService
-    ? Math.min(amsaService.not_underway, amsaAllowance)
+    ? Math.min(amsaStcw ? amsaService.stcw_not_underway ?? amsaService.not_underway : amsaService.not_underway, amsaAllowance)
     : 0;
 
   const rows: ProgressRow[] = useMemo(() => {
@@ -513,7 +521,7 @@ export function CertificationProgress({
       }));
     }
 
-    if (resolvedAuthority === 'mca' && route?.yachtBars) {
+    if (resolvedAuthority === 'mca' && requirement?.yachtBars) {
       // Yacht-only CoCs leave commercial-vessel days out, as mcaRows does.
       const types = (d: { serviceTypes: ServiceTypeDays[]; yachtServiceTypes: ServiceTypeDays[] }) =>
         excludeCommercial ? d.yachtServiceTypes : d.serviceTypes;
@@ -524,7 +532,7 @@ export function CertificationProgress({
       const after = dated
         ? { types: types(dated), onboard: excludeCommercial ? dated.yachtOnboardDays : dated.onboardDays }
         : all;
-      return route.yachtBars.map((bar) => {
+      return requirement.yachtBars.map((bar) => {
         const src = bar.afterStart ? after : all;
         return { label: bar.label, current: yachtBarDays(src.types, src.onboard, bar), required: bar.days };
       });
@@ -547,7 +555,7 @@ export function CertificationProgress({
       const out: ProgressRow[] = [
         {
           label: 'Qualifying Service',
-          current: amsaService.underway + amsaNotUnderwayCounted,
+          current: amsaUnderway + amsaNotUnderwayCounted,
           required: targetDays,
         },
       ];
@@ -641,6 +649,7 @@ export function CertificationProgress({
     targetDays,
     targetWatchkeeping,
     amsaNotUnderwayCounted,
+    amsaUnderway,
   ]);
 
   if (!requirement && rows.length === 0) return null;

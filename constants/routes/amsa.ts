@@ -143,6 +143,24 @@ export const AMSA_ROUTES: Record<string, CertRoute[]> = {
 
   // ── Deck: international (STCW), MO 71 Schedule 2 ──
 
+  // 36 months, or 18 months inside an approved and monitored course.
+  'amsa-wkd-500gt': [
+    {
+      id: 'standard',
+      label: 'Standard route',
+      summary: 'Deck watchkeeping service on vessels of 12 metres or more outside an approved course',
+      source: 'MO 71 Sch 2, Watchkeeper Deck <500 GT 1(b)',
+    },
+    {
+      id: 'approved-course',
+      label: 'Approved course route',
+      summary: 'Service gained as part of an approved and monitored course',
+      source: 'MO 71 Sch 2, Watchkeeper Deck <500 GT 1(b)',
+      totalDays: 540,
+      caveat:
+        'The service must form part of an approved and monitored course. At least 360 days must still be on vessels of 24 metres or more on voyages of 24 hours or more, 180 of them as understudy to, or as, the officer of the watch.',
+    },
+  ],
   // Four ways in: 36 months on 24 m+ vessels, or an onboard training programme
   // of 18 or 24 months on 500 GT+ vessels.
   'amsa-wkd': [

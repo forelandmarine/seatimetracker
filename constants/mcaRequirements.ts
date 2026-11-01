@@ -26,6 +26,20 @@ export interface EngineGate {
   days: number;
 }
 
+/**
+ * One MCA yacht progress bar, for certificates (or routes) whose yacht figures
+ * differ from the fixed ones (mcaRows in CertificationProgress). `onboard` is
+ * every day on board in any service type, as MSN 1904 5.9 counts onboard yacht
+ * service.
+ */
+export interface YachtBar {
+  label: string;
+  kind: 'seagoing' | 'watch' | 'additional' | 'onboard';
+  days: number;
+  /** Only service on or after the route's start date counts. */
+  afterStart?: boolean;
+}
+
 export interface MCARequirement {
   id: string;
   title: string;
@@ -65,6 +79,12 @@ export interface MCARequirement {
    * the OOW (Yachts) rule, so this entry can be a target without totalDays.
    */
   mcaYachtBars?: boolean;
+  /**
+   * Yacht progress bars for this certificate, replacing the fixed 250/115 deck
+   * or 240/180 engineering bars, where the notice states other yacht figures
+   * (the MSN 1904 5.9.1 table for the SV Chief Engineer CoCs).
+   */
+  yachtBars?: YachtBar[];
   /**
    * Whether sea time on vessels tagged commercial counts toward this
    * certificate. MSN 1858 only credits yacht service toward the yacht deck
@@ -387,6 +407,13 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     description: 'Qualifying sea service to apply (NOE)',
     commercialService: 'yacht_only',
     mcaYachtBars: true,
+    // MSN 1858 3.3 (c): the fixed 250 + 115 bars plus 36 months onboard yacht
+    // service since age 16.
+    yachtBars: [
+      { label: 'Seagoing Service', kind: 'seagoing', days: 250 },
+      { label: 'Additional Service', kind: 'additional', days: 115 },
+      { label: 'Onboard Yacht Service', kind: 'onboard', days: 1080 },
+    ],
     requirements: [
       {
         label: 'Total Onboard Service',
@@ -1004,13 +1031,17 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     },
     requirements: [
       {
-        label: 'Rating Route',
+        label: 'Diploma Route',
         value: '6 months',
         details: [
           'Diploma (level 2) in Maritime Studies Able Seafarer Engine',
           'Plus 6 months seagoing as a trainee engine operator, or as a rating in the engineering watch while holding an ERWR',
-          'Or hold Able Seafarer Engine certification',
         ],
+      },
+      {
+        label: 'Able Seafarer Engine Route',
+        value: 'No further service',
+        details: ['Hold Able Seafarer Engine certification (MSN 1857 10.2 (c) III)'],
       },
       {
         label: 'Shore Engineering Route',
@@ -1167,6 +1198,12 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
       categorisedWater: 'limits',
       sectors: ['commercial'],
     },
+    // MSN 1904 5.9.1 yacht table: 6 months onboard, 4 months seagoing, all in
+    // full charge of the watch or on UMS duties (5.4).
+    yachtBars: [
+      { label: 'Onboard Service', kind: 'onboard', days: 180 },
+      { label: 'Watch or UMS, in Full Charge', kind: 'watch', days: 120 },
+    ],
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -1199,6 +1236,12 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
       categorisedWater: 'limits',
       sectors: ['commercial'],
     },
+    // MSN 1904 5.9.1 yacht table, from the EOOW yacht CoC: 12 months onboard,
+    // 8 months seagoing, all in full charge of the watch or on UMS duties (5.4).
+    yachtBars: [
+      { label: 'Onboard Service', kind: 'onboard', days: 360 },
+      { label: 'Watch or UMS, in Full Charge', kind: 'watch', days: 240 },
+    ],
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -3228,13 +3271,13 @@ const USCG_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: '46 CFR 11.335',
     description: 'STCW Regulation III/6, vessels of 750 kW / 1,000 HP or more',
     category: 'STCW Engineer',
-    totalDays: 1080,
+    totalDays: 900,
     requirements: [
       {
         label: 'Combined Workshop Training and Seagoing Service',
-        value: '1,080 days (36 months)',
+        value: '36 months combined, at least 30 months (900 days) seagoing',
         details: [
-          'Of which at least 900 days must be seagoing service in the engine department',
+          'Workshop skills training is not tracked, so the bar measures the 900 days of seagoing service in the engine department',
           'Deck department service credits up to 90 days',
           'Alternative: an approved training programme combining workshop skills training with at least 360 days of seagoing service, meeting Section A-III/6',
         ],

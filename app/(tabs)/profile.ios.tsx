@@ -28,7 +28,7 @@ import {
 } from '@/constants/mcaRequirements';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@/styles/commonStyles';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -578,17 +578,21 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    log('ProfileScreen (iOS): Initial mount, loading data in parallel');
-    Promise.all([
-      loadProfile(),
-      loadSummary(),
-      loadVessels(),
-      loadCertificates(),
-    ]).catch(error => {
-      logError('Failed to load profile data:', error);
-    });
-  }, [loadProfile, loadSummary, loadVessels, loadCertificates]);
+  // Reload on focus as Android does, so a target or route changed on the
+  // requirements screen shows here without a pull to refresh.
+  useFocusEffect(
+    useCallback(() => {
+      log('ProfileScreen (iOS): Screen focused, loading data in parallel');
+      Promise.all([
+        loadProfile(),
+        loadSummary(),
+        loadVessels(),
+        loadCertificates(),
+      ]).catch(error => {
+        logError('Failed to load profile data:', error);
+      });
+    }, [loadProfile, loadSummary, loadVessels, loadCertificates])
+  );
 
   useEffect(() => {
     if (refreshTrigger > 0) {

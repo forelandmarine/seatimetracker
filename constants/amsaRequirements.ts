@@ -235,12 +235,18 @@ const AMSA_DECK_NEAR_COASTAL: MCARequirement[] = [
       {
         label: 'Sea Service (with task book)',
         value: '180 days',
-        details: ['Of which at least 120 days in charge of a navigational watch'],
+        details: [
+          'On commercial vessels of 12 metres or more',
+          'Of which at least 120 days in charge of a navigational watch',
+        ],
       },
       {
         label: 'Sea Service (without task book)',
         value: '360 days',
-        details: ['Of which at least 240 days in charge of a navigational watch'],
+        details: [
+          'On commercial vessels of 12 metres or more',
+          'Of which at least 240 days in charge of a navigational watch',
+        ],
       },
       {
         label: 'Prior Certificate',
@@ -266,28 +272,40 @@ const AMSA_DECK_NEAR_COASTAL: MCARequirement[] = [
     category: 'Near Coastal',
     totalDays: 360,
     totalDaysWithRecordBook: 180,
-    watchkeepingDays: 240,
+    watchkeepingDays: 120,
     watchkeepingDaysWithRecordBook: 120,
     requirements: [
       {
         label: 'From Master <45m or Master <35m (with task book)',
         value: '180 days',
-        details: ['Of which at least 120 days in charge of a navigational watch'],
+        details: [
+          'On commercial vessels of 24 metres or more, while holding Master <45m near coastal',
+          'Of which at least 120 days as officer of the watch on commercial vessels of 24 metres or more',
+        ],
       },
       {
         label: 'From Master <45m or Master <35m (without task book)',
         value: '360 days',
-        details: ['Of which at least 240 days in charge of a navigational watch'],
+        details: [
+          'On commercial vessels of 24 metres or more, while holding Master <45m near coastal',
+          'Of which at least 120 days as officer of the watch on commercial vessels of 24 metres or more',
+        ],
       },
       {
         label: 'From Mate <80m or another non-command certificate (with task book)',
         value: '360 days',
-        details: ['Of which at least 120 days in charge of a navigational watch'],
+        details: [
+          'All as officer of the watch on commercial vessels of 24 metres or more',
+          'While holding Mate <80m near coastal or a non command seafarer certificate',
+        ],
       },
       {
         label: 'From Mate <80m or another non-command certificate (without task book)',
         value: '720 days',
-        details: ['Of which at least 240 days in charge of a navigational watch'],
+        details: [
+          'All as officer of the watch on commercial vessels of 24 metres or more',
+          'While holding Mate <80m near coastal or a non command seafarer certificate',
+        ],
       },
     ],
     notes: [
@@ -510,13 +528,23 @@ const AMSA_DECK_INTERNATIONAL: MCARequirement[] = [
     regulation: 'STCW II/3',
     description: 'Deck watchkeeper on vessels <500 GT',
     category: 'International (Deck)',
+    totalDays: 1080,
     requirements: [
       {
-        label: 'Qualifying Sea Service',
-        value: 'Assessed on application',
+        label: 'Watchkeeping Service',
+        value: '1,080 days (36 months)',
         details: [
-          'Watchkeeping service documented as qualifying sea service',
-          'AMSA assesses the service against the STCW II/3 standard rather than publishing a single day figure',
+          'Watchkeeping duties in the deck department on vessels of 12 metres or more',
+          'Including at least 360 days (12 months) on vessels of 24 metres or more on voyages of 24 hours or more',
+          'Of that, at least 180 days (6 months) as understudy to, or as, the officer in charge of a navigational watch',
+        ],
+      },
+      {
+        label: 'Watchkeeping Service (approved course)',
+        value: '540 days (18 months)',
+        details: [
+          'Where the service forms part of an approved and monitored course',
+          'Same 360-day and 180-day components apply',
         ],
       },
       {
@@ -575,19 +603,25 @@ const AMSA_DECK_INTERNATIONAL: MCARequirement[] = [
     totalDays: 1080,
     requirements: [
       {
-        label: 'Sea Service (approved training programme)',
-        value: '360 days (12 months)',
+        label: 'Sea Service',
+        value: '1,080 days (36 months)',
+        details: ['On vessels of 24 metres or more, without an approved training programme'],
+      },
+      {
+        label: 'Sea Service (approved training programmes)',
+        value: '540 or 720 days',
         details: [
-          'On voyages of 24 hours or more',
-          'Including at least 180 days (6 months) as understudy to the officer in charge of a navigational watch',
+          '540 days (18 months) on vessels of 500 GT or more after an approved pre-sea course, inside an approved onboard training programme for trainee deck officers',
+          'Or 720 days (24 months) on vessels of 500 GT or more after a pre-sea course, inside an approved onboard training programme',
+          'Or 720 days (24 months) on vessels of 500 GT or more inside the integrated rating and able seafarer deck programme, while holding that certificate of proficiency',
         ],
       },
       {
-        label: 'Sea Service (other routes)',
-        value: '540 to 1,080 days',
+        label: 'Voyages of 24 Hours or More',
+        value: '360 days (12 months)',
         details: [
-          '540 to 720 days (18 to 24 months) on vessels of 500 GT or more inside an approved programme',
-          'Or 1,080 days (36 months) on vessels of 24 metres or more',
+          'Part of the service on every route, not an extra amount',
+          'Including at least 180 days (6 months) as understudy to, or as, the officer in charge of a navigational watch',
         ],
       },
     ],
@@ -610,18 +644,19 @@ const AMSA_DECK_INTERNATIONAL: MCARequirement[] = [
         label: 'Sea Service (standard route)',
         value: '1,080 days (36 months)',
         details: [
-          'In the deck department on vessels of 24 metres or more',
-          'Including at least 720 days on voyages over 24 hours',
-          'Including at least 360 days while holding the qualifying officer certificate',
+          'As officer in charge of a navigational watch on vessels of 24 metres or more',
+          'Including at least 720 days on voyages of 24 hours or more',
+          'Including at least 360 days while holding the qualifying certificate',
         ],
       },
       {
         label: 'Sea Service (reduced route)',
         value: '720 days (24 months)',
         details: [
-          'Where the applicant holds Mate <500 GT with a Chief mate <3000 GT near coastal endorsement',
-          'Including at least 480 days on extended voyages',
-          'Including at least 360 days while holding that Mate certificate',
+          'In charge of a navigational watch on vessels of 24 metres or more',
+          'Including at least 360 days as chief mate or master',
+          'Including at least 480 days on voyages of 24 hours or more',
+          'Served while holding Mate <500 GT with the Chief mate <3000 GT near coastal endorsement',
         ],
       },
       {
@@ -810,22 +845,22 @@ const AMSA_ENGINEERING_NEAR_COASTAL: MCARequirement[] = [
       {
         label: 'With workshop skill equivalent and task book',
         value: '90 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel propulsion of 150 kW or more'],
       },
       {
         label: 'With workshop skill equivalent, no task book',
         value: '180 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel propulsion of 150 kW or more'],
       },
       {
         label: 'Without workshop skill equivalent, with task book',
         value: '180 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel propulsion of 150 kW or more'],
       },
       {
         label: 'Without workshop skill equivalent, no task book',
         value: '360 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel propulsion of 150 kW or more'],
       },
     ],
     notes: [
@@ -886,27 +921,30 @@ const AMSA_ENGINEERING_NEAR_COASTAL: MCARequirement[] = [
       {
         label: 'From MED Grade 1 (with task book)',
         value: '180 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel engines of 400 kW or more'],
       },
       {
         label: 'From a workshop skill equivalent (with task book)',
         value: '120 days',
-        details: ['In an engineering role on commercial vessels'],
-      },
-      {
-        label: 'From an AMSA Engineer Watchkeeper certificate (with task book)',
-        value: '90 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel engines of 400 kW or more'],
       },
       {
         label: 'From MED Grade 1 (without task book)',
         value: '360 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel engines of 400 kW or more'],
       },
       {
         label: 'From a workshop skill equivalent (without task book)',
         value: '240 days',
-        details: ['In an engineering role on commercial vessels'],
+        details: ['In an engineering role on commercial vessels with inboard diesel engines of 400 kW or more'],
+      },
+      {
+        label: 'From an AMSA Engineer Watchkeeper certificate (without task book)',
+        value: '90 days',
+        details: [
+          'In an engineering role on commercial vessels with inboard diesel engines of 400 kW or more',
+          'MO 505 gives this route only without a task book',
+        ],
       },
     ],
     notes: [
@@ -934,15 +972,20 @@ const AMSA_ENGINEERING_INTERNATIONAL: MCARequirement[] = [
         label: 'Engineer Cadet or Trainee Engineer',
         value: '252 days (36 weeks)',
         details: [
-          'On vessels of 750 kW or more',
-          'Including 182 days (26 weeks) of watchkeeping duties under supervision',
+          'On vessels of 750 kW or more, all of it performing engineer watchkeeping duties in the engine room under supervision',
+          'Including at least 112 days (16 weeks) on the propulsion type the certificate covers',
+          'Documented in an approved training record book',
           'Cadet programmes run for a minimum of 3 years',
         ],
       },
       {
-        label: 'Holding an unrestricted Engineer Class 3',
+        label: 'Holding Engineer Class 3',
         value: '182 days (26 weeks)',
-        details: ['On vessels of 750 kW or more while holding that certificate'],
+        details: [
+          'On vessels of 750 kW or more while holding Engineer Class 3 near coastal or a state unrestricted Engineer Class 3',
+          'The Class 3 certificate must have been held for at least 12 months',
+          'Including at least 112 days (16 weeks) on the propulsion type the certificate covers',
+        ],
       },
     ],
     notes: [
@@ -1124,3 +1167,28 @@ export const AMSA_SERVICE_DEFINITIONS: ServiceDefinition[] = [
     department: 'both',
   },
 ];
+
+/**
+ * AMSA certificates issued under the STCW Marine Orders (MO 71 deck, MO 72
+ * engineering, MO 74 yachts). Their sea service credits a 24-hour period of
+ * under 8 hours as the hours served plus 25%, where MO 505 adds short shifts
+ * together hour for hour.
+ */
+export const AMSA_STCW_IDS = new Set<string>([
+  'amsa-wkd-3000gt-yachts',
+  'amsa-chief-mate-3000gt-yachts',
+  'amsa-master-500gt-yachts',
+  'amsa-master-3000gt-yachts',
+  'amsa-wkd-500gt',
+  'amsa-mate-500gt',
+  'amsa-wkd',
+  'amsa-master-500gt',
+  'amsa-chief-mate-3000gt',
+  'amsa-chief-mate',
+  'amsa-master-3000gt',
+  'amsa-master',
+  'amsa-engineer-watchkeeper',
+  'amsa-eto',
+  'amsa-engineer-class2',
+  'amsa-engineer-class1',
+]);

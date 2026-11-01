@@ -509,6 +509,8 @@ export function register(app: App, fastify: FastifyInstance) {
                 qualifying_hours: { type: 'number' },
                 navigational_watch: { type: 'number' },
                 engineering_watch: { type: 'number' },
+                stcw_underway: { type: 'number' },
+                stcw_not_underway: { type: 'number' },
               },
             },
             samsa_service: {

@@ -1,13 +1,16 @@
 // Route data checks for the app's certificate routes (constants/certRoutes.ts).
-// Run with: npx tsx --test tests/cert-routes.test.ts
+// Runs under bun test with the rest, or: npx tsx --test tests/cert-routes.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-// The app's constants are CommonJS to this ESM package, so take the named exports off the default.
-import routesModule from "../../constants/certRoutes";
-import requirementsModule from "../../constants/mcaRequirements";
+// Under tsx the app's constants load as CommonJS (named exports sit on
+// `default`); under bun they load as ES modules.
+import * as routesNs from "../../constants/certRoutes";
+import * as requirementsNs from "../../constants/mcaRequirements";
 
-const { ALL_ROUTES, applyRoute, pickRoute } = routesModule as unknown as typeof import("../../constants/certRoutes");
-const { ALL_REQUIREMENTS, getRequirementById } = requirementsModule as unknown as typeof import("../../constants/mcaRequirements");
+const routesModule = ((routesNs as any).default ?? routesNs) as typeof routesNs;
+const requirementsModule = ((requirementsNs as any).default ?? requirementsNs) as typeof requirementsNs;
+const { ALL_ROUTES, applyRoute, pickRoute } = routesModule;
+const { ALL_REQUIREMENTS, getRequirementById } = requirementsModule;
 
 const MEASURED = ["totalDays", "watchkeepingDays", "totalDaysWithRecordBook", "watchkeepingDaysWithRecordBook", "totalHours", "engineGates", "yachtBars", "workboatRoute", "tugRoute"] as const;
 

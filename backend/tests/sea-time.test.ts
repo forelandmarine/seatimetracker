@@ -518,6 +518,23 @@ describe("amsaCreditableDays", () => {
     expect(r.part_day_hours).toBe(0);
   });
 
+  test("STCW count credits a short day at the hours plus 25%, capped at a day", () => {
+    const r = amsaCreditableDays([
+      // 4 h + 4 h: MO 505 makes one day; STCW makes 5 h + 5 h = 10 h = one day, 2 h over
+      { start_time: "2026-01-01T08:00:00Z", end_time: "2026-01-01T12:00:00Z" },
+      { start_time: "2026-01-02T08:00:00Z", end_time: "2026-01-02T12:00:00Z" },
+      // 6.4 h + 6.4 h + 6.4 h: MO 505 = 19.2 h = 2 days; STCW = 8 + 8 + 8 = 3 days
+      { start_time: "2026-01-03T08:00:00Z", end_time: "2026-01-03T14:24:00Z" },
+      { start_time: "2026-01-04T08:00:00Z", end_time: "2026-01-04T14:24:00Z" },
+      { start_time: "2026-01-05T08:00:00Z", end_time: "2026-01-05T14:24:00Z" },
+      // 10 h: one day under both rules
+      { start_time: "2026-01-06T06:00:00Z", end_time: "2026-01-06T16:00:00Z" },
+    ]);
+    expect(r.underway).toBe(4);
+    expect(r.stcw_underway).toBe(5);
+    expect(r.stcw_not_underway).toBe(0);
+  });
+
   test("adds shorter shifts together until they make a day", () => {
     const r = amsaCreditableDays([
       { start_time: "2026-01-01T08:00:00Z", end_time: "2026-01-01T12:00:00Z" },
