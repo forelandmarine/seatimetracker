@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { RoutePicker } from '@/components/RoutePicker';
+import { CertRoute, RouteEngineGate, YachtBar, applyRoute, getRoutes, pickRoute } from '@/constants/certRoutes';
 import {
   EngineGate,
   MCARequirement,
@@ -141,6 +143,26 @@ export interface BoatmasterServiceSummary {
   level1_months: number;
 }
 
+/**
+ * Figures counted only from the route's start date (the summary endpoint with
+ * `startDate`), for routes whose service must follow a college registration or
+ * Action Plan.
+ */
+export interface RouteSinceStart {
+  serviceTypes: ServiceTypeDays[];
+  yachtServiceTypes: ServiceTypeDays[];
+  onboardDays: number;
+  yachtOnboardDays: number;
+  uscgService: USCGServiceSummary | null;
+  amsaService: AMSAServiceSummary | null;
+  mnzService: MNZServiceSummary | null;
+  samsaService: SAMSAServiceSummary | null;
+  commercialService: CommercialServiceSummary | null;
+  workboatService: WorkboatServiceSummary | null;
+  engineService: EngineServiceSummary | null;
+  tugService: TugServiceSummary | null;
+}
+
 const kwKey = (minKw: number) => (minKw >= 750 ? '750kw' : minKw >= 350 ? '350kw' : minKw >= 200 ? '200kw' : 'any');
 
 /** Days inside UK categorised waters at a gate's power (a floor, from classified AIS fixes). */
@@ -215,6 +237,17 @@ export interface CertificationProgressProps {
    * are.
    */
   hasRecordBook?: boolean;
+  /** Every day aboard in any service type, all vessels and yachts only (summary `onboard_days`). */
+  onboardDays?: number;
+  yachtOnboardDays?: number;
+  /** Route the user picked for the target; the certificate's default route when absent. */
+  routeId?: string | null;
+  /** YYYY-MM-DD the route counts service from. */
+  routeStartDate?: string | null;
+  /** Figures counted from routeStartDate, once loaded. */
+  sinceStart?: RouteSinceStart | null;
+  onSelectRoute?: (id: string) => void;
+  onSetRouteStartDate?: (day: string | null) => void;
   isDark: boolean;
   /** Opens the requirements screen so the user can pick a different target. */
   onChangeTarget?: () => void;
@@ -253,6 +286,20 @@ const mcaRows = (serviceTypes: ServiceTypeDays[], isEngineering: boolean): Progr
       ];
 };
 
+/** Days toward one route-specific yacht bar. */
+const yachtBarDays = (serviceTypes: ServiceTypeDays[], onboard: number, bar: YachtBar): number => {
+  switch (bar.kind) {
+    case 'onboard':
+      return onboard;
+    case 'watch':
+      return daysFor(serviceTypes, 'watchkeeping_service');
+    case 'additional':
+      return daysFor(serviceTypes, 'standby_service') + daysFor(serviceTypes, 'yard_service');
+    default:
+      return daysFor(serviceTypes, 'actual_sea_service');
+  }
+};
+
 /**
  * Progress toward the credential the user is working toward.
  *
@@ -264,18 +311,25 @@ export function CertificationProgress({
   authority,
   department,
   targetId,
-  serviceTypes,
-  uscgService,
-  amsaService,
-  mnzService,
-  samsaService,
-  commercialService,
-  workboatService,
-  engineService,
-  tugService,
+  serviceTypes: allServiceTypes,
+  uscgService: allUscgService,
+  amsaService: allAmsaService,
+  mnzService: allMnzService,
+  samsaService: allSamsaService,
+  commercialService: allCommercialService,
+  workboatService: allWorkboatService,
+  engineService: allEngineService,
+  tugService: allTugService,
   boatmasterService,
   sector,
   hasRecordBook = false,
+  onboardDays: allOnboardDays = 0,
+  yachtOnboardDays: allYachtOnboardDays = 0,
+  routeId,
+  routeStartDate,
+  sinceStart,
+  onSelectRoute,
+  onSetRouteStartDate,
   isDark,
   onChangeTarget,
 }: CertificationProgressProps) {
@@ -285,7 +339,7 @@ export function CertificationProgress({
 
   // A saved target can belong to a pathway the user has since changed away
   // from, so it is only used when it resolves inside the current one.
-  const requirement: MCARequirement | undefined = useMemo(() => {
+  const baseRequirement: MCARequirement | undefined = useMemo(() => {
     const saved = targetId
       ? getRequirementByIdForPathway(targetId, resolvedAuthority, dept)
       : undefined;
@@ -293,6 +347,27 @@ export function CertificationProgress({
     const fallbackId = getDefaultTargetId(resolvedAuthority, dept);
     return fallbackId ? getRequirementByIdForPathway(fallbackId, resolvedAuthority, dept) : undefined;
   }, [targetId, resolvedAuthority, dept]);
+
+  // The route the user is taking, and the certificate measured on it.
+  const routes: CertRoute[] = useMemo(() => getRoutes(baseRequirement?.id), [baseRequirement]);
+  const route = useMemo(() => pickRoute(baseRequirement?.id, routeId), [baseRequirement, routeId]);
+  const requirement = useMemo(() => applyRoute(baseRequirement, route), [baseRequirement, route]);
+
+  // A route that only counts service from its start date swaps every figure for
+  // the dated ones once they have loaded. Until the date is set, all service counts.
+  const dated = route?.startDate && routeStartDate && sinceStart ? sinceStart : null;
+  const datedAll = dated && route?.startDate?.scope === 'all' ? dated : null;
+  const serviceTypes = datedAll ? datedAll.serviceTypes : allServiceTypes;
+  const uscgService = datedAll ? datedAll.uscgService : allUscgService;
+  const amsaService = datedAll ? datedAll.amsaService : allAmsaService;
+  const mnzService = datedAll ? datedAll.mnzService : allMnzService;
+  const samsaService = datedAll ? datedAll.samsaService : allSamsaService;
+  const commercialService = datedAll ? datedAll.commercialService : allCommercialService;
+  const workboatService = datedAll ? datedAll.workboatService : allWorkboatService;
+  const engineService = datedAll ? datedAll.engineService : allEngineService;
+  const tugService = datedAll ? datedAll.tugService : allTugService;
+  const onboardDays = datedAll ? datedAll.onboardDays : allOnboardDays;
+  const yachtOnboardDays = datedAll ? datedAll.yachtOnboardDays : allYachtOnboardDays;
 
   const isUSCG = resolvedAuthority === 'uscg';
   const isAMSA = resolvedAuthority === 'amsa';
@@ -428,11 +503,31 @@ export function CertificationProgress({
       // Without the engine figures there is no honest bar to draw.
       if (!engineService) return [];
       const halfRate = engineRoute.categorisedWater === 'half_rate';
-      return engineRoute.gates.map((gate) => ({
+      return engineRoute.gates.map((gate: RouteEngineGate) => ({
         label: gate.label,
-        current: Math.max(0, engineGateDays(engineService, gate, halfRate)),
+        current: Math.max(
+          0,
+          engineGateDays(gate.afterStart && dated?.engineService ? dated.engineService : engineService, gate, halfRate),
+        ),
         required: gate.days,
       }));
+    }
+
+    if (resolvedAuthority === 'mca' && route?.yachtBars) {
+      // Yacht-only CoCs leave commercial-vessel days out, as mcaRows does.
+      const types = (d: { serviceTypes: ServiceTypeDays[]; yachtServiceTypes: ServiceTypeDays[] }) =>
+        excludeCommercial ? d.yachtServiceTypes : d.serviceTypes;
+      const all = {
+        types: types({ serviceTypes, yachtServiceTypes: commercialService?.yacht_entries_by_service_type ?? serviceTypes }),
+        onboard: excludeCommercial ? yachtOnboardDays : onboardDays,
+      };
+      const after = dated
+        ? { types: types(dated), onboard: excludeCommercial ? dated.yachtOnboardDays : dated.onboardDays }
+        : all;
+      return route.yachtBars.map((bar) => {
+        const src = bar.afterStart ? after : all;
+        return { label: bar.label, current: yachtBarDays(src.types, src.onboard, bar), required: bar.days };
+      });
     }
 
     if (resolvedAuthority === 'mca') {
@@ -537,6 +632,10 @@ export function CertificationProgress({
     tugService,
     boatmasterService,
     excludeCommercial,
+    route,
+    dated,
+    onboardDays,
+    yachtOnboardDays,
     resolvedAuthority,
     dept,
     targetDays,
@@ -987,6 +1086,17 @@ export function CertificationProgress({
               : ' On a vessel authorised to run two watches, a 12-hour day may count as 1.5 days. Turn on Two-watch vessel on the vessel\u2019s screen if yours is.'}
           </Text>
         </View>
+      )}
+
+      {route && routes.length > 1 && onSelectRoute && onSetRouteStartDate && (
+        <RoutePicker
+          routes={routes}
+          route={route}
+          startDate={routeStartDate ?? null}
+          onSelectRoute={onSelectRoute}
+          onSetStartDate={onSetRouteStartDate}
+          isDark={isDark}
+        />
       )}
     </View>
   );

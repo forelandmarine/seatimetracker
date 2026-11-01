@@ -470,6 +470,8 @@ export function register(app: App, fastify: FastifyInstance) {
           type: 'object',
           properties: {
             total_days: { type: 'number' },
+            onboard_days: { type: 'number' },
+            yacht_onboard_days: { type: 'number' },
             sea_service: {
               type: 'object',
               properties: {
@@ -792,6 +794,13 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     const engine_service = engineService(entries as any, categorisedIds);
 
+    // Every distinct day aboard in any service type, for routes that state
+    // onboard service (MSN 1904 3.2, 4.4.2 and the 5.9 yacht table).
+    const onboard_days = countDistinctSeaDays(entries as any);
+    const yacht_onboard_days = countDistinctSeaDays(
+      entries.filter((entry) => entry.vessel?.sector !== 'commercial') as any,
+    );
+
     // Tug deck CoCs (MGN 495) and the Tier 1 Boatmasters' Licence (MSN 1853) need
     // the sea area of each day, from the classified AIS fixes inside the user's
     // confirmed entries. Only commercial, workboat and tug vessels are read.
@@ -831,6 +840,8 @@ export function register(app: App, fastify: FastifyInstance) {
 
     return reply.code(200).send({
       total_days,
+      onboard_days,
+      yacht_onboard_days,
       sea_service: breakdown,
       uscg_service,
       amsa_service,

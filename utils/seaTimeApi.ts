@@ -204,6 +204,10 @@ export const updateUserProfile = async (updates: {
   department?: string | null;
   maritime_authority?: string | null;
   target_certification?: string | null;
+  /** Route id for the target certification (constants/certRoutes.ts); null = default route. */
+  target_route?: string | null;
+  /** YYYY-MM-DD the route counts service from; null = all service. */
+  route_start_date?: string | null;
   /** Holds an AMSA task book or MNZ training record book. */
   has_record_book?: boolean;
   vessel_sector?: 'yachting' | 'commercial' | null;
@@ -896,8 +900,10 @@ export const getUnredeemedHistoryPurchases = async (): Promise<{
   return res.json();
 };
 
-export const getReportSummary = async () => {
-  const res = await authFetch('/api/reports/summary');
+/** Summary of confirmed sea time; `startDate` (YYYY-MM-DD) counts only entries from that day. */
+export const getReportSummary = async (params?: { startDate?: string }) => {
+  const query = params?.startDate ? `?startDate=${encodeURIComponent(params.startDate)}` : '';
+  const res = await authFetch(`/api/reports/summary${query}`);
   return res.json();
 };
 

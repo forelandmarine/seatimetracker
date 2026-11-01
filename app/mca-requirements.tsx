@@ -324,7 +324,8 @@ export default function CertificationRequirementsScreen() {
       setTargetId(next);
       setSavingTarget(true);
       try {
-        await seaTimeApi.updateUserProfile({ target_certification: next });
+        // A route belongs to one certificate, so a new target starts on its default route.
+        await seaTimeApi.updateUserProfile({ target_certification: next, target_route: null, route_start_date: null });
         log('[CertificationRequirements] Target certification saved:', next);
       } catch (err) {
         logError('[CertificationRequirements] Failed to save target certification', err);

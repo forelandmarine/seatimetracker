@@ -344,7 +344,7 @@ export default function SeaTimeScreen() {
         try {
           await seaTimeApi.updateUserProfile({
             ...(newSector ? { vessel_sector: newSector } : {}),
-            ...(newTarget && newTarget !== TARGET_NOT_SURE ? { target_certification: newTarget } : {}),
+            ...(newTarget && newTarget !== TARGET_NOT_SURE ? { target_certification: newTarget, target_route: null, route_start_date: null } : {}),
           });
         } catch (profileError) {
           // The vessel is still added; both can be changed later in Settings and on the profile.

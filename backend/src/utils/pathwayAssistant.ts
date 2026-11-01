@@ -285,6 +285,9 @@ export async function buildUserContext(db: Db, user: any, authority: string, tar
   return [
     `Authority: ${authority.toUpperCase()}. Department: ${user.department || 'not set (treat as deck)'}. Sector chosen in the app: ${user.vessel_sector || 'yachting'}.`,
     `Target certificate: ${targetId ? `rule id ${authority}/app/${targetId}` : 'not chosen'}.`,
+    targetId && user.target_route
+      ? `Route chosen for the target: ${user.target_route}${user.route_start_date ? `, counting service from ${user.route_start_date} (college registration or Action Plan)` : ''}.`
+      : null,
     entries.length === 0 ? 'No confirmed sea service logged yet.' : serviceLines(authority, entries, user),
     vesselLines.length ? `Vessels:\n${vesselLines.join('\n')}` : null,
   ]

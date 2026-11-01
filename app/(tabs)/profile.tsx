@@ -1,5 +1,6 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
+import { useCertRoute } from '@/hooks/useCertRoute';
 import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
@@ -60,6 +61,8 @@ interface UserProfile {
   department?: string | null;
   maritime_authority?: MaritimeAuthority | null;
   target_certification?: string | null;
+  target_route?: string | null;
+  route_start_date?: string | null;
   vessel_sector?: 'yachting' | 'commercial' | null;
 }
 
@@ -90,6 +93,8 @@ interface SeaTimeSummary {
   commercial_service?: CommercialServiceSummary;
   workboat_service?: WorkboatServiceSummary;
   engine_service?: EngineServiceSummary;
+  onboard_days?: number;
+  yacht_onboard_days?: number;
   tug_service?: TugServiceSummary;
   boatmaster_service?: BoatmasterServiceSummary;
   mnz_service?: {
@@ -571,6 +576,15 @@ export default function ProfileScreen() {
   // which of the two sea-service figures the progress card measures against.
   const [hasRecordBook, setHasRecordBook] = useState(false);
   const [summary, setSummary] = useState<SeaTimeSummary | null>(null);
+  const [summaryVersion, setSummaryVersion] = useState(0);
+  const certRoute = useCertRoute({
+    authority: profile?.maritime_authority ?? null,
+    department: profile?.department ?? null,
+    targetId: profile?.target_certification ?? null,
+    savedRouteId: profile?.target_route ?? null,
+    savedStartDate: profile?.route_start_date ?? null,
+    refreshKey: summaryVersion,
+  });
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -669,6 +683,7 @@ export default function ProfileScreen() {
       const data = await seaTimeApi.getReportSummary();
       log('Sea time summary loaded successfully');
       setSummary(data);
+      setSummaryVersion((v) => v + 1);
       setLoadingSummary(false);
     } catch (error: any) {
       logError(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
@@ -1325,6 +1340,13 @@ export default function ProfileScreen() {
                   boatmasterService={summary.boatmaster_service ?? null}
                   sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
+                  onboardDays={summary.onboard_days ?? 0}
+                  yachtOnboardDays={summary.yacht_onboard_days ?? 0}
+                  routeId={certRoute.routeId}
+                  routeStartDate={certRoute.startDate}
+                  sinceStart={certRoute.sinceStart}
+                  onSelectRoute={certRoute.selectRoute}
+                  onSetRouteStartDate={certRoute.setStartDate}
                   isDark={isDark}
                   onChangeTarget={() =>
                     router.push({
