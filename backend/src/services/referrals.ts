@@ -21,6 +21,7 @@ import {
   hasPaid,
   planFreeMonth,
   type RcSubscriber,
+  referralsEnabled,
 } from '../utils/referrals.js';
 
 const RC_BASE = 'https://api.revenuecat.com/v1';
@@ -182,6 +183,7 @@ async function processReferral(app: App, ref: Referral): Promise<void> {
 
 /** Called from the RevenueCat webhook and subscription sync for a user who may be a referred friend. */
 export async function checkReferralFor(app: App, referredUserId: string): Promise<void> {
+  if (!referralsEnabled()) return;
   try {
     const [ref] = await app.db.select().from(schema.referrals).where(eq(schema.referrals.referred_user_id, referredUserId));
     if (!ref) return;
@@ -194,6 +196,7 @@ export async function checkReferralFor(app: App, referredUserId: string): Promis
 
 /** Scheduler sweep: every 10 minutes, look again at referrals not checked for 6 hours. */
 export async function processReferrals(app: App): Promise<void> {
+  if (!referralsEnabled()) return;
   if (Date.now() - lastSweep < SWEEP_EVERY_MS) return;
   lastSweep = Date.now();
   const recheckBefore = new Date(Date.now() - RECHECK_AFTER_MS);

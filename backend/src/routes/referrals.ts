@@ -10,7 +10,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import * as schema from "../db/schema.js";
-import { canRedeem, FREE_MONTH_DAYS, REDEEM_WINDOW_DAYS } from "../utils/referrals.js";
+import { canRedeem, FREE_MONTH_DAYS, REDEEM_WINDOW_DAYS, referralsEnabled } from "../utils/referrals.js";
 import { userHasPaid } from "../services/referrals.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
@@ -155,6 +155,9 @@ export function register(app: App, fastify: FastifyInstance) {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) {
       return reply.code(401).send({ error: "Authentication required" });
+    }
+    if (!referralsEnabled()) {
+      return reply.code(400).send({ error: "Referral codes are paused for now. We'll let you know when they're back." });
     }
 
     const { code } = request.body;

@@ -21,3 +21,6 @@ CREATE TABLE IF NOT EXISTS "referrals" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "referrals_referred_user_uq" ON "referrals" ("referred_user_id");
 CREATE INDEX IF NOT EXISTS "referrals_referrer_idx" ON "referrals" ("referrer_user_id");
+
+-- Every new public table gets RLS (backend connects as postgres, which bypasses it).
+ALTER TABLE "referrals" ENABLE ROW LEVEL SECURITY;

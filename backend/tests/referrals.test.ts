@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { canRedeem, hasPaid, planFreeMonth, FREE_MONTH_DAYS } from "../src/utils/referrals";
+import { canRedeem, hasPaid, planFreeMonth, referralsEnabled, FREE_MONTH_DAYS } from "../src/utils/referrals";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const future = "2026-11-20T12:00:00Z";
@@ -52,5 +52,13 @@ describe("canRedeem", () => {
   test("only in the first 14 days after signing up", () => {
     expect(canRedeem(new Date(now.getTime() - 13 * DAY), now)).toBe(true);
     expect(canRedeem(new Date(now.getTime() - 15 * DAY), now)).toBe(false);
+  });
+});
+
+describe("referralsEnabled", () => {
+  test("off unless REFERRALS=on", () => {
+    expect(referralsEnabled({})).toBe(false);
+    expect(referralsEnabled({ REFERRALS: "off" })).toBe(false);
+    expect(referralsEnabled({ REFERRALS: "ON" })).toBe(true);
   });
 });

@@ -94,3 +94,12 @@ export function planFreeMonth(s: RcSubscriber, now: Date, allowSandbox = false, 
 export function canRedeem(createdAt: Date, now: Date): boolean {
   return now.getTime() - createdAt.getTime() <= REDEEM_WINDOW_DAYS * DAY_MS;
 }
+
+/**
+ * Referrals are paused until the scheme is reworked (Dan, 2026-11-01): set
+ * REFERRALS=on to turn redeeming and rewards back on. Off by default, so a
+ * missing variable never hands out free months.
+ */
+export function referralsEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return (env.REFERRALS || '').toLowerCase() === 'on';
+}
