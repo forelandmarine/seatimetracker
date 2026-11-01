@@ -211,7 +211,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     authInFlight.current = true;
-    setLoading(true);
+    // No setLoading(true) here: the auth screen has its own spinner, and the
+    // tabs layout that stays mounted after a sign-out reacts to loading going
+    // true then false by replacing /auth, which wiped a failed sign-in's form.
 
     try {
       await withAuthRetry(async () => {
