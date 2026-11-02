@@ -20,7 +20,9 @@ import {
   CERTIFICATE_TYPE_LABELS,
   daysUntilExpiry,
   expiryStatus,
+  certificateTypeMatches,
   listCertificates,
+  normaliseCertificateSearch,
 } from '@/utils/certificatesApi';
 import { error as logError } from '@/utils/log';
 
@@ -67,14 +69,14 @@ export default function CertificatesScreen() {
 
   const filteredCerts = useMemo(() => {
     if (!searchQuery.trim()) return certs;
-    const q = searchQuery.toLowerCase();
+    const q = normaliseCertificateSearch(searchQuery);
+    if (!q) return certs;
     return certs.filter((c) => {
-      const label = CERTIFICATE_TYPE_LABELS[c.certificate_type] || c.certificate_type;
       const status = expiryStatus(c);
       return (
-        label.toLowerCase().includes(q) ||
-        (c.certificate_number && c.certificate_number.toLowerCase().includes(q)) ||
-        (c.issuing_body && c.issuing_body.toLowerCase().includes(q)) ||
+        certificateTypeMatches(c.certificate_type, searchQuery) ||
+        (c.certificate_number && normaliseCertificateSearch(c.certificate_number).includes(q)) ||
+        (c.issuing_body && normaliseCertificateSearch(c.issuing_body).includes(q)) ||
         status.includes(q)
       );
     });
