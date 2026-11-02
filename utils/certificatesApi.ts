@@ -129,6 +129,30 @@ for (const [code, label] of Object.entries(EXTRA_COURSE_LABELS)) {
 
 export const CERTIFICATE_TYPES = Object.keys(CERTIFICATE_TYPE_LABELS);
 
+// Short names crew actually type, which never appear in the labels.
+const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
+  eng1_medical: ['seafarer medical', 'seafarers medical'],
+  stcw_basic_safety: ['bst', 'basic training', 'stcw 95'],
+  stcw_advanced_firefighting: ['aff'],
+  stcw_medical_first_aid: ['mfa'],
+  stcw_proficiency_security: ['psa', 'proficiency in security awareness'],
+  personal_survival_techniques: ['pst'],
+  radar_arpa: ['arpa'],
+};
+
+/** Lower-cases and drops spaces and punctuation, so "ENG-1" and "eng 1" both read "eng1". */
+export function normaliseCertificateSearch(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** True when the query (raw user text) matches the type's label or one of its aliases. */
+export function certificateTypeMatches(type: string, query: string): boolean {
+  const q = normaliseCertificateSearch(query);
+  if (!q) return true;
+  const terms = [CERTIFICATE_TYPE_LABELS[type] || type, ...(CERTIFICATE_TYPE_ALIASES[type] || [])];
+  return terms.some((term) => normaliseCertificateSearch(term).includes(q));
+}
+
 export interface CertificateTypeGroup {
   title: string;
   types: string[];
