@@ -724,6 +724,7 @@ export default function VesselDetailScreen() {
           onChange={(isTwoWatch) => {
             setVessel((v) => (v ? { ...v, is_two_watch: isTwoWatch } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
           }}
         />
 
@@ -734,6 +735,7 @@ export default function VesselDetailScreen() {
           onChange={(isSoleWatchkeeper) => {
             setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
           }}
         />
 
@@ -745,6 +747,7 @@ export default function VesselDetailScreen() {
           onChange={(isTug, tugCapacity) => {
             setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
           }}
         />
 

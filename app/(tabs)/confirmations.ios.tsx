@@ -20,7 +20,7 @@ import { colors } from '@/styles/commonStyles';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -180,10 +180,13 @@ export default function ConfirmationsScreen() {
     }
   }, [loadData]);
 
-  // Initial load
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Load whenever the tab comes into view, not only on first mount: tabs stay
+  // mounted, so a passage released from 'checking' would otherwise sit stale.
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   // Re-fetch when app returns to foreground
   useEffect(() => {
