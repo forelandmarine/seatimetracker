@@ -9,6 +9,7 @@ import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscr
 import { lookupPort } from "../utils/portDatabase.js";
 import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTime.js";
 import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
+import { enrichEntryClassification } from "../utils/seaAreas/enrichEntry.js";
 import { sendPushToUser } from "../utils/push.js";
 import { noteAisIdentity, recordMmsiChange } from "../services/vesselIdentity.js";
 import { extendableStatuses } from "../utils/passageRefinement.js";
@@ -1544,6 +1545,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
         sea_time_entry_created = true;
         app.logger.info(`Created new sea time entry: ${new_entry.id} for vessel ${vesselId}`);
+        await enrichEntryClassification(app, new_entry);
 
         // Guard against race condition: if a concurrent request also inserted,
         // keep only the earliest entry and delete the rest. Only open entries
@@ -1637,6 +1639,7 @@ export function register(app: App, fastify: FastifyInstance) {
           .returning();
 
         sea_time_entry_ended = true;
+        await enrichEntryClassification(app, ended_entry);
         app.logger.info(
           `Ended sea time entry: ${ended_entry.id} with duration: ${duration_hours} hours`
         );
