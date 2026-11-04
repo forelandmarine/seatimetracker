@@ -135,6 +135,21 @@ const ENTRY_AREA_PROPS = {
   dual_capacity: { type: ['boolean', 'null'] },
 } as const;
 
+// Detail fields the edit screen loads back. Without them in the response schema
+// Fastify drops them, and saving the entry writes them back as null.
+const ENTRY_DETAIL_PROPS = {
+  rank: { type: ['string', 'null'] },
+  date_joined: { type: ['string', 'null'] },
+  date_left: { type: ['string', 'null'] },
+  trade_area: { type: ['string', 'null'] },
+  bridge_watch_hours: { type: ['number', 'null'] },
+  engine_watch_hours: { type: ['number', 'null'] },
+  night_watch_hours: { type: ['number', 'null'] },
+  certificate_id: { type: ['string', 'null'] },
+  from_port: { type: ['string', 'null'] },
+  to_port: { type: ['string', 'null'] },
+} as const;
+
 // Helper function to transform sea time entry for API response
 function transformSeaTimeEntryForResponse(entry: any) {
   // Calculate duration_hours if both start_time and end_time are present
@@ -200,6 +215,7 @@ function transformSeaTimeEntryForResponse(entry: any) {
     trade_area: entry.trade_area || null,
     bridge_watch_hours: bridge_watch_hours,
     engine_watch_hours: engine_watch_hours,
+    night_watch_hours: entry.night_watch_hours != null ? parseFloat(String(entry.night_watch_hours)) : null,
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
@@ -239,6 +255,7 @@ export function register(app: App, fastify: FastifyInstance) {
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
               ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               mca_compliant: { type: ['boolean', 'null'] },
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
@@ -441,6 +458,7 @@ export function register(app: App, fastify: FastifyInstance) {
               is_stationary: { type: ['boolean', 'null'] },
               is_sole_watch: { type: 'boolean' }, // inside a sole watchkeeper period, so it also counts as watchkeeping
               ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
                 type: 'object',
@@ -535,6 +553,7 @@ export function register(app: App, fastify: FastifyInstance) {
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
               ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               mca_compliant: { type: ['boolean', 'null'] },
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
@@ -620,6 +639,7 @@ export function register(app: App, fastify: FastifyInstance) {
                   end_latitude: { type: ['string', 'null'] },
                   end_longitude: { type: ['string', 'null'] },
                   ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
                   mca_compliant: { type: ['boolean', 'null'] },
                   detection_window_hours: { type: ['number', 'null'] },
                   watchkeeping_hours: { type: ['number', 'null'] },
@@ -1895,6 +1915,7 @@ export function register(app: App, fastify: FastifyInstance) {
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
               ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string' },
               vessel: {
                 type: 'object',
