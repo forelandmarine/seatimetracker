@@ -21,6 +21,8 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { ExitSurveyPrompt } from '@/components/ExitSurveyPrompt';
 import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { getPendingEntries } from '@/utils/seaTimeApi';
 import Purchases, { INTRO_ELIGIBILITY_STATUS, type PurchasesPackage } from 'react-native-purchases';
 import Constants from 'expo-constants';
 
@@ -45,6 +47,13 @@ function formatIntroOffer(intro: { price: number; priceString: string; periodNum
   return `${intro.priceString} for ${n} ${unit}${n !== 1 ? 's' : ''}`;
 }
 
+/** "MY AVELINE", "MY AVELINE and LUMIERE", or "3 vessels" */
+function vesselPhrase(names: string[]): string {
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.length} vessels`;
+}
+
 export default function PaywallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -61,7 +70,22 @@ export default function PaywallScreen() {
     error: subscriptionError,
   } = useSubscription();
 
+  const { user } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
+
+  // Passages AIS logged that the user hasn't confirmed yet. A lapsed user can't
+  // close this screen, so it's the only place they'd hear about them.
+  const [waiting, setWaiting] = useState<{ count: number; vessels: string[] } | null>(null);
+  useEffect(() => {
+    if (!user || isSubscribed) return;
+    getPendingEntries()
+      .then((entries: any[]) => {
+        if (!Array.isArray(entries) || entries.length === 0) return;
+        const vessels = [...new Set(entries.map((e) => e.vessel?.vessel_name).filter(Boolean))] as string[];
+        setWaiting({ count: entries.length, vessels });
+      })
+      .catch((err) => warn('[Paywall] Pending passages check failed:', err));
+  }, [user?.id, isSubscribed]);
   const [restoring, setRestoring] = useState(false);
   // Default to annual if available, otherwise monthly
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
@@ -419,6 +443,26 @@ export default function PaywallScreen() {
               By Foreland Marine
             </Text>
           </View>
+
+          {waiting && (
+            <View style={styles.waitingNotice}>
+              <IconSymbol
+                ios_icon_name="clock"
+                android_material_icon_name="schedule"
+                size={22}
+                color={colors.warning}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.waitingTitle, { color: isDark ? colors.text : colors.textLight }]}>
+                  {waiting.count} {waiting.count === 1 ? 'passage is' : 'passages are'} waiting for you
+                </Text>
+                <Text style={[styles.waitingText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+                  {waiting.vessels.length > 0 ? `Logged on ${vesselPhrase(waiting.vessels)} and not yet confirmed. ` : 'Logged by AIS and not yet confirmed. '}
+                  Subscribe to confirm {waiting.count === 1 ? 'it' : 'them'} and restart tracking, so new passages keep counting towards your sea time.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Plan selector — annual or monthly */}
           <View style={styles.planSelector}>
@@ -872,6 +916,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.error,
     fontWeight: '500',
+  },
+  waitingNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: colors.warning + '15',
+    padding: 14,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
+    marginBottom: 24,
+  },
+  waitingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  waitingText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   setupNotice: {
     flexDirection: 'row',
