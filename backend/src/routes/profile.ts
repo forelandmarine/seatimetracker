@@ -4,6 +4,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { isDeletableProfileImage, isOwnProfileImage } from "../utils/profileImage.js";
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/profile - Get current user's profile
@@ -96,7 +97,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (user.image) {
+      if (user.image && isOwnProfileImage(user.id, user.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(user.image);
           imageUrl = url;
@@ -323,7 +324,7 @@ export function register(app: App, fastify: FastifyInstance) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
         let imageUrl: string | null = null;
-        if (user.image) {
+        if (user.image && isOwnProfileImage(user.id, user.image)) {
           try {
             const { url } = await app.storage.getSignedUrl(user.image);
             imageUrl = url;
@@ -395,7 +396,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (updatedUser.image) {
+      if (updatedUser.image && isOwnProfileImage(updatedUser.id, updatedUser.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(updatedUser.image);
           imageUrl = url;
@@ -587,7 +588,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (updatedUser.image) {
+      if (updatedUser.image && isOwnProfileImage(updatedUser.id, updatedUser.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(updatedUser.image);
           imageUrl = url;
@@ -747,7 +748,7 @@ export function register(app: App, fastify: FastifyInstance) {
         .returning();
 
       // Delete the old image only once the new one is stored and saved
-      if (user.image) {
+      if (user.image && isDeletableProfileImage(user.id, user.image)) {
         try {
           await app.storage.delete(user.image);
           app.logger.debug({ userId: user.id, oldImageKey: user.image }, 'Old profile image deleted');
