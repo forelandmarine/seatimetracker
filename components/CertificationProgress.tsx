@@ -152,6 +152,28 @@ export interface BoatmasterServiceSummary {
   unclassified_days: number;
   level2_months: number;
   level1_months: number;
+  /** Service after the licence, for its endorsements and the Port of London LKE. */
+  endorsements?: BmlEndorsementsSummary | null;
+}
+
+export interface BmlEndorsementCount {
+  days: number;
+  tidal_days: number;
+  non_tidal_days: number;
+  months: number;
+}
+
+/** Boatmasters' Licence endorsement and LKE figures (MSN 1853 Annex 5 Tables B and C). */
+export interface BmlEndorsementsSummary {
+  licence_issued: string | null;
+  passenger: BmlEndorsementCount;
+  towing: BmlEndorsementCount;
+  lke_full: { days: number; months: number };
+  lke_lower: { days: number; months: number };
+  lke_upper: { days: number; months: number };
+  lke_night_days: number;
+  lke_upriver_days: number;
+  lke_downriver_days: number;
 }
 
 /**
@@ -498,6 +520,29 @@ export function CertificationProgress({
       // Without the boatmaster figures there is no honest bar to draw.
       if (!boatmasterService) return [];
       const route = requirement.boatmasterRoute;
+      if (route.endorsement || route.lke) {
+        const e = boatmasterService.endorsements;
+        if (!e) return [];
+        if (route.lke) {
+          const section = route.lke === 'lower' ? e.lke_lower : route.lke === 'upper' ? e.lke_upper : e.lke_full;
+          const area = route.lke === 'lower' ? 'Lower Area' : route.lke === 'upper' ? 'Upper Area' : 'LKE Area';
+          return [
+            { label: `Days in the ${area}`, current: section.days, required: route.days },
+            { label: 'First Day to Last Day', current: section.months, required: route.months, unit: 'months' },
+          ];
+        }
+        const { kind, water } = route.endorsement!;
+        const c = kind === 'passenger' ? e.passenger : e.towing;
+        return [
+          { label: kind === 'passenger' ? 'On Passenger Vessels' : 'On Towing and Pushing Vessels', current: c.days, required: route.days },
+          {
+            label: water === 'tidal' ? 'Of Which in Tidal Waters' : 'Of Which in Non-Tidal Waters',
+            current: water === 'tidal' ? c.tidal_days : c.non_tidal_days,
+            required: Math.ceil(route.days / 2),
+          },
+          { label: 'Qualifying Period', current: c.months, required: route.months, unit: 'months' },
+        ];
+      }
       const level2 = route.level === 2;
       return [
         {
@@ -881,7 +926,21 @@ export function CertificationProgress({
         </View>
       )}
 
-      {requirement?.boatmasterRoute && boatmasterService && (
+      {requirement?.boatmasterRoute && (requirement.boatmasterRoute.endorsement || requirement.boatmasterRoute.lke) && boatmasterService?.endorsements && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            {boatmasterService.endorsements.licence_issued
+              ? `Counted from the day after your Boatmasters' Licence was issued (${boatmasterService.endorsements.licence_issued.split('-').reverse().join('/')}), within the last 5 years.`
+              : "Endorsement service must follow your licence service. No Boatmasters' Licence with an issue date is in your Certificates, so every day in the last 5 years is counted. Add it to count only later days."}
+            {requirement.boatmasterRoute.lke
+              ? ` A day counts when an AIS position that day was in the tidal Thames ${requirement.boatmasterRoute.lke === 'lower' ? 'between Margaretness and London Bridge' : requirement.boatmasterRoute.lke === 'upper' ? 'between London Bridge and Putney Bridge' : 'between Margaretness and Putney Bridge'}. The PLA also asks for varying conditions: ${boatmasterService.endorsements.lke_night_days} ${boatmasterService.endorsements.lke_night_days === 1 ? 'day has' : 'days have'} a position in darkness, ${boatmasterService.endorsements.lke_upriver_days} upriver and ${boatmasterService.endorsements.lke_downriver_days} downriver. Days on vessels without AIS cannot be placed, so they are not counted here.`
+              : ` Tidal and non-tidal days go by your AIS positions; days without them count in the total only. ${requirement.boatmasterRoute.endorsement?.kind === 'passenger' ? 'Mark passenger vessels on their vessel screen.' : 'Mark towing and pushing vessels with the Tug switch on their vessel screen.'}`}
+            {' '}Record the service in your BML Work Record (MSF 4366){requirement.boatmasterRoute.lke ? ' and the PLA Details of Service sheet' : ''}, both in Download Reports.
+          </Text>
+        </View>
+      )}
+
+      {requirement?.boatmasterRoute && !requirement.boatmasterRoute.endorsement && !requirement.boatmasterRoute.lke && boatmasterService && (
         <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
           <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
             Counted under MSN 1853: any day with logged deck service in the licence's waters, in the last 5
@@ -890,10 +949,10 @@ export function CertificationProgress({
               ? ' Category C counts only where it is non-linked, which AIS cannot tell, so check those days.'
               : ' Limited coastal means no more than 15 miles from the departure point and 5 miles from land.'}
             {boatmasterService.declared_inland_days > 0 && requirement.boatmasterRoute.level === 2
-              ? ` ${boatmasterService.declared_inland_days} ${boatmasterService.declared_inland_days === 1 ? 'day has' : 'days have'} no placed AIS position and ${boatmasterService.declared_inland_days === 1 ? 'is' : 'are'} counted because you logged ${boatmasterService.declared_inland_days === 1 ? 'it' : 'them'} with the Inland trade area.`
+              ? ` ${boatmasterService.declared_inland_days} ${boatmasterService.declared_inland_days === 1 ? 'day has' : 'days have'} no placed AIS position and ${boatmasterService.declared_inland_days === 1 ? 'is' : 'are'} counted because ${boatmasterService.declared_inland_days === 1 ? 'it was' : 'they were'} logged as Inland, on the entry or as the vessel's default trade area.`
               : ''}
             {boatmasterService.unclassified_days > 0
-              ? ` ${boatmasterService.unclassified_days} ${boatmasterService.unclassified_days === 1 ? 'day has' : 'days have'} no AIS position the app can place in categorised waters (manual entries, docks, small rivers and lakes), so ${boatmasterService.unclassified_days === 1 ? 'it is' : 'they are'} left out. Set the trade area to Inland on those entries if they were on inland waters.`
+              ? ` ${boatmasterService.unclassified_days} ${boatmasterService.unclassified_days === 1 ? 'day has' : 'days have'} no AIS position the app can place in categorised waters (manual entries, docks, small rivers and lakes), so ${boatmasterService.unclassified_days === 1 ? 'it is' : 'they are'} left out. If they were on inland waters, set the trade area to Inland on those entries, or set the vessel's default trade area to Inland.`
               : ''}
             {boatmasterService.beyond_limited_coastal_days > 0
               ? ` ${boatmasterService.beyond_limited_coastal_days} ${boatmasterService.beyond_limited_coastal_days === 1 ? 'day went' : 'days went'} beyond limited coastal waters, so ${boatmasterService.beyond_limited_coastal_days === 1 ? 'it does' : 'they do'} not count.`

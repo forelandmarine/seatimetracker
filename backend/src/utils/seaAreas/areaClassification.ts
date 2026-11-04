@@ -202,6 +202,20 @@ export class AreaClassifier {
     return null;
   }
 
+  /**
+   * A hand-drawn override marked tidal: false (the non-tidal Thames above
+   * Teddington Lock) that contains, or lies within maxNm of, the point.
+   */
+  private nonTidalOverride(p: LatLon, maxNm = 0): boolean {
+    const pt = ll(p);
+    const nonTidal = (props: Record<string, unknown>) => props.tidal === false;
+    if (maxNm === 0) {
+      const hit = this.oAll.findContaining(pt);
+      return hit != null && nonTidal(hit);
+    }
+    return this.oAll.findNearestWithin(pt, maxNm, nonTidal) !== null;
+  }
+
   /** Nearest categorised water within maxNm (in season), for snapping harbour-edge fixes. */
   private nearestCategorised(p: LatLon, maxNm: number, season: Season): CategorisedWater | null {
     const pt = ll(p);
@@ -262,6 +276,9 @@ export class AreaClassifier {
     const onLand = this.landLayer.contains(pt);
     const base = { onLand, snapped: false };
     if (cat) {
+      if (this.nonTidalOverride(p)) {
+        return { ...base, areaCategory: cat, isTidal: false, atSea: false, inUk: true, basis: `Categorised water (MSN 1837 Cat ${cat}, non-tidal)` };
+      }
       return { ...base, areaCategory: cat, isTidal: true, atSea: false, inUk: true, basis: `Categorised water (MSN 1837 Cat ${cat}, ${season})` };
     }
     if (this.tidalLayer.contains(pt)) {
@@ -277,7 +294,8 @@ export class AreaClassifier {
     }
     const near = this.nearestCategorised(p, SNAP_NM, season);
     if (near) {
-      return { ...base, areaCategory: near, isTidal: true, atSea: false, inUk: true, snapped: true, basis: `Near the shore, snapped to categorised water (Cat ${near})` };
+      const tidal = !this.nonTidalOverride(p, SNAP_NM);
+      return { ...base, areaCategory: near, isTidal: tidal, atSea: false, inUk: true, snapped: true, basis: `Near the shore, snapped to categorised water (Cat ${near}${tidal ? '' : ', non-tidal'})` };
     }
     if (this.tidalLayer.findNearestWithin(pt, SNAP_NM)) {
       return { ...base, areaCategory: null, isTidal: true, atSea: true, inUk: true, snapped: true, basis: 'Near the shore, snapped to a WFD water body (tidal)' };

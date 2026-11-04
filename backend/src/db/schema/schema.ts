@@ -23,6 +23,8 @@ export const vessels = pgTable('vessels', {
   is_sole_watchkeeper: boolean('is_sole_watchkeeper'), // User says they are the only watchkeeper in their department on this vessel (e.g. sole engineer), so every sea day is also a watchkeeping day
   is_tug: boolean('is_tug'), // Marked by the user as a tug: MGN 495 tug service counts toward the tug deck CoCs
   tug_capacity: text('tug_capacity'), // 'rating' | 'officer' | 'cadet': the user's usual capacity on this tug, used for entries logged without a rank (AIS)
+  is_passenger: boolean('is_passenger'), // Marked by the user as a passenger vessel: deck service on it counts toward the BML passenger endorsement (MSN 1853 Annex 5 Table C)
+  default_trade_area: text('default_trade_area'), // Trade area for this vessel's entries logged without one, e.g. 'inland' for a river boat with no AIS (Boatmasters' Licence)
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),

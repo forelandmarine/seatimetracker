@@ -13,6 +13,7 @@ import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { engineService } from "../utils/engineService.js";
 import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
+import { boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
 import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
@@ -663,6 +664,20 @@ export function register(app: App, fastify: FastifyInstance) {
                 level1_months: { type: 'number' },
               },
             },
+            bml_endorsements: {
+              type: 'object',
+              properties: {
+                licence_issued: { type: ['string', 'null'] },
+                passenger: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                towing: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                lke_full: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_lower: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_upper: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_night_days: { type: 'number' },
+                lke_upriver_days: { type: 'number' },
+                lke_downriver_days: { type: 'number' },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -857,6 +872,20 @@ export function register(app: App, fastify: FastifyInstance) {
       classifier ? (track, departure) => classifier.classifyDay({ track, departure }).isLimitedCoastal : null,
     );
 
+    // Boatmasters' Licence endorsements and the Port of London LKE count service
+    // after the licence, so read the earliest licence the user has on file.
+    let licenceIssued: string | null = null;
+    try {
+      const rows = await app.db.execute(sql`
+        select min(issued_date)::text as issued from certificates
+        where user_id = ${userId} and certificate_type = 'boatmaster' and issued_date is not null
+      `);
+      licenceIssued = (((rows as any).rows ?? rows)[0]?.issued as string | null) ?? null;
+    } catch (err) {
+      app.logger.warn({ err }, 'Boatmasters licence lookup failed; endorsements count from 5 years back');
+    }
+    const bml_endorsements = boatmasterEndorsements(entries as any, areaFixes, licenceIssued);
+
     app.logger.info(
       {
         total_days,
@@ -884,6 +913,7 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_service,
       tug_service,
       boatmaster_service,
+      bml_endorsements,
     });
   });
 

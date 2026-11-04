@@ -31,6 +31,7 @@ import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { TugToggle } from '@/components/TugToggle';
+import { BoatmasterVesselCard } from '@/components/BoatmasterVesselCard';
 import { SeaAreaBreakdownCard } from '@/components/SeaAreaBreakdownCard';
 
 import { log, error as logError } from '@/utils/log';
@@ -53,6 +54,8 @@ interface Vessel {
   is_sole_watchkeeper?: boolean | null;
   is_tug?: boolean | null;
   tug_capacity?: string | null;
+  default_trade_area?: string | null;
+  is_passenger?: boolean | null;
 }
 
 interface SeaTimeEntry {
@@ -656,6 +659,18 @@ export default function VesselDetailScreen() {
             setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
             triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* Boatmasters' Licence: Inland by default and passenger vessel (MSN 1853, MCA commercial) */}
+        <BoatmasterVesselCard
+          vesselId={vessel.id}
+          defaultTradeArea={vessel.default_trade_area}
+          isPassenger={vessel.is_passenger}
+          onChange={(settings) => {
+            setVessel((v) => (v ? { ...v, ...settings } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Profile progress uses these settings too
           }}
         />
 

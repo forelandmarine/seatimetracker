@@ -1183,3 +1183,21 @@ export const loadActiveVesselCache = async (): Promise<ActiveVesselCache | null>
 
 // Export getAuthToken and getApiHeaders for use in other components
 export { getAuthToken, getApiHeaders };
+
+// Boatmasters' Licence settings for a vessel (MSN 1853). default_trade_area 'inland'
+// makes its entries logged without a trade area count as Inland (river boats with no
+// AIS); null clears it. is_passenger marks a passenger vessel for the passenger endorsement.
+export const updateVesselBoatmaster = async (
+  vesselId: string,
+  settings: { default_trade_area?: 'inland' | null; is_passenger?: boolean },
+) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/boatmaster`, { method: 'PUT', body: settings });
+  return normalizeVessel(await res.json());
+};
+
+// Boatmasters' Licence paperwork as a PDF: 'msf4366' is the BML Work Record
+// (MSF 4366 layout), 'pla' the Port of London LKE Details of Service sheet.
+export const downloadBoatmasterReport = async (format: 'msf4366' | 'pla') => {
+  const res = await authFetch(`/api/reports/boatmaster?format=${format}`);
+  return res.blob();
+};

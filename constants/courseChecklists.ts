@@ -6618,6 +6618,240 @@ export const CHECKLISTS: Record<string, Checklist> = {
     "sources": [
       "MSN 1853"
     ]
+  },
+  "bml-passenger-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on passenger vessels, at least half in tidal waters, over at least 12 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-passenger-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on passenger vessels, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-towing-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on towing or pushing vessels, at least half in tidal waters, over at least 12 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-towing-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on towing or pushing vessels, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "pla-lke-full": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between Margaretness and Putney Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
+  },
+  "pla-lke-lower": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between Margaretness and London Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
+  },
+  "pla-lke-upper": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between London Bridge and Putney Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
   }
 };
 

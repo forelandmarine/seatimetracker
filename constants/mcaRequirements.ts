@@ -147,7 +147,22 @@ export interface MCARequirement {
    * service in the licence's waters, and the minimum qualifying period in
    * months from the first of them.
    */
-  boatmasterRoute?: { level: 1 | 2; days: number; months: number };
+  boatmasterRoute?: {
+    level: 1 | 2;
+    days: number;
+    months: number;
+    /**
+     * An endorsement on the licence (Annex 5 Table C): service after the licence
+     * on passenger or towing and pushing vessels, at least half of it in the
+     * water named.
+     */
+    endorsement?: { kind: 'passenger' | 'towing'; water: 'tidal' | 'non_tidal' };
+    /**
+     * The Port of London Local Knowledge Endorsement (Annex 5 Table B): days in
+     * the section, with months from the first day to the last.
+     */
+    lke?: 'full' | 'lower' | 'upper';
+  };
   requirements: {
     label: string;
     value: string;
@@ -906,7 +921,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
       'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
       'The generic licence allows up to 12 passengers. Passenger, towing and pushing, and other operations need an endorsement, with its own service after the licence service (towing and pushing in tidal waters: 120 days over 12 months, age 21)',
-      'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth',
+      'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth. The app counts the Port of London LKE (60 days) as its own target',
       'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience',
     ],
   },
@@ -935,6 +950,228 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book',
       'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
       'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
+    ],
+  },
+
+  // Boatmasters' Licence endorsements (MSN 1853 Annex 5 Table C) and the Port of
+  // London Local Knowledge Endorsement (Table B). Service must follow the licence service.
+  {
+    id: 'bml-passenger-tidal',
+    title: "BML Passenger Endorsement (Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 120, months: 12, endorsement: { kind: 'passenger', water: 'tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '120 days',
+        details: [
+          'In a deck capacity on a passenger vessel',
+          'At least half of the days in tidal waters',
+          'Over at least 12 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      "Covers up to 250 passengers. The Large Passenger endorsement (over 250) also needs 120 days as master of a passenger vessel, or 120 days in a deck capacity on a large passenger vessel, age 22",
+      "Mark the vessel as a passenger vessel on its screen so its days count here",
+      "MSN 1853 Annex 5 has a worked example quoting 240 days over 24 months; Table C says 120 days over 12 months, which the app uses. Check with the MCA",
+      'MCA oral assessment for the endorsement',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-passenger-non-tidal',
+    title: "BML Passenger Endorsement (Non-Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 60, months: 6, endorsement: { kind: 'passenger', water: 'non_tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity on a passenger vessel',
+          'At least half of the days in non-tidal waters',
+          'Over at least 6 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      "Covers up to 250 passengers. The Large Passenger endorsement (over 250) also needs 120 days as master of a passenger vessel, or 120 days in a deck capacity on a large passenger vessel, age 22",
+      "Mark the vessel as a passenger vessel on its screen so its days count here",
+      'MCA oral assessment for the endorsement',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-towing-tidal',
+    title: "BML Towing and Pushing Endorsement (Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 120, months: 12, endorsement: { kind: 'towing', water: 'tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '120 days',
+        details: [
+          'In a deck capacity on a towing or pushing vessel',
+          'At least half of the days in tidal waters',
+          'Over at least 12 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      "Mark the vessel with the Tug switch on its screen so its days count here",
+      "A pair of narrow boats on Category A canals needs no towing endorsement",
+      "Accepted instead: company ISM or DSM towage training, an STCW CoC or CEC with a tug endorsement, or the MGN 468 General Towage Endorsement",
+      'MCA oral assessment for the endorsement',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-towing-non-tidal',
+    title: "BML Towing and Pushing Endorsement (Non-Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 60, months: 6, endorsement: { kind: 'towing', water: 'non_tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity on a towing or pushing vessel',
+          'At least half of the days in non-tidal waters',
+          'Over at least 6 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      "Mark the vessel with the Tug switch on its screen so its days count here",
+      "A pair of narrow boats on Category A canals needs no towing endorsement",
+      "Accepted instead: company ISM or DSM towage training, an STCW CoC or CEC with a tug endorsement, or the MGN 468 General Towage Endorsement",
+      'MCA oral assessment for the endorsement',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'pla-lke-full',
+    title: "Port of London LKE (Full)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Port of London Authority endorsement for the tidal Thames, from Margaretness to Putney Bridge (MSN 1853, Annex 5 Table B)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 60, months: 6, lke: 'full' },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity, from Margaretness to Putney Bridge',
+          'In varying conditions, including trips in both directions and in the hours of darkness',
+          'The last day at least 6 months after the first',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Needed by masters of non-pleasure vessels from 13.7 m to 40 m, and of smaller vessels carrying passengers or towing, between Putney Bridge and Margaretness (Thames Byelaw 22)',
+      'The requirement is days, not trips. The PLA consulted in 2023 on counting trips (C05-23); it has not been adopted',
+      'Counted from your AIS positions in the tidal Thames, so days on vessels without AIS cannot be counted here',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Record the days on the PLA Details of Service sheet (Route and Direction, times, onboard role, class of vessel)',
+      'Oral assessment: 90 minutes before an MCA examiner and a Harbour Master. Valid 5 years; revalidation needs the same 60 days over 6 months',
+      'Exempt: Pilotage Exemption Certificate holders within their PEC, and Sailing Barge Masters',
+    ],
+  },
+  {
+    id: 'pla-lke-lower',
+    title: "Port of London LKE (Lower)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Port of London Authority endorsement for the tidal Thames, from Margaretness to London Bridge (MSN 1853, Annex 5 Table B)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 60, months: 6, lke: 'lower' },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity, from Margaretness to London Bridge',
+          'In varying conditions, including trips in both directions and in the hours of darkness',
+          'The last day at least 6 months after the first',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Needed by masters of non-pleasure vessels from 13.7 m to 40 m, and of smaller vessels carrying passengers or towing, between Putney Bridge and Margaretness (Thames Byelaw 22)',
+      'The requirement is days, not trips. The PLA consulted in 2023 on counting trips (C05-23); it has not been adopted',
+      'Counted from your AIS positions in the tidal Thames, so days on vessels without AIS cannot be counted here',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Record the days on the PLA Details of Service sheet (Route and Direction, times, onboard role, class of vessel)',
+      'Oral assessment: 90 minutes before an MCA examiner and a Harbour Master. Valid 5 years; revalidation needs the same 60 days over 6 months',
+      'Exempt: Pilotage Exemption Certificate holders within their PEC, and Sailing Barge Masters',
+    ],
+  },
+  {
+    id: 'pla-lke-upper',
+    title: "Port of London LKE (Upper)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Port of London Authority endorsement for the tidal Thames, from London Bridge to Putney Bridge (MSN 1853, Annex 5 Table B)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 60, months: 6, lke: 'upper' },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity, from London Bridge to Putney Bridge',
+          'In varying conditions, including trips in both directions and in the hours of darkness',
+          'The last day at least 6 months after the first',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Needed by masters of non-pleasure vessels from 13.7 m to 40 m, and of smaller vessels carrying passengers or towing, between Putney Bridge and Margaretness (Thames Byelaw 22)',
+      'The requirement is days, not trips. The PLA consulted in 2023 on counting trips (C05-23); it has not been adopted',
+      'Counted from your AIS positions in the tidal Thames, so days on vessels without AIS cannot be counted here',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Record the days on the PLA Details of Service sheet (Route and Direction, times, onboard role, class of vessel)',
+      'Oral assessment: 90 minutes before an MCA examiner and a Harbour Master. Valid 5 years; revalidation needs the same 60 days over 6 months',
+      'Exempt: Pilotage Exemption Certificate holders within their PEC, and Sailing Barge Masters',
     ],
   },
 ];

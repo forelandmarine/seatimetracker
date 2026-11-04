@@ -17,8 +17,9 @@ import {
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useCertRoute } from '@/hooks/useCertRoute';
-import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { CertificationProgress, BmlEndorsementsSummary, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
+import { BoatmasterReportButtons } from '@/components/BoatmasterReportButtons';
 import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
@@ -98,6 +99,7 @@ interface SeaTimeSummary {
   yacht_onboard_days?: number;
   tug_service?: TugServiceSummary;
   boatmaster_service?: BoatmasterServiceSummary;
+  bml_endorsements?: BmlEndorsementsSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -1058,6 +1060,9 @@ export default function ProfileScreen() {
                     </>
                   )}
                 </TouchableOpacity>
+
+                {/* Boatmasters' Licence paperwork (MCA commercial crew) */}
+                <BoatmasterReportButtons />
               </View>
             </View>
           )}
@@ -1164,7 +1169,7 @@ export default function ProfileScreen() {
                   workboatService={summary.workboat_service ?? null}
                   engineService={summary.engine_service ?? null}
                   tugService={summary.tug_service ?? null}
-                  boatmasterService={summary.boatmaster_service ?? null}
+                  boatmasterService={summary.boatmaster_service ? { ...summary.boatmaster_service, endorsements: summary.bml_endorsements ?? null } : null}
                   sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
                   onboardDays={summary.onboard_days ?? 0}
