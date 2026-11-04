@@ -46,7 +46,8 @@ export function register(app: App, fastify: FastifyInstance) {
 
     const name = cleanVesselName(request.query.name || "");
     const length = Number(String(request.query.length || "").replace(",", "."));
-    if (name.length < 2) return reply.code(400).send({ error: "Please enter the vessel's name." });
+    // Datalastic charges per row returned, so very short names that match hundreds of vessels are refused.
+    if (name.length < 3) return reply.code(400).send({ error: "Please enter at least 3 letters of the vessel's name." });
     if (!Number.isFinite(length) || length < 2 || length > 500) {
       return reply.code(400).send({ error: "Please enter the length overall in metres." });
     }

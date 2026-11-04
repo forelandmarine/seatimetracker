@@ -9,6 +9,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { isDeletableProfileImage } from "../utils/profileImage.js";
 
 export function register(app: App, fastify: FastifyInstance) {
   // DELETE /api/users/me - Delete authenticated user's account and all associated data
@@ -156,7 +157,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Delete the profile photo only after the transaction has committed, so a
       // failed deletion never leaves an account pointing at a missing photo.
       // A failure here is logged, not returned: the account itself is gone.
-      if (imageKey) {
+      if (imageKey && isDeletableProfileImage(userId, imageKey)) {
         try {
           await app.storage.delete(imageKey);
           app.logger.debug({ userId, imageKey }, 'Deleted profile image');
