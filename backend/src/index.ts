@@ -51,6 +51,7 @@ import { register as registerFeedbackRoutes } from './routes/feedback.js';
 import { register as registerPublicRoutes } from './routes/public.js';
 import { register as registerPathwayAssistantRoutes } from './routes/pathway-assistant.js';
 import { register as registerTrainingRoutes } from './routes/training.js';
+import { register as registerSeaAreasRoutes } from './routes/sea-areas.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
@@ -99,6 +100,7 @@ registerFeedbackRoutes(app, app.fastify);
 registerPublicRoutes(app, app.fastify);
 registerPathwayAssistantRoutes(app, app.fastify);
 registerTrainingRoutes(app, app.fastify);
+registerSeaAreasRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
 app.fastify.get('/api/health', async () => ({ status: 'ok' }));

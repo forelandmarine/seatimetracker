@@ -9,6 +9,7 @@ import { isSubscriptionActive as checkSubscriptionActive } from '../utils/subscr
 import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
+import { enrichEntryClassification } from '../utils/seaAreas/enrichEntry.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
@@ -914,6 +915,7 @@ async function handleOffshorePassage(
           .returning();
 
         entriesCreated.push(entry.id);
+        await enrichEntryClassification(app, entry);
 
         app.logger.info(
           {
@@ -1230,6 +1232,7 @@ async function handleSeaTimeEntries(
         })
         .where(eq(schema.sea_time_entries.id, existingEntryForDay.id))
         .returning();
+      if (updated_entry) await enrichEntryClassification(app, updated_entry);
 
       app.logger.info(
         {
@@ -1297,6 +1300,7 @@ async function handleSeaTimeEntries(
           notes: notes,
         })
         .returning();
+      if (new_entry) await enrichEntryClassification(app, new_entry);
 
       app.logger.info(
         {

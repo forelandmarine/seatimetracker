@@ -1,0 +1,261 @@
+{
+ "type": "FeatureCollection",
+ "metadata": {
+  "source": "MSN 1837 (M) Amendment 3 Annex 1; positions from the notice where given, otherwise OpenStreetMap (ODbL) features and the GB coastline layer.",
+  "note": "Hand-drawn areas checked before the WFD layers, for MSN 1837 entries the WFD water bodies do not match. season: all, summer (April to October) or winter."
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "category": "C",
+    "season": "all",
+    "estuary": "Barrow-in-Furness (Walney Channel)",
+    "country": "England",
+    "confidence": "medium",
+    "msn_reference": "Barrow: westward of a line joining the Roa Island Slipway to the ruined groyne at South East point, Isle of Walney (54 02.82N, 003 10.39W)",
+    "basis": "MSN 1837 closing line, hand-drawn override"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -3.17317,
+       54.047
+      ],
+      [
+       -3.1745,
+       54.0475
+      ],
+      [
+       -3.18,
+       54.0485
+      ],
+      [
+       -3.19,
+       54.05
+      ],
+      [
+       -3.209,
+       54.0535
+      ],
+      [
+       -3.215,
+       54.06
+      ],
+      [
+       -3.235,
+       54.075
+      ],
+      [
+       -3.25,
+       54.09
+      ],
+      [
+       -3.258,
+       54.105
+      ],
+      [
+       -3.262,
+       54.12
+      ],
+      [
+       -3.268,
+       54.135
+      ],
+      [
+       -3.268,
+       54.145
+      ],
+      [
+       -3.26,
+       54.151
+      ],
+      [
+       -3.215,
+       54.158
+      ],
+      [
+       -3.21,
+       54.13
+      ],
+      [
+       -3.205,
+       54.11
+      ],
+      [
+       -3.18,
+       54.095
+      ],
+      [
+       -3.165,
+       54.088
+      ],
+      [
+       -3.169,
+       54.084
+      ],
+      [
+       -3.175,
+       54.0776
+      ],
+      [
+       -3.175,
+       54.0731
+      ],
+      [
+       -3.17317,
+       54.047
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "category": "C",
+    "season": "summer",
+    "estuary": "Barrow-in-Furness (summer line)",
+    "country": "England",
+    "confidence": "medium",
+    "msn_reference": "Barrow summer: westward of a line joining the NW edge of Foulney Island (54 04.59N, 003 10.06W) to the ruined groyne at South East point, Isle of Walney",
+    "basis": "MSN 1837 closing line, hand-drawn override"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -3.17317,
+       54.047
+      ],
+      [
+       -3.175,
+       54.0731
+      ],
+      [
+       -3.175,
+       54.0776
+      ],
+      [
+       -3.1705,
+       54.0795
+      ],
+      [
+       -3.16767,
+       54.0765
+      ],
+      [
+       -3.17317,
+       54.047
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "category": "B",
+    "season": "all",
+    "estuary": "Leith (Edinburgh)",
+    "country": "Scotland",
+    "confidence": "medium",
+    "msn_reference": "Leith (Edinburgh): Category B within the breakwaters",
+    "basis": "MSN 1837 closing line, hand-drawn override"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -3.19569,
+       55.98234
+      ],
+      [
+       -3.19276,
+       55.98591
+      ],
+      [
+       -3.18557,
+       55.98883
+      ],
+      [
+       -3.18459,
+       55.98931
+      ],
+      [
+       -3.1824,
+       55.99145
+      ],
+      [
+       -3.17937,
+       55.98956
+      ],
+      [
+       -3.17863,
+       55.98926
+      ],
+      [
+       -3.17,
+       55.983
+      ],
+      [
+       -3.17,
+       55.979
+      ],
+      [
+       -3.196,
+       55.979
+      ],
+      [
+       -3.19569,
+       55.98234
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "category": "C",
+    "season": "all",
+    "estuary": "Ardrossan Inner Harbour (Marina)",
+    "country": "Scotland",
+    "confidence": "low",
+    "msn_reference": "Ardrossan: Category C inside or east of the storm gate at the marina entrance",
+    "basis": "MSN 1837 closing line, hand-drawn override"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -4.8205,
+       55.6393
+      ],
+      [
+       -4.8205,
+       55.6419
+      ],
+      [
+       -4.816,
+       55.6419
+      ],
+      [
+       -4.816,
+       55.6393
+      ],
+      [
+       -4.8205,
+       55.6393
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

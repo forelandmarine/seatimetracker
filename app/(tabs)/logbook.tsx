@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { SeaAreaChip, isCommercialVessel } from '@/components/SeaAreaChip';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { headlineSeaDays, vesselSeaDays, creditedDates, partDayLabel, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -30,6 +31,9 @@ import { useTranslation } from 'react-i18next';
 
 interface Vessel {
   id: string;
+  sector?: string | null;
+  is_workboat?: boolean | null;
+  is_tug?: boolean | null;
   mmsi: string;
   vessel_name: string;
   is_active: boolean;
@@ -44,6 +48,9 @@ interface Vessel {
 
 interface SeaTimeEntry {
   id: string;
+  vessel_id?: string;
+  area_category?: string | null;
+  is_tidal?: boolean | null;
   vessel: Vessel | null;
   start_time: string;
   end_time: string | null;
@@ -609,6 +616,10 @@ export default function LogbookScreen() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [summary, setSummary] = useState<ReportSummaryTotals | null>(null);
   const [authority, setAuthority] = useState<string | null>(null);
+  const [userSector, setUserSector] = useState<string | null>(null);
+  // Workboat sea areas show only on commercial work
+  const showSeaArea = (entry: SeaTimeEntry) =>
+    isCommercialVessel(vessels.find((v) => v.id === entry.vessel_id) ?? (entry.vessel as any), userSector);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -638,6 +649,7 @@ export default function LogbookScreen() {
       setVessels(vesselsData);
       setSummary(summaryData);
       setAuthority(profileData?.maritime_authority ?? null);
+      setUserSector(profileData?.vessel_sector ?? null);
     } catch (error) {
       logError('[LogbookScreen] Error loading data:', error);
       showError('Failed to load logbook data');
@@ -1066,6 +1078,9 @@ export default function LogbookScreen() {
                         </View>
                       )}
 
+                      {showSeaArea(entry) && (
+                        <SeaAreaChip areaCategory={entry.area_category} isTidal={entry.is_tidal} />
+                      )}
                       {entry.notes && (
                         <View style={styles.entryRow}>
                           <IconSymbol
@@ -1257,6 +1272,9 @@ export default function LogbookScreen() {
                               </View>
                             )}
 
+                            {showSeaArea(entry) && (
+                              <SeaAreaChip areaCategory={entry.area_category} isTidal={entry.is_tidal} />
+                            )}
                             {entry.notes && (
                               <View style={styles.entryRow}>
                                 <IconSymbol

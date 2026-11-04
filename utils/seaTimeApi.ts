@@ -735,9 +735,51 @@ export const updateSeaTimeEntry = async (
     start_longitude?: number | null;
     end_latitude?: number | null;
     end_longitude?: number | null;
+    area_category?: SeaArea | null;
+    is_tidal?: boolean | null;
+    dual_capacity?: boolean | null;
   }
 ) => {
   const res = await authFetch(`/api/sea-time/${entryId}`, { method: 'PUT', body: updates });
+  return res.json();
+};
+
+/** Workboat sea area on an entry: MSN 1837 category A to D, or at sea. */
+export type SeaArea = 'A' | 'B' | 'C' | 'D' | 'sea';
+
+export interface SeaAreaBreakdown {
+  A: number; B: number; C: number; D: number; sea: number;
+  not_classified: number; tidal: number; non_tidal: number; total: number;
+}
+
+/** Days by sea area for commercial work (guidance only). */
+export const getSeaAreaBreakdown = async (vesselId?: string): Promise<{ commercial: boolean; breakdown: SeaAreaBreakdown }> => {
+  const res = await authFetch(vesselId ? `/api/sea-areas/breakdown?vesselId=${encodeURIComponent(vesselId)}` : '/api/sea-areas/breakdown');
+  return res.json();
+};
+
+export interface Wbc3Guidance {
+  band: 'cat_6_5' | 'cat_4_3' | 'cat_2' | 'cat_1' | 'cat_0' | 'categorised_only' | 'outside_uk' | 'no_fixes';
+  options: { category: number; conditions: ('favourable_weather' | 'daylight')[] }[];
+  category_without_conditions: number | null;
+  max_from_land_nm: number | null;
+  max_from_departure_or_categorised_nm: number | null;
+  max_from_safe_haven_nm: number | null;
+  fixes: number;
+}
+
+export interface AreaGuidance {
+  commercial: boolean;
+  area_category: SeaArea | null;
+  is_tidal: boolean | null;
+  is_categorised_water: boolean | null;
+  wbc3: Wbc3Guidance | null;
+  tickets: { id: string; note?: string; covers: number[]; held: boolean }[];
+}
+
+/** One trip's Workboat Code area category and the tickets that cover it (guidance only). */
+export const getAreaGuidance = async (entryId: string): Promise<AreaGuidance> => {
+  const res = await authFetch(`/api/sea-time/${entryId}/area-guidance`);
   return res.json();
 };
 

@@ -8,6 +8,8 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
+import { AREA_GUIDANCE_NOTE, areaDayBreakdown, areaReportLabel, tidalReportLabel } from '../utils/workboatArea.js';
+import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { engineService } from "../utils/engineService.js";
 import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
@@ -220,6 +222,17 @@ export function register(app: App, fastify: FastifyInstance) {
       }
     }
 
+    // Workboat sea area columns for commercial users (guidance only)
+    const csvCommercial =
+      (user as any).vessel_sector === 'commercial' || entries.some((e) => isCommercialWork(e.vessel));
+    const areaHeaders = csvCommercial ? [`Sea Area (${AREA_GUIDANCE_NOTE})`, 'Tidal', 'Dual Deck and Engine Capacity'] : [];
+    const areaCells = (entry: any): string[] =>
+      csvCommercial
+        ? isCommercialWork(entry.vessel, (user as any).vessel_sector)
+          ? [areaReportLabel(entry.area_category), tidalReportLabel(entry.is_tidal), entry.dual_capacity ? 'Yes (counts at 50%)' : '']
+          : ['', '', '']
+        : [];
+
     // SECTION 1: Build CSV with vessel particulars (existing summary section)
     const headers = [
       'Date',
@@ -243,6 +256,7 @@ export function register(app: App, fastify: FastifyInstance) {
       'Bridge Watch Hours',
       'Engine Watch Hours',
       'Night Watch Hours',
+      ...areaHeaders,
       'Status',
       'Notes',
       'Sole Watchkeeper',
@@ -269,6 +283,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.bridge_watch_hours ?? '',
       entry.engine_watch_hours ?? '',
       entry.night_watch_hours ?? '',
+      ...areaCells(entry),
       entry.status,
       formatEntryNotes(entry.notes),
       (entry as any).is_sole_watch ? 'Yes' : '',
@@ -307,6 +322,7 @@ export function register(app: App, fastify: FastifyInstance) {
       'Bridge Watch Hours',
       'Engine Watch Hours',
       'Night Watch Hours',
+      ...areaHeaders,
       'Notes',
     ];
 
@@ -371,6 +387,7 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.bridge_watch_hours ?? '',
         entry.engine_watch_hours ?? '',
         entry.night_watch_hours ?? '',
+        ...areaCells(entry),
         formatEntryNotes(entry.notes),
       ];
     });
@@ -597,6 +614,9 @@ export function register(app: App, fastify: FastifyInstance) {
                 workboat_15m: { type: 'number' },
                 recent_sea_service: { type: 'number' },
                 workboats_without_length: { type: 'number' },
+                dual_capacity_days: { type: 'number' },
+                revalidation_officer_15m: { type: 'number' },
+                revalidation_required: { type: 'number' },
               },
             },
             engine_service: {
@@ -795,7 +815,7 @@ export function register(app: App, fastify: FastifyInstance) {
           and a.check_time <= coalesce(e.end_time, e.start_time)
         where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
         group by e.id
-        having bool_and(a.area_category is not null)
+        having bool_and(a.area_category in ('A', 'B', 'C', 'D'))
       `);
       categorisedIds = new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
     } catch (err) {
@@ -1478,6 +1498,32 @@ export function register(app: App, fastify: FastifyInstance) {
             doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
             doc.text(`${vesselEngineHours.toFixed(1)}h`, 0, eY, { width: PW - MR, align: 'right' });
             doc.y = eY + 16;
+          }
+        }
+
+        // Workboat sea areas (commercial users, guidance only)
+        if (isCommercialWork(vessel, (userProfile as any).vessel_sector)) {
+          const b = areaDayBreakdown(vesselEntries as any);
+          const areaRows: [string, number][] = (
+            [['Cat A', b.A], ['Cat B', b.B], ['Cat C', b.C], ['Cat D', b.D], ['Sea', b.sea], ['Not classified', b.not_classified], ['Tidal', b.tidal], ['Non-tidal', b.non_tidal]] as [string, number][]
+          ).filter(([, n]) => n > 0);
+          if (areaRows.length > 0) {
+            ensureSpace(30 + areaRows.length * 16);
+            const aY = Math.round(doc.y);
+            doc.font('NunitoSans-SemiBold').fontSize(7.5).fillColor(STEEL_BLUE);
+            doc.text('SEA AREAS (DAYS)', ML, aY, { characterSpacing: 1 });
+            doc.y = aY + 14;
+            for (const [label, n] of areaRows) {
+              const rY = Math.round(doc.y);
+              doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+              doc.text(label, ML + 10, rY, { width: 350 });
+              doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+              doc.text(`${n}d`, 0, rY, { width: PW - MR, align: 'right' });
+              doc.y = rY + 16;
+            }
+            doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+            doc.text(AREA_GUIDANCE_NOTE, ML + 10, doc.y, { width: CW - 10 });
+            doc.y += 4;
           }
         }
 

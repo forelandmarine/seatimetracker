@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { RoutePicker } from '@/components/RoutePicker';
@@ -105,6 +106,11 @@ export interface WorkboatServiceSummary {
   workboat_15m: number;
   recent_sea_service: number;
   workboats_without_length: number;
+  /** Days logged in a dual deck and engine capacity, counted at 50% (MGN 496 4.5). */
+  dual_capacity_days?: number;
+  /** Officer service on 15 m+ in the last 5 years toward revalidation (MGN 496 12.1). */
+  revalidation_officer_15m?: number;
+  revalidation_required?: number;
 }
 
 /** MCA engineering figures by propulsion power (MSN 1904, 1857, 1863), from the summary endpoint. */
@@ -338,6 +344,7 @@ export function CertificationProgress({
   isDark,
   onChangeTarget,
 }: CertificationProgressProps) {
+  const { t } = useTranslation();
   const dept: 'deck' | 'engineering' =
     department?.toLowerCase() === 'engineering' ? 'engineering' : 'deck';
   const resolvedAuthority: MaritimeAuthority = authority ?? 'mca';
@@ -825,6 +832,31 @@ export function CertificationProgress({
             {workboatService.workboats_without_length > 0
               ? ` ${workboatService.workboats_without_length} ${workboatService.workboats_without_length === 1 ? 'workboat has' : 'workboats have'} no length recorded, so ${workboatService.workboats_without_length === 1 ? 'it is' : 'they are'} left out of the 15m figures. Add the length in the vessel's details.`
               : ''}
+          </Text>
+          {(workboatService.dual_capacity_days ?? 0) > 0 && (
+            <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17, marginTop: 6 }}>
+              {t('seaAreas.dualDays', { count: workboatService.dual_capacity_days })}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* MGN 496 12.1 revalidation: guidance from the full record, not the dated route figures */}
+      {requirement?.workboatRoute && allWorkboatService?.revalidation_required != null && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+            {t('seaAreas.revalTitle')}
+          </Text>
+          <Text style={{ fontSize: 13, color: textColor, lineHeight: 18 }}>
+            {(allWorkboatService.revalidation_officer_15m ?? 0) >= allWorkboatService.revalidation_required
+              ? t('seaAreas.revalMet')
+              : t('seaAreas.revalBody', {
+                  days: allWorkboatService.revalidation_officer_15m ?? 0,
+                  required: allWorkboatService.revalidation_required,
+                })}
+          </Text>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17, marginTop: 4 }}>
+            {t('seaAreas.revalAssumed')}
           </Text>
         </View>
       )}

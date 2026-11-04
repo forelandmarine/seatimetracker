@@ -31,6 +31,7 @@ import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { TugToggle } from '@/components/TugToggle';
+import { SeaAreaBreakdownCard } from '@/components/SeaAreaBreakdownCard';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -654,6 +655,9 @@ export default function VesselDetailScreen() {
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
           }}
         />
+
+        {/* Workboat sea areas: days by MSN 1837 category (commercial work, guidance only) */}
+        <SeaAreaBreakdownCard vesselId={vessel.id} refreshKey={seaTimeEntries} />
 
         {/* AIS Data Card */}
         <View style={styles.card}>

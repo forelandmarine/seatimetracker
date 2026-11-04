@@ -58,6 +58,9 @@ export function loadLayers(dataDir: string = resolveDataDir()): ClassifierLayers
     tidal: readFc(dataDir, 'tidal-waters.geojson'),
     land: readFc(dataDir, 'uk-land.geojson'),
     dExtensions: readFc(dataDir, 'cat-d-extensions.geojson'),
+    overrides: fs.existsSync(path.join(dataDir, 'area-overrides.geojson'))
+      ? readFc(dataDir, 'area-overrides.geojson')
+      : undefined,
   };
 }
 
