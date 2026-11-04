@@ -339,6 +339,7 @@ export function register(app: App, fastify: FastifyInstance) {
             detection_window_hours: { type: ['number', 'null'] },
             watchkeeping_hours: { type: ['number', 'null'] },
             additional_watchkeeping_hours: { type: ['number', 'null'] },
+            ...ENTRY_DETAIL_PROPS,
             is_stationary: { type: ['boolean', 'null'] },
             distance_nm: { type: ['number', 'null'] },
             user_id: { type: ['string', 'null'] },
