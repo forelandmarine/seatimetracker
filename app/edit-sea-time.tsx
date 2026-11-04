@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
-import { confirmFutureDates } from '@/utils/futureDateCheck';
+import { confirmFutureDates, yardDateForCheck } from '@/utils/futureDateCheck';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -570,7 +570,11 @@ export default function EditSeaTimeScreen() {
     }
 
     // Future dates are allowed, but ask first.
-    if (!futureDatesConfirmed && confirmFutureDates(entry.start_time, entry.end_time, () => handleSave(true))) {
+    if (!futureDatesConfirmed && confirmFutureDates(
+        isYard ? yardDateForCheck(entry.start_time) : entry.start_time,
+        isYard ? yardDateForCheck(entry.end_time) : entry.end_time,
+        () => handleSave(true),
+      )) {
       return;
     }
 

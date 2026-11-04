@@ -167,6 +167,16 @@ function reportOutcome(verb: 'confirmed' | 'rejected', outcome: Outcome) {
   );
 }
 
+/** Ids still pending or checking, or null if that can't be fetched either. */
+async function stillAwaitingReview(): Promise<Set<string> | null> {
+  try {
+    const entries = await seaTimeApi.getPendingEntries(true);
+    return new Set(entries.map((e: { id: string }) => e.id));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * One request for the whole selection; backends older than 2.4.0 have no bulk
  * endpoint, so fall back to one request per entry there.
@@ -189,7 +199,13 @@ async function runBulk(ids: string[], action: 'confirm' | 'reject', serviceType?
       alreadyReviewed += res.failed.filter((f) => ALREADY.test(f.error)).length;
       total.failed.push(...res.failed.filter((f) => !ALREADY.test(f.error)).map((f) => ({ id: f.id, message: f.error })));
     } catch (error: any) {
-      total.failed.push(...batch.map((id) => ({ id, message: backendMessage(error) })));
+      // No HTTP status means a timeout or dropped connection: the server may
+      // still have applied the batch, so ask which entries are still waiting.
+      const stillWaiting = error?.status ? null : await stillAwaitingReview();
+      for (const id of batch) {
+        if (stillWaiting && !stillWaiting.has(id)) total.done += 1;
+        else total.failed.push({ id, message: backendMessage(error) });
+      }
     }
   }
   return { ...total, alreadyReviewed };

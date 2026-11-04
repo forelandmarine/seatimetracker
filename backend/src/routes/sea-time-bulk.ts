@@ -5,9 +5,12 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { CHECKING_CONFIRM_ERROR, CHECKING_STATUS } from "../utils/passageRefinement.js";
+import { UUID_RE } from "../utils/shifts.js";
 import { calculateDurationHours, entrySeaDays, isValidServiceType, samsaEntryDates, VALID_SERVICE_TYPES } from "../utils/seaTime.js";
 
 const MAX_IDS = 500;
+// Only entries still awaiting review can be rejected from the Review tab.
+const REJECTABLE_STATUSES = ["pending", CHECKING_STATUS];
 const errorSchema = { type: "object", properties: { error: { type: "string" } } };
 
 export type BulkFailure = { id: string; error: string };
@@ -26,7 +29,10 @@ export function planBulkUpdate(
   now: Date = new Date()
 ): { update: Record<string, unknown> } | { error: string } {
   if (!entry || entry.user_id !== userId) return { error: "Sea time entry not found" };
-  if (action === "reject") return { update: { status: "rejected" } };
+  if (action === "reject") {
+    if (!REJECTABLE_STATUSES.includes(entry.status)) return { error: `Entry is already ${entry.status}` };
+    return { update: { status: "rejected" } };
+  }
   if (entry.status === CHECKING_STATUS) return { error: CHECKING_CONFIRM_ERROR };
   if (entry.status !== "pending") return { error: `Entry is already ${entry.status}` };
   const end_time = entry.end_time || now;
@@ -71,15 +77,23 @@ export function register(app: App, fastify: FastifyInstance) {
     if (!userId) return reply.code(401).send({ error: "Authentication required" });
 
     const { action, service_type } = request.body;
-    const ids = Array.from(new Set(request.body.ids));
+    // A malformed id would make Postgres reject the whole query, so report it on its own.
+    const failed: BulkFailure[] = [];
+    const ids: string[] = [];
+    for (const id of new Set(request.body.ids)) {
+      if (UUID_RE.test(id)) ids.push(id);
+      else failed.push({ id, error: "Sea time entry not found" });
+    }
     if (service_type !== undefined && !isValidServiceType(service_type)) {
       return reply.code(400).send({ error: `Invalid service_type. Must be one of: ${VALID_SERVICE_TYPES.join(", ")}` });
     }
 
-    const entries = await app.db
-      .select()
-      .from(schema.sea_time_entries)
-      .where(and(inArray(schema.sea_time_entries.id, ids), eq(schema.sea_time_entries.user_id, userId)));
+    const entries = ids.length
+      ? await app.db
+          .select()
+          .from(schema.sea_time_entries)
+          .where(and(inArray(schema.sea_time_entries.id, ids), eq(schema.sea_time_entries.user_id, userId)))
+      : [];
     const byId = new Map(entries.map((e) => [e.id, e]));
 
     // One lookup each for the user's authority and the vessels involved.
@@ -118,7 +132,6 @@ export function register(app: App, fastify: FastifyInstance) {
       seaDaysFor = (e) => entrySeaDays({ ...e, vessel: vesselById.get(e.vessel_id) ?? null }, u?.authority, undefined, claimed);
     }
 
-    const failed: BulkFailure[] = [];
     const updates: { id: string; set: Record<string, unknown> }[] = [];
     // Time order, so the earliest entry on a shared date is the one that holds it.
     const ordered = [...ids].sort((a, b) => {
@@ -138,9 +151,16 @@ export function register(app: App, fastify: FastifyInstance) {
           const rows = await tx
             .update(schema.sea_time_entries)
             .set({ status: "rejected" })
-            .where(and(inArray(schema.sea_time_entries.id, updates.map((u) => u.id)), eq(schema.sea_time_entries.user_id, userId)))
+            .where(and(
+              inArray(schema.sea_time_entries.id, updates.map((u) => u.id)),
+              eq(schema.sea_time_entries.user_id, userId),
+              inArray(schema.sea_time_entries.status, REJECTABLE_STATUSES),
+            ))
             .returning({ id: schema.sea_time_entries.id });
           rows.forEach((r) => done.push(r.id));
+          // Confirmed from another device in the meantime: leave it confirmed.
+          const rejected = new Set(rows.map((r) => r.id));
+          for (const u of updates) if (!rejected.has(u.id)) failed.push({ id: u.id, error: "Entry is already confirmed" });
         } else {
           // Each confirmed entry keeps its own end time, duration and sea days. The
           // pending check is repeated here so a confirm from another device in the

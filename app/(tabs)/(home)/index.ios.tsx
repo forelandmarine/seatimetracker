@@ -323,17 +323,13 @@ export default function SeaTimeScreen() {
     try {
       log('[Home] User action: Creating new vessel:', { mmsi: newMMSI, name: vesselNameTrimmed });
 
-      // First vessel: save where they work and what they're aiming for first, so the
-      // vessel is created with the right sector and the profile tracks the right certificate.
-      if (isFirstVessel) {
+      // First vessel: save where they work first, so the vessel is created with the right sector.
+      if (isFirstVessel && newSector) {
         try {
-          await seaTimeApi.updateUserProfile({
-            ...(newSector ? { vessel_sector: newSector } : {}),
-            ...(newTarget && newTarget !== TARGET_NOT_SURE ? { target_certification: newTarget, target_route: null, route_start_date: null } : {}),
-          });
+          await seaTimeApi.updateUserProfile({ vessel_sector: newSector });
         } catch (profileError) {
-          // The vessel is still added; both can be changed later in Settings and on the profile.
-          logError('[Home] Failed to save sector and target:', profileError);
+          // The vessel is still added; the sector can be changed later in Settings.
+          logError('[Home] Failed to save sector:', profileError);
         }
       }
 
@@ -353,6 +349,15 @@ export default function SeaTimeScreen() {
       );
 
       log('[Home] Vessel created successfully:', createdVessel.id);
+      // The target is saved only once the vessel exists, so a rejected vessel
+      // (duplicate or bad MMSI) doesn't wipe a saved route.
+      if (isFirstVessel && newTarget && newTarget !== TARGET_NOT_SURE) {
+        try {
+          await seaTimeApi.updateUserProfile({ target_certification: newTarget, target_route: null, route_start_date: null });
+        } catch (profileError) {
+          logError('[Home] Failed to save target:', profileError);
+        }
+      }
       trackEvent('vessel_added', lookupMmsi && lookupMmsi === seaTimeApi.normalizeMmsi(newMMSI) ? 'lookup' : 'manual');
       // A tug certificate means this first vessel is almost certainly a tug: mark it so its
       // days count as tug service. The user can change both on the vessel page.
@@ -377,6 +382,7 @@ export default function SeaTimeScreen() {
       setShowMoreDetails(false);
       setLookupMmsi('');
       setNewTarget(null);
+      setNewSector(null);
       setNewGrossTonnes('');
       setNewEngineKilowatts('');
       setNewEngineType('');

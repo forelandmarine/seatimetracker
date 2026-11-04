@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
-import { confirmFutureDates } from '@/utils/futureDateCheck';
+import { confirmFutureDates, yardDateForCheck } from '@/utils/futureDateCheck';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -581,7 +581,7 @@ export default function AddSeaTimeScreen() {
     }
 
     // Future dates are allowed, but ask first.
-    if (!futureDatesConfirmed && confirmFutureDates(saveStart, saveEnd, () => handleSave(true))) {
+    if (!futureDatesConfirmed && confirmFutureDates(isYard ? yardDateForCheck(startDate) : saveStart, isYard ? yardDateForCheck(endDate) : saveEnd, () => handleSave(true))) {
       return;
     }
 
