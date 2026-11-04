@@ -57,6 +57,8 @@ interface SeaTimeEntry {
   end_latitude?: number | string | null;
   end_longitude?: number | string | null;
   service_type?: string | null;
+  /** Inside a sole watchkeeper period, so it also counts as watchkeeping. */
+  is_sole_watch?: boolean;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -1051,6 +1053,19 @@ export default function LogbookScreen() {
                         </View>
                       )}
 
+                      {entry.is_sole_watch && (
+                        <View style={styles.entryRow}>
+                          <IconSymbol
+                            ios_icon_name="binoculars"
+                            android_material_icon_name="visibility"
+                            size={16}
+                            color={colors.primary}
+                            style={styles.entryIcon}
+                          />
+                          <Text style={[styles.entryText, { color: colors.primary }]}>{t('soleWatch.badge')}</Text>
+                        </View>
+                      )}
+
                       {entry.notes && (
                         <View style={styles.entryRow}>
                           <IconSymbol
@@ -1226,6 +1241,19 @@ export default function LogbookScreen() {
                                 <Text style={[styles.entryText, { color: colors.primary, fontWeight: '600' }]}>
                                   {formatServiceTypeDisplay(entry.service_type)}
                                 </Text>
+                              </View>
+                            )}
+
+                            {entry.is_sole_watch && (
+                              <View style={styles.entryRow}>
+                                <IconSymbol
+                                  ios_icon_name="binoculars"
+                                  android_material_icon_name="visibility"
+                                  size={16}
+                                  color={colors.primary}
+                                  style={styles.entryIcon}
+                                />
+                                <Text style={[styles.entryText, { color: colors.primary }]}>{t('soleWatch.badge')}</Text>
                               </View>
                             )}
 
