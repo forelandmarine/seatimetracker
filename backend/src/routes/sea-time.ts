@@ -119,6 +119,21 @@ function transformVesselForResponse(vessel: any) {
 }
 
 // Helper function to transform sea time entry for API response
+// Detail fields the edit screen loads back. Without them in the response schema
+// Fastify drops them, and saving the entry writes them back as null.
+const ENTRY_DETAIL_PROPS = {
+  rank: { type: ['string', 'null'] },
+  date_joined: { type: ['string', 'null'] },
+  date_left: { type: ['string', 'null'] },
+  trade_area: { type: ['string', 'null'] },
+  bridge_watch_hours: { type: ['number', 'null'] },
+  engine_watch_hours: { type: ['number', 'null'] },
+  night_watch_hours: { type: ['number', 'null'] },
+  certificate_id: { type: ['string', 'null'] },
+  from_port: { type: ['string', 'null'] },
+  to_port: { type: ['string', 'null'] },
+} as const;
+
 function transformSeaTimeEntryForResponse(entry: any) {
   // Calculate duration_hours if both start_time and end_time are present
   let duration_hours = null;
@@ -183,6 +198,7 @@ function transformSeaTimeEntryForResponse(entry: any) {
     trade_area: entry.trade_area || null,
     bridge_watch_hours: bridge_watch_hours,
     engine_watch_hours: engine_watch_hours,
+    night_watch_hours: entry.night_watch_hours != null ? parseFloat(String(entry.night_watch_hours)) : null,
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
@@ -220,6 +236,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
@@ -297,6 +314,7 @@ export function register(app: App, fastify: FastifyInstance) {
             detection_window_hours: { type: ['number', 'null'] },
             watchkeeping_hours: { type: ['number', 'null'] },
             additional_watchkeeping_hours: { type: ['number', 'null'] },
+            ...ENTRY_DETAIL_PROPS,
             is_stationary: { type: ['boolean', 'null'] },
             distance_nm: { type: ['number', 'null'] },
             user_id: { type: ['string', 'null'] },
@@ -409,6 +427,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
@@ -507,6 +526,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               vessel: {
                 type: 'object',
@@ -591,6 +611,7 @@ export function register(app: App, fastify: FastifyInstance) {
                   detection_window_hours: { type: ['number', 'null'] },
                   watchkeeping_hours: { type: ['number', 'null'] },
                   additional_watchkeeping_hours: { type: ['number', 'null'] },
+                  ...ENTRY_DETAIL_PROPS,
                   is_stationary: { type: ['boolean', 'null'] },
                   vessel: {
                     type: 'object',
@@ -1846,6 +1867,7 @@ export function register(app: App, fastify: FastifyInstance) {
               start_longitude: { type: ['string', 'null'] },
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string' },
               vessel: {
                 type: 'object',
