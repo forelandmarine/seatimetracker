@@ -91,6 +91,50 @@ export class PolygonLayer {
     return this.findContaining(p) !== null;
   }
 
+  /** Properties of the first containing polygon whose properties pass `accept`. */
+  findContainingWhere(p: LonLat, accept: (props: Record<string, unknown>) => boolean): Record<string, unknown> | null {
+    for (const poly of this.polys) {
+      const b = poly.bbox;
+      if (p.lon < b[0] || p.lon > b[2] || p.lat < b[1] || p.lat > b[3]) continue;
+      if (!accept(poly.props)) continue;
+      if (pointInPolygonWithHoles(p, poly.rings)) return poly.props;
+    }
+    return null;
+  }
+
+  /**
+   * Properties of the polygon whose edge is nearest to p, if that edge is no more
+   * than maxNm away. Only polygons whose bounding box is within maxNm are scanned,
+   * so a small radius stays cheap even on a large layer.
+   */
+  findNearestWithin(
+    p: LonLat,
+    maxNm: number,
+    accept: (props: Record<string, unknown>) => boolean = () => true,
+  ): { props: Record<string, unknown>; distanceNm: number } | null {
+    const latRef = (p.lat * Math.PI) / 180;
+    const kx = R_NM * (Math.PI / 180) * Math.cos(latRef);
+    const ky = R_NM * (Math.PI / 180);
+    const px = p.lon * kx;
+    const py = p.lat * ky;
+    let best: { props: Record<string, unknown>; distanceNm: number } | null = null;
+    for (const poly of this.polys) {
+      const b = poly.bbox;
+      const cx = Math.max(b[0], Math.min(p.lon, b[2]));
+      const cy = Math.max(b[1], Math.min(p.lat, b[3]));
+      const lb = Math.hypot((p.lon - cx) * kx, (p.lat - cy) * ky);
+      if (lb > maxNm || (best && lb >= best.distanceNm)) continue;
+      if (!accept(poly.props)) continue;
+      for (const ring of poly.rings) {
+        for (let i = 0; i < ring.length - 1; i++) {
+          const d = segDistNmProj(px, py, ring[i], ring[i + 1], kx, ky);
+          if (d <= maxNm && (!best || d < best.distanceNm)) best = { props: poly.props, distanceNm: d };
+        }
+      }
+    }
+    return best;
+  }
+
   /**
    * Nautical-mile distance from p to the nearest polygon boundary in the layer
    * (0 if p is inside a polygon's outer ring is NOT assumed — this measures to the
