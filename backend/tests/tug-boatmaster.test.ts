@@ -72,6 +72,21 @@ describe("tug service (MGN 495)", () => {
     expect(h.get("2026-06-01") ?? 0).toBe(0);
   });
 
+  test("the gap between two separate entries is not time outside", () => {
+    // Entries 02:00-08:00 and 09:30-11:00. Outside 06:00-08:00 and 09:30-11:00;
+    // the 08:00-09:30 gap is off service.
+    const at = (t: string) => ({ vessel_id: "t", check_time: `2026-07-01T${t}:00Z`, area_category: null, is_tidal: true });
+    const r = tugService(
+      [
+        { ...entry("2026-07-01", tug, { rank: "rating" }), start_time: "2026-07-01T02:00:00Z", end_time: "2026-07-01T08:00:00Z" },
+        { ...entry("2026-07-01", tug, { rank: "rating" }), start_time: "2026-07-01T09:30:00Z", end_time: "2026-07-01T11:00:00Z" },
+      ],
+      [at("06:00"), at("07:00"), at("08:00"), at("09:30"), at("10:30"), at("11:00")],
+      NOW,
+    );
+    expect(r.outside_categorised).toBe(0); // 3.5 h inside the entries, not 5 h
+  });
+
   test("entries without a rank take the user's usual capacity on the tug", () => {
     const officerTug = { ...tug, tug_capacity: "officer" };
     const r = tugService([
