@@ -351,6 +351,86 @@ export const updateVesselSoleWatchkeeper = async (vesselId: string, isSoleWatchk
   return normalizeVessel(await res.json());
 };
 
+// ── Sole watchkeeper periods (2.5.0) ─────────────────────────────────
+// Dated periods when the user was the only watchkeeper in their department on
+// a vessel. Dates are YYYY-MM-DD and inclusive: null start = from the first
+// entry on the vessel, null end = ongoing.
+export interface SoleWatchPeriod {
+  id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  /** Days of actual sea service inside the period. */
+  days: number;
+}
+
+export interface SoleWatchVessel {
+  vessel_id: string;
+  vessel_name: string;
+  is_active: boolean;
+  is_sole_watchkeeper: boolean;
+  first_entry_date: string | null;
+  total_days: number;
+  periods: SoleWatchPeriod[];
+  /** True when the user's authority has a watchkeeping figure (MCA, MNZ, SAMSA). */
+  applies?: boolean;
+  today?: string;
+}
+
+export type SoleWatchChange =
+  | { action: 'on'; from: 'all' | 'date' | 'today'; date?: string | null }
+  | { action: 'off'; at: 'today' | 'date' | 'never'; date?: string | null };
+
+export interface SoleWatchPreviewResult {
+  current_days: number;
+  proposed_days: number;
+  added: number;
+  removed: number;
+  from_date: string | null;
+}
+
+export const getAllSoleWatchPeriods = async (): Promise<{ applies: boolean; authority: string; today: string; available: boolean; vessels: SoleWatchVessel[] }> => {
+  const res = await authFetch('/api/sole-watch-periods');
+  return res.json();
+};
+
+export const getVesselSoleWatch = async (vesselId: string): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods`);
+  return res.json();
+};
+
+export const addSoleWatchPeriod = async (vesselId: string, period: { start_date: string | null; end_date: string | null }): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods`, { method: 'POST', body: period });
+  return res.json();
+};
+
+export const updateSoleWatchPeriod = async (
+  vesselId: string,
+  periodId: string,
+  period: { start_date: string | null; end_date: string | null }
+): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods/${periodId}`, { method: 'PUT', body: period });
+  return res.json();
+};
+
+export const deleteSoleWatchPeriod = async (vesselId: string, periodId: string): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods/${periodId}`, { method: 'DELETE' });
+  return res.json();
+};
+
+/** Watchkeeping days each change would add or remove, in the same order. */
+export const previewSoleWatchChanges = async (
+  vesselId: string,
+  changes: SoleWatchChange[]
+): Promise<{ applies: boolean; today: string; first_entry_date: string | null; results: SoleWatchPreviewResult[] }> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch/preview`, { method: 'POST', body: { changes } });
+  return res.json();
+};
+
+export const applySoleWatchChange = async (vesselId: string, change: SoleWatchChange): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch`, { method: 'POST', body: { change } });
+  return res.json();
+};
+
 // Mark a vessel as a tug. Deck service on it then counts as tug service toward
 // the MGN 495 tug ratings and tug officer CoCs.
 // `capacity` is the user's usual capacity on the tug, used for entries logged
