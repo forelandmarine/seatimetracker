@@ -121,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-        lastAuthCreatedUser.current = !!data.isNewUser;
           log('[Auth] User authenticated:', data.user.email);
 
           // Merge profile data if the parallel fetch succeeded
@@ -302,6 +301,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await response.json();
+        // Apple sign-in reports whether this call created the account.
+        lastAuthCreatedUser.current = !!data.isNewUser;
 
         if (!data.session?.token) {
           throw new Error('No session token received. Please try again.');

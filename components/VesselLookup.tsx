@@ -39,7 +39,7 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
   const [state, setState] = useState<State>({ kind: 'idle' });
 
   const lengthOk = Number(length.replace(',', '.')) >= 2;
-  const canSearch = name.trim().length >= 2 && lengthOk && state.kind !== 'searching';
+  const canSearch = name.trim().length >= 3 && lengthOk && state.kind !== 'searching';
 
   const edit = (fn: (v: string) => void) => (v: string) => {
     fn(v);

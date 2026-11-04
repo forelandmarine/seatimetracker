@@ -115,7 +115,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     const now = new Date();
     const createdAt = new Date(user.createdAt);
-    const eligible = !asFriend && !user.referred_by_user_id && canRedeem(createdAt, now);
+    const eligible = referralsEnabled() && !asFriend && !user.referred_by_user_id && canRedeem(createdAt, now);
     const daysLeft = Math.max(0, REDEEM_WINDOW_DAYS - Math.floor((now.getTime() - createdAt.getTime()) / 86_400_000));
 
     return reply.code(200).send({

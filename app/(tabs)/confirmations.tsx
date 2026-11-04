@@ -19,7 +19,7 @@ import {
   AppState,
 } from 'react-native';
 import { scheduleSeaTimeNotification } from '@/utils/notifications';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -244,15 +244,18 @@ export default function ConfirmationsScreen() {
     }
   }, [loadData]);
 
-  // Initial load
-  useEffect(() => {
-    try {
-      loadData();
-    } catch (error) {
-      logError('[Confirmations] Error in initial load:', error);
-      setLoading(false);
-    }
-  }, [loadData]);
+  // Load whenever the tab comes into view, not only on first mount: tabs stay
+  // mounted, so a passage released from 'checking' would otherwise sit stale.
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        loadData();
+      } catch (error) {
+        logError('[Confirmations] Error in initial load:', error);
+        setLoading(false);
+      }
+    }, [loadData]),
+  );
 
   // Track mounted state to prevent setState after unmount
   useEffect(() => {

@@ -1230,9 +1230,24 @@ async function handleSeaTimeEntries(
           // Its times change, so a passage already released for review is checked again
           status: existingEntryForDay.status === 'off_board' ? 'off_board' : newLiveEntryStatus(entryStatus, commercial),
         })
-        .where(eq(schema.sea_time_entries.id, existingEntryForDay.id))
+        // Only while it is still open: the user may have confirmed or rejected it
+        // since it was read above (resolveDestinationPort can take a while).
+        .where(
+          and(
+            eq(schema.sea_time_entries.id, existingEntryForDay.id),
+            inArray(schema.sea_time_entries.status, extendableStatuses(entryStatus))
+          )
+        )
         .returning();
       if (updated_entry) await enrichEntryClassification(app, updated_entry);
+
+      if (!updated_entry) {
+        app.logger.info(
+          { taskId, vesselId, userId, entryId: existingEntryForDay.id },
+          'Entry was reviewed while being extended; leaving it as the user set it'
+        );
+        return;
+      }
 
       app.logger.info(
         {

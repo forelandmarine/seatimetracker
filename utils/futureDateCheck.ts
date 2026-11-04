@@ -3,6 +3,17 @@ import { Alert } from 'react-native';
 /** Allowance for clock drift before a time counts as "in the future". */
 const SLACK_MS = 15 * 60 * 1000;
 
+/**
+ * Yard time is logged by date only and saved up to 23:59 of its last day, so
+ * compare it by date: local midnight of the day shown, which is never in the
+ * future for today.
+ */
+export const yardDateForCheck = (d: Date | string | null | undefined): Date | null => {
+  if (!d) return null;
+  const date = new Date(d);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
 const formatDate = (d: Date): string =>
   d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 

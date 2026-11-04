@@ -352,9 +352,10 @@ export default function AuthScreen() {
       const created = await signInWithApple(credential.identityToken, appleUserData);
       trackEvent(created ? 'account_created' : 'signed_in', 'apple');
       markSignedInBefore();
-      // Only the sign-up form shows the opt-in box. Apple users who sign in from
-      // the sign-in form are asked later by the one-time prompt on Home.
-      if (isSignUp) recordSignUpConsent();
+      // Only the sign-up form shows the opt-in box, and only a new account takes
+      // its answer: an existing Apple user on a new phone lands on Create account
+      // too, and must keep the choice they already made.
+      if (isSignUp && created) recordSignUpConsent();
 
       log('[AuthScreen] Apple sign in successful, navigating to index');
       

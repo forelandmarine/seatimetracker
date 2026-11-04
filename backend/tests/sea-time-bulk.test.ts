@@ -25,6 +25,11 @@ describe('planBulkUpdate', () => {
     expect(planBulkUpdate({ ...base, status: 'checking' }, U, 'confirm', undefined, seaDays)).toEqual({ error: CHECKING_CONFIRM_ERROR });
     expect(planBulkUpdate({ ...base, status: 'checking' }, U, 'reject', undefined, seaDays)).toEqual({ update: { status: 'rejected' } });
   });
+  test('an entry already reviewed is not rejected', () => {
+    expect(planBulkUpdate({ ...base, status: 'confirmed' }, U, 'reject', undefined, seaDays)).toEqual({ error: 'Entry is already confirmed' });
+    expect(planBulkUpdate({ ...base, status: 'rejected' }, U, 'reject', undefined, seaDays)).toEqual({ error: 'Entry is already rejected' });
+  });
+
   test('reject only sets the status', () => {
     expect(planBulkUpdate(base, U, 'reject', undefined, seaDays)).toEqual({ update: { status: 'rejected' } });
   });

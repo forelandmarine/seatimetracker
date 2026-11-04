@@ -114,8 +114,15 @@ const isOfficer = (e: TugEntry) => DECK_OFFICER_RANKS.has(rankOf(e)) || isWatch(
  * same vessel that are both outside, and no more than MAX_FIX_GAP_HOURS apart,
  * count as continuous time outside. A gap that crosses midnight is split
  * across the two dates.
+ *
+ * With `windows` (each vessel's entry start/end times), a pair only counts when
+ * one entry covers both fixes, so the gap between two separate entries never
+ * counts as time outside.
  */
-export function outsideCategorisedHoursByDate(fixes: ClassifiedFix[]): Map<string, number> {
+export function outsideCategorisedHoursByDate(
+  fixes: ClassifiedFix[],
+  windows?: Map<string, [number, number][]>
+): Map<string, number> {
   const byVessel = new Map<string, ClassifiedFix[]>();
   for (const f of fixes) {
     const list = byVessel.get(f.vessel_id) ?? [];
@@ -132,6 +139,7 @@ export function outsideCategorisedHoursByDate(fixes: ClassifiedFix[]): Map<strin
       const start = toMs(a.check_time);
       const end = toMs(b.check_time);
       if (!(end > start) || end - start > MAX_FIX_GAP_HOURS * 3_600_000) continue;
+      if (windows && !(windows.get(a.vessel_id) ?? []).some(([ws, we]) => ws <= start && end <= we)) continue;
       for (const [d, h] of hoursByDate(new Date(start), new Date(end))) out.set(d, (out.get(d) ?? 0) + h);
     }
   }
@@ -150,7 +158,14 @@ export function tugService(entries: TugEntry[], fixes: ClassifiedFix[] = [], now
   const cadet = service.filter((e) => rankOf(e) === 'cadet');
 
   const tugIds = new Set(onTug.map((e) => e.vessel_id).filter(Boolean) as string[]);
-  const outsideHours = outsideCategorisedHoursByDate(fixes.filter((f) => tugIds.has(f.vessel_id)));
+  const windows = new Map<string, [number, number][]>();
+  for (const e of onTug) {
+    if (!e.vessel_id) continue;
+    const list = windows.get(e.vessel_id) ?? [];
+    list.push([toMs(e.start_time), e.end_time ? toMs(e.end_time) : now.getTime()]);
+    windows.set(e.vessel_id, list);
+  }
+  const outsideHours = outsideCategorisedHoursByDate(fixes.filter((f) => tugIds.has(f.vessel_id)), windows);
   const tugDates = distinctSeaDates(onTug as any);
   const watchDates = distinctSeaDates(onTug.filter(isWatch) as any);
   const outside = [...outsideHours]
