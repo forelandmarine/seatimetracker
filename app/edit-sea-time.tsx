@@ -19,12 +19,16 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import type { SeaArea } from '@/utils/seaTimeApi';
 import { confirmFutureDates } from '@/utils/futureDateCheck';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import { SeaAreaPicker, type SeaAreaValue } from '@/components/SeaAreaPicker';
+import { AreaGuidanceCard } from '@/components/AreaGuidanceCard';
+import { isCommercialVessel } from '@/components/SeaAreaChip';
 
 interface Vessel {
   id: string;
@@ -54,6 +58,10 @@ interface SeaTimeEntry {
   trade_area?: string | null;
   bridge_watch_hours?: number | null;
   night_watch_hours?: number | null;
+  vessel_id?: string;
+  area_category?: SeaArea | null;
+  is_tidal?: boolean | null;
+  dual_capacity?: boolean | null;
 }
 
 type ServiceType = 'seagoing' | 'watchkeeping' | 'standby' | 'yard';
@@ -390,6 +398,10 @@ export default function EditSeaTimeScreen() {
   const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
   const [watchkeepingHours, setWatchkeepingHours] = useState('');
   const [nightWatchHours, setNightWatchHours] = useState('');
+  // Workboat sea area and dual capacity (commercial work only)
+  const [seaArea, setSeaArea] = useState<SeaAreaValue>({ area_category: null, is_tidal: null, dual_capacity: false });
+  const [initialSeaArea, setInitialSeaArea] = useState<SeaAreaValue | null>(null);
+  const [commercial, setCommercial] = useState(false);
   const [showRankPicker, setShowRankPicker] = useState(false);
   const [showTradeAreaPicker, setShowTradeAreaPicker] = useState(false);
   // Track whether user has modified any fields
@@ -504,6 +516,13 @@ export default function EditSeaTimeScreen() {
       if (foundEntry.trade_area) setTradeArea(foundEntry.trade_area as TradeArea);
       if (foundEntry.bridge_watch_hours != null) setWatchkeepingHours(String(foundEntry.bridge_watch_hours));
       if (foundEntry.night_watch_hours != null) setNightWatchHours(String(foundEntry.night_watch_hours));
+      const area: SeaAreaValue = {
+        area_category: foundEntry.area_category ?? null,
+        is_tidal: foundEntry.is_tidal ?? null,
+        dual_capacity: foundEntry.dual_capacity === true,
+      };
+      setSeaArea(area);
+      setInitialSeaArea(area);
     } catch (error) {
       logError('[EditSeaTimeScreen] Error loading entry:', error);
       showFeedback('Error', 'Failed to load sea time entry', 'error', () => router.back());
@@ -533,8 +552,13 @@ export default function EditSeaTimeScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const userProfile = await seaTimeApi.getUserProfile();
+        const [userProfile, vessels] = await Promise.all([
+          seaTimeApi.getUserProfile(),
+          seaTimeApi.getVessels().catch(() => []),
+        ]);
         if (cancelled) return;
+        const entryVessel = Array.isArray(vessels) ? vessels.find((v: any) => v.id === entry?.vessel_id) : null;
+        setCommercial(isCommercialVessel(entryVessel, userProfile?.vessel_sector));
         const authority = userProfile?.maritime_authority ?? null;
         setPathway({
           authority: (['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(authority) ? authority : null) as MaritimeAuthority | null,
@@ -547,7 +571,7 @@ export default function EditSeaTimeScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [entry?.vessel_id]);
 
   const handleViewMCARequirements = () => {
     log('[EditSeaTimeScreen] User tapped requirements link, pathway:', pathway);
@@ -610,6 +634,12 @@ export default function EditSeaTimeScreen() {
           : null,
         night_watch_hours: nightWatchHours ? parseFloat(nightWatchHours) : null,
       };
+      // Only send the sea area when the user changed it, so an AIS value is not overwritten by accident
+      if (commercial && initialSeaArea) {
+        if (seaArea.area_category !== initialSeaArea.area_category) updatePayload.area_category = seaArea.area_category;
+        if (seaArea.is_tidal !== initialSeaArea.is_tidal) updatePayload.is_tidal = seaArea.is_tidal;
+        if (seaArea.dual_capacity !== initialSeaArea.dual_capacity) updatePayload.dual_capacity = seaArea.dual_capacity;
+      }
       if (showPositionEditor) {
         const sLat = parseCoord(startLat);
         const sLng = parseCoord(startLng);
@@ -953,6 +983,13 @@ export default function EditSeaTimeScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {commercial && entry && (
+            <>
+              <AreaGuidanceCard entryId={entry.id} />
+              <SeaAreaPicker value={seaArea} onChange={(next) => { setSeaArea(next); setIsDirty(true); }} />
+            </>
+          )}
 
           {serviceType === 'watchkeeping' && (
             <View style={styles.inputGroup}>
