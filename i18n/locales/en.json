@@ -274,5 +274,27 @@
     "standby_service": "Stand-by Service",
     "yard_service": "Yard Service",
     "service_in_port": "Service in Port"
+  },
+  "certChecker": {
+    "tickedNote": "Ticked on the checklist",
+    "tickedAddDetails": "Ticked, add details",
+    "addDetails": "Add details",
+    "tickWhenComplete": "Tick when complete",
+    "saveFailed": "Couldn't save",
+    "removeFailed": "Couldn't remove",
+    "tryAgain": "Try again.",
+    "untickTitle": "Untick {{name}}?",
+    "untickBody": "This deletes the certificate and the details you added.",
+    "untickSharedBody": "This certificate also counts for other courses. Deleting it unticks those too.",
+    "untick": "Untick",
+    "checklistFootnote": "Tick what you hold and add the details later. Ticks are saved to your certificates. Course list taken from {{sources}}. Always check the current notice before booking your oral.",
+    "quickAddTitle": "Quick add",
+    "quickAddBody": "Tick the courses you hold for {{target}}. Add the numbers and dates later.",
+    "needsDetails": "Add the number or dates",
+    "bannerTitle_one": "{{count}} ticked certificate needs details",
+    "bannerTitle_other": "{{count}} ticked certificates need details",
+    "bannerBody": "Add the numbers and dates so SeaTime can track expiry.",
+    "addNow": "Add now",
+    "later": "Later"
   }
 }

@@ -272,5 +272,27 @@
     "standby_service": "Servicio de reserva",
     "yard_service": "Servicio de astillero",
     "service_in_port": "Servicio en puerto"
+  },
+  "certChecker": {
+    "tickedNote": "Marcado en la lista",
+    "tickedAddDetails": "Marcado, añade los datos",
+    "addDetails": "Añadir datos",
+    "tickWhenComplete": "Márcalo cuando lo termines",
+    "saveFailed": "No se pudo guardar",
+    "removeFailed": "No se pudo eliminar",
+    "tryAgain": "Inténtalo de nuevo.",
+    "untickTitle": "¿Desmarcar {{name}}?",
+    "untickBody": "Se eliminará el certificado y los datos que añadiste.",
+    "untickSharedBody": "Este certificado también cuenta para otros cursos. Al eliminarlo, también se desmarcan.",
+    "untick": "Desmarcar",
+    "checklistFootnote": "Marca lo que tienes y añade los datos más tarde. Las marcas se guardan en tus certificados. Lista de cursos tomada de {{sources}}. Consulta siempre el aviso vigente antes de reservar tu examen oral.",
+    "quickAddTitle": "Añadir rápido",
+    "quickAddBody": "Marca los cursos que tienes para {{target}}. Añade los números y las fechas más tarde.",
+    "needsDetails": "Añade el número o las fechas",
+    "bannerTitle_one": "{{count}} certificado marcado necesita datos",
+    "bannerTitle_other": "{{count}} certificados marcados necesitan datos",
+    "bannerBody": "Añade los números y las fechas para que SeaTime controle la caducidad.",
+    "addNow": "Añadir ahora",
+    "later": "Más tarde"
   }
 }

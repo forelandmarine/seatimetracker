@@ -272,5 +272,27 @@
     "standby_service": "Service de réserve",
     "yard_service": "Service au chantier",
     "service_in_port": "Service au port"
+  },
+  "certChecker": {
+    "tickedNote": "Coché dans la liste",
+    "tickedAddDetails": "Coché, ajoutez les détails",
+    "addDetails": "Ajouter les détails",
+    "tickWhenComplete": "Cochez une fois terminé",
+    "saveFailed": "Enregistrement impossible",
+    "removeFailed": "Suppression impossible",
+    "tryAgain": "Réessayez.",
+    "untickTitle": "Décocher {{name}} ?",
+    "untickBody": "Le certificat et les détails ajoutés seront supprimés.",
+    "untickSharedBody": "Ce certificat compte aussi pour d'autres formations. Le supprimer les décoche aussi.",
+    "untick": "Décocher",
+    "checklistFootnote": "Cochez ce que vous avez et ajoutez les détails plus tard. Les coches sont enregistrées dans vos certificats. Liste des formations tirée de {{sources}}. Vérifiez toujours la notice en vigueur avant de réserver votre oral.",
+    "quickAddTitle": "Ajout rapide",
+    "quickAddBody": "Cochez les formations que vous avez pour {{target}}. Ajoutez les numéros et les dates plus tard.",
+    "needsDetails": "Ajoutez le numéro ou les dates",
+    "bannerTitle_one": "{{count}} certificat coché sans détails",
+    "bannerTitle_other": "{{count}} certificats cochés sans détails",
+    "bannerBody": "Ajoutez les numéros et les dates pour que SeaTime suive les échéances.",
+    "addNow": "Ajouter",
+    "later": "Plus tard"
   }
 }
