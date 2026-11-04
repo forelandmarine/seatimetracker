@@ -7,6 +7,8 @@ import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/a
 import { fetchVesselAISDataWithFallback, fetchVesselSpecs, fetchVesselAISDataByImo, applyMmsiChange } from "./ais.js";
 import { VesselIdentityError, answerPendingName, renameFromDetails } from "../services/vesselIdentity.js";
 import { lookupPort } from "../utils/portDatabase.js";
+import { loadSoleWatchPeriods, replaceVesselPeriods, todayUtc } from "../services/soleWatch.js";
+import { legacyFlagChange } from "../utils/soleWatch.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
 // Used on activation to populate position data right away rather than waiting
@@ -1292,11 +1294,20 @@ export function register(app: App, fastify: FastifyInstance) {
     if (vessel.user_id !== userId) {
       return reply.code(403).send({ error: 'Not authorized to update this vessel' });
     }
-    const [updated] = await app.db
-      .update(schema.vessels)
-      .set({ is_sole_watchkeeper: request.body.is_sole_watchkeeper, updated_at: new Date() })
-      .where(eq(schema.vessels.id, vessel.id))
-      .returning();
+    // Builds before 2.5.0 only have this switch. Turn it into dated periods
+    // (see legacyFlagChange): on with no history = every day on the vessel, as
+    // before; off = the periods end today. The flag is then synced from them.
+    const periods = (await loadSoleWatchPeriods(app, [vessel.id]))?.get(vessel.id);
+    if (periods) {
+      await replaceVesselPeriods(app, vessel, legacyFlagChange(periods, request.body.is_sole_watchkeeper, todayUtc()));
+    } else {
+      // Periods table not there yet: the old flag alone, as in 2.4.0
+      await app.db
+        .update(schema.vessels)
+        .set({ is_sole_watchkeeper: request.body.is_sole_watchkeeper, updated_at: new Date() })
+        .where(eq(schema.vessels.id, vessel.id));
+    }
+    const [updated] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, vessel.id));
     app.logger.info({ userId, vesselId: vessel.id, is_sole_watchkeeper: request.body.is_sole_watchkeeper }, 'Vessel sole-watchkeeper flag updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });

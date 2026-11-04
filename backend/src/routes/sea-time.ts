@@ -18,6 +18,7 @@ import {
 import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
 import { formatHoursMinutes } from "../utils/duration.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
+import { entriesWithSoleWatch } from "../services/soleWatch.js";
 
 // Validate certificate belongs to the authenticated user
 async function validateCertificateOwnership(app: App, certificateId: string | null | undefined, userId: string): Promise<boolean> {
@@ -186,6 +187,7 @@ function transformSeaTimeEntryForResponse(entry: any) {
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
+    is_sole_watch: entry.is_sole_watch === true,
     created_at: entry.created_at.toISOString ? entry.created_at.toISOString() : entry.created_at,
     vessel: entry.vessel ? transformVesselForResponse(entry.vessel) : null,
   };
@@ -221,6 +223,7 @@ export function register(app: App, fastify: FastifyInstance) {
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
               is_stationary: { type: ['boolean', 'null'] },
+              is_sole_watch: { type: 'boolean' }, // inside a sole watchkeeper period, so it also counts as watchkeeping
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
                 type: ['object', 'null'],
@@ -263,7 +266,7 @@ export function register(app: App, fastify: FastifyInstance) {
     });
 
     app.logger.info({ userId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send(entries.map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/:id - Get a single sea time entry by ID
@@ -410,6 +413,7 @@ export function register(app: App, fastify: FastifyInstance) {
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
               is_stationary: { type: ['boolean', 'null'] },
+              is_sole_watch: { type: 'boolean' }, // inside a sole watchkeeper period, so it also counts as watchkeeping
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
                 type: 'object',
@@ -471,7 +475,7 @@ export function register(app: App, fastify: FastifyInstance) {
     });
 
     app.logger.info({ userId, vesselId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send(entries.map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/pending - Return pending entries awaiting confirmation

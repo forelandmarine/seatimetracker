@@ -17,6 +17,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
+import { entriesWithSoleWatch } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -142,6 +143,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -242,6 +245,7 @@ export function register(app: App, fastify: FastifyInstance) {
       'Night Watch Hours',
       'Status',
       'Notes',
+      'Sole Watchkeeper',
     ];
     const rows = entries.map((entry) => [
       new Date(entry.start_time).toISOString().split('T')[0],
@@ -267,6 +271,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.night_watch_hours ?? '',
       entry.status,
       formatEntryNotes(entry.notes),
+      (entry as any).is_sole_watch ? 'Yes' : '',
     ]);
 
     const summarySection = [
@@ -358,7 +363,7 @@ export function register(app: App, fastify: FastifyInstance) {
         endPosition,
         distance,
         entry.sea_days ?? 0,
-        formatServiceType(entry.service_type),
+        formatServiceType(entry.service_type) + ((entry as any).is_sole_watch ? ' (sole watchkeeper)' : ''),
         entry.rank || '',
         entry.date_joined ? formatDate(entry.date_joined) : '',
         entry.date_left ? formatDate(entry.date_left) : '',
@@ -664,6 +669,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -905,6 +912,8 @@ export function register(app: App, fastify: FastifyInstance) {
       where: eq(schema.sea_time_entries.user_id, userId),
     });
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
@@ -962,7 +971,7 @@ export function register(app: App, fastify: FastifyInstance) {
           type: e.vessel?.type || '',
           length: e.vessel?.length_metres ?? '',
           gt: e.vessel?.gross_tonnes ?? '',
-          serviceType: e.service_type || '',
+          serviceType: (e.service_type || '') + (e.is_sole_watch ? ' (sole watchkeeper)' : ''),
           days: e.sea_days ?? 0,
           hours: e.duration_hours ?? '',
           notes: formatEntryNotes(e.notes),
@@ -1117,6 +1126,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -1353,6 +1364,22 @@ export function register(app: App, fastify: FastifyInstance) {
           particulars.push(['Service Dates', `${formatDate(vesselEntries[0].start_time)} to ${formatDate(last.end_time ?? last.start_time)}`]);
         }
 
+        // Sole watchkeeper: the dates the user says they were the only watchkeeper in
+        // their department, so a reviewer can see why those sea days count as watchkeeping.
+        const soleEntries = vesselEntries.filter((entry: any) => entry.is_sole_watch);
+        const solePeriods: Array<{ start_date: string | null; end_date: string | null }> =
+          (vesselEntries[0]?.vessel as any)?.sole_watch_periods ?? [];
+        if (soleEntries.length) {
+          const when = solePeriods.length
+            ? solePeriods
+                .map((p) => `${p.start_date ? formatDate(p.start_date) : 'First entry'} to ${p.end_date ? formatDate(p.end_date) : 'present'}`)
+                .join(', ')
+            : 'All service on this vessel';
+          particulars.push(['Sole Watchkeeper', when]);
+        }
+        let soleDays = 0;
+        soleEntries.forEach((entry) => { if (entry.sea_days) soleDays += entry.sea_days; });
+
         // Calculate service types for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};
         vesselEntries.forEach((entry) => {
@@ -1362,7 +1389,7 @@ export function register(app: App, fastify: FastifyInstance) {
         });
 
         const particularsRows = Math.ceil(particulars.length / 2);
-        const serviceRows = Object.keys(vesselServiceTypes).length;
+        const serviceRows = Object.keys(vesselServiceTypes).length + (soleEntries.length ? 1 : 0);
         const spaceNeeded = 35 + (particularsRows * 18) + 25 + (serviceRows * 16) + 35;
         ensureSpace(spaceNeeded);
 
@@ -1414,6 +1441,14 @@ export function register(app: App, fastify: FastifyInstance) {
           doc.text(`${days}d`, 0, rowY, { width: PW - MR, align: 'right' });
           doc.y = rowY + 16;
         });
+        if (soleEntries.length) {
+          const rowY = Math.round(doc.y);
+          doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+          doc.text('of which as sole watchkeeper (also watchkeeping)', ML + 10, rowY, { width: 350 });
+          doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+          doc.text(`${soleDays}d`, 0, rowY, { width: PW - MR, align: 'right' });
+          doc.y = rowY + 16;
+        }
 
         // Watchkeeping hours for this vessel
         let vesselBridgeHours = 0;

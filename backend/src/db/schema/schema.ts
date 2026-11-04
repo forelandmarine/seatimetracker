@@ -131,6 +131,28 @@ export const vesselsRelations = relations(vessels, ({ many }) => ({
   sea_time_entries: many(sea_time_entries),
   ais_checks: many(ais_checks),
   identity_changes: many(vessel_identity_changes),
+  sole_watch_periods: many(vessel_sole_watch_periods),
+}));
+
+// Dated periods when the user was the only watchkeeper in their department on a
+// vessel. An actual sea service entry whose date falls inside one also counts as
+// a watchkeeping day (MCA, MNZ, SAMSA). Replaces vessels.is_sole_watchkeeper,
+// which is kept in step for old app builds.
+export const vessel_sole_watch_periods = pgTable('vessel_sole_watch_periods', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  user_id: text('user_id'), // owner of the vessel, for sandboxing (nullable like vessels.user_id)
+  start_date: date('start_date'), // first day, inclusive. null = from the first entry on the vessel
+  end_date: date('end_date'), // last day, inclusive. null = ongoing
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('vessel_sole_watch_periods_vessel_id_idx').on(table.vessel_id),
+  index('vessel_sole_watch_periods_user_id_idx').on(table.user_id),
+]);
+
+export const vessel_sole_watch_periodsRelations = relations(vessel_sole_watch_periods, ({ one }) => ({
+  vessel: one(vessels, { fields: [vessel_sole_watch_periods.vessel_id], references: [vessels.id] }),
 }));
 
 // Dated history of a vessel's MMSI, name, flag and call sign. Reports use it to print

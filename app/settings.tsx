@@ -2,7 +2,7 @@
  * Settings — dedicated grouped settings screen.
  *
  * Replaces the kitchen-sink "Account" menu that used to live on the Profile
- * tab. Items are grouped by purpose (Profile, Certificates, Tracking,
+ * tab. Items are grouped by purpose (Profile, Certificates, Sea Service, Tracking,
  * Preferences, Grow the Crew, Support) so features like Certificates and
  * Manual GPS tracking aren't buried next to "About & Help".
  */
@@ -124,6 +124,11 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SettingsRow icon="doc.text.fill" androidIcon="article" label={t('settings.manageCertificates')} onPress={() => router.push('/certificates')} isDark={isDark} />
           <SettingsRow icon="doc.richtext" androidIcon="description" label={t('navigation.reports')} onPress={() => router.push('/reports' as any)} isLast isDark={isDark} />
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('settings.seaService')}</Text>
+        <View style={styles.card}>
+          <SettingsRow icon="binoculars" androidIcon="visibility" label={t('settings.soleWatchkeeping')} onPress={() => router.push('/sole-watchkeeping' as any)} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>

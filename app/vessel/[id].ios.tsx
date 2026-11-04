@@ -636,6 +636,7 @@ export default function VesselDetailScreen() {
         {/* Sole watchkeeper: sea days also count as watchkeeping (MCA, MNZ, SAMSA) */}
         <SoleWatchToggle
           vesselId={vessel.id}
+          vesselName={vessel.vessel_name}
           isSoleWatchkeeper={vessel.is_sole_watchkeeper}
           onChange={(isSoleWatchkeeper) => {
             setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
