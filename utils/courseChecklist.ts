@@ -7,6 +7,7 @@ import {
   ADD_AS_TYPE,
   EXTRA_COURSE_LABELS,
   type ChecklistItem,
+  type ChecklistItemType,
   type Validity,
 } from '@/constants/courseChecklists';
 
@@ -24,6 +25,8 @@ export interface ItemState {
   certificate: Certificate | null;
   /** ISO date the course stops counting, if known. */
   validUntil: string | null;
+  /** Ticked, but the number or a needed date is still missing. */
+  missingDetails: boolean;
 }
 
 const SOON_DAYS = 90;
@@ -65,26 +68,61 @@ function needsDate(validity: Validity): boolean {
   return validity !== 'none' && !validity.startsWith('other');
 }
 
+/**
+ * A held course still needs details when it has no certificate number, or no
+ * issue or expiry date for a course that expires. Manual items (record books,
+ * sign-offs) have no number, so they never need details.
+ */
+export function certificateMissingDetails(cert: Certificate, validity: Validity, itemType?: ChecklistItemType): boolean {
+  if (itemType === 'manual') return false;
+  if (!cert.certificate_number?.trim()) return true;
+  if (itemType === 'prerequisite_coc') return false;
+  return needsDate(validity) && !cert.issued_date && !cert.expiry_date;
+}
+
+/** True when the record holds nothing but its type, so unticking can delete it quietly. */
+export function isEmptyCertificate(cert: Certificate): boolean {
+  return !cert.certificate_number?.trim() && !cert.issuing_body?.trim() && !cert.issued_date && !cert.expiry_date;
+}
+
+/** The course a certificate type stands for, if any. */
+export function courseCodeForType(type: string): string | null {
+  if (type.startsWith('course_')) return type.slice('course_'.length);
+  const added = Object.keys(ADD_AS_TYPE).find((code) => ADD_AS_TYPE[code] === type);
+  if (added) return added;
+  return Object.keys(LEGACY_CERT_TYPES).find((code) => LEGACY_CERT_TYPES[code].includes(type)) ?? null;
+}
+
+/** Course certificates that still need a number or a date (the Home reminder). */
+export function certificatesNeedingDetails(certificates: Certificate[]): Certificate[] {
+  return certificates.filter((c) => {
+    const code = courseCodeForType(c.certificate_type);
+    if (!code) return false;
+    return certificateMissingDetails(c, COURSE_CATALOG[code]?.validity ?? 'none');
+  });
+}
+
 export function evaluateItem(item: ChecklistItem, certificates: Certificate[], now = new Date()): ItemState {
   const codes = [item.code, ...(item.alternatives ?? [])];
   const types = new Set(codes.flatMap(typesSatisfying));
   const matches = certificates.filter((c) => types.has(c.certificate_type));
-  if (matches.length === 0) return { item, status: 'todo', certificate: null, validUntil: null };
+  if (matches.length === 0) return { item, status: 'todo', certificate: null, validUntil: null, missingDetails: false };
 
   // Prefer the record that is valid for longest; undated records come last.
   const ranked = matches
     .map((c) => ({ c, until: validUntilFor(c, item.validity) }))
     .sort((a, b) => (b.until ?? '').localeCompare(a.until ?? ''));
   const best = ranked[0];
+  const missingDetails = certificateMissingDetails(best.c, item.validity, item.type);
 
   if (!needsDate(item.validity) || item.type === 'manual' || item.type === 'prerequisite_coc') {
-    return { item, status: 'done', certificate: best.c, validUntil: best.until };
+    return { item, status: 'done', certificate: best.c, validUntil: best.until, missingDetails };
   }
-  if (!best.until) return { item, status: 'done_no_date', certificate: best.c, validUntil: null };
+  if (!best.until) return { item, status: 'done_no_date', certificate: best.c, validUntil: null, missingDetails };
 
   const days = daysUntil(best.until.slice(0, 10), now);
   const status: ItemStatus = days < 0 ? 'expired' : days <= SOON_DAYS ? 'soon' : 'done';
-  return { item, status, certificate: best.c, validUntil: best.until };
+  return { item, status, certificate: best.c, validUntil: best.until, missingDetails };
 }
 
 export interface ChecklistResult {

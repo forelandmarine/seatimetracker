@@ -7,6 +7,7 @@ import { SeaTimeProgressCard } from '@/components/SeaTimeProgressCard';
 import { HomePrompts } from '@/components/HomePrompts';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { VesselRenameBanner } from '@/components/VesselRenameBanner';
+import { CertificateDetailsBanner } from '@/components/CertificateDetailsBanner';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -587,6 +588,8 @@ export default function SeaTimeScreen() {
         {/* Vessels saved with a short MMSI are never tracked: prompt to correct */}
         <MmsiFixBanner vessels={vessels} onFixed={loadData} />
         <VesselRenameBanner vessels={vessels} onAnswered={loadData} />
+        {/* Ticked certificates still missing a number or dates (in-app only, once a day) */}
+        <CertificateDetailsBanner />
         {/* On/off board switch (rotational crew and leave) */}
         <OnBoardCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
 
