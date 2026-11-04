@@ -98,14 +98,44 @@ interface PeriodEntry {
 }
 
 /**
- * True when an entry is actual sea service on a vessel where the user has said
- * they are the only watchkeeper in their department (a sole engineer, say).
- * Every such day at sea is also a day of watchkeeping, so it counts toward the
- * watchkeeping figures as well as sea service. Watchkeeping entries and
- * logged watch hours are unaffected.
+ * A dated period when the user was the only watchkeeper in their department on
+ * a vessel. Dates are YYYY-MM-DD and inclusive. A null start means from the
+ * first entry on the vessel; a null end means ongoing.
  */
-export function isSoleWatchEntry(e: PeriodEntry & { vessel?: { is_sole_watchkeeper?: boolean | null } | null }): boolean {
-  return e.vessel?.is_sole_watchkeeper === true && (e.service_type || 'actual_sea_service') === 'actual_sea_service';
+export interface SoleWatchPeriod {
+  id?: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+/** The vessel fields isSoleWatchEntry reads. */
+export interface SoleWatchVessel {
+  is_sole_watchkeeper?: boolean | null;
+  /** Set by the backend when periods are loaded. When absent the old flag is used. */
+  sole_watch_periods?: SoleWatchPeriod[] | null;
+}
+
+/** True when a UTC calendar date (YYYY-MM-DD) falls inside any of the periods. */
+export function dayInSoleWatchPeriods(day: string, periods: SoleWatchPeriod[]): boolean {
+  return periods.some((p) => (p.start_date == null || day >= p.start_date) && (p.end_date == null || day <= p.end_date));
+}
+
+/**
+ * True when an entry is actual sea service on a vessel where the user has said
+ * they are the only watchkeeper in their department (a sole engineer, say), on
+ * the entry's date. Every such day at sea is also a day of watchkeeping, so it
+ * counts toward the watchkeeping figures as well as sea service. Watchkeeping
+ * entries and logged watch hours are unaffected.
+ *
+ * The entry's date is the UTC date it starts on. When the vessel's periods have
+ * been loaded they decide it; otherwise the old per-vessel flag does (old data,
+ * or a backend running before the periods table exists).
+ */
+export function isSoleWatchEntry(e: PeriodEntry & { vessel?: SoleWatchVessel | null }): boolean {
+  if ((e.service_type || 'actual_sea_service') !== 'actual_sea_service') return false;
+  const periods = e.vessel?.sole_watch_periods;
+  if (Array.isArray(periods)) return dayInSoleWatchPeriods(getCalendarDay(toDate(e.start_time)), periods);
+  return e.vessel?.is_sole_watchkeeper === true;
 }
 
 /**
@@ -728,7 +758,7 @@ export interface MNZServiceBreakdown {
 }
 
 interface MNZEntry extends PeriodEntry {
-  vessel?: { is_sole_watchkeeper?: boolean | null } | null;
+  vessel?: SoleWatchVessel | null;
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
   watchkeeping_hours?: string | number | null;
