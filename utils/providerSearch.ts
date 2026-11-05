@@ -538,7 +538,12 @@ const PROVIDER_CODES: Record<string, string[]> = {
   sv_first_aid: ['efa', 'marine_first_aid'],
   sv_liferaft: ['pst', 'rya_sea_survival'],
   sv_rt_restricted: ['src'],
-  bml_first_aid: ['bml_first_aid_restricted', 'efa'],
+  // MCA "Accepted Equivalent to BML Approved Ancillary Safety Training" (REV/OCT24). The UK has
+  // no MCA-approved BML first aid providers, so the equivalents are the only route there.
+  // Seafish Sea Survival is also accepted but has no code in the directory.
+  bml_first_aid: ['bml_first_aid_restricted', 'efa', 'rya_first_aid', 'seafish_basic_first_aid'],
+  bml_pswt: ['bml_pswt_restricted', 'pst', 'rya_sea_survival'],
+  bml_fire_safety: ['bml_fire_safety_restricted', 'fpff', 'seafish_fire_fighting'],
   // MCA approved doctors also carry out ML5 examinations.
   ml5: ['eng1'],
 };
