@@ -11,6 +11,23 @@ import type { EntrySnapshot } from './entrySignature.js';
 const ukDate = (iso: string) => iso.slice(0, 10).split('-').reverse().join('/');
 const ukDateTime = (iso: string) => `${ukDate(iso)} ${iso.slice(11, 16)} UTC`;
 
+/** The rows for when the entry ran: a timed period, or the date(s) of a declared day entry. */
+function whenRows(s: EntrySnapshot): string {
+  if (s.end_time) {
+    return `<dt>From</dt><dd>${escapeHtml(ukDateTime(s.start_time))}</dd>
+  <dt>To</dt><dd>${escapeHtml(ukDateTime(s.end_time))}</dd>
+  <dt>Hours</dt><dd>${escapeHtml((s.hours ?? 0).toFixed(1))}</dd>`;
+  }
+  const days = Math.max(1, Math.floor(s.sea_days ?? 1));
+  if (days === 1) {
+    return `<dt>Date</dt><dd>${escapeHtml(ukDate(s.start_time))}</dd>
+  <dt>Sea days</dt><dd>1</dd>`;
+  }
+  const last = new Date(Date.parse(s.start_time.slice(0, 10) + 'T00:00:00Z') + (days - 1) * 86_400_000).toISOString();
+  return `<dt>Dates</dt><dd>${escapeHtml(ukDate(s.start_time))} to ${escapeHtml(ukDate(last))}</dd>
+  <dt>Sea days</dt><dd>${days}</dd>`;
+}
+
 /** Link not found, expired, cancelled, already signed, or the entry changed. */
 export function entrySignPageMessage(
   kind: 'not_found' | 'expired' | 'cancelled' | 'signed' | 'changed',
@@ -36,9 +53,7 @@ for <strong>${escapeHtml(s.vessel_name)}</strong>. Please check it against the v
 <dl>
   <dt>Seafarer</dt><dd>${escapeHtml(s.seafarer_name)}</dd>
   <dt>Vessel</dt><dd>${escapeHtml(s.vessel_name)}</dd>
-  <dt>From</dt><dd>${escapeHtml(ukDateTime(s.start_time))}</dd>
-  <dt>To</dt><dd>${escapeHtml(ukDateTime(s.end_time))}</dd>
-  <dt>Hours</dt><dd>${escapeHtml(s.hours.toFixed(1))}</dd>
+  ${whenRows(s)}
   <dt>Service</dt><dd>${escapeHtml(s.service_type)}</dd>
   ${s.capacity ? `<dt>Capacity</dt><dd>${escapeHtml(s.capacity)}</dd>` : ''}
   ${s.from_port ? `<dt>Departed</dt><dd>${escapeHtml(s.from_port)}</dd>` : ''}

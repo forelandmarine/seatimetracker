@@ -89,6 +89,21 @@ describe("entry signature validation", () => {
     expect(cannotSignReason(entry({ status: "rejected" }))).toContain("Only");
     expect(cannotSignReason(entry({ status: "checking" }))).toContain("Only");
   });
+
+  test("a declared day (end time left blank, sea_days stored) can be signed", () => {
+    expect(cannotSignReason(entry({ end_time: null, sea_days: 1 }))).toBeNull();
+    expect(cannotSignReason(entry({ end_time: null, sea_days: 3 }))).toBeNull();
+  });
+
+  test("open passages and shifts with no end time are still refused", () => {
+    // AIS detection still running: pending with no end time
+    expect(cannotSignReason(entry({ status: "pending", end_time: null, sea_days: null }))).toContain("not finished");
+    expect(cannotSignReason(entry({ status: "pending", end_time: null, sea_days: 1 }))).toContain("not finished");
+    // Open shift
+    expect(cannotSignReason(entry({ status: "active", end_time: null, sea_days: 1 }))).toContain("not finished");
+    // No end time and no day count
+    expect(cannotSignReason(entry({ end_time: null, sea_days: 0 }))).toContain("not finished");
+  });
 });
 
 describe("a signature covers the vessel, times and service type", () => {
@@ -113,6 +128,17 @@ describe("a signature covers the vessel, times and service type", () => {
     expect(changesSignedFields(e, { notes: "x", rank: "master" } as any)).toBe(false);
     // An unset service type is sea service
     expect(changesSignedFields(entry({ service_type: null }), { service_type: "actual_sea_service" })).toBe(false);
+  });
+
+  test("a declared day's signature covers its day count; a timed entry's fingerprint is unchanged", () => {
+    const day = signed({ end_time: null, sea_days: 1 });
+    expect(signatureIsCurrent(day)).toBe(true);
+    expect(signatureIsCurrent({ ...day, sea_days: 2 })).toBe(false);
+    expect(changesSignedFields(day, { sea_days: 2 })).toBe(true);
+    expect(changesSignedFields(day, { sea_days: 1 })).toBe(false);
+    // Timed entries: sea_days is derived, not signed, so recounting it keeps the signature
+    expect(signatureFingerprint(entry())).toBe("v1|2026-09-01T06:00:00.000Z|2026-09-01T16:00:00.000Z|actual_sea_service");
+    expect(changesSignedFields(entry({ sea_days: 1 }), { sea_days: 0 })).toBe(false);
   });
 
   test("a signature stops counting once the entry is changed by any route", () => {
@@ -185,6 +211,32 @@ describe("entry signing link page", () => {
     const html = entrySignPage({ ...snap, served_as_master: true }, "/x");
     expect(html).not.toContain('value="master"');
     expect(html).toContain("MGN 496 5.3");
+  });
+
+  test("a declared single day shows its date, not a broken range", () => {
+    const day = entrySnapshot(entry({ start_time: new Date("2026-09-03T00:00:00Z"), end_time: null, sea_days: 1 }), "V", "S");
+    expect(day.end_time).toBeNull();
+    expect(day.hours).toBeNull();
+    expect(day.sea_days).toBe(1);
+    const html = entrySignPage(day, "/x");
+    expect(html).toContain("<dt>Date</dt><dd>03/09/2026</dd>");
+    expect(html).toContain("<dt>Sea days</dt><dd>1</dd>");
+    expect(html).not.toContain("<dt>To</dt>");
+    expect(html).not.toContain("Invalid");
+    expect(html).not.toContain("NaN");
+    expect(html).not.toContain("1970");
+  });
+
+  test("a declared multi-day entry shows the date range", () => {
+    const days = entrySnapshot(entry({ start_time: new Date("2026-09-30T00:00:00Z"), end_time: null, sea_days: 3 }), "V", "S");
+    const html = entrySignPage(days, "/x");
+    expect(html).toContain("30/09/2026 to 02/10/2026");
+    expect(html).toContain("<dt>Sea days</dt><dd>3</dd>");
+  });
+
+  test("a timed entry's snapshot has no day count", () => {
+    expect(snap.sea_days).toBeNull();
+    expect(snap.end_time).toBe("2026-09-01T16:00:00.000Z");
   });
 
   test("the messages cover a changed entry", () => {
