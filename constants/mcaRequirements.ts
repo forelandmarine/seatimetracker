@@ -153,10 +153,10 @@ export interface MCARequirement {
     months: number;
     /**
      * An endorsement on the licence (Annex 5 Table C): service after the licence
-     * on passenger or towing and pushing vessels, at least half of it in the
-     * water named.
+     * on passenger, towing and pushing, or high-speed vessels, at least half of
+     * it in the water named.
      */
-    endorsement?: { kind: 'passenger' | 'towing'; water: 'tidal' | 'non_tidal' };
+    endorsement?: { kind: 'passenger' | 'towing' | 'fast_craft'; water: 'tidal' | 'non_tidal' };
     /**
      * The Port of London Local Knowledge Endorsement (Annex 5 Table B): days in
      * the section, with months from the first day to the last.
@@ -1169,6 +1169,112 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       "A pair of narrow boats on Category A canals needs no towing endorsement",
       "Accepted instead: company ISM or DSM towage training, an STCW CoC or CEC with a tug endorsement, or the MGN 468 General Towage Endorsement",
       'MCA oral assessment for the endorsement',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-fast-craft-tidal',
+    title: "BML Fast Craft Endorsement (Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence for a specified fast craft and route (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    // Table C: the fast craft QST is "As per the requirement for the other operations
+    // undertaken (i.e. cargo and/or passenger operations)"; this uses the passenger figure.
+    boatmasterRoute: { level: 2, days: 120, months: 12, endorsement: { kind: 'fast_craft', water: 'tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '120 days',
+        details: [
+          'In a deck capacity on a high-speed craft undertaking the same operations, on the routes it normally takes',
+          'At least half of the days in tidal waters',
+          'Over at least 12 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      'The service is "as per the requirement for the other operations undertaken": this is the passenger figure. On a cargo fast craft see BML Fast Craft Endorsement (Cargo)',
+      'It can be served at the same time as the passenger or cargo endorsement service (MSN 1853 11.7)',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Mark the vessel as a high-speed craft on its screen so its days count here',
+      'Also needed: company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route',
+      'MCA oral assessment for the endorsement (syllabus: Annex 10 section 8)',
+      'Revalidation: 60 days on fast craft in the 5 years before (MSN 1853 19.3). Add the endorsement in Certificates to track it',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-fast-craft-non-tidal',
+    title: "BML Fast Craft Endorsement (Non-Tidal)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Endorsement on a Tier 1 Boatmasters\' Licence for a specified fast craft and route (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    // Table C: the fast craft QST is "As per the requirement for the other operations
+    // undertaken (i.e. cargo and/or passenger operations)"; this uses the passenger figure.
+    boatmasterRoute: { level: 1, days: 60, months: 6, endorsement: { kind: 'fast_craft', water: 'non_tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity on a high-speed craft undertaking the same operations, on the routes it normally takes',
+          'At least half of the days in non-tidal waters',
+          'Over at least 6 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21',
+      'The service is "as per the requirement for the other operations undertaken": this is the passenger figure. On a cargo fast craft see BML Fast Craft Endorsement (Cargo)',
+      'It can be served at the same time as the passenger or cargo endorsement service (MSN 1853 11.7)',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Mark the vessel as a high-speed craft on its screen so its days count here',
+      'Also needed: company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route',
+      'MCA oral assessment for the endorsement (syllabus: Annex 10 section 8)',
+      'Revalidation: 60 days on fast craft in the 5 years before (MSN 1853 19.3). Add the endorsement in Certificates to track it',
+      'Record the service in your BML Work Record (MSF 4366)',
+    ],
+  },
+  {
+    id: 'bml-fast-craft-cargo',
+    title: "BML Fast Craft Endorsement (Cargo)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Fast craft endorsement for a cargo-carrying fast craft on a Tier 1 Boatmasters\' Licence (MSN 1853, Annex 5 Table C)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    // Table C: fast craft QST is "as per" the cargo operation: "Cargo ... 60 [days] 6 months
+    // ... At least half of the required service days should be undertaken in the relevant
+    // category of waters". Tidal is used as the relevant water for a Level 2 licence.
+    boatmasterRoute: { level: 2, days: 60, months: 6, endorsement: { kind: 'fast_craft', water: 'tidal' } },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '60 days',
+        details: [
+          'In a deck capacity on a cargo-carrying high-speed craft, on the routes it normally takes',
+          'At least half of the days in the relevant category of waters (shown as tidal)',
+          'Over at least 6 months',
+          "After the service for your Boatmasters' Licence",
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 21 (Table C, fast craft)',
+      'The fast craft service is "as per the requirement for the other operations undertaken"; this uses the cargo figure, 60 days over 6 months. The cargo endorsement itself needs age 21 on vessels of 40 m and over',
+      'It can be served at the same time as the cargo endorsement service (MSN 1853 11.7)',
+      "Counted from the day after the issue date of the Boatmasters' Licence in your Certificates. Without one on file, every day in the last 5 years counts",
+      'Mark the vessel as a high-speed craft on its screen so its days count here',
+      'Also needed: company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route',
+      'MCA oral assessment for the endorsement (syllabus: Annex 10 section 8)',
+      'Revalidation: 60 days on fast craft in the 5 years before (MSN 1853 19.3). Add the endorsement in Certificates to track it',
       'Record the service in your BML Work Record (MSF 4366)',
     ],
   },

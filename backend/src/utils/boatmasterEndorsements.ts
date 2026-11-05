@@ -18,6 +18,13 @@
  *   capacity on a passenger vessel, or on a towing or pushing vessel (the Tug
  *   switch), with at least half the days in the relevant category of water.
  *   Tidal: 120 days over 12 months. Non-tidal: 60 days over 6 months. Age 21.
+ * - Fast craft endorsement (Table C, "Fast Craft Operations"): days in a deck
+ *   capacity on a high-speed craft (the vessel's High-speed craft switch). The
+ *   qualifying service is "As per the requirement for the other operations
+ *   undertaken (i.e. cargo and/or passenger operations)", and footnote 68 lets it
+ *   run "concurrently with QST for the Cargo or Passenger endorsements", so the
+ *   days are counted the same way as the passenger endorsement, with the same
+ *   tidal and non-tidal split.
  *
  * All of it must come after the licence service (Table B note 63, Table C), so
  * when a Boatmasters' Licence is on file with an issue date only later days
@@ -29,7 +36,12 @@ import { ENGINE_RANKS } from './tugService.js';
 import { BML_WINDOW_YEARS, monthsSince, type BoatmasterEntry, type BoatmasterFix } from './boatmasterService.js';
 
 export interface EndorsementEntry extends BoatmasterEntry {
-  vessel?: { default_trade_area?: string | null; is_passenger?: boolean | null; is_tug?: boolean | null } | null;
+  vessel?: {
+    default_trade_area?: string | null;
+    is_passenger?: boolean | null;
+    is_tug?: boolean | null;
+    is_high_speed?: boolean | null;
+  } | null;
 }
 
 export interface EndorsementCount {
@@ -54,6 +66,8 @@ export interface BoatmasterEndorsements {
   licence_issued: string | null;
   passenger: EndorsementCount;
   towing: EndorsementCount;
+  /** Deck service on high-speed craft, for the fast craft endorsement. */
+  fast_craft: EndorsementCount;
   lke_full: LkeSection;
   lke_lower: LkeSection;
   lke_upper: LkeSection;
@@ -239,6 +253,7 @@ export function boatmasterEndorsements(
 
   const passenger = count((e) => e.vessel?.is_passenger === true);
   const towing = count((e) => e.vessel?.is_tug === true);
+  const fast_craft = count((e) => e.vessel?.is_high_speed === true);
 
   const lkeDays = lkeServiceDays(deck, fixesByDay, fromDay);
   const lower = new Set(lkeDays.filter((d) => d.sections.includes('lower')).map((d) => d.date));
@@ -256,6 +271,7 @@ export function boatmasterEndorsements(
     licence_issued: licenceIssued,
     passenger,
     towing,
+    fast_craft,
     lke_full: section(full),
     lke_lower: section(lower),
     lke_upper: section(upper),

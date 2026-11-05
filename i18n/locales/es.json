@@ -414,6 +414,18 @@
     "revalBody": "{{days}} de {{required}} días como oficial en buques de 15 m o más en los últimos 5 años.",
     "revalMet": "Tienes los 12 meses de servicio como oficial.",
     "revalAssumed": "Cuenta las entradas con un rango de oficial de cubierta o como guardia, y los buques donde eres el único de guardia. También hacen falta un certificado médico y un GOC válidos, que no se comprueban aquí.",
-    "dualDays": "{{count}} días de doble función contados al 50%."
+    "dualDays": "{{count}} días de doble función contados al 50%.",
+    "nearCoastal": "Costera próxima",
+    "unlimited": "Ilimitada",
+    "notMeasured": "Sin posiciones AIS",
+    "coastalTitle": "Costera próxima o ilimitada",
+    "coastal_near_coastal": "Costera próxima: todas las posiciones AIS estaban a menos de 150 mn de un puerto o estuario del Reino Unido, o a 30 mn de Irlanda.",
+    "coastal_unlimited": "Ilimitada: al menos una posición AIS estaba a más de 150 mn de un puerto o estuario del Reino Unido y a más de 30 mn de Irlanda.",
+    "coastalFurthest": "Punto más alejado: {{haven}} mn del puerto o estuario listado más cercano.",
+    "coastalDefinition": "Costera próxima es 150 millas de un refugio seguro en la costa del Reino Unido y 30 millas de Irlanda (MSN 1856, MSN 1857).",
+    "highSpeedTitle": "Embarcación de alta velocidad (Tabla A5.1 Nota F)",
+    "highSpeedBody": "En una embarcación de alta velocidad el capitán necesita al menos el RYA/MCA Advanced Powerboat Certificate, obtenido en una embarcación de alta velocidad.",
+    "highSpeedHeld": "Advanced Powerboat registrado.",
+    "highSpeedMissing": "No hay certificado Advanced Powerboat registrado."
   }
 }

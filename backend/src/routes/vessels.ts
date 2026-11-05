@@ -269,6 +269,8 @@ function transformVesselForResponse(vessel: any) {
     default_trade_area: vessel.default_trade_area ?? null,
     // Marked by the user as a passenger vessel (BML passenger endorsement)
     is_passenger: vessel.is_passenger ?? null,
+    // Marked by the user as a high-speed craft (WBC3 Table A5.1 Note F, BML fast craft endorsement)
+    is_high_speed: vessel.is_high_speed ?? null,
     // A new name AIS reported that the user hasn't accepted or declined yet
     pending_name: vessel.pending_name || null,
     pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
@@ -311,6 +313,7 @@ export function register(app: App, fastify: FastifyInstance) {
               is_sole_watchkeeper: { type: ['boolean', 'null'] },
               default_trade_area: { type: ['string', 'null'] },
               is_passenger: { type: ['boolean', 'null'] },
+              is_high_speed: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -378,6 +381,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_sole_watchkeeper: { type: ['boolean', 'null'] },
             default_trade_area: { type: ['string', 'null'] },
             is_passenger: { type: ['boolean', 'null'] },
+            is_high_speed: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -490,6 +494,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_sole_watchkeeper: { type: ['boolean', 'null'] },
             default_trade_area: { type: ['string', 'null'] },
             is_passenger: { type: ['boolean', 'null'] },
+            is_high_speed: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -738,6 +743,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_sole_watchkeeper: { type: ['boolean', 'null'] },
             default_trade_area: { type: ['string', 'null'] },
             is_passenger: { type: ['boolean', 'null'] },
+            is_high_speed: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -874,6 +880,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_sole_watchkeeper: { type: ['boolean', 'null'] },
             default_trade_area: { type: ['string', 'null'] },
             is_passenger: { type: ['boolean', 'null'] },
+            is_high_speed: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1067,6 +1074,7 @@ export function register(app: App, fastify: FastifyInstance) {
             is_sole_watchkeeper: { type: ['boolean', 'null'] },
             default_trade_area: { type: ['string', 'null'] },
             is_passenger: { type: ['boolean', 'null'] },
+            is_high_speed: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1300,6 +1308,37 @@ export function register(app: App, fastify: FastifyInstance) {
       .where(eq(schema.vessels.id, vessel.id))
       .returning();
     app.logger.info({ userId, vesselId: vessel.id, default_trade_area, is_passenger }, 'Vessel Boatmasters settings updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/high-speed - Mark a vessel as a high-speed craft. The master of a
+  // high-speed workboat needs the RYA/MCA Advanced Powerboat Certificate (WBC3 Table A5.1
+  // Note F), and deck service on it counts toward the BML fast craft endorsement (MSN 1853)
+  fastify.put<{ Params: { id: string }; Body: { is_high_speed: boolean } }>('/api/vessels/:id/high-speed', {
+    schema: {
+      description: 'Mark whether a vessel is a high-speed craft used in planing mode. Shows the Advanced Powerboat certificate as needed for its master (Workboat Code Ed. 3 Table A5.1 Note F) and counts deck service on it toward the BML fast craft endorsement (MSN 1853 Annex 5 Table C). (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_high_speed'], properties: { is_high_speed: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_high_speed: request.body.is_high_speed, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_high_speed: request.body.is_high_speed }, 'Vessel high-speed flag updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
@@ -1538,6 +1577,7 @@ export function register(app: App, fastify: FastifyInstance) {
               is_sole_watchkeeper: { type: ['boolean', 'null'] },
               default_trade_area: { type: ['string', 'null'] },
               is_passenger: { type: ['boolean', 'null'] },
+              is_high_speed: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -1674,6 +1714,7 @@ export function register(app: App, fastify: FastifyInstance) {
               is_sole_watchkeeper: { type: ['boolean', 'null'] },
               default_trade_area: { type: ['string', 'null'] },
               is_passenger: { type: ['boolean', 'null'] },
+              is_high_speed: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },

@@ -9,6 +9,8 @@ import {
   inAnniversaryWindow,
   revalidationProgress,
 } from "../utils/revalidation.js";
+import { highSpeedNeeds } from "../utils/highSpeed.js";
+import * as authSchema from "../db/auth-schema.js";
 
 /**
  * Maritime certificate types — used by frontend dropdowns and PDF reports.
@@ -241,6 +243,42 @@ export function register(app: App, fastify: FastifyInstance) {
         met: progress.met,
       };
     }));
+  });
+
+  // GET /api/certificates/high-speed - Workboat Code Ed. 3 Table A5.1 Note F: the
+  // master of a high-speed workboat needs the RYA/MCA Advanced Powerboat Certificate
+  fastify.get("/api/certificates/high-speed", {
+    schema: {
+      description: "Certificates the issuing rules tie to the user's high-speed craft (WBC3 Table A5.1 Note F). null when none of their vessels is a high-speed workboat",
+      tags: ["certificates"],
+      response: {
+        200: { type: ["object", "null"], additionalProperties: true },
+        401: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const vessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
+    if (!vessels.some((v) => v.is_high_speed === true)) return reply.code(200).send(null);
+    const [entries, certs, users] = await Promise.all([
+      app.db
+        .select({ vessel_id: schema.sea_time_entries.vessel_id, rank: schema.sea_time_entries.rank, status: schema.sea_time_entries.status })
+        .from(schema.sea_time_entries)
+        .where(eq(schema.sea_time_entries.user_id, userId)),
+      app.db
+        .select({ certificate_type: schema.certificates.certificate_type, expiry_date: schema.certificates.expiry_date })
+        .from(schema.certificates)
+        .where(eq(schema.certificates.user_id, userId)),
+      app.db
+        .select({ vessel_sector: authSchema.user.vessel_sector })
+        .from(authSchema.user)
+        .where(eq(authSchema.user.id, userId))
+        .limit(1),
+    ]);
+    return reply.code(200).send(highSpeedNeeds(vessels, entries, certs, users[0]?.vessel_sector ?? null));
   });
 
   // POST /api/certificates - Create a new certificate

@@ -1,8 +1,9 @@
 /**
  * Workboat sea areas for commercial-sector users (guidance only, nothing here
  * changes any count):
- *   GET /api/sea-areas/breakdown?vesselId=   days by area (A to D, sea, tidal, non-tidal)
- *   GET /api/sea-time/:id/area-guidance       one trip's Workboat Code area category and the tickets that cover it
+ *   GET /api/sea-areas/breakdown?vesselId=   days by area (A to D, sea, tidal, non-tidal) and near coastal or unlimited
+ *   GET /api/sea-time/:id/area-guidance       one trip's Workboat Code area category, the tickets that cover it,
+ *                                             near coastal or unlimited, and the high-speed craft rule (WBC3 Note F)
  */
 import type { FastifyInstance } from 'fastify';
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
@@ -14,6 +15,9 @@ import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { fixArea } from '../utils/seaAreas/aggregate.js';
 import { getSeaAreaClassifier } from '../utils/seaAreas/singleton.js';
 import { areaDayBreakdown, ticketsForTrip, wbc3AreaForTrack } from '../utils/workboatArea.js';
+import { coastalDayBreakdown, coastalLimitForFixes } from '../utils/nearCoastal.js';
+import { ADVANCED_POWERBOAT_TYPES } from '../utils/highSpeed.js';
+import { coastalFixes, nearCoastalMeasures } from '../services/nearCoastal.js';
 
 async function userSector(app: App, userId: string): Promise<string | null> {
   const rows = await app.db
@@ -50,9 +54,21 @@ export function register(app: App, fastify: FastifyInstance) {
       );
     const commercialRows = rows.filter((r) => isCommercialWork(r.vessel, sector));
     const commercial = sector === 'commercial' || commercialRows.length > 0;
+    const commercialEntries = commercialRows.map((r) => r.entry);
+    // Near coastal or unlimited days (MSN 1856 s.5), measured from the AIS fixes
+    const measures = commercialEntries.length > 0 ? nearCoastalMeasures() : null;
+    let coastal = null;
+    if (measures) {
+      try {
+        coastal = coastalDayBreakdown(commercialEntries, await coastalFixes(app, userId, commercialEntries), measures);
+      } catch (err) {
+        app.logger.warn({ err }, 'Near-coastal day count failed; breakdown sent without it');
+      }
+    }
     return reply.code(200).send({
       commercial,
-      breakdown: areaDayBreakdown(commercialRows.map((r) => r.entry)),
+      breakdown: areaDayBreakdown(commercialEntries),
+      coastal,
     });
   });
 
@@ -85,7 +101,7 @@ export function register(app: App, fastify: FastifyInstance) {
       is_categorised_water: entry.is_categorised_water ?? null,
     };
     const classifier = getSeaAreaClassifier();
-    if (!commercial || !classifier) return reply.code(200).send({ ...base, wbc3: null, tickets: [] });
+    if (!commercial || !classifier) return reply.code(200).send({ ...base, wbc3: null, tickets: [], near_coastal: null, high_speed: null });
 
     const fixes = await app.db
       .select({
@@ -111,6 +127,20 @@ export function register(app: App, fastify: FastifyInstance) {
       .from(schema.certificates)
       .where(eq(schema.certificates.user_id, userId));
 
-    return reply.code(200).send({ ...base, wbc3, tickets: ticketsForTrip(wbc3, certs) });
+    // Near coastal or unlimited (MSN 1856 s.5): every fix within 150 nm of a UK safe haven or 30 nm of Ireland
+    const near_coastal = coastalLimitForFixes(fixes, nearCoastalMeasures() ?? classifier);
+    // WBC3 Table A5.1 Note F: the master of a high-speed workboat needs Advanced Powerboat
+    const today = new Date().toISOString().slice(0, 10);
+    const high_speed = vessel.is_high_speed === true
+      ? {
+          rule: 'wbc3_table_a5_1_note_f',
+          as_master: entry.rank === 'master',
+          powerboat_advanced_held: certs.some(
+            (c) => ADVANCED_POWERBOAT_TYPES.includes(c.certificate_type) && (!c.expiry_date || String(c.expiry_date).slice(0, 10) >= today),
+          ),
+        }
+      : null;
+
+    return reply.code(200).send({ ...base, wbc3, tickets: ticketsForTrip(wbc3, certs), near_coastal, high_speed });
   });
 }
