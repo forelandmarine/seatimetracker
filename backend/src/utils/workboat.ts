@@ -88,7 +88,7 @@ export function countWorkboatDays(entries: WorkboatEntry[]): number {
   return full.size + half * DUAL_CAPACITY_FACTOR;
 }
 
-const isOfficerEntry = (e: WorkboatEntry) =>
+export const isOfficerEntry = (e: WorkboatEntry) =>
   DECK_OFFICER_RANKS.has(e.rank ?? '') || e.service_type === 'watchkeeping_service' || isSoleWatchEntry(e);
 
 const length = (e: WorkboatEntry) => {

@@ -23,8 +23,11 @@ import {
   expiryStatus,
   certificateTypeMatches,
   listCertificates,
+  listRevalidation,
   normaliseCertificateSearch,
+  type CertificateRevalidation,
 } from '@/utils/certificatesApi';
+import { RevalidationPanel } from '@/components/RevalidationPanel';
 import { error as logError } from '@/utils/log';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { getRequirementsByAuthority, getDefaultTargetId, type MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -57,6 +60,7 @@ export default function CertificatesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [targetId, setTargetId] = useState<string | null>(null);
   const [targetTitle, setTargetTitle] = useState<string | null>(null);
+  const [revalidation, setRevalidation] = useState<Record<string, CertificateRevalidation>>({});
 
   // The Quick add list follows the same target CoC as the oral checklist.
   const loadTarget = useCallback(async () => {
@@ -82,6 +86,10 @@ export default function CertificatesScreen() {
       setLoadError(null);
       const [data] = await Promise.all([listCertificates(), loadTarget()]);
       setCerts(Array.isArray(data) ? data : []);
+      // Revalidation guidance is extra: the list still shows if it fails
+      listRevalidation()
+        .then((rows) => setRevalidation(Object.fromEntries(rows.map((r) => [r.certificate_id, r]))))
+        .catch((err) => logError('[Certificates] Failed to load revalidation:', err));
     } catch (err) {
       logError('[Certificates] Failed to load:', err);
       setLoadError('Failed to load certificates. Pull down to retry.');
@@ -176,6 +184,7 @@ export default function CertificatesScreen() {
           </Text>
         )}
         {needsDetailsIds.has(cert.id) && <Text style={styles.needsDetails}>{t('certChecker.needsDetails')}</Text>}
+        {revalidation[cert.id] && <RevalidationPanel data={revalidation[cert.id]} isDark={isDark} />}
       </TouchableOpacity>
     );
   };

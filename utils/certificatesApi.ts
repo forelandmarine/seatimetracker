@@ -40,6 +40,7 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   occ_oow_3000gt: "OOW <3000gt",
   occ_chief_engineer: "Chief Engineer",
   occ_second_engineer: "Second Engineer",
+  coc_master_workboat_500: "Master (Workboat) <500 GT",
   // USCG Documents
   uscg_mmc: "MMC (Merchant Mariner Credential)",
   uscg_twic: "TWIC",
@@ -186,6 +187,7 @@ export const CERTIFICATE_TYPE_GROUPS: CertificateTypeGroup[] = [
       "occ_oow_3000gt",
       "occ_chief_engineer",
       "occ_second_engineer",
+      "coc_master_workboat_500",
     ],
   },
   {
@@ -299,6 +301,36 @@ async function ensureOk(res: Response): Promise<void> {
 
 export async function listCertificates(): Promise<Certificate[]> {
   const res = await authFetch("/api/certificates");
+  await ensureOk(res);
+  return res.json();
+}
+
+/** One way to meet the revalidation service requirement (MSN 1861 3.2). */
+export interface RevalidationRoute {
+  key: 'five_years' | 'six_months';
+  days: number;
+  required: number;
+  /** Matching days on entries with no rank recorded, not counted in days. */
+  unranked_days: number;
+}
+
+export interface CertificateRevalidation {
+  certificate_id: string;
+  certificate_type: string;
+  expiry_date: string | null;
+  days_to_expiry: number | null;
+  /** Applying now keeps the anniversary date (within 6 months of expiry). */
+  keeps_anniversary: boolean;
+  rule: 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml';
+  notice: string;
+  counts: string;
+  routes: RevalidationRoute[];
+  met: boolean;
+}
+
+/** Sea service toward revalidating each CoC the user holds. */
+export async function listRevalidation(): Promise<CertificateRevalidation[]> {
+  const res = await authFetch("/api/certificates/revalidation");
   await ensureOk(res);
   return res.json();
 }
