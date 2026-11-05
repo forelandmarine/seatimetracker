@@ -135,3 +135,17 @@ describe("MGN 496 Annex C testimonial", () => {
     expect(nilOr(2.5, "days")).toBe("2.5 days");
   });
 });
+
+describe("MGN 496 Annex B certificate of discharge figures", () => {
+  test("time onboard counts both ends; days at sea leave out port days and are not halved", () => {
+    const t = buildWorkboatTestimonial([
+      entry("2026-01-01", { from_port: "Grimsby", dual_capacity: true }),
+      entry("2026-01-02", { service_type: "service_in_port" }),
+      entry("2026-01-10", { to_port: "Hull" }),
+    ])!;
+    expect(t.onboard_days).toBe(10);
+    expect(t.days_at_sea).toBe(2);
+    expect(t.joined_place).toBe("Grimsby");
+    expect(t.left_place).toBe("Hull");
+  });
+});

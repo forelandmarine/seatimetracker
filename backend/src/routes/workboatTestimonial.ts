@@ -16,7 +16,10 @@ import {
   annexCCapacity,
   buildWorkboatTestimonial,
   nilOr,
+  testimonialSnapshot,
   type TestimonialEntry,
+  type TestimonialSignature,
+  type TestimonialSnapshot,
   type WorkboatTestimonial,
 } from "../utils/workboatTestimonial.js";
 
@@ -77,9 +80,17 @@ function vesselType(v: { is_workboat?: boolean | null; is_tug?: boolean | null; 
   return v.type || '';
 }
 
+/** A signature request the Master or company has completed. */
+export interface SignedTestimonial extends TestimonialSignature {
+  signed_at: Date;
+  part1: TestimonialSnapshot;
+}
+
 export interface TestimonialBlock {
   vessel: any;
   t: WorkboatTestimonial;
+  /** Latest signed request for this vessel: its Part 1 figures and signature are used. */
+  signed?: SignedTestimonial | null;
 }
 
 /** Lays out the testimonials, one per block. The caller ends the document. */
@@ -114,6 +125,15 @@ export function testimonialPdf(
     doc.font('NunitoSans-SemiBold').fontSize(8).fillColor(STEEL_BLUE);
     doc.text(text.toUpperCase(), ML, doc.y, { characterSpacing: 1.5 });
     doc.y += 4;
+  };
+
+  /** A filled-in paragraph, or blank lines to write on. */
+  const textOrLines = (text: string | null | undefined, lines: number) => {
+    if (!text) return blankLines(lines);
+    ensureSpace(30);
+    doc.font('NunitoSans').fontSize(9.5).fillColor(DEEP_NAVY);
+    doc.text(text, ML, doc.y + 2, { width: CW, lineGap: 1.5 });
+    doc.y += 6;
   };
 
   /** Label on the left, value (or a dotted line to fill in) on the right. */
@@ -159,8 +179,16 @@ export function testimonialPdf(
   const dob = seafarer.dateOfBirth;
   const dischargeBook = seafarer.dischargeBook;
 
-  blocks.forEach(({ vessel, t }, index) => {
+  blocks.forEach(({ vessel, t: live, signed }, index) => {
     if (index > 0) doc.addPage();
+    // A signed testimonial shows the figures the signatory was shown, and only the
+    // entries in that period.
+    const t: WorkboatTestimonial = signed
+      ? { ...live, ...signed.part1, entries: live.entries.filter((e) => {
+          const d = new Date(e.start_time).toISOString().slice(0, 10);
+          return d >= signed.part1.from && d <= signed.part1.to;
+        }) }
+      : live;
 
     // ── Header ─────────────────────────────────────────────
     try {
@@ -176,11 +204,11 @@ export function testimonialPdf(
     doc.y = 104;
 
     sectionLabel('Company');
-    field('Company name', null);
-    field('Address', null);
-    field('', null);
-    field('Phone', null);
-    field('Email', null);
+    field('Company name', signed?.company_name);
+    field('Address', signed?.company_address);
+    if (!signed?.company_address) field('', null);
+    field('Phone', signed?.company_phone);
+    field('Email', signed?.company_email);
     doc.y += 6;
 
     // ── Part 1 Service ─────────────────────────────────────
@@ -197,7 +225,7 @@ export function testimonialPdf(
       bx += 95;
     }
     doc.y = boxY + 18;
-    if (t.capacity_unrecorded) {
+    if (t.capacity_unrecorded && !signed) {
       note('Some service was logged without a rank. The signatory should tick the capacity held.');
     }
     field('Full name', seafarerName);
@@ -235,7 +263,7 @@ export function testimonialPdf(
     doc.y += 2;
     doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY);
     doc.text('Duties and tasks carried out were:', ML, doc.y);
-    blankLines(3);
+    textOrLines(signed?.duties, 3);
 
     doc.y += 4;
     doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY);
@@ -259,9 +287,9 @@ export function testimonialPdf(
     doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY);
     doc.text('My report on the service of the above-named during the period stated is as follows:', ML, doc.y, { width: CW });
     doc.y += 6;
-    for (const heading of ['Conduct:', 'Ability:']) {
+    for (const [heading, text] of [['Conduct:', signed?.conduct], ['Ability:', signed?.ability]] as const) {
       doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY).text(heading, ML, doc.y);
-      blankLines(4);
+      textOrLines(text, 4);
       doc.y += 6;
     }
 
@@ -270,28 +298,48 @@ export function testimonialPdf(
     if (t.served_as_master) {
       note('The seafarer served as Master. MGN 496 5.3: the testimonial must be signed by the owner or a responsible person from the management company, such as a Company Director or Superintendent.');
     }
-    field('Signed', null);
-    field('Name (print)', null);
+    if (signed) {
+      ensureSpace(44);
+      const y = Math.round(doc.y);
+      doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text('Signed', ML, y);
+      try {
+        doc.image(Buffer.from(signed.signature_image.split(',')[1], 'base64'), ML + 175, y - 4, { fit: [200, 38] });
+      } catch (err) {
+        logger.warn({ err }, 'Failed to embed testimonial signature');
+      }
+      doc.strokeColor(BORDER).lineWidth(0.5).moveTo(ML + 175, y + 35).lineTo(ML + CW, y + 35).stroke();
+      doc.y = y + 42;
+    } else {
+      field('Signed', null);
+    }
+    field('Name (print)', signed?.signer_name);
     ensureSpace(20);
     {
       const y = Math.round(doc.y);
       doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text('Position', ML, y);
-      tickBox(ML + 175, y + 1, false);
+      tickBox(ML + 175, y + 1, signed?.signer_position === 'master');
       doc.fillColor(DEEP_NAVY).text('Master', ML + 188, y);
-      tickBox(ML + 270, y + 1, false);
+      tickBox(ML + 270, y + 1, signed?.signer_position === 'responsible_person');
       doc.fillColor(DEEP_NAVY).text('Responsible person', ML + 283, y);
       doc.y = y + 18;
     }
-    field('If Master, CoC No.', null);
-    field('Issuing administration', null);
-    field('If responsible person, organisation', null);
-    field('Position in organisation', null);
-    field('Date', null);
-    ensureSpace(80);
-    doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text('Vessel / company stamp:', ML, doc.y);
-    const stampY = doc.y + 4;
-    doc.strokeColor(BORDER).lineWidth(0.5).rect(ML, stampY, 180, 64).stroke();
-    doc.y = stampY + 76;
+    field('If Master, CoC No.', signed?.signer_coc_no);
+    field('Issuing administration', signed?.signer_issuing_admin);
+    field('If responsible person, organisation', signed?.signer_organisation);
+    field('Position in organisation', signed?.signer_org_position);
+    field('Date', signed ? ukDate(signed.signed_at) : null);
+    if (signed) {
+      note(`Signed on screen through SeaTime Tracker on ${ukDate(signed.signed_at)} from a link the seafarer sent to the signatory. No stamp was applied.`);
+      if (live.to > signed.part1.to) {
+        note(`This signature covers service to ${ukDate(signed.part1.to)}. Later service is not included; ask for a new signature to cover it.`);
+      }
+    } else {
+      ensureSpace(80);
+      doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text('Vessel / company stamp:', ML, doc.y);
+      const stampY = doc.y + 4;
+      doc.strokeColor(BORDER).lineWidth(0.5).rect(ML, stampY, 180, 64).stroke();
+      doc.y = stampY + 76;
+    }
 
     // ── How the figures were prepared ─────────────────────
     sectionLabel('How the figures were prepared');
@@ -366,14 +414,190 @@ export function testimonialPdf(
   return doc;
 }
 
+/**
+ * MGN 496 Annex B Certificate of Discharge, one per vessel, pre-filled from the
+ * same figures. Port of registry, description of voyage, the Master's signature,
+ * CoC and stamp are left to complete. The caller ends the document.
+ */
+export function dischargePdf(
+  blocks: TestimonialBlock[],
+  seafarer: { name: string; dateOfBirth: string; dischargeBook: string },
+  logger: { warn: (obj: object, msg: string) => void },
+): InstanceType<typeof PDFDocument> {
+  const doc = new PDFDocument({ bufferPages: true, size: 'A4', margins: { top: 50, bottom: 70, left: 50, right: 50 } });
+  const fontsDir = path.join(ASSETS_DIR, 'fonts');
+  try {
+    doc.registerFont('NunitoSans', path.join(fontsDir, 'NunitoSans-Regular.ttf'));
+    doc.registerFont('NunitoSans-SemiBold', path.join(fontsDir, 'NunitoSans-SemiBold.ttf'));
+  } catch (err) {
+    logger.warn({ err }, 'Failed to load Nunito Sans fonts, falling back to Helvetica');
+    doc.registerFont('NunitoSans', 'Helvetica');
+    doc.registerFont('NunitoSans-SemiBold', 'Helvetica-Bold');
+  }
+  const ML = 50;
+  const PW = doc.page.width;
+  const CW = PW - ML * 2;
+  const COL = CW / 2;
+  const logoPath = path.join(ASSETS_DIR, 'brandmark-logo.png');
+  const parts = seafarer.name.trim().split(/\s+/);
+  const surname = parts.length > 1 ? parts[parts.length - 1] : seafarer.name;
+  const others = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+
+  /** Two boxed cells side by side, label above value (or blank to fill in). */
+  const row = (cells: Array<[string, string | null | undefined]>, h = 38) => {
+    const y = Math.round(doc.y);
+    cells.forEach(([label, value], i) => {
+      const x = ML + i * COL;
+      const w = cells.length === 1 ? CW : COL;
+      doc.strokeColor(BORDER).lineWidth(0.5).rect(x, y, w, h).stroke();
+      doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY).text(label, x + 6, y + 5, { width: w - 12 });
+      if (value) doc.font('NunitoSans-SemiBold').fontSize(10).fillColor(DEEP_NAVY).text(value, x + 6, y + 18, { width: w - 12 });
+    });
+    doc.y = y + h;
+  };
+
+  blocks.forEach(({ vessel, t }, index) => {
+    if (index > 0) doc.addPage();
+    try {
+      if (fs.existsSync(logoPath)) doc.image(logoPath, ML, 38, { width: 110 });
+    } catch (err) {
+      logger.warn({ err }, 'Failed to load logo from disk');
+    }
+    doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+    doc.text('MGN 496 Annex B format', 0, 45, { width: PW - ML, align: 'right' });
+    doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(STEEL_BLUE);
+    doc.text('CERTIFICATE OF DISCHARGE', ML, 78, { characterSpacing: 2.5 });
+    doc.strokeColor(STEEL_BLUE).lineWidth(0.75).moveTo(ML, 94).lineTo(PW - ML, 94).stroke();
+    doc.y = 108;
+
+    const particulars = vesselParticulars(vessel);
+    const capacity = t.capacities.length ? t.capacities.join(', ') : null;
+    row([['Surname (block capitals)', surname.toUpperCase()], ['Other names (in full)', others]]);
+    row([['Passport or discharge book number', seafarer.dischargeBook], ['Date and place of birth', seafarer.dateOfBirth]]);
+    row([['Name of vessel', particulars.name], ['Port of registry', null]]);
+    row([['Official or IMO number', particulars.official_number], ['Gross tonnage', particulars.gross_tons]]);
+    row([['Capacity', capacity], ['Grade and number of any CoC', null]]);
+    row([
+      ['Date and place of joining', [ukDate(t.from), t.joined_place].filter(Boolean).join(', ')],
+      ['Date and place of leaving', [ukDate(t.to), t.left_place].filter(Boolean).join(', ')],
+    ]);
+    row([['Description of voyage', null], ['Total time onboard', `${t.onboard_days} days`]]);
+    row([['Total days at sea', `${t.days_at_sea} days`]]);
+
+    doc.y += 24;
+    const line = (label: string) => {
+      const y = Math.round(doc.y);
+      doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text(label, ML, y);
+      doc.strokeColor(BORDER).lineWidth(0.5).moveTo(ML + 150, y + 11).lineTo(ML + CW, y + 11).stroke();
+      doc.y = y + 24;
+    };
+    line('Signature of Master');
+    line('Name (print)');
+    line('CoC No.');
+    line('Issuing administration');
+    line('Date of issue');
+    doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY).text('Vessel / company stamp:', ML, doc.y);
+    doc.strokeColor(BORDER).lineWidth(0.5).rect(ML, doc.y + 4, 180, 64).stroke();
+    doc.y += 84;
+    doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY).text(
+      "Prepared from the seafarer's SeaTime Tracker record for the Master to check and sign. Total time onboard counts every day from joining to leaving. " +
+      'Days at sea are dates with at least 4 hours of sea, watchkeeping or stand-by service, not in port, and are not reduced for dual capacity.',
+      ML, doc.y, { width: CW, lineGap: 1.5 },
+    );
+  });
+
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < range.count; i++) {
+    doc.switchToPage(i);
+    const fy = doc.page.height - 55;
+    doc.page.margins.bottom = 0;
+    doc.strokeColor(BORDER).lineWidth(0.5).moveTo(ML, fy).lineTo(PW - ML, fy).stroke();
+    doc.font('NunitoSans').fontSize(7).fillColor(TEXT_BODY);
+    doc.text(`${seafarer.name}  |  Certificate of Discharge`, ML, fy + 8, { width: 300, lineBreak: false });
+    doc.text(`Page ${i + 1} of ${range.count}  |  Generated by SeaTime Tracker`, 0, fy + 8, { width: PW - ML, align: 'right', lineBreak: false });
+  }
+  return doc;
+}
+
+/** Annex C vessel particulars, as the PDF prints them. */
+export function vesselParticulars(vessel: any): TestimonialSnapshot['vessel'] {
+  return {
+    name: vessel.vessel_name,
+    length_m: vessel.length_metres ? String(Number(vessel.length_metres)) : null,
+    gross_tons: vessel.gross_tonnes ? String(Number(vessel.gross_tonnes)) : null,
+    official_number: vessel.official_number || vessel.imo_number || null,
+    type: vesselType(vessel) || null,
+  };
+}
+
+/**
+ * One testimonial block per vessel identity with qualifying service: a renamed
+ * vessel gets one per name, as each name is a separate discharge book entry.
+ */
+export async function loadTestimonialBlocks(app: App, userId: string, vesselId?: string): Promise<TestimonialBlock[]> {
+  let entries = await app.db.query.sea_time_entries.findMany({
+    with: { vessel: true },
+    where: eq(schema.sea_time_entries.user_id, userId),
+  });
+  if (vesselId) entries = entries.filter((e) => e.vessel_id === vesselId);
+  // Name and flag as they were on each entry's day; sole watchkeeper periods by date
+  entries = await entriesWithIdentity(app, entries);
+  entries = await entriesWithSoleWatch(app, entries);
+
+  const vessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
+  const leave = await app.db.select().from(schema.leave_periods).where(eq(schema.leave_periods.user_id, userId));
+
+  const groups = new Map<string, typeof entries>();
+  for (const e of [...entries].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())) {
+    const key = `${e.vessel_id}|${(e as { identity_period?: string }).identity_period ?? 'start'}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(e);
+  }
+  const blocks: TestimonialBlock[] = [];
+  for (const [key, group] of groups) {
+    const record = vessels.find((v) => v.id === key.split('|')[0]);
+    if (!record) continue;
+    const vesselLeave = leave
+      .filter((l) => l.vessel_id === record.id)
+      .map((l) => ({ start_date: String(l.start_date).slice(0, 10), end_date: String(l.end_date).slice(0, 10), reason: l.reason }));
+    const t = buildWorkboatTestimonial(group as unknown as TestimonialEntry[], vesselLeave);
+    if (t) blocks.push({ vessel: { ...record, ...(group[0]?.vessel ?? {}) }, t });
+  }
+  return blocks;
+}
+
+/**
+ * Gives each block the latest signed request on the same vessel whose period
+ * overlaps it. A missing table (SQL not applied yet) leaves the blocks unsigned.
+ */
+async function attachSignatures(app: App, userId: string, blocks: TestimonialBlock[]): Promise<void> {
+  let rows: any[] = [];
+  try {
+    rows = await app.db.select().from(schema.testimonial_requests).where(eq(schema.testimonial_requests.user_id, userId));
+  } catch (err) {
+    app.logger.warn({ err }, 'Could not read testimonial signatures');
+    return;
+  }
+  const signed = rows
+    .filter((r) => r.status === 'signed' && r.signed_at && r.signature_image)
+    .sort((a, b) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime());
+  for (const b of blocks) {
+    const r = signed.find((x) => x.vessel_id === b.vessel.id && x.part1?.from <= b.t.to && x.part1?.to >= b.t.from);
+    if (r) b.signed = { ...r, signed_at: new Date(r.signed_at), part1: r.part1 } as SignedTestimonial;
+  }
+}
+
 export function register(app: App, fastify: FastifyInstance) {
-  fastify.get<{ Querystring: { vesselId?: string } }>('/api/reports/workboat-testimonial', {
+  fastify.get<{ Querystring: { vesselId?: string; format?: string } }>('/api/reports/workboat-testimonial', {
     schema: {
       description: 'MGN 496 Annex C Deck (Workboat) Testimonial, one per vessel, as a PDF to be signed by the Master or company (requires authentication and an active subscription)',
       tags: ['reports'],
       querystring: {
         type: 'object',
-        properties: { vesselId: { type: 'string', description: 'Only this vessel (default: every vessel with qualifying service)' } },
+        properties: {
+          vesselId: { type: 'string', description: 'Only this vessel (default: every vessel with qualifying service)' },
+          format: { type: 'string', enum: ['testimonial', 'discharge'], description: 'Annex C testimonial (default) or Annex B certificate of discharge' },
+        },
       },
     },
   }, async (request, reply) => {
@@ -392,52 +616,26 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(403).send({ error: 'Active subscription required to generate reports' });
     }
     const { vesselId } = request.query;
+    const discharge = request.query.format === 'discharge';
 
-    let entries = await app.db.query.sea_time_entries.findMany({
-      with: { vessel: true },
-      where: eq(schema.sea_time_entries.user_id, userId),
-    });
-    if (vesselId) entries = entries.filter((e) => e.vessel_id === vesselId);
-    // Name and flag as they were on each entry's day; sole watchkeeper periods by date
-    entries = await entriesWithIdentity(app, entries);
-    entries = await entriesWithSoleWatch(app, entries);
-
-    const vessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
-    const leave = await app.db.select().from(schema.leave_periods).where(eq(schema.leave_periods.user_id, userId));
-
-    // One testimonial per vessel identity: a renamed vessel gets one per name,
-    // as each name is a separate entry in a discharge book.
-    const groups = new Map<string, typeof entries>();
-    for (const e of [...entries].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())) {
-      const key = `${e.vessel_id}|${(e as { identity_period?: string }).identity_period ?? 'start'}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(e);
-    }
-    const blocks: TestimonialBlock[] = [];
-    for (const [key, group] of groups) {
-      const record = vessels.find((v) => v.id === key.split('|')[0]);
-      if (!record) continue;
-      const vesselLeave = leave
-        .filter((l) => l.vessel_id === record.id)
-        .map((l) => ({ start_date: String(l.start_date).slice(0, 10), end_date: String(l.end_date).slice(0, 10), reason: l.reason }));
-      const t = buildWorkboatTestimonial(group as unknown as TestimonialEntry[], vesselLeave);
-      if (t) blocks.push({ vessel: { ...record, ...(group[0]?.vessel ?? {}) }, t });
-    }
+    const blocks = await loadTestimonialBlocks(app, userId, vesselId);
+    await attachSignatures(app, userId, blocks);
     if (blocks.length === 0) {
       return reply.code(404).send({ error: 'No confirmed deck sea service to put on a testimonial' });
     }
 
-    const doc = testimonialPdf(blocks, {
+    const seafarer = {
       name: user.name || '',
       dateOfBirth: (user as any).date_of_birth ? ukDate(new Date((user as any).date_of_birth)) : '',
       dischargeBook: (user as any).srb_no || '',
-    }, app.logger);
+    };
+    const doc = discharge ? dischargePdf(blocks, seafarer, app.logger) : testimonialPdf(blocks, seafarer, app.logger);
     const pages = doc.bufferedPageRange().count;
     doc.end();
 
     app.logger.info({ userId, vessels: blocks.length, pages }, 'Workboat testimonial generated');
     reply.header('Content-Type', 'application/pdf');
-    reply.header('Content-Disposition', `attachment; filename="workboat_testimonial_${new Date().toISOString().split('T')[0]}.pdf"`);
+    reply.header('Content-Disposition', `attachment; filename="${discharge ? 'certificate_of_discharge' : 'workboat_testimonial'}_${new Date().toISOString().split('T')[0]}.pdf"`);
     return reply.send(doc as unknown as Readable);
   });
 }

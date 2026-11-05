@@ -86,6 +86,13 @@ export interface WorkboatTestimonial {
   dual_capacity_days: number;
   /** Leave on this vessel inside From to To, clipped to those dates. */
   leave: TestimonialLeave[];
+  /** Annex B: calendar days from joining to leaving, both counted. */
+  onboard_days: number;
+  /** Annex B: distinct days at sea (sea, watchkeeping and stand-by service, not in port), not halved for dual capacity. */
+  days_at_sea: number;
+  /** Annex B: first departure and last arrival port, where logged. */
+  joined_place: string | null;
+  left_place: string | null;
   /** Entries in the testimonial, oldest first. */
   entries: TestimonialEntry[];
   /** Entries carrying a signature, for the service record appendix. */
@@ -155,6 +162,10 @@ export function buildWorkboatTestimonial(
     watchkeeping_days: countWorkboatDays(watch),
     dual_capacity_days: distinctSeaDates(entries.filter((e) => e.dual_capacity === true)).size,
     leave,
+    onboard_days: Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1,
+    days_at_sea: distinctSeaDates(entries.filter((e) => (e.service_type || 'actual_sea_service') !== 'service_in_port')).size,
+    joined_place: entries[0].from_port || null,
+    left_place: entries[entries.length - 1].to_port || null,
     entries,
     signed_entries: entries.filter((e) => typeof e.signature_image === 'string' && e.signature_image.startsWith('data:image/')).length,
   };
@@ -165,4 +176,123 @@ export function nilOr(n: number, unit: string): string {
   if (!n) return 'NIL';
   const shown = Number.isInteger(n) ? String(n) : n.toFixed(1);
   return `${shown} ${unit}`;
+}
+
+// ── Signature requests ────────────────────────────────────────────────
+
+/** Part 1 as shown to the signatory, frozen when the request is made. */
+export interface TestimonialSnapshot {
+  seafarer: { name: string; date_of_birth: string; discharge_book: string };
+  vessel: { name: string; length_m: string | null; gross_tons: string | null; official_number: string | null; type: string | null };
+  from: string;
+  to: string;
+  capacities: AnnexCCapacity[];
+  capacity_unrecorded: boolean;
+  served_as_master: boolean;
+  sea_service_days: number;
+  sea_service_months: number;
+  sea_service_remaining_days: number;
+  watchkeeping_days: number;
+  dual_capacity_days: number;
+  leave: TestimonialLeave[];
+}
+
+export function testimonialSnapshot(
+  t: WorkboatTestimonial,
+  vessel: TestimonialSnapshot['vessel'],
+  seafarer: TestimonialSnapshot['seafarer'],
+): TestimonialSnapshot {
+  return {
+    seafarer,
+    vessel,
+    from: t.from,
+    to: t.to,
+    capacities: t.capacities,
+    capacity_unrecorded: t.capacity_unrecorded,
+    served_as_master: t.served_as_master,
+    sea_service_days: t.sea_service_days,
+    sea_service_months: t.sea_service_months,
+    sea_service_remaining_days: t.sea_service_remaining_days,
+    watchkeeping_days: t.watchkeeping_days,
+    dual_capacity_days: t.dual_capacity_days,
+    leave: t.leave,
+  };
+}
+
+/** What the signatory fills in: company header, duties, Part 2 and Part 3. */
+export interface TestimonialSignature {
+  company_name: string | null;
+  company_address: string | null;
+  company_phone: string | null;
+  company_email: string | null;
+  duties: string | null;
+  conduct: string | null;
+  ability: string | null;
+  signer_name: string;
+  signer_position: 'master' | 'responsible_person';
+  signer_coc_no: string | null;
+  signer_issuing_admin: string | null;
+  signer_organisation: string | null;
+  signer_org_position: string | null;
+  signature_image: string;
+}
+
+const TEXT_LIMIT = 2000;
+const SIGNATURE_LIMIT = 300_000;
+
+const clean = (v: unknown): string | null => {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  return s ? s.slice(0, TEXT_LIMIT) : null;
+};
+
+/**
+ * Checks a submitted signature against Annex C Part 3 and MGN 496 5.3. Returns
+ * the cleaned fields, or the first problem as a sentence for the signatory.
+ */
+export function validateSignature(
+  body: any,
+  snapshot: Pick<TestimonialSnapshot, 'served_as_master'>,
+): { ok: true; value: TestimonialSignature } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object') return { ok: false, error: 'Nothing was submitted.' };
+  if (body.confirm !== true) return { ok: false, error: 'Please confirm the figures before signing.' };
+  const signer_name = clean(body.signer_name);
+  if (!signer_name) return { ok: false, error: 'Please print your name.' };
+  const position = body.signer_position;
+  if (position !== 'master' && position !== 'responsible_person') {
+    return { ok: false, error: 'Please say whether you sign as Master or as a responsible person.' };
+  }
+  if (snapshot.served_as_master && position === 'master') {
+    return {
+      ok: false,
+      error: 'The seafarer served as Master, so MGN 496 5.3 needs the owner or a responsible person from the management company to sign.',
+    };
+  }
+  const signer_coc_no = clean(body.signer_coc_no);
+  const signer_organisation = clean(body.signer_organisation);
+  if (position === 'master' && !signer_coc_no) return { ok: false, error: 'Please give your CoC number.' };
+  if (position === 'responsible_person' && !signer_organisation) return { ok: false, error: 'Please give your organisation.' };
+  const sig = body.signature_image;
+  if (typeof sig !== 'string' || !sig.startsWith('data:image/png;base64,') || sig.length > SIGNATURE_LIMIT) {
+    return { ok: false, error: 'Please sign in the box.' };
+  }
+  return {
+    ok: true,
+    value: {
+      company_name: clean(body.company_name),
+      company_address: clean(body.company_address),
+      company_phone: clean(body.company_phone),
+      company_email: clean(body.company_email),
+      duties: clean(body.duties),
+      conduct: clean(body.conduct),
+      ability: clean(body.ability),
+      signer_name,
+      signer_position: position,
+      signer_coc_no,
+      signer_issuing_admin: clean(body.signer_issuing_admin),
+      signer_organisation,
+      signer_org_position: clean(body.signer_org_position),
+      signature_image: sig,
+    },
+  };
 }
