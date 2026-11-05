@@ -49,6 +49,17 @@
         "track": "beta",
         "releaseStatus": "completed"
       }
+    },
+    "internal": {
+      "ios": {
+        "appleTeamId": "43GZCFFPR9",
+        "ascAppId": "6758010893"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./pc-service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
     }
   }
 }
