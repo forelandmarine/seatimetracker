@@ -115,8 +115,16 @@
   "area": "Leith (Edinburgh), Western Harbour",
   "expect": "B",
   "season": "any",
-  "lat": 55.98233,
-  "lon": -3.19634,
+  "lat": 55.985,
+  "lon": -3.181,
+  "source": "chart position"
+ },
+ {
+  "area": "Newhaven Harbour, Edinburgh (not listed, Forth D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 55.9815,
+  "lon": -3.1962,
   "source": "chart position"
  },
  {
@@ -960,11 +968,19 @@
   "source": "chart position"
  },
  {
-  "area": "Walton Backwaters",
-  "expect": "C",
-  "season": "any",
+  "area": "Walton Backwaters, entrance between Stone Point and Horsey Island (summer D)",
+  "expect": "D",
+  "season": "summer",
   "lat": 51.88107,
   "lon": 1.24854,
+  "source": "chart position"
+ },
+ {
+  "area": "Walton Backwaters, Hamford Water west of Bramble Creek (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.885,
+  "lon": 1.21,
   "source": "chart position"
  },
  {
@@ -1051,17 +1067,17 @@
   "area": "River Medway (C)",
   "expect": "C",
   "season": "any",
-  "lat": 51.40122,
-  "lon": 0.60233,
+  "lat": 51.4029,
+  "lon": 0.6032,
   "source": "chart position"
  },
  {
   "area": "River Medway (A, above Allington)",
   "expect": "A",
   "season": "any",
-  "lat": 51.27189,
-  "lon": 0.52216,
-  "source": "chart position"
+  "lat": 51.2696,
+  "lon": 0.52043,
+  "source": "osm waterway:River Medway@51.27,0.52"
  },
  {
   "area": "The Swale",
@@ -1099,9 +1115,9 @@
   "area": "River Stour (Kent)",
   "expect": "C",
   "season": "any",
-  "lat": 51.31133,
-  "lon": 1.33586,
-  "source": "chart position"
+  "lat": 51.27996,
+  "lon": 1.33997,
+  "source": "osm waterway:River Stour@51.28,1.34"
  },
  {
   "area": "Dover Harbour",
@@ -1227,8 +1243,8 @@
   "area": "Christchurch Harbour",
   "expect": "B",
   "season": "any",
-  "lat": 50.72,
-  "lon": -1.76358,
+  "lat": 50.7216,
+  "lon": -1.7628,
   "source": "chart position"
  },
  {
@@ -1358,6 +1374,14 @@
   "lat": 53.20803,
   "lon": -0.33669,
   "source": "osm waterway:River Witham@53.21,-0.33"
+ },
+ {
+  "area": "River Great Ouse (A, Ely)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.3957,
+  "lon": 0.27076,
+  "source": "osm waterway:River Great Ouse or Ely Ouse@52.398,0.27"
  },
  {
   "area": "Norfolk Broads (A, Hickling Broad)",
@@ -1675,8 +1699,8 @@
   "area": "Menai Strait (C)",
   "expect": "C",
   "season": "any",
-  "lat": 53.19924,
-  "lon": -4.19277,
+  "lat": 53.1981,
+  "lon": -4.2099,
   "source": "chart position"
  },
  {
@@ -1699,9 +1723,9 @@
   "area": "River Dee (C)",
   "expect": "C",
   "season": "any",
-  "lat": 53.22069,
-  "lon": -3.04903,
-  "source": "chart position"
+  "lat": 53.19924,
+  "lon": -2.98362,
+  "source": "osm waterway:River Dee@53.21,-2.98"
  },
  {
   "area": "River Dee (D)",
@@ -2094,6 +2118,390 @@
   "lat": 52.04,
   "lon": 1.34,
   "source": "chart position"
+ },
+ {
+  "area": "Dales Voe (winter D)",
+  "expect": "D",
+  "season": "winter",
+  "lat": 60.21,
+  "lon": -1.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Dales Voe (summer, as for Lerwick)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 60.205,
+  "lon": -1.18,
+  "source": "chart position"
+ },
+ {
+  "area": "Papa Sound, Stronsay",
+  "expect": "D",
+  "season": "any",
+  "lat": 59.145,
+  "lon": -2.6,
+  "source": "chart position"
+ },
+ {
+  "area": "Cromarty Firth / Inverness D (inside North Sutor to Nairn)",
+  "expect": "D",
+  "season": "any",
+  "lat": 57.66,
+  "lon": -3.95,
+  "source": "chart position"
+ },
+ {
+  "area": "Moray Firth seaward of North Sutor to Nairn (not categorised)",
+  "expect": "none",
+  "season": "any",
+  "lat": 57.67,
+  "lon": -3.75,
+  "source": "chart position"
+ },
+ {
+  "area": "Clyde, Loch Eck (not listed)",
+  "expect": "unclassified",
+  "season": "any",
+  "lat": 56.08104,
+  "lon": -4.99327,
+  "source": "nominatim:Loch Eck"
+ },
+ {
+  "area": "Preston and Southport, Ribble seaward of Lytham (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.7,
+  "lon": -3,
+  "source": "chart position"
+ },
+ {
+  "area": "Swansea, between the breakwaters (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 51.608,
+  "lon": -3.928,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater, within the bar (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 51.23,
+  "lon": -3.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Christchurch, the Run (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.7218,
+  "lon": -1.7425,
+  "source": "chart position"
+ },
+ {
+  "area": "Brighton Marina inner harbour (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 50.8125,
+  "lon": -0.0955,
+  "source": "chart position"
+ },
+ {
+  "area": "Grimsby tidal basin (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.585,
+  "lon": -0.068,
+  "source": "chart position"
+ },
+ {
+  "area": "River Alde above West Row Point (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.155,
+  "lon": 1.52,
+  "source": "chart position"
+ },
+ {
+  "area": "Walton Backwaters, Hamford Water (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 51.895,
+  "lon": 1.245,
+  "source": "chart position"
+ },
+ {
+  "area": "Walton Backwaters, Walton Channel (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.865,
+  "lon": 1.26,
+  "source": "chart position"
+ },
+ {
+  "area": "River Hull, below Beverley Beck (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.77532,
+  "lon": -0.34215,
+  "source": "osm waterway:River Hull@53.78,-0.34"
+ },
+ {
+  "area": "River Hull, above Beverley Beck (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.88588,
+  "lon": -0.39482,
+  "source": "osm waterway:River Hull@53.88,-0.38"
+ },
+ {
+  "area": "River Foss (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.95794,
+  "lon": -1.0772,
+  "source": "osm waterway:River Foss@53.957,-1.077"
+ },
+ {
+  "area": "Great Ouse, Denver to King's Lynn (A, tidal)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.68058,
+  "lon": 0.36829,
+  "source": "osm waterway:River Great Ouse@52.68,0.37"
+ },
+ {
+  "area": "Great Ouse, King's Lynn Cut (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.75949,
+  "lon": 0.38905,
+  "source": "osm waterway:River Great Ouse@52.76,0.39"
+ },
+ {
+  "area": "River Rother above Scots Float (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.0137,
+  "lon": 0.65535,
+  "source": "osm waterway:River Rother@51,0.66"
+ },
+ {
+  "area": "Bridgwater and Taunton Canal (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.02998,
+  "lon": -3.06707,
+  "source": "osm waterway:Bridgwater and Taunton Canal@51.08,-3.05"
+ },
+ {
+  "area": "Calder and Hebble, above Broad Cut (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.69275,
+  "lon": -1.76083,
+  "source": "osm waterway:Calder and Hebble Navigation@53.69,-1.78"
+ },
+ {
+  "area": "Calder and Hebble, Wakefield to Broad Cut (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.66382,
+  "lon": -1.51089,
+  "source": "osm waterway:River Calder@53.67,-1.51"
+ },
+ {
+  "area": "Dutch River (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.68384,
+  "lon": -0.9293,
+  "source": "osm waterway:River Don (Dutch River)@53.685,-0.93"
+ },
+ {
+  "area": "River Ouse above Nun Monkton / River Ure (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 54.09797,
+  "lon": -1.39844,
+  "source": "osm waterway:River Ure@54.09,-1.4"
+ },
+ {
+  "area": "River Wharfe to Tadcaster (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.85111,
+  "lon": -1.15627,
+  "source": "osm waterway:River Wharfe@53.86,-1.15"
+ },
+ {
+  "area": "River Trent, Cromwell Lock to Shardlow (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.93753,
+  "lon": -1.13717,
+  "source": "osm waterway:River Trent@52.94,-1.14"
+ },
+ {
+  "area": "River Weaver above Northwich (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.21397,
+  "lon": -2.52294,
+  "source": "osm waterway:River Weaver@53.21,-2.52"
+ },
+ {
+  "area": "River Arun above Littlehampton Marina (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 50.85378,
+  "lon": -0.5522,
+  "source": "osm waterway:River Arun@50.853,-0.552"
+ },
+ {
+  "area": "River Severn above Gloucester (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.99617,
+  "lon": -2.16446,
+  "source": "osm waterway:River Severn@51.99,-2.16"
+ },
+ {
+  "area": "River Avon, Netham to Pulteney Weir (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.41925,
+  "lon": -2.49244,
+  "source": "osm waterway:River Avon@51.418,-2.495"
+ },
+ {
+  "area": "River Avon above Pulteney Weir (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.39751,
+  "lon": -2.33369,
+  "source": "osm waterway:River Avon@51.39,-2.33"
+ },
+ {
+  "area": "River Avon (Midland), Tewkesbury to Evesham (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.10932,
+  "lon": -2.07176,
+  "source": "osm waterway:River Avon@52.11,-2.08"
+ },
+ {
+  "area": "River Avon (Midland) above Evesham (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.19117,
+  "lon": -1.7002,
+  "source": "osm waterway:River Avon@52.19,-1.7"
+ },
+ {
+  "area": "River Dee above Dee Bridge Weir (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.15855,
+  "lon": -2.87471,
+  "source": "osm waterway:River Dee@53.16,-2.87"
+ },
+ {
+  "area": "River Lune above Glasson Dock (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.0526,
+  "lon": -2.80288,
+  "source": "osm waterway:River Lune@54.04,-2.81"
+ },
+ {
+  "area": "River Soar (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.79435,
+  "lon": -1.21623,
+  "source": "osm waterway:River Soar@52.8,-1.22"
+ },
+ {
+  "area": "River Derwent (Yorkshire) (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.85471,
+  "lon": -0.94195,
+  "source": "osm waterway:River Derwent@53.85,-0.92"
+ },
+ {
+  "area": "River Stort (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.79525,
+  "lon": 0.12873,
+  "source": "osm waterway:River Stort@51.8,0.12"
+ },
+ {
+  "area": "River Bann (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.95867,
+  "lon": -6.5441,
+  "source": "osm waterway:Lower Bann@54.95,-6.55"
+ },
+ {
+  "area": "River Tawe above the barrage (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.63125,
+  "lon": -3.93392,
+  "source": "osm waterway:River Tawe@51.632,-3.935"
+ },
+ {
+  "area": "River Wear at Durham (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.77409,
+  "lon": -1.57849,
+  "source": "osm waterway:River Wear@54.774,-1.578"
+ },
+ {
+  "area": "River Nene above Dog-in-a-Doublet (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.56832,
+  "lon": -0.24027,
+  "source": "osm waterway:River Nene@52.57,-0.24"
+ },
+ {
+  "area": "River Nene, Wisbech (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.66505,
+  "lon": 0.15813,
+  "source": "osm waterway:River Nene@52.66,0.16"
+ },
+ {
+  "area": "River Ancholme above Brigg (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.5402,
+  "lon": -0.49642,
+  "source": "osm waterway:River Ancholme@53.5,-0.48"
+ },
+ {
+  "area": "Sheffield and Tinsley Canal (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.39193,
+  "lon": -1.43108,
+  "source": "osm waterway:Sheffield and South Yorkshire Navigation@53.39,-1.43"
+ },
+ {
+  "area": "Sheffield and South Yorkshire Navigation (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.55047,
+  "lon": -1.10046,
+  "source": "osm waterway:Sheffield and South Yorkshire Navigation@53.55,-1.1"
  },
  {
   "area": "Control: London Array (open sea)",

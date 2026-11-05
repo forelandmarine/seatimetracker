@@ -15,7 +15,8 @@
 //   line      a chart centreline buffered (narrow channels)
 //   hull      convex hull of the OSM breakwaters and piers in the bbox (plus any extra points): the
 //             water "within the breakwaters", its seaward edge running between the heads
-// Optional on any kind: clip (ring to intersect with), clip_bbox, grow_m (widen before clipping,
+// Optional on any kind: clip (ring to intersect with), clip_bbox, dates ("MM-DD/MM-DD": only
+// between those dates, e.g. the Clyde 5 June to 5 September extension), within_nm_of_land, grow_m (widen before clipping,
 // for narrow channels the simplified WFD outline misses), inset_nm (shrink inwards, e.g. Lough
 // Neagh more than 2 miles from the shore). Ring vertices may be names, looked up in the bbox.
 //
@@ -23,7 +24,8 @@
 // (fetch them first with scripts/harbour-areas/fetch-osm-layers.mjs); bays, harbour basins and
 // named cut points come from the Overpass API. Both are cached in scripts/harbour-areas/osm-cache/
 // (git-ignored). --refresh refetches the Overpass answers. Run from backend/:
-//   node scripts/build-harbour-overrides.mjs "<path to Workboats Sea Areas Tool>" [--refresh] [--only=id,id]
+//   NODE_OPTIONS=--max-old-space-size=8192 node scripts/build-harbour-overrides.mjs "<path to Workboats Sea Areas Tool>" [--refresh] [--only=id,id]
+// (the England water and waterway layers need the larger heap)
 // The tool path is only used for its @turf modules, as in build-thames-overrides.mjs.
 import fs from 'fs';
 import path from 'path';
@@ -47,6 +49,7 @@ const simplify = turf('simplify');
 const area = turf('area');
 const truncate = turf('truncate');
 const convex = turf('convex');
+const bboxClip = turf('bbox-clip');
 const H = req('@turf/helpers');
 
 const CACHE = 'scripts/harbour-areas/osm-cache';
@@ -77,6 +80,7 @@ async function loadLayer(layer) {
   return out;
 }
 let WATER_A = null;
+let LAND = null;
 let WATERWAYS = null;
 const overlaps = (b, [s, w, n, e]) => b[0] <= e && b[2] >= w && b[1] <= n && b[3] >= s;
 const nameTest = (spec) => {
@@ -142,9 +146,42 @@ function inRing([x, y], ring) {
   return inside;
 }
 
-// A cut or seed given by name ("Allington Lock") is looked up with OSM Nominatim inside the area's bbox (cached).
+// OS Open Names (Ordnance Survey, OGL): the GB gazetteer, which has the headlands, holms and taings
+// Annex 1 names that OSM lacks. fetch-osm-layers.mjs downloads it; rows are read once for the
+// names the specs use.
+const proj4 = req('proj4');
+const BNG = '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs';
+let OSN = null;
+function osNames() {
+  if (OSN) return OSN;
+  OSN = new Map();
+  const wanted = new Set();
+  const walk = (v) => { if (typeof v === 'string') wanted.add(v.toLowerCase()); };
+  for (const a of AREAS) for (const k of ['ring', 'cuts', 'extra', 'line']) (a[k] ?? []).forEach(walk), walk(a.seed);
+  const dir = path.join(CACHE, 'os-open-names', 'Data');
+  if (!fs.existsSync(dir)) return OSN;
+  for (const f of fs.readdirSync(dir)) {
+    for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+      const c = line.split(',');
+      for (const n of [c[2], c[4]]) {
+        if (!n || !wanted.has(n.toLowerCase())) continue;
+        const [lon, lat] = proj4(BNG, 'WGS84', [Number(c[8]), Number(c[9])]);
+        const key = n.toLowerCase();
+        if (!OSN.has(key)) OSN.set(key, []);
+        OSN.get(key).push({ lat, lon, type: c[7] });
+      }
+    }
+  }
+  return OSN;
+}
+
+// A cut, seed or ring vertex given by name ("Allington Lock") is looked up in the area's bbox:
+// OS Open Names first, then OSM Nominatim (cached).
 async function placeOf(spec, p) {
   if (Array.isArray(p)) return p;
+  const [s0, w0, n0, e0] = spec.bbox;
+  const os = (osNames().get(p.toLowerCase()) ?? []).filter((r) => r.lat >= s0 && r.lat <= n0 && r.lon >= w0 && r.lon <= e0);
+  if (os.length) return [os[0].lat, os[0].lon];
   const [s_, w, n, e] = spec.bbox;
   const u = `https://nominatim.openstreetmap.org/search?format=json&limit=1&bounded=1&viewbox=${w},${n},${e},${s_}&q=${encodeURIComponent(p)}`;
   const file = path.join(CACHE, 'nom-' + crypto.createHash('sha1').update(u).digest('hex').slice(0, 16) + '.json');
@@ -330,6 +367,23 @@ async function buildOne(spec) {
     shape = intersect(H.featureCollection([shape, H.polygon([ring])]));
     if (!shape) { console.warn(`!! ${spec.id}: clip left nothing`); return; }
   }
+  if (spec.within_nm_of_land) {
+    // Keep only water within N nm of a given shore (Tarbert: "within one mile from the shore of
+    // the Island of Harris"), measured on the ONS MHW coastline the Sea Areas Tool builds.
+    const { nm, land_bbox } = spec.within_nm_of_land;
+    LAND ??= JSON.parse(fs.readFileSync(path.join(T, 'data', 'uk-coastline.geojson'), 'utf8'));
+    const [s1, w1, n1, e1] = land_bbox;
+    // bbox-clip leaves empty parts in a MultiPolygon; keep the real ones.
+    const polys = LAND.features
+      .map((f) => bboxClip(f, [w1, s1, e1, n1]).geometry)
+      .flatMap((g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates))
+      .filter((rings) => rings.length && rings[0].length >= 4);
+    // Only the main island's shore (Harris, not Scalpay): the largest land part in the box.
+    const shore = polys.reduce((a, b) => (area(H.polygon(b)) > area(H.polygon(a)) ? b : a));
+    const near = buffer(H.polygon(shore), nm * NM_KM, { units: 'kilometers', steps: 4 });
+    shape = intersect(H.featureCollection([shape, near]));
+    if (!shape) { console.warn(`!! ${spec.id}: nothing within ${nm} nm of land`); return; }
+  }
   if (spec.inset_nm) {
     shape = buffer(shape, -spec.inset_nm * NM_KM, { units: 'kilometers', steps: 4 });
     if (!shape) { console.warn(`!! ${spec.id}: inset left nothing`); return; }
@@ -340,6 +394,7 @@ async function buildOne(spec) {
   shape.properties = {
     category: spec.category,
     season: spec.season ?? 'all',
+    ...(spec.dates ? { dates: spec.dates } : {}),
     ...(spec.tidal === false ? { tidal: false } : {}),
     estuary: spec.name,
     country: spec.country,
@@ -403,7 +458,7 @@ const md = [
   ...AREAS.map((a) => {
     const p = built.get(a.id);
     const esc = (s) => String(s ?? '').replace(/\|/g, '/');
-    return `| ${a.id} | ${esc(a.name)} | ${a.category} | ${a.season ?? 'all'} | ${a.confidence} | ${p ? p.area_km2 : 'not built'} | ${esc(a.msn)} | ${esc(a.basis)} | ${esc(p?.source_refs ?? (a.kind === 'polygon' || a.kind === 'line' ? 'hand-drawn' : ''))} |`;
+    return `| ${a.id} | ${esc(a.name)} | ${a.category} | ${a.season ?? 'all'}${a.dates ? ' ' + a.dates : ''} | ${a.confidence} | ${p ? p.area_km2 : 'not built'} | ${esc(a.msn)} | ${esc(a.basis)} | ${esc(p?.source_refs ?? (a.kind === 'polygon' || a.kind === 'line' ? 'hand-drawn' : ''))} |`;
   }),
   '',
 ];

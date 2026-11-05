@@ -1,4 +1,4 @@
-// Fetches the OpenStreetMap water polygons and waterway lines for GB and Northern Ireland from the
+// Fetches OS Open Names (below) and the OpenStreetMap water polygons and waterway lines for GB and Northern Ireland from the
 // Geofabrik shapefile extracts (ODbL), reading only the needed members of each remote zip with
 // HTTP range requests (the England zip is 3 GB; the two layers are a small part of it).
 // Output: scripts/harbour-areas/osm-cache/geofabrik/<region>/gis_osm_{water_a,waterways}_free_1.*
@@ -100,4 +100,15 @@ for (const [region, rel] of Object.entries(REGIONS)) {
   }
 }
 fs.writeFileSync(path.join(OUT, 'extract-date.txt'), dates.join('\n') + '\n');
+
+// OS Open Names (Ordnance Survey, OGL), the GB gazetteer: 100 MB zip of per-square CSVs.
+const OSN = 'scripts/harbour-areas/osm-cache/os-open-names';
+if (!fs.existsSync(path.join(OSN, 'Data'))) {
+  fs.mkdirSync(OSN, { recursive: true });
+  const r = await fetch('https://api.os.uk/downloads/v1/products/OpenNames/downloads?area=GB&format=CSV&redirect');
+  await pipeline((await import('stream')).Readable.fromWeb(r.body), fs.createWriteStream(path.join(OSN, 'opnames.zip')));
+  const { execFileSync } = await import('child_process');
+  execFileSync('unzip', ['-oq', 'opnames.zip'], { cwd: OSN });
+  console.log('OS Open Names ok');
+}
 console.log(dates.join('\n'));

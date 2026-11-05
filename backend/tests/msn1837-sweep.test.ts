@@ -30,8 +30,9 @@ describe("MSN 1837 Annex 1 sweep", () => {
 describe("the places the 2.5.0 check found", () => {
   const at = (lat: number, lon: number, season: "summer" | "winter" = "summer") => c.classifyPoint({ lat, lon }, { season });
 
-  test("Leith Western Harbour and Imperial Dock are Cat B, not land", () => {
-    expect(at(55.98233, -3.19634).areaCategory).toBe("B");
+  test("Leith Western Harbour and Imperial Dock are Cat B, not land; Newhaven Harbour next door is Forth D", () => {
+    expect(at(55.985, -3.181).areaCategory).toBe("B");
+    expect(at(55.9815, -3.1962).areaCategory).toBe("D");
     expect(at(55.979, -3.16639).areaCategory).toBe("B");
   });
 
@@ -69,6 +70,17 @@ describe("the places the 2.5.0 check found", () => {
   test("inland waters are non-tidal", () => {
     expect(at(55.88045, -4.16748).isTidal).toBe(false);
     expect(at(57.3, -4.45).isTidal).toBe(false); // Loch Ness
+  });
+});
+
+describe("dated limits", () => {
+  test("the Clyde summer C extends to Cumbrae only from 5 June to 5 September", () => {
+    const largs = { lat: 55.8, lon: -4.89 }; // Largs Channel
+    expect(c.classifyPoint(largs, { date: new Date("2026-07-01T12:00:00Z") }).areaCategory).toBe("C");
+    expect(c.classifyPoint(largs, { date: new Date("2026-09-05T23:00:00Z") }).areaCategory).toBe("C");
+    expect(c.classifyPoint(largs, { date: new Date("2026-09-06T00:00:00Z") }).areaCategory).toBe("D");
+    expect(c.classifyPoint(largs, { date: new Date("2026-05-20T12:00:00Z") }).areaCategory).toBe("D");
+    expect(c.classifyPoint(largs, { season: "summer" }).areaCategory).toBe("D"); // no date: the extension does not apply
   });
 });
 

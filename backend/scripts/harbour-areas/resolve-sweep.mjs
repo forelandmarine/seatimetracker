@@ -13,7 +13,7 @@ const cache = new Map(prev.filter((r) => r.source !== 'chart position').map((r) 
 const UA = 'SeaTimeTracker-sea-areas-build/1.0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Named waterway lines from the Geofabrik extracts (fetch-osm-layers.mjs), with a label point each.
+// Named waterway lines from the Geofabrik extracts (fetch-osm-layers.mjs), with their bboxes.
 let WW = null;
 async function loadWaterways() {
   const T = process.env.SEA_AREAS_TOOL ?? `${process.env.HOME}/Desktop/Foreland Group/SeaTime Tracker/Playstore - Seatime Tracker/Workboats Sea Areas Tool`;
@@ -26,7 +26,9 @@ async function loadWaterways() {
       const f = x.value;
       if (!f.properties.name) continue;
       const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
-      out.push({ name: f.properties.name, lines, lon: lines[0][0][0], lat: lines[0][0][1] });
+      const b = [180, 90, -180, -90];
+      for (const l of lines) for (const [x, y] of l) { b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
+      out.push({ name: f.properties.name, lines, bbox: b });
     }
   }
   return out;
@@ -52,8 +54,9 @@ for (const [area, expect, season, loc, note] of SWEEP) {
   } else if (loc.ww) {
     source = `osm waterway:${loc.ww}@${loc.near.join(',')}`;
     WW ??= await loadWaterways();
-    const lines = WW.filter((f) => f.name.toLowerCase() === loc.ww.toLowerCase() && Math.abs(f.lat - loc.near[0]) < 0.3 && Math.abs(f.lon - loc.near[1]) < 0.5).flatMap((f) => f.lines);
-    if (!lines.length) { console.warn('no waterway', loc.ww); continue; }
+    const [la, lo] = loc.near;
+    const lines = WW.filter((f) => f.name.toLowerCase() === loc.ww.toLowerCase() && f.bbox[0] <= lo + 0.1 && f.bbox[2] >= lo - 0.1 && f.bbox[1] <= la + 0.06 && f.bbox[3] >= la - 0.06).flatMap((f) => f.lines);
+    if (!lines.length) throw new Error(`no OSM waterway named ${loc.ww} near ${loc.near} (${area})`);
     [lat, lon] = onGeometry({ type: 'MultiLineString', coordinates: lines }, loc.near[0], loc.near[1]);
   } else {
     source = `nominatim:${loc.nom}`;
@@ -62,7 +65,7 @@ for (const [area, expect, season, loc, note] of SWEEP) {
       const u = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&polygon_geojson=1&q=${encodeURIComponent(loc.nom)}`;
       const r = await (await fetch(u, { headers: { 'User-Agent': UA } })).json();
       await sleep(1100);
-      if (!r.length) { console.warn('no result', loc.nom); continue; }
+      if (!r.length) throw new Error(`Nominatim has nothing for ${loc.nom} (${area})`);
       [lat, lon] = onGeometry(r[0].geojson, Number(r[0].lat), Number(r[0].lon));
       console.log(loc.nom, '->', r[0].display_name.slice(0, 70), lat, lon);
     }
