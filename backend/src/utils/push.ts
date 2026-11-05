@@ -53,11 +53,13 @@ export async function sendPushToUser(app: App, userId: string, msg: PushMessage)
     const tickets = json.data ?? [];
     const dead: string[] = [];
     let accepted = 0;
-    const receiptIds: string[] = [];
+    // Receipt id -> the device it was sent to. Tickets come back in message order, so the
+    // row is taken by ticket index here (not by position among accepted tickets).
+    const rowByReceipt = new Map<string, (typeof rows)[number]>();
     tickets.forEach((t, i) => {
       if (t.status === "ok") {
         accepted++;
-        if (t.id) receiptIds.push(t.id);
+        if (t.id && rows[i]) rowByReceipt.set(t.id, rows[i]);
       } else {
         if (t.details?.error === "DeviceNotRegistered" && rows[i]) dead.push(rows[i].token);
         // InvalidCredentials here means the EAS push credentials (APNs key / FCM V1) are missing
@@ -73,9 +75,8 @@ export async function sendPushToUser(app: App, userId: string, msg: PushMessage)
     app.logger.info({ userId, devices: rows.length, accepted }, "Push notification sent");
     // An accepted ticket only means Expo queued it. Delivery problems (wrong or missing
     // APNs/FCM credentials, revoked tokens) show up in the receipts, so check them later.
-    if (receiptIds.length > 0) {
-      const tokenByReceipt = new Map(receiptIds.map((id, i) => [id, rows[i]]));
-      setTimeout(() => void checkReceipts(app, userId, receiptIds, tokenByReceipt, headers), RECEIPT_DELAY_MS).unref?.();
+    if (rowByReceipt.size > 0) {
+      setTimeout(() => void checkReceipts(app, userId, [...rowByReceipt.keys()], rowByReceipt, headers), RECEIPT_DELAY_MS).unref?.();
     }
     return accepted;
   } catch (err) {
