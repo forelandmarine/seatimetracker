@@ -41,6 +41,8 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   occ_chief_engineer: "Chief Engineer",
   occ_second_engineer: "Second Engineer",
   coc_master_workboat_500: "Master (Workboat) <500 GT",
+  coc_bml_t2l1: "Boatmasters' Licence Tier 2 Level 1",
+  coc_bml_t2l2: "Boatmasters' Licence Tier 2 Level 2",
   // USCG Documents
   uscg_mmc: "MMC (Merchant Mariner Credential)",
   uscg_twic: "TWIC",
@@ -195,6 +197,8 @@ export const CERTIFICATE_TYPE_GROUPS: CertificateTypeGroup[] = [
       "occ_chief_engineer",
       "occ_second_engineer",
       "coc_master_workboat_500",
+      "coc_bml_t2l1",
+      "coc_bml_t2l2",
     ],
   },
   {
@@ -328,7 +332,7 @@ export interface CertificateRevalidation {
   days_to_expiry: number | null;
   /** Applying now keeps the anniversary date (within 6 months of expiry). */
   keeps_anniversary: boolean;
-  rule: 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml';
+  rule: 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml' | 'bml_tier2';
   notice: string;
   counts: string;
   routes: RevalidationRoute[];

@@ -52,7 +52,7 @@ export function RevalidationPanel({ data, isDark }: { data: CertificateRevalidat
       {data.keeps_anniversary && data.met && (
         <Text style={styles.ok}>Service requirement met. Applying now keeps your current anniversary date.</Text>
       )}
-      {data.rule !== 'bml' && data.rule !== 'workboat' && (
+      {data.rule !== 'bml' && data.rule !== 'bml_tier2' && data.rule !== 'workboat' && (
         <Text style={styles.note}>30 months in an acceptable shore occupation also counts (MSN 1861 3.6). Masters need a company letter.</Text>
       )}
     </View>

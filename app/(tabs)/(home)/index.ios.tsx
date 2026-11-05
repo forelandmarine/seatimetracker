@@ -8,6 +8,7 @@ import { HomePrompts } from '@/components/HomePrompts';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { VesselRenameBanner } from '@/components/VesselRenameBanner';
 import { CertificateDetailsBanner } from '@/components/CertificateDetailsBanner';
+import { syncRevalidationRemindersDaily } from '@/utils/revalidationReminders';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -200,6 +201,8 @@ export default function SeaTimeScreen() {
       log('[Home] Loading vessels (iOS)...');
       setLoadError(null);
       void loadCertificates();
+      // Revalidation sea service reminders, resynced at most once a day
+      void syncRevalidationRemindersDaily();
       const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
 
