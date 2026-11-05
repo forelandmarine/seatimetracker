@@ -162,20 +162,6 @@ const ENTRY_DETAIL_PROPS = {
 } as const;
 
 // Helper function to transform sea time entry for API response
-// Detail fields the edit screen loads back. Without them in the response schema
-// Fastify drops them, and saving the entry writes them back as null.
-const ENTRY_DETAIL_PROPS = {
-  rank: { type: ['string', 'null'] },
-  date_joined: { type: ['string', 'null'] },
-  date_left: { type: ['string', 'null'] },
-  trade_area: { type: ['string', 'null'] },
-  bridge_watch_hours: { type: ['number', 'null'] },
-  engine_watch_hours: { type: ['number', 'null'] },
-  night_watch_hours: { type: ['number', 'null'] },
-  certificate_id: { type: ['string', 'null'] },
-  from_port: { type: ['string', 'null'] },
-  to_port: { type: ['string', 'null'] },
-} as const;
 
 function transformSeaTimeEntryForResponse(entry: any) {
   // Calculate duration_hours if both start_time and end_time are present
