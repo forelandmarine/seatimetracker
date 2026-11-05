@@ -168,7 +168,7 @@ export const WBC3_TICKETS: Wbc3Ticket[] = [
   { id: 'yachtmaster_ocean', categories: [0, 1, 2, 3, 4, 5, 6], certificate_types: ['occ_yachtmaster_ocean', 'course_ym_ocean'] },
   { id: 'master_code_200gt_150nm', categories: [1, 2, 3, 4, 5, 6], certificate_types: [] },
   { id: 'yachtmaster_offshore', categories: [1, 2, 3, 4, 5, 6], certificate_types: ['occ_yachtmaster_offshore', 'course_ym_offshore'] },
-  { id: 'boatmaster', categories: [3, 4, 5, 6], certificate_types: ['course_boatmaster'], note: 'own_area' },
+  { id: 'boatmaster', categories: [3, 4, 5, 6], certificate_types: ['course_boatmaster', 'coc_bml_t2l1', 'coc_bml_t2l2'], note: 'own_area' },
   { id: 'yachtmaster_coastal', categories: [3, 4, 5, 6], certificate_types: ['course_ym_coastal'] },
   { id: 'powerboat_advanced', categories: [3, 4, 5, 6], certificate_types: [] },
   { id: 'competent_authority_coc', categories: [3, 4, 5, 6], certificate_types: [], note: 'appropriate_area' },

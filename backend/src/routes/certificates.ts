@@ -39,6 +39,8 @@ export const CERTIFICATE_TYPES = [
   "occ_chief_engineer",
   "occ_second_engineer",
   "coc_master_workboat_500",
+  "coc_bml_t2l1",
+  "coc_bml_t2l2",
   // USCG Documents
   "uscg_mmc",
   "uscg_twic",

@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
+  REVALIDATION_RULE_BY_TYPE,
   daysToExpiry,
   inAnniversaryWindow,
   outsideCategorised,
@@ -130,6 +131,31 @@ describe("CoC revalidation (MSN 1861, MGN 496 12.1, MSN 1853 19.3)", () => {
     expect(r.routes[0].days).toBe(100);
     expect(r.routes[0].required).toBe(120);
     expect(r.met).toBe(false);
+  });
+
+  test("BML Tier 2 Level 1 and Level 2: 50 days in 5 years (MSN 1853 19.3)", () => {
+    const entries = [
+      ...days("2026-01-01", 50, { vessel: smallShip }),
+      ...days("2026-07-01", 20, { vessel: yacht }),
+      ...days("2020-01-01", 30, { vessel: smallShip }),
+    ];
+    const t2 = revalidationProgress("bml_tier2", entries, NOW);
+    expect(t2.routes).toHaveLength(1);
+    expect(t2.routes[0].days).toBe(50);
+    expect(t2.routes[0].required).toBe(50);
+    expect(t2.met).toBe(true);
+    expect(t2.rule.notice).toBe("MSN 1853 19.3");
+    const t1 = revalidationProgress("bml", entries, NOW);
+    expect(t1.routes[0].required).toBe(120);
+    expect(t1.met).toBe(false);
+    expect(revalidationProgress("bml_tier2", days("2026-01-01", 49, { vessel: smallShip }), NOW).met).toBe(false);
+  });
+
+  test("BML tier comes from the certificate type", () => {
+    expect(REVALIDATION_RULE_BY_TYPE.coc_bml_t2l1).toBe("bml_tier2");
+    expect(REVALIDATION_RULE_BY_TYPE.coc_bml_t2l2).toBe("bml_tier2");
+    expect(REVALIDATION_RULE_BY_TYPE.course_boatmaster).toBe("bml");
+    expect(REVALIDATION_RULE_BY_TYPE.course_coc_bml_t1l2).toBe("bml");
   });
 
   test("pending entries never count", () => {
