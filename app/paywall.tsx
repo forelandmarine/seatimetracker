@@ -77,7 +77,11 @@ export default function PaywallScreen() {
   // close this screen, so it's the only place they'd hear about them.
   const [waiting, setWaiting] = useState<{ count: number; vessels: string[] } | null>(null);
   useEffect(() => {
-    if (!user || isSubscribed) return;
+    // Trial users can close the paywall and are still tracked, so the notice is only for lapsed users.
+    if (!user || isSubscribed || hasActiveTrial) {
+      setWaiting(null);
+      return;
+    }
     getPendingEntries()
       .then((entries: any[]) => {
         if (!Array.isArray(entries) || entries.length === 0) return;
@@ -85,7 +89,7 @@ export default function PaywallScreen() {
         setWaiting({ count: entries.length, vessels });
       })
       .catch((err) => warn('[Paywall] Pending passages check failed:', err));
-  }, [user?.id, isSubscribed]);
+  }, [user?.id, isSubscribed, hasActiveTrial]);
   const [restoring, setRestoring] = useState(false);
   // Default to annual if available, otherwise monthly
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');

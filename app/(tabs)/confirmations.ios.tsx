@@ -101,7 +101,9 @@ export default function ConfirmationsScreen() {
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  const loadData = useCallback(async () => {
+  // quiet: a refresh on returning to the tab. If it fails, keep what's on screen
+  // and say nothing, rather than an error each time the tab is opened offline.
+  const loadData = useCallback(async (opts?: { quiet?: boolean }) => {
     try {
       log('[Confirmations iOS] Loading pending entries');
       const pendingEntries = await seaTimeApi.getPendingEntries(true);
@@ -120,6 +122,7 @@ export default function ConfirmationsScreen() {
       setEntries(pendingEntries.filter((e: SeaTimeEntry) => !isChecking(e)));
     } catch (error: any) {
       logError('[Confirmations iOS] Failed to load data:', error);
+      if (opts?.quiet) return;
       Alert.alert('Error', 'Failed to load data: ' + error.message);
     } finally {
       setLoading(false);
@@ -182,9 +185,11 @@ export default function ConfirmationsScreen() {
 
   // Load whenever the tab comes into view, not only on first mount: tabs stay
   // mounted, so a passage released from 'checking' would otherwise sit stale.
+  const focusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData({ quiet: focusedOnce.current });
+      focusedOnce.current = true;
     }, [loadData]),
   );
 
