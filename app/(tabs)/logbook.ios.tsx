@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -681,6 +682,15 @@ export default function LogbookScreen() {
     });
   };
 
+  // Yard time counts by date, so yard entries show dates without times.
+  const isYardEntry = (entry: SeaTimeEntry) => entry.service_type === 'yard_service';
+
+  const formatYardDates = (entry: SeaTimeEntry) => {
+    const start = formatDate(entry.start_time);
+    const end = entry.end_time ? formatDate(entry.end_time) : null;
+    return end && end !== start ? `${start} - ${end}` : start;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -985,9 +995,10 @@ export default function LogbookScreen() {
                             style={styles.entryIcon}
                           />
                           <Text style={styles.entryText}>
-                            {formatDate(entry.start_time)} at {formatTime(entry.start_time)}
-                            {entry.end_time &&
-                              ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`}
+                            {isYardEntry(entry) ? formatYardDates(entry) : (
+                              `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}` +
+                              (entry.end_time ? ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}` : '')
+                            )}
                           </Text>
                         </View>
 
@@ -1006,7 +1017,7 @@ export default function LogbookScreen() {
                               color={isDark ? colors.textSecondary : colors.textSecondaryLight}
                               style={styles.entryIcon}
                             />
-                            <Text style={styles.entryText}>{entry.notes}</Text>
+                            <Text style={styles.entryText}>{formatEntryNotes(entry.notes)}</Text>
                           </View>
                         )}
                       </TouchableOpacity>
@@ -1156,9 +1167,10 @@ export default function LogbookScreen() {
                                   style={styles.entryIcon}
                                 />
                                 <Text style={styles.entryText}>
-                                  {formatDate(entry.start_time)} at {formatTime(entry.start_time)}
-                                  {entry.end_time &&
-                                    ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`}
+                                  {isYardEntry(entry) ? formatYardDates(entry) : (
+                                    `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}` +
+                                    (entry.end_time ? ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}` : '')
+                                  )}
                                 </Text>
                               </View>
 
@@ -1177,7 +1189,7 @@ export default function LogbookScreen() {
                                     color={isDark ? colors.textSecondary : colors.textSecondaryLight}
                                     style={styles.entryIcon}
                                   />
-                                  <Text style={styles.entryText}>{entry.notes}</Text>
+                                  <Text style={styles.entryText}>{formatEntryNotes(entry.notes)}</Text>
                                 </View>
                               )}
                             </TouchableOpacity>
@@ -1229,9 +1241,10 @@ export default function LogbookScreen() {
                             style={styles.entryIcon}
                           />
                           <Text style={styles.entryText}>
-                            {formatDate(entry.start_time)} at {formatTime(entry.start_time)}
-                            {entry.end_time &&
-                              ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`}
+                            {isYardEntry(entry) ? formatYardDates(entry) : (
+                              `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}` +
+                              (entry.end_time ? ` - ${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}` : '')
+                            )}
                           </Text>
                         </View>
 

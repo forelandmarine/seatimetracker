@@ -12,6 +12,7 @@ import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { calculateDurationHours, calculateSeaDays } from '../utils/seaTime.js';
 import { MANUAL_SHIFT_NOTE_PREFIX, SHIFT_MODE_WINDOW_DAYS, coveredByShift, isShiftNote } from '../utils/shifts.js';
+import { CHECKING_STATUS } from '../utils/passageRefinement.js';
 
 const DAY_MS = 86_400_000;
 
@@ -81,7 +82,7 @@ export async function closeOpenAisPassages(app: App, userId: string, at: Date): 
         eq(schema.sea_time_entries.user_id, userId),
         isNotNull(schema.sea_time_entries.start_time),
         isNull(schema.sea_time_entries.end_time),
-        inArray(schema.sea_time_entries.status, ['pending', 'off_board'])
+        inArray(schema.sea_time_entries.status, ['pending', 'off_board', CHECKING_STATUS])
       )
     );
   let closed = 0;
@@ -117,7 +118,9 @@ export async function rejectAisPassagesCoveredByShift(app: App, userId: string, 
     .where(
       and(
         eq(schema.sea_time_entries.user_id, userId),
-        eq(schema.sea_time_entries.status, 'pending'),
+        // 'checking' too: a passage still being refined would otherwise be released
+        // to the Review tab after this shift has closed.
+        inArray(schema.sea_time_entries.status, ['pending', CHECKING_STATUS]),
         gte(schema.sea_time_entries.start_time, shiftStart)
       )
     );

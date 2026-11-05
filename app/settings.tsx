@@ -26,6 +26,7 @@ import { colors } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
+import { openHistoryImportForActiveVessel } from '@/components/HistoryImportRow';
 
 const SUPPORT_EMAIL = 'info@forelandmarine.com';
 
@@ -114,13 +115,22 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="person.circle" androidIcon="person" label={t('settings.editProfile')} onPress={() => router.push('/user-profile')} isDark={isDark} />
+          <SettingsRow icon="key.fill" androidIcon="key" label="Password" onPress={() => router.push('/password' as any)} isDark={isDark} />
           <SettingsRow icon="sailboat.fill" androidIcon="sailing" label={t('settings.vesselSector')} onPress={() => router.push('/select-vessel-sector' as any)} isDark={isDark} />
           <SettingsRow icon="signature" androidIcon="draw" label={t('settings.signatureForReports')} onPress={() => router.push('/signature')} isLast isDark={isDark} />
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('settings.certificates')}</Text>
+        <View style={styles.card}>
+          <SettingsRow icon="doc.text.fill" androidIcon="article" label={t('settings.manageCertificates')} onPress={() => router.push('/certificates')} isDark={isDark} />
+          <SettingsRow icon="doc.richtext" androidIcon="description" label={t('navigation.reports')} onPress={() => router.push('/reports' as any)} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>
         <View style={styles.card}>
           <SettingsRow icon="clock" androidIcon="schedule" label={t('settings.aisSchedule')} onPress={() => router.push('/scheduled-tasks')} isDark={isDark} />
+          <SettingsRow icon="location.fill" androidIcon="my-location" label={t('settings.manualGps')} onPress={() => router.push('/manual-tracking' as any)} isDark={isDark} />
+          <SettingsRow icon="clock.arrow.circlepath" androidIcon="history" label="Import past sea time" onPress={openHistoryImportForActiveVessel} isDark={isDark} />
           <SettingsRow icon="bell" androidIcon="notifications" label={t('settings.notifications')} onPress={() => router.push('/notification-settings')} isDark={isDark} />
           <SettingsRow icon="envelope.badge" androidIcon="mark-email-read" label="Email preferences" onPress={() => router.push('/email-preferences' as any)} isLast isDark={isDark} />
         </View>
@@ -132,7 +142,6 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{t('settings.growTheCrew')}</Text>
         <View style={styles.card}>
-          <SettingsRow icon="person.2.fill" androidIcon="people" label={t('settings.referAFriend')} onPress={() => router.push('/refer')} isDark={isDark} />
           <SettingsRow icon="star" androidIcon="star-outline" label="Rate SeaTime Tracker" onPress={openWriteReview} isLast isDark={isDark} />
         </View>
 

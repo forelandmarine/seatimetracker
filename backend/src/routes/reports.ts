@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { formatEntryNotes } from '../utils/duration.js';
+import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
@@ -7,7 +8,11 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
-import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { engineService } from "../utils/engineService.js";
+import { tugService } from "../utils/tugService.js";
+import { boatmasterService } from "../utils/boatmasterService.js";
+import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
+import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -261,7 +266,7 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.engine_watch_hours ?? '',
       entry.night_watch_hours ?? '',
       entry.status,
-      entry.notes || '',
+      formatEntryNotes(entry.notes),
     ]);
 
     const summarySection = [
@@ -361,7 +366,7 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.bridge_watch_hours ?? '',
         entry.engine_watch_hours ?? '',
         entry.night_watch_hours ?? '',
-        entry.notes || '',
+        formatEntryNotes(entry.notes),
       ];
     });
 
@@ -465,6 +470,8 @@ export function register(app: App, fastify: FastifyInstance) {
           type: 'object',
           properties: {
             total_days: { type: 'number' },
+            onboard_days: { type: 'number' },
+            yacht_onboard_days: { type: 'number' },
             sea_service: {
               type: 'object',
               properties: {
@@ -480,6 +487,9 @@ export function register(app: App, fastify: FastifyInstance) {
               type: 'object',
               properties: {
                 creditable: { type: 'number' },
+                two_watch_days: { type: 'number' },
+                two_watch_bonus: { type: 'number' },
+                creditable_total: { type: 'number' },
                 provisional: { type: 'number' },
                 short_of_standard_day: { type: 'number' },
                 awaiting_tonnage: { type: 'number' },
@@ -499,6 +509,18 @@ export function register(app: App, fastify: FastifyInstance) {
                 qualifying_hours: { type: 'number' },
                 navigational_watch: { type: 'number' },
                 engineering_watch: { type: 'number' },
+                stcw_underway: { type: 'number' },
+                stcw_not_underway: { type: 'number' },
+              },
+            },
+            samsa_service: {
+              type: 'object',
+              properties: {
+                seagoing: { type: 'number' },
+                standby_yard: { type: 'number' },
+                watchkeeping: { type: 'number' },
+                hours: { type: 'number' },
+                outside_window: { type: 'number' },
               },
             },
             mnz_service: {
@@ -572,6 +594,50 @@ export function register(app: App, fastify: FastifyInstance) {
                 workboats_without_length: { type: 'number' },
               },
             },
+            engine_service: {
+              type: 'object',
+              properties: {
+                seagoing_any: { type: 'number' },
+                seagoing_200kw: { type: 'number' },
+                seagoing_350kw: { type: 'number' },
+                seagoing_750kw: { type: 'number' },
+                watch_350kw: { type: 'number' },
+                watch_750kw: { type: 'number' },
+                onboard_200kw: { type: 'number' },
+                rating_350kw: { type: 'number' },
+                categorised_any: { type: 'number' },
+                categorised_200kw: { type: 'number' },
+                categorised_350kw: { type: 'number' },
+                categorised_750kw: { type: 'number' },
+                vessels_without_power: { type: 'array', items: { type: 'string' } },
+              },
+            },
+            tug_service: {
+              type: 'object',
+              properties: {
+                tug_service: { type: 'number' },
+                tug_rating_service: { type: 'number' },
+                tug_officer_service: { type: 'number' },
+                outside_categorised: { type: 'number' },
+                outside_categorised_watch: { type: 'number' },
+                recent_tug_service: { type: 'number' },
+                apprentice_service: { type: 'number' },
+                apprentice_tug_service: { type: 'number' },
+                tug_vessels: { type: 'array', items: { type: 'string' } },
+              },
+            },
+            boatmaster_service: {
+              type: 'object',
+              properties: {
+                tier1_level2_days: { type: 'number' },
+                tier1_level1_days: { type: 'number' },
+                declared_inland_days: { type: 'number' },
+                beyond_limited_coastal_days: { type: 'number' },
+                unclassified_days: { type: 'number' },
+                level2_months: { type: 'number' },
+                level1_months: { type: 'number' },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -638,6 +704,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // user's chosen authority.
     const amsa_service = amsaCreditableDays(entries as any);
     const mnz_service = mnzCreditableDays(entries as any);
+    const samsa_service = samsaCreditableDays(entries as any);
 
     // Group by vessel, counting distinct days within each vessel.
     const vesselGroups: { [key: string]: any[] } = {};
@@ -672,6 +739,8 @@ export function register(app: App, fastify: FastifyInstance) {
     entries.forEach((entry) => {
       const service_type = entry.service_type || 'actual_sea_service';
       (serviceTypeGroups[service_type] ||= []).push(entry);
+      // A sole watchkeeper's sea days are watchkeeping days too (days stay distinct)
+      if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
     });
 
     const entries_by_service_type = Object.entries(serviceTypeGroups)
@@ -692,6 +761,7 @@ export function register(app: App, fastify: FastifyInstance) {
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
+        if (isSoleWatchEntry(entry as any)) (yachtTypeGroups['watchkeeping_service'] ||= []).push(entry);
       });
     const commercial_service = {
       qualifying_total: qualifyingSeaDays(commercialEntries as any).qualifying_total,
@@ -705,6 +775,61 @@ export function register(app: App, fastify: FastifyInstance) {
     // Master (Workboat) <500 GT gates (MGN 496): any vessel, 15 m and over, workboats, recency
     const workboat_service = workboatService(entries as any);
 
+    // Engine-department gates by propulsion power (MSN 1904, 1857, 1863). An entry
+    // is inside categorised waters when every AIS fix the sea-area classifier saw
+    // during it was in a category A to D area (season is only set on classified fixes).
+    let categorisedIds = new Set<string>();
+    try {
+      const rows = await app.db.execute(sql`
+        select e.id
+        from sea_time_entries e
+        join ais_checks a on a.vessel_id = e.vessel_id
+          and a.check_time >= e.start_time
+          and a.check_time <= coalesce(e.end_time, e.start_time)
+        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+        group by e.id
+        having bool_and(a.area_category is not null)
+      `);
+      categorisedIds = new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
+    } catch (err) {
+      app.logger.warn({ err }, 'Categorised-water lookup failed; engine figures exclude it');
+    }
+    const engine_service = engineService(entries as any, categorisedIds);
+
+    // Every distinct day aboard in any service type, for routes that state
+    // onboard service (MSN 1904 3.2, 4.4.2 and the 5.9 yacht table).
+    const onboard_days = countDistinctSeaDays(entries as any);
+    const yacht_onboard_days = countDistinctSeaDays(
+      entries.filter((entry) => entry.vessel?.sector !== 'commercial') as any,
+    );
+
+    // Tug deck CoCs (MGN 495) and the Tier 1 Boatmasters' Licence (MSN 1853) need
+    // the sea area of each day, from the classified AIS fixes inside the user's
+    // confirmed entries. Only commercial, workboat and tug vessels are read.
+    let areaFixes: any[] = [];
+    try {
+      const rows = await app.db.execute(sql`
+        select distinct a.vessel_id, a.check_time, a.area_category, a.is_tidal, a.latitude, a.longitude
+        from sea_time_entries e
+        join vessels v on v.id = e.vessel_id
+        join ais_checks a on a.vessel_id = e.vessel_id
+          and a.check_time >= e.start_time
+          and a.check_time <= coalesce(e.end_time, e.start_time)
+        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+          and (v.is_tug = true or v.is_workboat = true or v.sector = 'commercial')
+      `);
+      areaFixes = ((rows as any).rows ?? rows).map((r: any) => ({ ...r, vessel_id: String(r.vessel_id) }));
+    } catch (err) {
+      app.logger.warn({ err }, 'Sea-area fix lookup failed; tug and BML figures exclude it');
+    }
+    const tug_service = tugService(entries as any, areaFixes);
+    const classifier = getSeaAreaClassifier();
+    const boatmaster_service = boatmasterService(
+      entries as any,
+      areaFixes,
+      classifier ? (track, departure) => classifier.classifyDay({ track, departure }).isLimitedCoastal : null,
+    );
+
     app.logger.info(
       {
         total_days,
@@ -717,15 +842,21 @@ export function register(app: App, fastify: FastifyInstance) {
 
     return reply.code(200).send({
       total_days,
+      onboard_days,
+      yacht_onboard_days,
       sea_service: breakdown,
       uscg_service,
       amsa_service,
       mnz_service,
+      samsa_service,
       entries_by_vessel,
       entries_by_month,
       entries_by_service_type,
       commercial_service,
       workboat_service,
+      engine_service,
+      tug_service,
+      boatmaster_service,
     });
   });
 
@@ -834,7 +965,7 @@ export function register(app: App, fastify: FastifyInstance) {
           serviceType: e.service_type || '',
           days: e.sea_days ?? 0,
           hours: e.duration_hours ?? '',
-          notes: e.notes || '',
+          notes: formatEntryNotes(e.notes),
         });
       });
 
@@ -1155,6 +1286,7 @@ export function register(app: App, fastify: FastifyInstance) {
         'uscg': 'USCG (USA)',
         'amsa': 'AMSA (Australia)',
         'mnz': 'MNZ (New Zealand)',
+        'samsa': 'SAMSA (South Africa)',
       };
       const authorityValue = authorityLabels[(userProfile as any).maritime_authority] || (userProfile as any).maritime_authority;
       rightY = drawDetail('Maritime Authority', authorityValue, rightColX, rightY);

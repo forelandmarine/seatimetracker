@@ -210,7 +210,7 @@ export const authenticatedApiCall = async <T = any>(
     const hasBody = options?.body !== undefined;
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${token}`,
-      ...options?.headers,
+      ...(options?.headers as Record<string, string> | undefined),
     };
     // Only set Content-Type for requests that carry a body
     if (hasBody || (method !== "GET" && method !== "DELETE" && method !== "HEAD")) {

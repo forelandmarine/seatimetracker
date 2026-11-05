@@ -255,6 +255,14 @@ function transformVesselForResponse(vessel: any) {
     sector: vessel.sector || null,
     // Marked by the user as a workboat (MGN 496: under 500 GT, multipurpose support work)
     is_workboat: vessel.is_workboat ?? null,
+    // Marked by the user as a tug (MGN 495: tug service toward the tug deck certificates)
+    is_tug: vessel.is_tug ?? null,
+    // The user's usual capacity on the tug, for entries logged without a rank
+    tug_capacity: vessel.tug_capacity ?? null,
+    // Marked by the user as authorised to run a two-watch system (USCG 1.5-day credit)
+    is_two_watch: vessel.is_two_watch ?? null,
+    // Marked by the user as the only watchkeeper in their department (sea days count as watchkeeping)
+    is_sole_watchkeeper: vessel.is_sole_watchkeeper ?? null,
     // A new name AIS reported that the user hasn't accepted or declined yet
     pending_name: vessel.pending_name || null,
     pending_name_since: vessel.pending_name_since ? String(vessel.pending_name_since) : null,
@@ -291,6 +299,10 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_tug: { type: ['boolean', 'null'] },
+              tug_capacity: { type: ['string', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -352,6 +364,10 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_tug: { type: ['boolean', 'null'] },
+            tug_capacity: { type: ['string', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -457,6 +473,10 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_tug: { type: ['boolean', 'null'] },
+            tug_capacity: { type: ['string', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -699,6 +719,10 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_tug: { type: ['boolean', 'null'] },
+            tug_capacity: { type: ['string', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -829,6 +853,10 @@ export function register(app: App, fastify: FastifyInstance) {
             tonnage_itc: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_tug: { type: ['boolean', 'null'] },
+            tug_capacity: { type: ['string', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1015,6 +1043,10 @@ export function register(app: App, fastify: FastifyInstance) {
             engine_type: { type: ['string', 'null'] },
             sector: { type: ['string', 'null'] },
             is_workboat: { type: ['boolean', 'null'] },
+            is_tug: { type: ['boolean', 'null'] },
+            tug_capacity: { type: ['string', 'null'] },
+            is_two_watch: { type: ['boolean', 'null'] },
+            is_sole_watchkeeper: { type: ['boolean', 'null'] },
             pending_name: { type: ['string', 'null'] },
             pending_name_since: { type: ['string', 'null'] },
             is_active: { type: 'boolean' },
@@ -1168,6 +1200,104 @@ export function register(app: App, fastify: FastifyInstance) {
       .where(eq(schema.vessels.id, vessel.id))
       .returning();
     app.logger.info({ userId, vesselId: vessel.id, is_workboat: request.body.is_workboat }, 'Vessel workboat flag updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/tug - Mark a vessel as a tug, for the tug deck certificates (MGN 495)
+  fastify.put<{ Params: { id: string }; Body: { is_tug: boolean; tug_capacity?: 'rating' | 'officer' | 'cadet' | null } }>('/api/vessels/:id/tug', {
+    schema: {
+      description: 'Mark whether a vessel is a tug (MGN 495). Deck service on it counts as tug service toward the tug ratings and tug officer CoCs. (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: {
+        type: 'object',
+        required: ['is_tug'],
+        properties: {
+          is_tug: { type: 'boolean' },
+          tug_capacity: { type: ['string', 'null'], enum: ['rating', 'officer', 'cadet', null] },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({
+        is_tug: request.body.is_tug,
+        ...(request.body.tug_capacity !== undefined ? { tug_capacity: request.body.tug_capacity } : {}),
+        updated_at: new Date(),
+      })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_tug: request.body.is_tug, tug_capacity: request.body.tug_capacity }, 'Vessel tug flag updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/two-watch - Mark a vessel as authorised to run a two-watch system (46 U.S.C. 8104, 46 CFR 15.705)
+  fastify.put<{ Params: { id: string }; Body: { is_two_watch: boolean } }>('/api/vessels/:id/two-watch', {
+    schema: {
+      description: 'Mark whether a vessel is authorised to run a two-watch system. For USCG users a 12-hour working day on such a vessel counts as 1.5 days (46 CFR 10.107). (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_two_watch'], properties: { is_two_watch: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_two_watch: request.body.is_two_watch, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_two_watch: request.body.is_two_watch }, 'Vessel two-watch flag updated');
+    return reply.code(200).send(transformVesselForResponse(updated));
+  });
+
+  // PUT /api/vessels/:id/sole-watchkeeper - Mark the user as the only watchkeeper in their department on a vessel
+  fastify.put<{ Params: { id: string }; Body: { is_sole_watchkeeper: boolean } }>('/api/vessels/:id/sole-watchkeeper', {
+    schema: {
+      description: 'Mark whether the user is the only watchkeeper in their department on a vessel (a sole engineer, for example). Every sea service day on it then also counts as a watchkeeping day. (Requires authentication)',
+      tags: ['vessels'],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+      body: { type: 'object', required: ['is_sole_watchkeeper'], properties: { is_sole_watchkeeper: { type: 'boolean' } } },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+    const [vessel] = await app.db.select().from(schema.vessels).where(eq(schema.vessels.id, request.params.id));
+    if (!vessel) {
+      return reply.code(404).send({ error: 'Vessel not found' });
+    }
+    if (vessel.user_id !== userId) {
+      return reply.code(403).send({ error: 'Not authorized to update this vessel' });
+    }
+    const [updated] = await app.db
+      .update(schema.vessels)
+      .set({ is_sole_watchkeeper: request.body.is_sole_watchkeeper, updated_at: new Date() })
+      .where(eq(schema.vessels.id, vessel.id))
+      .returning();
+    app.logger.info({ userId, vesselId: vessel.id, is_sole_watchkeeper: request.body.is_sole_watchkeeper }, 'Vessel sole-watchkeeper flag updated');
     return reply.code(200).send(transformVesselForResponse(updated));
   });
 
@@ -1329,6 +1459,10 @@ export function register(app: App, fastify: FastifyInstance) {
               engine_type: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_tug: { type: ['boolean', 'null'] },
+              tug_capacity: { type: ['string', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },
@@ -1459,6 +1593,10 @@ export function register(app: App, fastify: FastifyInstance) {
               tonnage_itc: { type: ['string', 'null'] },
               sector: { type: ['string', 'null'] },
               is_workboat: { type: ['boolean', 'null'] },
+              is_tug: { type: ['boolean', 'null'] },
+              tug_capacity: { type: ['string', 'null'] },
+              is_two_watch: { type: ['boolean', 'null'] },
+              is_sole_watchkeeper: { type: ['boolean', 'null'] },
               pending_name: { type: ['string', 'null'] },
               pending_name_since: { type: ['string', 'null'] },
               is_active: { type: 'boolean' },

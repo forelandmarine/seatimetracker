@@ -15,6 +15,8 @@ export const user = pgTable("user", {
   department: text("department"), // Department: 'deck' or 'engineering'
   maritime_authority: text("maritime_authority"), // 'mca', 'uscg', 'amsa', 'mnz' — which authority user is applying to
   target_certification: text("target_certification"), // requirement id the user is working toward, e.g. 'uscg-master-nc-200grt'
+  target_route: text("target_route"), // route id for the target certification, e.g. 'experienced' (constants/certRoutes.ts). null = the certificate's default route
+  route_start_date: date("route_start_date"), // when the route's counted service starts (college registration, Action Plan). null = count all service
   has_record_book: boolean("has_record_book").default(false), // holds an AMSA task book / MNZ training record book, which shortens the sea service required
   vessel_sector: text("vessel_sector"), // 'yachting' | 'commercial' — user-chosen sector. null = not yet chosen (treated as yachting). Changeable any time; does not retro-affect existing entries.
   // On/off board toggle for rotational crew and leave. While off board, AIS passages on the
@@ -28,6 +30,8 @@ export const user = pgTable("user", {
   marketing_consent: boolean("marketing_consent").default(false).notNull(),
   marketing_consent_at: timestamp("marketing_consent_at", { withTimezone: true }), // when the user last answered
   marketing_consent_source: text("marketing_consent_source"), // 'signup' | 'prompt' | 'settings' | 'unsubscribe'
+  day3_email_sent_at: timestamp("day3_email_sent_at", { withTimezone: true }), // day-3 drip email claimed/sent
+  day7_email_sent_at: timestamp("day7_email_sent_at", { withTimezone: true }), // day-7 drip email claimed/sent (marketing, opt-in only)
   subscription_status: text("subscription_status").default("inactive"), // 'active', 'inactive', 'trial', or 'expired'
   subscription_expires_at: timestamp("subscription_expires_at", { withTimezone: true }), // When subscription expires
   subscription_product_id: text("subscription_product_id"), // iOS App Store product ID

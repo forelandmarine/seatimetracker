@@ -10,6 +10,9 @@ import { VesselRenameBanner } from '@/components/VesselRenameBanner';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import VesselLookup from '@/components/VesselLookup';
+import TargetPathwayPicker, { TARGET_NOT_SURE, tugCapacityForTarget } from '@/components/TargetPathwayPicker';
+import { trackEvent } from '@/utils/appEvents';
 import {
   View,
   Text,
@@ -97,6 +100,8 @@ export default function SeaTimeScreen() {
   const [newOfficialNumber, setNewOfficialNumber] = useState('');
   const [newVesselType, setNewVesselType] = useState('');
   const [newLengthMetres, setNewLengthMetres] = useState('');
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [lookupMmsi, setLookupMmsi] = useState('');
   const [newGrossTonnes, setNewGrossTonnes] = useState('');
   const [newEngineKilowatts, setNewEngineKilowatts] = useState('');
   const [newEngineType, setNewEngineType] = useState('');
@@ -132,7 +137,7 @@ export default function SeaTimeScreen() {
       setLocationError(null);
       log('[Home] Loading location for vessel:', vesselId, 'forceRefresh:', forceRefresh);
 
-      const locationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+      const locationData = await seaTimeApi.getVesselAISLocation(vesselId);
       if (!isMountedRef.current) return;
       setActiveVesselLocation({
         latitude: locationData.latitude,
@@ -148,7 +153,7 @@ export default function SeaTimeScreen() {
           await seaTimeApi.checkVesselAIS(vesselId, true);
           if (!isMountedRef.current) return;
 
-          const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId, false);
+          const freshLocationData = await seaTimeApi.getVesselAISLocation(vesselId);
           if (!isMountedRef.current) return;
           setActiveVesselLocation({
             latitude: freshLocationData.latitude,
@@ -176,7 +181,7 @@ export default function SeaTimeScreen() {
     try {
       log('[Home] Loading vessels...');
       setLoadError(null);
-      const vesselsData = await seaTimeApi.getVessels();
+      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
       
       setVessels(vesselsData || []);
@@ -252,7 +257,7 @@ export default function SeaTimeScreen() {
     setRefreshing(true);
     try {
       // Reload vessels first
-      const vesselsData = await seaTimeApi.getVessels();
+      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       setVessels(vesselsData);
       
       // Load location for the active vessel with force refresh
@@ -273,17 +278,40 @@ export default function SeaTimeScreen() {
   };
 
   const [addingVessel, setAddingVessel] = useState(false);
+  // First vessel only: what the user is working toward, saved as their target certificate.
+  const [newTarget, setNewTarget] = useState<string | null>(null);
+  const [newSector, setNewSector] = useState<'yachting' | 'commercial' | null>(null);
+  const isFirstVessel = vessels.length === 0;
+
+  // Add Vessel: the user confirmed an AIS match for the name and length they typed.
+  // Fill the MMSI and any particulars they have not filled in themselves.
+  const applyLookupMatch = (c: seaTimeApi.VesselCandidate) => {
+    setNewMMSI(c.mmsi);
+    setLookupMmsi(c.mmsi);
+    if (!newImoNumber.trim() && c.imo) setNewImoNumber(c.imo);
+    if (!newFlag.trim() && c.flag) setNewFlag(c.flag);
+    if (!newVesselType && c.app_type) setNewVesselType(c.app_type);
+    if (!newLengthMetres.trim() && c.length_metres) setNewLengthMetres(String(c.length_metres));
+  };
 
   const handleAddVessel = async () => {
     if (addingVessel) return;
     // CRITICAL: Validate inputs to prevent crashes
-    if (!newMMSI || !newMMSI.trim() || !newVesselName || !newVesselName.trim()) {
-      Alert.alert('Error', 'Please enter both MMSI and vessel name');
+    if (!newVesselName || !newVesselName.trim()) {
+      Alert.alert('Vessel name needed', "Please enter the vessel's name.");
+      return;
+    }
+    if (!newMMSI || !newMMSI.trim()) {
+      Alert.alert('MMSI needed', 'Please enter the MMSI, or enter the name and length and tap Find my vessel.');
       return;
     }
     const mmsiProblem = seaTimeApi.mmsiValidationError(newMMSI);
     if (mmsiProblem) {
       Alert.alert('Check the MMSI', mmsiProblem);
+      return;
+    }
+    if (isFirstVessel && !newTarget) {
+      Alert.alert('What are you working toward?', "Choose the certificate you're aiming for, or Not sure yet.");
       return;
     }
 
@@ -310,6 +338,16 @@ export default function SeaTimeScreen() {
       
       log('[Home] New vessel will be automatically activated and tracked');
       
+      // First vessel: save where they work first, so the vessel is created with the right sector.
+      if (isFirstVessel && newSector) {
+        try {
+          await seaTimeApi.updateUserProfile({ vessel_sector: newSector });
+        } catch (profileError) {
+          // The vessel is still added; the sector can be changed later in Settings.
+          logError('[Home] Failed to save sector:', profileError);
+        }
+      }
+
       const createdVessel = await seaTimeApi.createVessel(
         seaTimeApi.normalizeMmsi(newMMSI), 
         vesselNameTrimmed, 
@@ -326,6 +364,26 @@ export default function SeaTimeScreen() {
       );
       
       log('[Home] Vessel created successfully:', createdVessel.id);
+      // The target is saved only once the vessel exists, so a rejected vessel
+      // (duplicate or bad MMSI) doesn't wipe a saved route.
+      if (isFirstVessel && newTarget && newTarget !== TARGET_NOT_SURE) {
+        try {
+          await seaTimeApi.updateUserProfile({ target_certification: newTarget, target_route: null, route_start_date: null });
+        } catch (profileError) {
+          logError('[Home] Failed to save target:', profileError);
+        }
+      }
+      trackEvent('vessel_added', lookupMmsi && lookupMmsi === seaTimeApi.normalizeMmsi(newMMSI) ? 'lookup' : 'manual');
+      // A tug certificate means this first vessel is almost certainly a tug: mark it so its
+      // days count as tug service. The user can change both on the vessel page.
+      const tugCapacity = isFirstVessel ? tugCapacityForTarget(newTarget) : null;
+      if (tugCapacity) {
+        try {
+          await seaTimeApi.updateVesselTug(createdVessel.id, true, tugCapacity);
+        } catch (tugError) {
+          logError('[Home] Failed to mark first vessel as a tug:', tugError);
+        }
+      }
       
       // Immediately capture the vessel's position by triggering an AIS check
       log('[Home] Capturing initial position for new vessel...');
@@ -347,6 +405,10 @@ export default function SeaTimeScreen() {
       setNewOfficialNumber('');
       setNewVesselType('');
       setNewLengthMetres('');
+      setShowMoreDetails(false);
+      setLookupMmsi('');
+      setNewTarget(null);
+      setNewSector(null);
       setNewGrossTonnes('');
       setNewEngineKilowatts('');
       setNewEngineType('');
@@ -930,17 +992,13 @@ export default function SeaTimeScreen() {
                   </Text>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>{t('home.vesselName')} *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., MV Serenity"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newVesselName}
-                    onChangeText={setNewVesselName}
-                    returnKeyType="next"
-                  />
-                </View>
+                <VesselLookup
+                  name={newVesselName}
+                  onNameChange={setNewVesselName}
+                  length={newLengthMetres}
+                  onLengthChange={setNewLengthMetres}
+                  onConfirm={applyLookupMatch}
+                />
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>MMSI Number *</Text>
@@ -959,142 +1017,151 @@ export default function SeaTimeScreen() {
                       MMSI must be 9 digits ({newMMSI.length} entered)
                     </Text>
                   )}
+                  {!newMMSI && (
+                    <Text style={{ color: isDark ? colors.textSecondary : colors.textSecondaryLight, fontSize: 13, marginTop: 6 }}>
+                      Don't know it? Use Find my vessel above.
+                    </Text>
+                  )}
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Call Sign</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., GBAA"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newCallSign}
-                    onChangeText={setNewCallSign}
-                    autoCapitalize="characters"
-                    returnKeyType="next"
+                {isFirstVessel && (
+                  <TargetPathwayPicker
+                    value={newTarget}
+                    onChange={setNewTarget}
+                    sector={newSector}
+                    onSectorChange={setNewSector}
                   />
-                </View>
+                )}
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>IMO Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 9876543"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newImoNumber}
-                    onChangeText={setNewImoNumber}
-                    returnKeyType="next"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Flag</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., United Kingdom"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newFlag}
-                    onChangeText={setNewFlag}
-                    returnKeyType="next"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Official No.</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 123456"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newOfficialNumber}
-                    onChangeText={setNewOfficialNumber}
-                    returnKeyType="next"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Type (Motor/Sail)</Text>
-                  <View style={styles.typeButtonContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.typeButton,
-                        newVesselType === 'Motor' && styles.typeButtonActive
-                      ]}
-                      onPress={() => setNewVesselType('Motor')}
-                    >
-                      <Text style={[
-                        styles.typeButtonText,
-                        newVesselType === 'Motor' && styles.typeButtonTextActive
-                      ]}>
-                        Motor
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.typeButton,
-                        newVesselType === 'Sail' && styles.typeButtonActive
-                      ]}
-                      onPress={() => setNewVesselType('Sail')}
-                    >
-                      <Text style={[
-                        styles.typeButtonText,
-                        newVesselType === 'Sail' && styles.typeButtonTextActive
-                      ]}>
-                        Sail
-                      </Text>
-                    </TouchableOpacity>
+                {!showMoreDetails ? (
+                  <TouchableOpacity style={{ paddingVertical: 12, marginBottom: 8 }} onPress={() => setShowMoreDetails(true)}>
+                    <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>More details (optional)</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Call Sign</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., GBAA"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newCallSign}
+                      onChangeText={setNewCallSign}
+                      autoCapitalize="characters"
+                      returnKeyType="next"
+                    />
                   </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Length (metres)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 45.5"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newLengthMetres}
-                    onChangeText={setNewLengthMetres}
-                    keyboardType="decimal-pad"
-                    returnKeyType="next"
-                  />
-                </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>IMO Number</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 9876543"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newImoNumber}
+                      onChangeText={setNewImoNumber}
+                      returnKeyType="next"
+                    />
+                  </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Gross Tonnes</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 500"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newGrossTonnes}
-                    onChangeText={setNewGrossTonnes}
-                    keyboardType="decimal-pad"
-                    returnKeyType="next"
-                  />
-                </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Flag</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., United Kingdom"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newFlag}
+                      onChangeText={setNewFlag}
+                      returnKeyType="next"
+                    />
+                  </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Engine Kilowatts (KW)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 1200"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newEngineKilowatts}
-                    onChangeText={setNewEngineKilowatts}
-                    keyboardType="decimal-pad"
-                    returnKeyType="next"
-                  />
-                </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Official No.</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 123456"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newOfficialNumber}
+                      onChangeText={setNewOfficialNumber}
+                      returnKeyType="next"
+                    />
+                  </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Engine Type</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., Caterpillar C32"
-                    placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    value={newEngineType}
-                    onChangeText={setNewEngineType}
-                    returnKeyType="done"
-                    onSubmitEditing={handleAddVessel}
-                  />
-                </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Type (Motor/Sail)</Text>
+                    <View style={styles.typeButtonContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.typeButton,
+                          newVesselType === 'Motor' && styles.typeButtonActive
+                        ]}
+                        onPress={() => setNewVesselType('Motor')}
+                      >
+                        <Text style={[
+                          styles.typeButtonText,
+                          newVesselType === 'Motor' && styles.typeButtonTextActive
+                        ]}>
+                          Motor
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.typeButton,
+                          newVesselType === 'Sail' && styles.typeButtonActive
+                        ]}
+                        onPress={() => setNewVesselType('Sail')}
+                      >
+                        <Text style={[
+                          styles.typeButtonText,
+                          newVesselType === 'Sail' && styles.typeButtonTextActive
+                        ]}>
+                          Sail
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Gross Tonnes</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 500"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newGrossTonnes}
+                      onChangeText={setNewGrossTonnes}
+                      keyboardType="decimal-pad"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Engine Kilowatts (KW)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 1200"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newEngineKilowatts}
+                      onChangeText={setNewEngineKilowatts}
+                      keyboardType="decimal-pad"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Engine Type</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., Caterpillar C32"
+                      placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      value={newEngineType}
+                      onChangeText={setNewEngineType}
+                      returnKeyType="done"
+                      onSubmitEditing={handleAddVessel}
+                    />
+                  </View>
+                  </>
+                )}
 
                 <TouchableOpacity style={styles.submitButton} onPress={handleAddVessel}>
                   <Text style={styles.submitButtonText}>Add Vessel</Text>

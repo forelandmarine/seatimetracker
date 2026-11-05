@@ -375,6 +375,8 @@ export default function HistoryImportScreen() {
 
         {periods.map((p, i) => {
           const isEditing = editing?.index === i;
+          const minDay = isEditing && editing.field === 'last' && p.from ? p.from : firstDay;
+          const maxDay = isEditing && editing.field === 'from' && p.last ? p.last : lastDay;
           return (
             <View key={i} style={styles.period}>
               <View style={styles.periodHeader}>
@@ -415,11 +417,14 @@ export default function HistoryImportScreen() {
               </View>
               {isEditing && (
                 <DateTimePicker
+                  // iOS's inline calendar crashes if its date and limits change while it is shown
+                  // (the date lands outside the old limits first), so a new range gets a new picker.
+                  key={`${editing!.field}:${minDay}:${maxDay}`}
                   value={pickerValue}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  minimumDate={asDate(editing!.field === 'last' && p.from ? p.from : firstDay)}
-                  maximumDate={asDate(editing!.field === 'from' && p.last ? p.last : lastDay)}
+                  minimumDate={asDate(minDay)}
+                  maximumDate={asDate(maxDay)}
                   onChange={(event, d) => {
                     if (Platform.OS !== 'ios') setEditing(null);
                     if (event.type === 'set' && d) setDay(i, editing!.field, toDay(d));

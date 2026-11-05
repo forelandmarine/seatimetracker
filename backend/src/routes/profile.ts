@@ -4,6 +4,7 @@ import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { isDeletableProfileImage, isOwnProfileImage } from "../utils/profileImage.js";
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/profile - Get current user's profile
@@ -30,9 +31,11 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
-              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
+              target_route: { type: ['string', 'null'] },
+              route_start_date: { type: ['string', 'null'] },
               vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
               subscription_status: { type: ['string', 'null'] },
               subscription_expires_at: { type: ['string', 'null'] },
@@ -94,7 +97,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (user.image) {
+      if (user.image && isOwnProfileImage(user.id, user.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(user.image);
           imageUrl = url;
@@ -129,6 +132,8 @@ export function register(app: App, fastify: FastifyInstance) {
         department: user.department || null,
         maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
+        target_route: user.target_route || null,
+        route_start_date: user.route_start_date || null,
         has_record_book: user.has_record_book ?? false,
         vessel_sector: user.vessel_sector || null,
         subscription_status: user.subscription_status || null,
@@ -157,6 +162,8 @@ export function register(app: App, fastify: FastifyInstance) {
       department?: string;
       maritime_authority?: string;
       target_certification?: string | null;
+      target_route?: string | null;
+      route_start_date?: string | null;
       has_record_book?: boolean;
       vessel_sector?: string | null;
     };
@@ -178,9 +185,11 @@ export function register(app: App, fastify: FastifyInstance) {
             nationality: { type: 'string' },
             pya_membership_no: { type: 'string' },
             department: { type: 'string', enum: ['deck', 'engineering'], description: 'Department: deck or engineering' },
-            maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz'], description: 'Maritime authority: mca, uscg, amsa, or mnz' },
+            maritime_authority: { type: 'string', enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'], description: 'Maritime authority: mca, uscg, amsa, mnz or samsa' },
             has_record_book: { type: 'boolean', description: 'Holds a completed AMSA task book or MNZ training record book, which shortens the sea service required' },
             target_certification: { type: ['string', 'null'], maxLength: 64, description: 'Requirement id the user is working toward, e.g. uscg-master-nc-200grt' },
+            target_route: { type: ['string', 'null'], maxLength: 32, description: 'Route id for the target certification, e.g. experienced. null = the default route' },
+            route_start_date: { type: ['string', 'null'], description: 'YYYY-MM-DD the route counts service from (college registration, Action Plan). null = count all service' },
             vessel_sector: { type: ['string', 'null'], maxLength: 16, description: 'Vessel sector the user operates in: "yachting" or "commercial" (validated in handler; null/empty clears it)' },
           },
         },
@@ -201,9 +210,11 @@ export function register(app: App, fastify: FastifyInstance) {
               nationality: { type: ['string', 'null'] },
               pya_membership_no: { type: ['string', 'null'] },
               department: { type: ['string', 'null'], enum: ['deck', 'engineering'] },
-              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz'] },
+              maritime_authority: { type: ['string', 'null'], enum: ['mca', 'uscg', 'amsa', 'mnz', 'samsa'] },
               has_record_book: { type: ['boolean', 'null'] },
               target_certification: { type: ['string', 'null'] },
+              target_route: { type: ['string', 'null'] },
+              route_start_date: { type: ['string', 'null'] },
               vessel_sector: { type: ['string', 'null'], enum: ['yachting', 'commercial'] },
               createdAt: { type: 'string' },
               updatedAt: { type: 'string' },
@@ -216,9 +227,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book, vessel_sector } = request.body;
+      const { name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, target_route, route_start_date, has_record_book, vessel_sector } = request.body;
 
-      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, has_record_book, vessel_sector }, 'Profile update request');
+      app.logger.info({ name, email, address, tel_no, date_of_birth, srb_no, nationality, pya_membership_no, department, maritime_authority, target_certification, target_route, route_start_date, has_record_book, vessel_sector }, 'Profile update request');
 
       // Get token from Authorization header
       const authHeader = request.headers.authorization;
@@ -268,9 +279,9 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Validate maritime_authority if provided
-      if (maritime_authority && !['mca', 'uscg', 'amsa', 'mnz'].includes(maritime_authority)) {
+      if (maritime_authority && !['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(maritime_authority)) {
         app.logger.warn({ userId: user.id, maritime_authority }, 'Invalid maritime authority provided');
-        return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", or "mnz"' });
+        return reply.code(400).send({ error: 'Invalid maritime authority. Must be "mca", "uscg", "amsa", "mnz" or "samsa"' });
       }
 
       // Validate vessel_sector if provided (null/'' clears it back to "not chosen")
@@ -289,13 +300,31 @@ export function register(app: App, fastify: FastifyInstance) {
         }
       }
 
+      // Route ids live in the app (constants/certRoutes.ts) too, so check the shape only.
+      if (target_route !== undefined && target_route !== null && target_route !== '') {
+        if (typeof target_route !== 'string' || !/^[a-z0-9-]{1,32}$/.test(target_route)) {
+          return reply.code(400).send({ error: 'Invalid route id' });
+        }
+      }
+      if (route_start_date !== undefined && route_start_date !== null && route_start_date !== '') {
+        // Date rolls 2026-02-30 over to March, so the date must survive a round trip.
+        const valid =
+          typeof route_start_date === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(route_start_date) &&
+          !isNaN(Date.parse(route_start_date)) &&
+          new Date(`${route_start_date}T00:00:00Z`).toISOString().slice(0, 10) === route_start_date;
+        if (!valid) {
+          return reply.code(400).send({ error: 'Invalid route start date' });
+        }
+      }
+
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || has_record_book !== undefined || vessel_sector !== undefined;
+      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || target_route !== undefined || route_start_date !== undefined || has_record_book !== undefined || vessel_sector !== undefined;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
         let imageUrl: string | null = null;
-        if (user.image) {
+        if (user.image && isOwnProfileImage(user.id, user.image)) {
           try {
             const { url } = await app.storage.getSignedUrl(user.image);
             imageUrl = url;
@@ -319,6 +348,8 @@ export function register(app: App, fastify: FastifyInstance) {
           department: user.department || null,
           maritime_authority: user.maritime_authority || null,
         target_certification: user.target_certification || null,
+        target_route: user.target_route || null,
+        route_start_date: user.route_start_date || null,
         has_record_book: user.has_record_book ?? false,
           vessel_sector: user.vessel_sector || null,
           createdAt: user.createdAt.toISOString(),
@@ -352,6 +383,8 @@ export function register(app: App, fastify: FastifyInstance) {
       if (department !== undefined) updateData.department = department || null;
       if (maritime_authority !== undefined) updateData.maritime_authority = maritime_authority || null;
       if (target_certification !== undefined) updateData.target_certification = target_certification || null;
+      if (target_route !== undefined) updateData.target_route = target_route || null;
+      if (route_start_date !== undefined) updateData.route_start_date = route_start_date || null;
       if (has_record_book !== undefined) updateData.has_record_book = has_record_book === true;
       if (vessel_sector !== undefined) updateData.vessel_sector = vessel_sector || null;
 
@@ -363,7 +396,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (updatedUser.image) {
+      if (updatedUser.image && isOwnProfileImage(updatedUser.id, updatedUser.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(updatedUser.image);
           imageUrl = url;
@@ -393,6 +426,8 @@ export function register(app: App, fastify: FastifyInstance) {
         department: updatedUser.department || null,
         maritime_authority: updatedUser.maritime_authority || null,
         target_certification: updatedUser.target_certification || null,
+        target_route: updatedUser.target_route || null,
+        route_start_date: updatedUser.route_start_date || null,
         has_record_book: updatedUser.has_record_book ?? false,
         vessel_sector: updatedUser.vessel_sector || null,
         createdAt: updatedUser.createdAt.toISOString(),
@@ -553,7 +588,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Generate signed URL for profile image if it exists
       let imageUrl: string | null = null;
-      if (updatedUser.image) {
+      if (updatedUser.image && isOwnProfileImage(updatedUser.id, updatedUser.image)) {
         try {
           const { url } = await app.storage.getSignedUrl(updatedUser.image);
           imageUrl = url;
@@ -693,22 +728,12 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(413).send({ error: 'File too large (max 5MB)' });
       }
 
-      // Delete old image if exists
-      if (user.image) {
-        try {
-          await app.storage.delete(user.image);
-          app.logger.debug({ userId: user.id, oldImageKey: user.image }, 'Old profile image deleted');
-        } catch (error) {
-          app.logger.warn({ userId: user.id, oldImageKey: user.image, err: error }, 'Failed to delete old profile image');
-        }
-      }
-
       // Upload new image
-      const filename = data.filename || `image-${Date.now()}`;
+      const filename = (data.filename || 'image').replace(/[^A-Za-z0-9._-]/g, '_');
       const imageKey = `profile-images/${user.id}/${Date.now()}-${filename}`;
       let uploadedKey: string;
       try {
-        uploadedKey = await app.storage.upload(imageKey, buffer);
+        uploadedKey = await app.storage.upload(imageKey, buffer, data.mimetype);
         app.logger.info({ userId: user.id, imageKey: uploadedKey, filename }, 'Profile image uploaded successfully');
       } catch (error) {
         app.logger.error({ userId: user.id, imageKey, filename, err: error }, 'Failed to upload profile image to storage');
@@ -721,6 +746,16 @@ export function register(app: App, fastify: FastifyInstance) {
         .set({ image: uploadedKey, updatedAt: new Date() })
         .where(eq(authSchema.user.id, user.id))
         .returning();
+
+      // Delete the old image only once the new one is stored and saved
+      if (user.image && isDeletableProfileImage(user.id, user.image)) {
+        try {
+          await app.storage.delete(user.image);
+          app.logger.debug({ userId: user.id, oldImageKey: user.image }, 'Old profile image deleted');
+        } catch (error) {
+          app.logger.warn({ userId: user.id, oldImageKey: user.image, err: error }, 'Failed to delete old profile image');
+        }
+      }
 
       // Generate signed URL for the new image
       let imageUrl: string | null = null;

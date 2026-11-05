@@ -19,6 +19,10 @@ export const vessels = pgTable('vessels', {
   engine_kilowatts: decimal('engine_kilowatts', { precision: 10, scale: 2 }), // Engine power in kilowatts
   engine_type: text('engine_type'), // Engine type (e.g., Diesel, Petrol, Electric, Hybrid)
   is_workboat: boolean('is_workboat'), // CTV/workboat expansion: MGN 496 requires 6 months on a workboat specifically
+  is_two_watch: boolean('is_two_watch'), // USCG: user says the vessel is authorised to run two watches (46 USC 8104), so a 12-hour day counts 1.5 days (46 CFR 10.107)
+  is_sole_watchkeeper: boolean('is_sole_watchkeeper'), // User says they are the only watchkeeper in their department on this vessel (e.g. sole engineer), so every sea day is also a watchkeeping day
+  is_tug: boolean('is_tug'), // Marked by the user as a tug: MGN 495 tug service counts toward the tug deck CoCs
+  tug_capacity: text('tug_capacity'), // 'rating' | 'officer' | 'cadet': the user's usual capacity on this tug, used for entries logged without a rank (AIS)
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),
@@ -327,6 +331,40 @@ export const history_imports = pgTable('history_imports', {
   index('history_imports_vessel_id_idx').on(table.vessel_id),
   index('history_imports_status_idx').on(table.status),
   uniqueIndex('history_imports_transaction_id_uq').on(table.transaction_id),
+]);
+
+// Free AIS history checks (before purchase): one row per availability look-up or period check,
+// so the purchases dashboard can count checks and how many lead to an import.
+export const history_checks = pgTable('history_checks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: text('user_id').notNull(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  mmsi: text('mmsi').notNull(),
+  kind: text('kind').notNull(), // 'availability' (import screen opened) | 'periods' (picked periods checked)
+  available: boolean('available'), // availability: any history found
+  verdict: text('verdict'), // periods: the verdict shown to the user
+  days_picked: integer('days_picked'),
+  days_with_ais: integer('days_with_ais'),
+  days_underway: integer('days_underway'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('history_checks_created_at_idx').on(table.created_at),
+  index('history_checks_user_id_idx').on(table.user_id),
+]);
+
+// Anonymous first-run funnel events from the app (sign-up drop-off, 2026-10-31).
+// install_id is a random id the app makes on first launch; no user id, no IP.
+export const app_events = pgTable('app_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  event: text('event').notNull(),
+  install_id: text('install_id').notNull(),
+  platform: text('platform'),
+  app_version: text('app_version'),
+  detail: text('detail'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('app_events_created_at_idx').on(table.created_at),
+  index('app_events_event_idx').on(table.event),
 ]);
 
 // Days of Datalastic vessel_history already fetched, per MMSI (shared by everyone on that

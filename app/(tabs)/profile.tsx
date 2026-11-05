@@ -1,7 +1,9 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress, CommercialServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { useCertRoute } from '@/hooks/useCertRoute';
+import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
+import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
   getAuthorityServiceDefinitions,
@@ -41,6 +43,7 @@ import {
 import { log, warn, error as logError } from '@/utils/log';
 import { useTranslation } from 'react-i18next';
 import { openManageSubscription, openWriteReview } from '@/utils/storeLinks';
+import { openHistoryImportForActiveVessel } from '@/components/HistoryImportRow';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -58,12 +61,18 @@ interface UserProfile {
   department?: string | null;
   maritime_authority?: MaritimeAuthority | null;
   target_certification?: string | null;
+  target_route?: string | null;
+  route_start_date?: string | null;
+  vessel_sector?: 'yachting' | 'commercial' | null;
 }
 
 interface SeaTimeSummary {
   total_days: number;
   uscg_service?: {
     creditable: number;
+    two_watch_days?: number;
+    two_watch_bonus?: number;
+    creditable_total?: number;
     provisional: number;
     short_of_standard_day: number;
     awaiting_tonnage: number;
@@ -83,6 +92,11 @@ interface SeaTimeSummary {
   } | null;
   commercial_service?: CommercialServiceSummary;
   workboat_service?: WorkboatServiceSummary;
+  engine_service?: EngineServiceSummary;
+  onboard_days?: number;
+  yacht_onboard_days?: number;
+  tug_service?: TugServiceSummary;
+  boatmaster_service?: BoatmasterServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -562,6 +576,15 @@ export default function ProfileScreen() {
   // which of the two sea-service figures the progress card measures against.
   const [hasRecordBook, setHasRecordBook] = useState(false);
   const [summary, setSummary] = useState<SeaTimeSummary | null>(null);
+  const [summaryVersion, setSummaryVersion] = useState(0);
+  const certRoute = useCertRoute({
+    authority: profile?.maritime_authority ?? null,
+    department: profile?.department ?? null,
+    targetId: profile?.target_certification ?? null,
+    savedRouteId: profile?.target_route ?? null,
+    savedStartDate: profile?.route_start_date ?? null,
+    refreshKey: summaryVersion,
+  });
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -632,6 +655,9 @@ export default function ProfileScreen() {
       // applicant needs a sea service letter, not an MCA testimonial.
       if (data?.maritime_authority && ['mca', 'uscg', 'mnz', 'amsa'].includes(data.maritime_authority)) {
         setReportTemplate(data.maritime_authority);
+      } else if (data?.maritime_authority === 'samsa') {
+        // No SAMSA-specific form yet; the generic testimonial suits it.
+        setReportTemplate('generic');
       }
       setLoading(false);
       setLoadError(false);
@@ -657,6 +683,7 @@ export default function ProfileScreen() {
       const data = await seaTimeApi.getReportSummary();
       log('Sea time summary loaded successfully');
       setSummary(data);
+      setSummaryVersion((v) => v + 1);
       setLoadingSummary(false);
     } catch (error: any) {
       logError(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
@@ -1305,9 +1332,21 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
+                  samsaService={(summary as any).samsa_service ?? null}
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
+                  engineService={summary.engine_service ?? null}
+                  tugService={summary.tug_service ?? null}
+                  boatmasterService={summary.boatmaster_service ?? null}
+                  sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
+                  onboardDays={summary.onboard_days ?? 0}
+                  yachtOnboardDays={summary.yacht_onboard_days ?? 0}
+                  routeId={certRoute.routeId}
+                  routeStartDate={certRoute.startDate}
+                  sinceStart={certRoute.sinceStart}
+                  onSelectRoute={certRoute.selectRoute}
+                  onSetRouteStartDate={certRoute.setStartDate}
                   isDark={isDark}
                   onChangeTarget={() =>
                     router.push({
@@ -1323,6 +1362,7 @@ export default function ProfileScreen() {
                 />
 
                 <AskPathwayButton authority={profile.maritime_authority} isDark={isDark} />
+                <PathwayLinks isDark={isDark} />
 
                 {authorityUsesRecordBook(profile.maritime_authority) && (
                   <View
@@ -1493,6 +1533,28 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
 
+              {/* Android has no Settings screen, so the Password row lives here */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/password' as any)}
+              >
+                <IconSymbol
+                  ios_icon_name="key.fill"
+                  android_material_icon_name="key"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Password</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => router.push('/certificates')}
@@ -1521,16 +1583,16 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => router.push('/signature')}
+                onPress={() => router.push('/reports' as any)}
               >
                 <IconSymbol
-                  ios_icon_name="signature"
-                  android_material_icon_name="draw"
+                  ios_icon_name="doc.richtext"
+                  android_material_icon_name="description"
                   size={24}
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>{t('settings.signatureForReports')}</Text>
+                <Text style={styles.menuItemText}>{t('navigation.reports')}</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
@@ -1542,16 +1604,58 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => router.push('/refer')}
+                onPress={() => router.push('/manual-tracking' as any)}
               >
                 <IconSymbol
-                  ios_icon_name="person.2.fill"
-                  android_material_icon_name="people"
+                  ios_icon_name="location.fill"
+                  android_material_icon_name="my-location"
                   size={24}
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>{t('settings.referAFriend')}</Text>
+                <Text style={styles.menuItemText}>{t('settings.manualGps')}</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={openHistoryImportForActiveVessel}
+              >
+                <IconSymbol
+                  ios_icon_name="clock.arrow.circlepath"
+                  android_material_icon_name="history"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>Import past sea time</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/signature')}
+              >
+                <IconSymbol
+                  ios_icon_name="signature"
+                  android_material_icon_name="draw"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>{t('settings.signatureForReports')}</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"

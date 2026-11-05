@@ -5,7 +5,7 @@
  * Once the app is running, prefer app.logger which uses the same Fastify-bound pino instance.
  */
 
-import pino from 'pino';
+import { pino } from 'pino';
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || 'info',

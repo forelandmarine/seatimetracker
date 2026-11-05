@@ -13,7 +13,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
 import { BACKEND_URL } from '@/utils/api';
@@ -33,8 +33,9 @@ interface FeedbackModal {
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
+  const params = useLocalSearchParams<{ email?: string }>();
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '');
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

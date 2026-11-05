@@ -1,3 +1,4 @@
+import { COURSE_CATALOG, ADD_AS_TYPE, EXTRA_COURSE_LABELS, CHECKLIST_CODES } from '@/constants/courseChecklists';
 import { authFetch } from "./api";
 
 export interface Certificate {
@@ -111,7 +112,46 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+// Course records from the oral checklist are saved as "course_<code>".
+const COURSE_TYPES: string[] = [];
+for (const [code, def] of Object.entries(COURSE_CATALOG)) {
+  if (ADD_AS_TYPE[code]) continue;
+  CERTIFICATE_TYPE_LABELS[`course_${code}`] = def.label;
+  COURSE_TYPES.push(`course_${code}`);
+}
+// Codes that only appear in provider listings stay out of the picker.
+const CHECKLIST_SET = new Set(CHECKLIST_CODES);
+for (const [code, label] of Object.entries(EXTRA_COURSE_LABELS)) {
+  if (!CHECKLIST_SET.has(code) || ADD_AS_TYPE[code] || CERTIFICATE_TYPE_LABELS[`course_${code}`]) continue;
+  CERTIFICATE_TYPE_LABELS[`course_${code}`] = label;
+  COURSE_TYPES.push(`course_${code}`);
+}
+
 export const CERTIFICATE_TYPES = Object.keys(CERTIFICATE_TYPE_LABELS);
+
+// Short names crew actually type, which never appear in the labels.
+const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
+  eng1_medical: ['seafarer medical', 'seafarers medical'],
+  stcw_basic_safety: ['bst', 'basic training', 'stcw 95'],
+  stcw_advanced_firefighting: ['aff'],
+  stcw_medical_first_aid: ['mfa'],
+  stcw_proficiency_security: ['psa', 'proficiency in security awareness'],
+  personal_survival_techniques: ['pst'],
+  radar_arpa: ['arpa'],
+};
+
+/** Lower-cases and drops spaces and punctuation, so "ENG-1" and "eng 1" both read "eng1". */
+export function normaliseCertificateSearch(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** True when the query (raw user text) matches the type's label or one of its aliases. */
+export function certificateTypeMatches(type: string, query: string): boolean {
+  const q = normaliseCertificateSearch(query);
+  if (!q) return true;
+  const terms = [CERTIFICATE_TYPE_LABELS[type] || type, ...(CERTIFICATE_TYPE_ALIASES[type] || [])];
+  return terms.some((term) => normaliseCertificateSearch(term).includes(q));
+}
 
 export interface CertificateTypeGroup {
   title: string;
@@ -243,6 +283,7 @@ export const CERTIFICATE_TYPE_GROUPS: CertificateTypeGroup[] = [
       "uscg_vso",
     ],
   },
+  { title: "Courses and modules", types: COURSE_TYPES },
   { title: "Identity & Other", types: ["passport", "seaman_book", "other"] },
 ];
 

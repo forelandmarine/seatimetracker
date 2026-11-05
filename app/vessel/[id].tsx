@@ -1,9 +1,11 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
 import { HistoryImportRow } from '@/components/HistoryImportRow';
+import { ManualGpsRow } from '@/components/ManualGpsRow';
 import { countryName } from '@/utils/countryCodes';
 import {
   View,
@@ -23,6 +25,9 @@ import {
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
+import { TwoWatchToggle } from '@/components/TwoWatchToggle';
+import { SoleWatchToggle } from '@/components/SoleWatchToggle';
+import { TugToggle } from '@/components/TugToggle';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
 import { log, error as logError } from '@/utils/log';
@@ -41,6 +46,10 @@ interface Vessel {
   callsign?: string;
   engine_kilowatts?: number;
   engine_type?: string;
+  is_two_watch?: boolean | null;
+  is_sole_watchkeeper?: boolean | null;
+  is_tug?: boolean | null;
+  tug_capacity?: string | null;
   imo_number?: string;
   tonnage_itc?: number;
 }
@@ -140,7 +149,7 @@ export default function VesselDetailScreen() {
         if (currentVessel.is_active) {
           try {
             log('[VesselDetail] Fetching AIS location for active vessel');
-            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
+            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId);
             log('[VesselDetail] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
@@ -309,7 +318,7 @@ export default function VesselDetailScreen() {
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
-      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
+      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id);
       log('[VesselDetail] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
@@ -513,7 +522,7 @@ export default function VesselDetailScreen() {
     }
   };
 
-  const formatCoordinateDMS = (lat: number | null, lon: number | null): string => {
+  const formatCoordinateDMS = (lat: number | null | undefined, lon: number | null | undefined): string => {
     // CRITICAL: Safe coordinate formatting to prevent crashes
     try {
       if (lat === null || lat === undefined || lon === null || lon === undefined) {
@@ -708,6 +717,40 @@ export default function VesselDetailScreen() {
           </View>
         </View>
 
+        {/* USCG two-watch authorisation (hidden for other authorities) */}
+        <TwoWatchToggle
+          vesselId={vessel.id}
+          isTwoWatch={vessel.is_two_watch}
+          onChange={(isTwoWatch) => {
+            setVessel((v) => (v ? { ...v, is_two_watch: isTwoWatch } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* Sole watchkeeper: sea days also count as watchkeeping (MCA, MNZ, SAMSA) */}
+        <SoleWatchToggle
+          vesselId={vessel.id}
+          isSoleWatchkeeper={vessel.is_sole_watchkeeper}
+          onChange={(isSoleWatchkeeper) => {
+            setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* Tug: deck service counts as MGN 495 tug service (MCA, commercial deck crew) */}
+        <TugToggle
+          vesselId={vessel.id}
+          isTug={vessel.is_tug}
+          tugCapacity={vessel.tug_capacity}
+          onChange={(isTug, tugCapacity) => {
+            setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
         {/* AIS Data Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -787,57 +830,7 @@ export default function VesselDetailScreen() {
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
           ) : null}
 
-          {/* Manual GPS fallback — surfaced contextually when AIS is missing or stale */}
-          {(() => {
-            const aisIsStale = (() => {
-              if (!aisData?.timestamp) return true;
-              try {
-                const ageHours = (Date.now() - new Date(aisData.timestamp).getTime()) / (1000 * 60 * 60);
-                return ageHours > 6;
-              } catch {
-                return true;
-              }
-            })();
-            if (!aisIsStale) return null;
-            return (
-              <TouchableOpacity
-                onPress={() => router.push(`/manual-tracking?vesselId=${vessel.id}`)}
-                activeOpacity={0.7}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  backgroundColor: colors.primary + '12',
-                  borderWidth: 1,
-                  borderColor: colors.primary + '30',
-                }}
-              >
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="my-location"
-                  size={20}
-                  color={colors.primary}
-                  style={{ marginRight: 10 }}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                    Log voyage with phone GPS
-                  </Text>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    {aisData ? 'AIS data is stale - use phone GPS to log this voyage' : 'No AIS coverage for this vessel'}
-                  </Text>
-                </View>
-                <IconSymbol
-                  ios_icon_name="chevron.right"
-                  android_material_icon_name="chevron-right"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            );
-          })()}
+          <ManualGpsRow vesselId={vessel.id} aisTimestamp={aisData?.timestamp} hasAisData={!!aisData} />
           <HistoryImportRow vesselId={vessel.id} vesselName={vessel.vessel_name} />
         </View>
 
@@ -969,7 +962,7 @@ export default function VesselDetailScreen() {
                           {entry.notes && (
                             <View style={styles.expandedDetailRow}>
                               <Text style={styles.expandedDetailLabel}>Notes:</Text>
-                              <Text style={styles.expandedDetailValue}>{entry.notes}</Text>
+                              <Text style={styles.expandedDetailValue}>{formatEntryNotes(entry.notes)}</Text>
                             </View>
                           )}
                         </View>
@@ -1088,6 +1081,8 @@ export default function VesselDetailScreen() {
                   style={styles.input}
                   value={editedVesselName}
                   onChangeText={setEditedVesselName}
+                  // Vessel names are proper names; autocorrect turns e.g. Svitzer into Switzerland
+                  autoCorrect={false}
                   placeholder="Vessel Name"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 />

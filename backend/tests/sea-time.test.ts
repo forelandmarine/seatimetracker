@@ -399,6 +399,55 @@ describe("uscgCreditableDays", () => {
     expect(uscgCreditableDays(e).creditable).toBe(0);
   });
 
+  describe("two-watch vessels (46 CFR 10.107: a 12-hour day may count as 1.5)", () => {
+    const twoWatch = { gross_tonnes: "250.00", tonnage_itc: null, is_two_watch: true };
+
+    test("a 12-hour day on a vessel marked two-watch earns an extra half day", () => {
+      const r = uscgCreditableDays([entry("2025-06-01", 12, twoWatch)]);
+      expect(r.creditable).toBe(1);
+      expect(r.two_watch_days).toBe(1);
+      expect(r.two_watch_bonus).toBe(0.5);
+      expect(r.creditable_total).toBe(1.5);
+    });
+
+    test("a 12-hour day on an unmarked vessel stays at one day", () => {
+      const r = uscgCreditableDays([entry("2025-06-01", 12, big)]);
+      expect(r.creditable_total).toBe(1);
+      expect(r.two_watch_days).toBe(0);
+    });
+
+    test("a 10-hour day on a two-watch vessel is one day", () => {
+      const r = uscgCreditableDays([entry("2025-06-01", 10, twoWatch)]);
+      expect(r.creditable_total).toBe(1);
+    });
+
+    test("a full 24-hour period is still capped at 1.5 days", () => {
+      const r = uscgCreditableDays([{
+        start_time: "2025-06-01T00:00:00Z", end_time: "2025-06-02T00:00:00Z",
+        service_type: "actual_sea_service", vessel: twoWatch,
+      }]);
+      expect(r.creditable_total).toBe(1.5);
+    });
+
+    test("no uplift when the period also includes an unmarked vessel", () => {
+      const r = uscgCreditableDays([
+        entry("2025-06-01", 6, twoWatch),
+        { start_time: "2025-06-01T14:00:00Z", end_time: "2025-06-01T20:00:00Z", service_type: "actual_sea_service", vessel: big },
+      ]);
+      expect(r.creditable).toBe(1);
+      expect(r.two_watch_days).toBe(0);
+    });
+
+    test("stand-by on a two-watch vessel is still not credited", () => {
+      const r = uscgCreditableDays([entry("2025-06-01", 12, twoWatch, "standby_service")]);
+      expect(r.creditable_total).toBe(0);
+    });
+
+    test("the stored per-entry figure stays a whole day", () => {
+      expect(entrySeaDays(entry("2025-06-01", 12, twoWatch) as any, "uscg")).toBe(1);
+    });
+  });
+
   test("watchkeeping service is sea service", () => {
     expect(uscgCreditableDays([entry("2025-06-01", 8, big, "watchkeeping_service")]).creditable).toBe(1);
   });
@@ -467,6 +516,23 @@ describe("amsaCreditableDays", () => {
     expect(r.underway).toBe(10);
     expect(r.not_underway).toBe(0);
     expect(r.part_day_hours).toBe(0);
+  });
+
+  test("STCW count credits a short day at the hours plus 25%, capped at a day", () => {
+    const r = amsaCreditableDays([
+      // 4 h + 4 h: MO 505 makes one day; STCW makes 5 h + 5 h = 10 h = one day, 2 h over
+      { start_time: "2026-01-01T08:00:00Z", end_time: "2026-01-01T12:00:00Z" },
+      { start_time: "2026-01-02T08:00:00Z", end_time: "2026-01-02T12:00:00Z" },
+      // 6.4 h + 6.4 h + 6.4 h: MO 505 = 19.2 h = 2 days; STCW = 8 + 8 + 8 = 3 days
+      { start_time: "2026-01-03T08:00:00Z", end_time: "2026-01-03T14:24:00Z" },
+      { start_time: "2026-01-04T08:00:00Z", end_time: "2026-01-04T14:24:00Z" },
+      { start_time: "2026-01-05T08:00:00Z", end_time: "2026-01-05T14:24:00Z" },
+      // 10 h: one day under both rules
+      { start_time: "2026-01-06T06:00:00Z", end_time: "2026-01-06T16:00:00Z" },
+    ]);
+    expect(r.underway).toBe(4);
+    expect(r.stcw_underway).toBe(5);
+    expect(r.stcw_not_underway).toBe(0);
   });
 
   test("adds shorter shifts together until they make a day", () => {
@@ -571,6 +637,18 @@ describe("mnzCreditableDays", () => {
       { ...day("2026-01-02"), watchkeeping_hours: 24 },
     ], now);
     expect(r.watchkeeping).toBe(6);
+  });
+
+  test("a sole watchkeeper's sea days count as watchkeeping days", () => {
+    const sole = { is_sole_watchkeeper: true };
+    const r = mnzCreditableDays([
+      { ...day("2026-01-01"), vessel: sole },
+      // logged watch hours on a sole-watch day are not added on top
+      { ...day("2026-01-02"), vessel: sole, watchkeeping_hours: 24 },
+      { ...day("2026-01-03", "standby_service"), vessel: sole },
+      { ...day("2026-01-04"), watchkeeping_hours: 16 },
+    ], now);
+    expect(r.watchkeeping).toBe(4);
   });
 });
 

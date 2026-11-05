@@ -1,9 +1,11 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconSymbol } from '@/components/IconSymbol';
 import { HistoryImportRow } from '@/components/HistoryImportRow';
+import { ManualGpsRow } from '@/components/ManualGpsRow';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
@@ -26,6 +28,9 @@ import {
 import { colors } from '@/styles/commonStyles';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
+import { TwoWatchToggle } from '@/components/TwoWatchToggle';
+import { SoleWatchToggle } from '@/components/SoleWatchToggle';
+import { TugToggle } from '@/components/TugToggle';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -43,6 +48,10 @@ interface Vessel {
   callsign?: string;
   engine_kilowatts?: number;
   engine_type?: string;
+  is_two_watch?: boolean | null;
+  is_sole_watchkeeper?: boolean | null;
+  is_tug?: boolean | null;
+  tug_capacity?: string | null;
 }
 
 interface SeaTimeEntry {
@@ -140,7 +149,7 @@ export default function VesselDetailScreen() {
         if (currentVessel.is_active) {
           try {
             log('[VesselDetail iOS] Fetching AIS location for active vessel');
-            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId, true);
+            const aisLocation = await seaTimeApi.getVesselAISLocation(vesselId);
             log('[VesselDetail iOS] AIS location data:', aisLocation);
             
             // Transform the response to match AISData interface
@@ -280,7 +289,7 @@ export default function VesselDetailScreen() {
       await seaTimeApi.checkVesselAIS(vessel.id, true);
       
       // Then fetch the detailed AIS location data (GET)
-      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id, true);
+      const aisLocation = await seaTimeApi.getVesselAISLocation(vessel.id);
       log('[VesselDetail iOS] AIS location data:', aisLocation);
       
       // Transform the response to match AISData interface
@@ -463,8 +472,8 @@ export default function VesselDetailScreen() {
     return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
   };
 
-  const formatCoordinateDMS = (lat: number | null, lon: number | null): string => {
-    if (lat === null || lon === null || (lat === 0 && lon === 0)) return 'No coordinates';
+  const formatCoordinateDMS = (lat: number | null | undefined, lon: number | null | undefined): string => {
+    if (lat == null || lon == null || (lat === 0 && lon === 0)) return 'No coordinates';
     return `${convertToDMS(lat, true)}, ${convertToDMS(lon, false)}`;
   };
 
@@ -614,6 +623,40 @@ export default function VesselDetailScreen() {
           </View>
         </View>
 
+        {/* USCG two-watch authorisation (hidden for other authorities) */}
+        <TwoWatchToggle
+          vesselId={vessel.id}
+          isTwoWatch={vessel.is_two_watch}
+          onChange={(isTwoWatch) => {
+            setVessel((v) => (v ? { ...v, is_two_watch: isTwoWatch } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* Sole watchkeeper: sea days also count as watchkeeping (MCA, MNZ, SAMSA) */}
+        <SoleWatchToggle
+          vesselId={vessel.id}
+          isSoleWatchkeeper={vessel.is_sole_watchkeeper}
+          onChange={(isSoleWatchkeeper) => {
+            setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* Tug: deck service counts as MGN 495 tug service (MCA, commercial deck crew) */}
+        <TugToggle
+          vesselId={vessel.id}
+          isTug={vessel.is_tug}
+          tugCapacity={vessel.tug_capacity}
+          onChange={(isTug, tugCapacity) => {
+            setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
         {/* AIS Data Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -678,6 +721,7 @@ export default function VesselDetailScreen() {
           ) : (
             <Text style={styles.noDataText}>No AIS data available. Tap refresh to check.</Text>
           )}
+          <ManualGpsRow vesselId={vessel.id} aisTimestamp={aisData?.timestamp} hasAisData={!!aisData} />
           <HistoryImportRow vesselId={vessel.id} vesselName={vessel.vessel_name} />
         </View>
 
@@ -809,7 +853,7 @@ export default function VesselDetailScreen() {
                           {entry.notes && (
                             <View style={styles.expandedDetailRow}>
                               <Text style={styles.expandedDetailLabel}>Notes:</Text>
-                              <Text style={styles.expandedDetailValue}>{entry.notes}</Text>
+                              <Text style={styles.expandedDetailValue}>{formatEntryNotes(entry.notes)}</Text>
                             </View>
                           )}
                         </View>
@@ -892,6 +936,8 @@ export default function VesselDetailScreen() {
                   style={styles.input}
                   value={editedVesselName}
                   onChangeText={setEditedVesselName}
+                  // Vessel names are proper names; autocorrect turns e.g. Svitzer into Switzerland
+                  autoCorrect={false}
                   placeholder="Vessel Name"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
                 />

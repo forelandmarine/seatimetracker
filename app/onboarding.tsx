@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/utils/appEvents';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -132,9 +133,15 @@ export default function OnboardingScreen() {
     handleFinish();
   };
 
+  useEffect(() => {
+    trackEvent('onboarding_shown');
+  }, []);
+
   const handleFinish = async () => {
+    trackEvent('onboarding_done', currentSlide);
     await markOnboardingComplete();
-    router.replace('/auth');
+    // First run: open the account screen on Create account, not Sign in.
+    router.replace('/auth?mode=signup');
   };
 
   return (

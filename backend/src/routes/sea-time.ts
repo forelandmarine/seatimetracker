@@ -1,19 +1,22 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, ne, isNull, isNotNull, desc, lte, gte } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, lte, gte, notInArray, inArray, or } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { CHECKING_CONFIRM_ERROR, CHECKING_STATUS, HIDDEN_ENTRY_STATUSES } from "../utils/passageRefinement.js";
 import {
   calculateDurationHours,
   calculateSeaDays,
   entrySeaDays,
+  samsaEntryDates,
   calculateDistanceNauticalMiles,
   getCalendarDay,
   isValidServiceType,
   VALID_SERVICE_TYPES,
 } from "../utils/seaTime.js";
 import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
+import { formatHoursMinutes } from "../utils/duration.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
 
 // Validate certificate belongs to the authenticated user
@@ -29,7 +32,7 @@ async function validateCertificateOwnership(app: App, certificateId: string | nu
 async function storedSeaDays(
   app: App,
   userId: string,
-  entry: { vessel_id: string; start_time: Date; end_time: Date | null; service_type?: string | null; sea_days?: number | null; status?: string | null; is_stationary?: boolean | null }
+  entry: { id?: string; vessel_id: string; start_time: Date; end_time: Date | null; service_type?: string | null; sea_days?: number | null; status?: string | null; is_stationary?: boolean | null }
 ): Promise<number> {
   const [u] = await app.db
     .select({ authority: authSchema.user.maritime_authority })
@@ -39,7 +42,31 @@ async function storedSeaDays(
     .select({ vessel_name: schema.vessels.vessel_name, gross_tonnes: schema.vessels.gross_tonnes, tonnage_itc: schema.vessels.tonnage_itc })
     .from(schema.vessels)
     .where(eq(schema.vessels.id, entry.vessel_id));
-  return entrySeaDays({ ...entry, vessel: vessel ?? null }, u?.authority);
+  const claimed = u?.authority === 'samsa' ? await samsaClaimedDates(app, userId, entry) : undefined;
+  return entrySeaDays({ ...entry, vessel: vessel ?? null }, u?.authority, undefined, claimed);
+}
+
+// SAMSA counts any day touched, so a date already held by another confirmed
+// entry must not be stored again on this one (per-entry sums would double count).
+export async function samsaClaimedDates(
+  app: App,
+  userId: string,
+  entry: { id?: string; start_time: Date; end_time: Date | null }
+): Promise<Set<string>> {
+  const from = new Date(new Date(entry.start_time).getTime() - 86_400_000);
+  const to = new Date(new Date(entry.end_time ?? entry.start_time).getTime() + 86_400_000);
+  const others = await app.db
+    .select()
+    .from(schema.sea_time_entries)
+    .where(and(
+      eq(schema.sea_time_entries.user_id, userId),
+      eq(schema.sea_time_entries.status, 'confirmed'),
+      lte(schema.sea_time_entries.start_time, to),
+      or(isNull(schema.sea_time_entries.end_time), gte(schema.sea_time_entries.end_time, from)),
+    ));
+  const claimed = new Set<string>();
+  for (const o of others) if (o.id !== entry.id) samsaEntryDates(o as any).forEach((d) => claimed.add(d));
+  return claimed;
 }
 
 const VALID_TRADE_AREAS = ['unlimited', 'near_coastal', 'coastal', 'inland'] as const;
@@ -92,6 +119,21 @@ function transformVesselForResponse(vessel: any) {
 }
 
 // Helper function to transform sea time entry for API response
+// Detail fields the edit screen loads back. Without them in the response schema
+// Fastify drops them, and saving the entry writes them back as null.
+const ENTRY_DETAIL_PROPS = {
+  rank: { type: ['string', 'null'] },
+  date_joined: { type: ['string', 'null'] },
+  date_left: { type: ['string', 'null'] },
+  trade_area: { type: ['string', 'null'] },
+  bridge_watch_hours: { type: ['number', 'null'] },
+  engine_watch_hours: { type: ['number', 'null'] },
+  night_watch_hours: { type: ['number', 'null'] },
+  certificate_id: { type: ['string', 'null'] },
+  from_port: { type: ['string', 'null'] },
+  to_port: { type: ['string', 'null'] },
+} as const;
+
 function transformSeaTimeEntryForResponse(entry: any) {
   // Calculate duration_hours if both start_time and end_time are present
   let duration_hours = null;
@@ -156,6 +198,7 @@ function transformSeaTimeEntryForResponse(entry: any) {
     trade_area: entry.trade_area || null,
     bridge_watch_hours: bridge_watch_hours,
     engine_watch_hours: engine_watch_hours,
+    night_watch_hours: entry.night_watch_hours != null ? parseFloat(String(entry.night_watch_hours)) : null,
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
@@ -193,6 +236,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
@@ -230,7 +274,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Passages logged while the user was off board stay hidden until claimed
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
@@ -270,6 +314,7 @@ export function register(app: App, fastify: FastifyInstance) {
             detection_window_hours: { type: ['number', 'null'] },
             watchkeeping_hours: { type: ['number', 'null'] },
             additional_watchkeeping_hours: { type: ['number', 'null'] },
+            ...ENTRY_DETAIL_PROPS,
             is_stationary: { type: ['boolean', 'null'] },
             distance_nm: { type: ['number', 'null'] },
             user_id: { type: ['string', 'null'] },
@@ -382,6 +427,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
@@ -435,7 +481,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
         eq(schema.sea_time_entries.vessel_id, vesselId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       with: {
         vessel: true,
@@ -448,10 +494,14 @@ export function register(app: App, fastify: FastifyInstance) {
   });
 
   // GET /api/sea-time/pending - Return pending entries awaiting confirmation
-  fastify.get('/api/sea-time/pending', {
+  fastify.get<{ Querystring: { include_checking?: string } }>('/api/sea-time/pending', {
     schema: {
-      description: 'Get pending sea time entries awaiting confirmation (requires authentication)',
+      description: 'Get pending sea time entries awaiting confirmation (requires authentication). With include_checking=true, also returns live passages still being checked against the AIS track (status checking), which cannot be confirmed yet. Older app builds omit it and never see them.',
       tags: ['sea-time'],
+      querystring: {
+        type: 'object',
+        properties: { include_checking: { type: 'string' } },
+      },
       response: {
         200: {
           type: 'array',
@@ -476,6 +526,7 @@ export function register(app: App, fastify: FastifyInstance) {
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
               vessel: {
                 type: 'object',
@@ -503,9 +554,10 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId }, 'Retrieving pending sea time entries for user');
 
+    const statuses = request.query.include_checking === 'true' ? ['pending', CHECKING_STATUS] : ['pending'];
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
-        eq(schema.sea_time_entries.status, 'pending'),
+        inArray(schema.sea_time_entries.status, statuses),
         eq(schema.sea_time_entries.user_id, userId)
       ),
       with: {
@@ -559,6 +611,7 @@ export function register(app: App, fastify: FastifyInstance) {
                   detection_window_hours: { type: ['number', 'null'] },
                   watchkeeping_hours: { type: ['number', 'null'] },
                   additional_watchkeeping_hours: { type: ['number', 'null'] },
+                  ...ENTRY_DETAIL_PROPS,
                   is_stationary: { type: ['boolean', 'null'] },
                   vessel: {
                     type: 'object',
@@ -614,7 +667,17 @@ export function register(app: App, fastify: FastifyInstance) {
     const entries = await app.db.query.sea_time_entries.findMany({
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        gte(schema.sea_time_entries.created_at, cutoffTime),
+        // New since the cutoff: created then, or released for review then after the AIS track check
+        or(
+          gte(schema.sea_time_entries.created_at, cutoffTime),
+          inArray(
+            schema.sea_time_entries.id,
+            app.db
+              .select({ id: schema.passage_refinements.entry_id })
+              .from(schema.passage_refinements)
+              .where(gte(schema.passage_refinements.refined_at, cutoffTime))
+          )
+        ),
         // Filter for complete entries (mca_compliant is set by AIS handler, duration_hours may be null)
         isNotNull(schema.sea_time_entries.end_time),
         isNotNull(schema.sea_time_entries.start_latitude),
@@ -720,6 +783,9 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     // Guard: only pending entries can be confirmed
+    if (current_entry.status === CHECKING_STATUS) {
+      return reply.code(409).send({ error: CHECKING_CONFIRM_ERROR });
+    }
     if (current_entry.status !== 'pending') {
       app.logger.warn({ userId, entryId: id, status: current_entry.status }, 'Entry already processed');
       return reply.code(409).send({ error: `Entry is already ${current_entry.status}` });
@@ -1801,6 +1867,7 @@ export function register(app: App, fastify: FastifyInstance) {
               start_longitude: { type: ['string', 'null'] },
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
+              ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string' },
               vessel: {
                 type: 'object',
@@ -1838,7 +1905,7 @@ export function register(app: App, fastify: FastifyInstance) {
       // Passages logged while the user was off board stay hidden until claimed
       where: and(
         eq(schema.sea_time_entries.user_id, userId),
-        ne(schema.sea_time_entries.status, 'off_board')
+        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
       ),
       orderBy: desc(schema.sea_time_entries.start_time),
     });
@@ -2642,7 +2709,7 @@ export function register(app: App, fastify: FastifyInstance) {
           mca_compliant: durationHours >= 4,
           distance_nm: String(distanceNm),
           status: 'confirmed',
-          notes: `${MANUAL_SHIFT_NOTE_PREFIX}: ${durationHours}h on duty`,
+          notes: `${MANUAL_SHIFT_NOTE_PREFIX}: ${formatHoursMinutes(durationHours)} on duty`,
         })
         // Only while still open, so a double tap cannot close it twice.
         .where(and(eq(schema.sea_time_entries.id, active.id), eq(schema.sea_time_entries.status, 'active')))

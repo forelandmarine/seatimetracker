@@ -63,4 +63,14 @@ describe("workboat service (MGN 496)", () => {
     expect(r.workboat_15m).toBe(0);
     expect(r.workboats_without_length).toBe(1);
   });
+
+  test("sea days on a sole-watchkeeper vessel count as watchkeeping", () => {
+    const soleCtv = { ...ctv, is_sole_watchkeeper: true };
+    const r = workboatService([
+      entry("2026-03-01", soleCtv, "actual_sea_service", 10, "ctv"),
+      entry("2026-03-02", soleCtv, "yard_service", 10, "ctv"),
+      entry("2026-03-03", ctv, "actual_sea_service", 10, "ctv2"),
+    ], new Date("2026-10-25T00:00:00Z"));
+    expect(r.watchkeeping_15m).toBe(1);
+  });
 });

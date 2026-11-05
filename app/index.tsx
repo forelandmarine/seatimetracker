@@ -6,6 +6,7 @@ import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import React, { useEffect, useState } from 'react';
 import { isOnboardingComplete } from './onboarding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -19,6 +20,12 @@ export default function Index() {
   useEffect(() => {
     isOnboardingComplete().then(setOnboardingDone);
   }, []);
+
+  // Remember that this device has had a signed-in user, so after a sign-out the
+  // account screen opens on Sign in rather than Create account.
+  useEffect(() => {
+    if (authContext?.user) AsyncStorage.setItem('seatime_signed_in_before', 'true').catch(() => {});
+  }, [authContext?.user]);
 
   useEffect(() => {
     try {
@@ -43,8 +50,10 @@ export default function Index() {
 
   const { user, loading: authLoading } = authContext;
 
-  // Show loading while checking auth or onboarding state
-  if (authLoading || !initialCheckDone || onboardingDone === null) {
+  // Show loading only for the first auth and onboarding check. authLoading also
+  // turns on during a sign-in attempt; showing the spinner then unmounts the auth
+  // screen, so a failed sign-in came back to a cleared form without its offers.
+  if (!initialCheckDone || onboardingDone === null) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />

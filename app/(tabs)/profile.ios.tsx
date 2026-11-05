@@ -16,8 +16,10 @@ import {
   Switch,
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
-import { CertificationProgress, CommercialServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
+import { useCertRoute } from '@/hooks/useCertRoute';
+import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
+import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
   getAuthorityServiceDefinitions,
@@ -26,7 +28,7 @@ import {
 } from '@/constants/mcaRequirements';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@/styles/commonStyles';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -60,12 +62,18 @@ interface UserProfile {
   department?: string | null;
   maritime_authority?: MaritimeAuthority | null;
   target_certification?: string | null;
+  target_route?: string | null;
+  route_start_date?: string | null;
+  vessel_sector?: 'yachting' | 'commercial' | null;
 }
 
 interface SeaTimeSummary {
   total_days: number;
   uscg_service?: {
     creditable: number;
+    two_watch_days?: number;
+    two_watch_bonus?: number;
+    creditable_total?: number;
     provisional: number;
     short_of_standard_day: number;
     awaiting_tonnage: number;
@@ -85,6 +93,11 @@ interface SeaTimeSummary {
   } | null;
   commercial_service?: CommercialServiceSummary;
   workboat_service?: WorkboatServiceSummary;
+  engine_service?: EngineServiceSummary;
+  onboard_days?: number;
+  yacht_onboard_days?: number;
+  tug_service?: TugServiceSummary;
+  boatmaster_service?: BoatmasterServiceSummary;
   mnz_service?: {
     actual: number;
     standby: number;
@@ -452,6 +465,15 @@ export default function ProfileScreen() {
   // which of the two sea-service figures the progress card measures against.
   const [hasRecordBook, setHasRecordBook] = useState(false);
   const [summary, setSummary] = useState<SeaTimeSummary | null>(null);
+  const [summaryVersion, setSummaryVersion] = useState(0);
+  const certRoute = useCertRoute({
+    authority: profile?.maritime_authority ?? null,
+    department: profile?.department ?? null,
+    targetId: profile?.target_certification ?? null,
+    savedRouteId: profile?.target_route ?? null,
+    savedStartDate: profile?.route_start_date ?? null,
+    refreshKey: summaryVersion,
+  });
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -510,6 +532,7 @@ export default function ProfileScreen() {
       const data = await seaTimeApi.getReportSummary();
       log('Sea time summary loaded successfully');
       setSummary(data);
+      setSummaryVersion((v) => v + 1);
       setLoadingSummary(false);
     } catch (error: any) {
       logError(`Failed to load sea time summary (attempt ${retryCount + 1}):`, error?.message);
@@ -555,17 +578,21 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    log('ProfileScreen (iOS): Initial mount, loading data in parallel');
-    Promise.all([
-      loadProfile(),
-      loadSummary(),
-      loadVessels(),
-      loadCertificates(),
-    ]).catch(error => {
-      logError('Failed to load profile data:', error);
-    });
-  }, [loadProfile, loadSummary, loadVessels, loadCertificates]);
+  // Reload on focus as Android does, so a target or route changed on the
+  // requirements screen shows here without a pull to refresh.
+  useFocusEffect(
+    useCallback(() => {
+      log('ProfileScreen (iOS): Screen focused, loading data in parallel');
+      Promise.all([
+        loadProfile(),
+        loadSummary(),
+        loadVessels(),
+        loadCertificates(),
+      ]).catch(error => {
+        logError('Failed to load profile data:', error);
+      });
+    }, [loadProfile, loadSummary, loadVessels, loadCertificates])
+  );
 
   useEffect(() => {
     if (refreshTrigger > 0) {
@@ -1132,9 +1159,21 @@ export default function ProfileScreen() {
                   uscgService={summary.uscg_service ?? null}
                   amsaService={summary.amsa_service ?? null}
                   mnzService={summary.mnz_service ?? null}
+                  samsaService={(summary as any).samsa_service ?? null}
                   commercialService={summary.commercial_service ?? null}
                   workboatService={summary.workboat_service ?? null}
+                  engineService={summary.engine_service ?? null}
+                  tugService={summary.tug_service ?? null}
+                  boatmasterService={summary.boatmaster_service ?? null}
+                  sector={profile.vessel_sector ?? null}
                   hasRecordBook={hasRecordBook}
+                  onboardDays={summary.onboard_days ?? 0}
+                  yachtOnboardDays={summary.yacht_onboard_days ?? 0}
+                  routeId={certRoute.routeId}
+                  routeStartDate={certRoute.startDate}
+                  sinceStart={certRoute.sinceStart}
+                  onSelectRoute={certRoute.selectRoute}
+                  onSetRouteStartDate={certRoute.setStartDate}
                   isDark={isDark}
                   onChangeTarget={() =>
                     router.push({
@@ -1150,6 +1189,7 @@ export default function ProfileScreen() {
                 />
 
                 <AskPathwayButton authority={profile.maritime_authority} isDark={isDark} />
+                <PathwayLinks isDark={isDark} />
 
                 {authorityUsesRecordBook(profile.maritime_authority) && (
                   <View

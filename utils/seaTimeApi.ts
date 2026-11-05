@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
 import { log, error } from '@/utils/log';
 
@@ -121,16 +122,18 @@ interface AuthFetchOptions {
   timeout?: number;
   /** Pass an external AbortSignal (e.g. from component unmount) */
   signal?: AbortSignal;
+  /** Extra request headers (e.g. If-None-Match) */
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_TIMEOUT = 15_000;
 
-const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): Promise<Response> => {
+export const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): Promise<Response> => {
   const { method = 'GET', body, formData = false, timeout = DEFAULT_TIMEOUT, signal } = opts;
 
   const token = await getToken();
 
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = { ...opts.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!formData && body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -201,6 +204,10 @@ export const updateUserProfile = async (updates: {
   department?: string | null;
   maritime_authority?: string | null;
   target_certification?: string | null;
+  /** Route id for the target certification (constants/certRoutes.ts); null = default route. */
+  target_route?: string | null;
+  /** YYYY-MM-DD the route counts service from; null = all service. */
+  route_start_date?: string | null;
   /** Holds an AMSA task book or MNZ training record book. */
   has_record_book?: boolean;
   vessel_sector?: 'yachting' | 'commercial' | null;
@@ -210,8 +217,13 @@ export const updateUserProfile = async (updates: {
 };
 
 export const uploadProfileImage = async (imageUri: string) => {
+  // Shrink to a 512px JPEG first: camera photos are several MB, an avatar needs ~60 KB
+  const resized = await ImageManipulator.manipulateAsync(imageUri, [{ resize: { width: 512 } }], {
+    compress: 0.8,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
   const formData = new FormData();
-  formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'profile.jpg' } as any);
+  formData.append('image', { uri: resized.uri, type: 'image/jpeg', name: 'profile.jpg' } as any);
   const res = await authFetch('/api/profile/upload-image', { method: 'POST', body: formData, formData: true });
   return res.json();
 };
@@ -275,9 +287,31 @@ export const createVessel = async (
   }
 };
 
+export interface VesselCandidate {
+  mmsi: string;
+  name: string;
+  imo: string | null;
+  flag: string | null;
+  flag_iso: string | null;
+  type: string | null;
+  app_type: 'Motor' | 'Sail' | null;
+  length_metres: number | null;
+  year_built: string | null;
+}
+
+// Find a vessel's MMSI from its name and length overall (AIS data, best match first).
+// The user must confirm a match before its MMSI is used.
+export const lookupVessel = async (name: string, lengthMetres: string): Promise<VesselCandidate[]> => {
+  const q = `name=${encodeURIComponent(name.trim())}&length=${encodeURIComponent(lengthMetres.trim())}`;
+  const res = await authFetch(`/api/vessels/lookup?${q}`, { timeout: 20_000 });
+  const data = await res.json();
+  return Array.isArray(data?.candidates) ? data.candidates : [];
+};
+
 export const updateVesselParticulars = async (
   vesselId: string,
-  updates: { vessel_name?: string; imo_number?: string; flag?: string; official_number?: string; type?: string; length_metres?: number; gross_tonnes?: number; tonnage_itc?: number; callsign?: string; engine_kilowatts?: number; engine_type?: string; }
+  // null clears a field
+  updates: { vessel_name?: string; imo_number?: string | null; flag?: string | null; official_number?: string | null; type?: string | null; length_metres?: number | null; gross_tonnes?: number | null; tonnage_itc?: number | null; callsign?: string | null; engine_kilowatts?: number | null; engine_type?: string | null; }
 ) => {
   const res = await authFetch(`/api/vessels/${vesselId}/particulars`, { method: 'PUT', body: updates });
   return normalizeVessel(await res.json());
@@ -300,6 +334,35 @@ export const answerVesselRename = async (vesselId: string, accept: boolean, name
 // counts toward Master (Workboat) <500 GT.
 export const updateVesselWorkboat = async (vesselId: string, isWorkboat: boolean) => {
   const res = await authFetch(`/api/vessels/${vesselId}/workboat`, { method: 'PUT', body: { is_workboat: isWorkboat } });
+  return normalizeVessel(await res.json());
+};
+
+// Mark a vessel as authorised to run a two-watch system (USCG). A 12-hour
+// working day on it then counts as 1.5 days (46 CFR 10.107).
+export const updateVesselTwoWatch = async (vesselId: string, isTwoWatch: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/two-watch`, { method: 'PUT', body: { is_two_watch: isTwoWatch } });
+  return normalizeVessel(await res.json());
+};
+
+// Mark the user as the only watchkeeper in their department on a vessel (a sole
+// engineer, say). Every sea day on it then also counts as a watchkeeping day.
+export const updateVesselSoleWatchkeeper = async (vesselId: string, isSoleWatchkeeper: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watchkeeper`, { method: 'PUT', body: { is_sole_watchkeeper: isSoleWatchkeeper } });
+  return normalizeVessel(await res.json());
+};
+
+// Mark a vessel as a tug. Deck service on it then counts as tug service toward
+// the MGN 495 tug ratings and tug officer CoCs.
+// `capacity` is the user's usual capacity on the tug, used for entries logged
+// without a rank (AIS passages); leave it out to keep the stored one.
+export const updateVesselTug = async (
+  vesselId: string,
+  isTug: boolean,
+  capacity?: 'rating' | 'officer' | 'cadet' | null,
+) => {
+  const body: Record<string, unknown> = { is_tug: isTug };
+  if (capacity !== undefined) body.tug_capacity = capacity;
+  const res = await authFetch(`/api/vessels/${vesselId}/tug`, { method: 'PUT', body });
   return normalizeVessel(await res.json());
 };
 
@@ -534,8 +597,13 @@ export const getSeaTimeEntries = async () => {
   return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
 };
 
-export const getPendingEntries = async () => {
-  const res = await authFetch('/api/sea-time/pending');
+/**
+ * Entries awaiting review. With includeChecking, also live passages still being
+ * checked against the AIS track (status 'checking'), which can't be confirmed yet;
+ * backends from before passage refinement ignore the flag.
+ */
+export const getPendingEntries = async (includeChecking = false) => {
+  const res = await authFetch(includeChecking ? '/api/sea-time/pending?include_checking=true' : '/api/sea-time/pending');
   const data = await res.json();
   return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
 };
@@ -545,6 +613,27 @@ export const confirmSeaTimeEntry = async (entryId: string, serviceType?: string)
   if (serviceType) body.service_type = serviceType;
   const res = await authFetch(`/api/sea-time/${entryId}/confirm`, { method: 'PUT', body });
   return res.json();
+};
+
+/**
+ * Confirm or reject many entries in one request (backend 2.4.0+). Returns null
+ * when the backend predates the endpoint, so the caller can fall back to one
+ * request per entry.
+ */
+export const bulkUpdateSeaTimeEntries = async (
+  ids: string[],
+  action: 'confirm' | 'reject',
+  serviceType?: string
+): Promise<{ done: string[]; failed: { id: string; error: string }[] } | null> => {
+  try {
+    const body: any = { ids, action };
+    if (serviceType) body.service_type = serviceType;
+    const res = await authFetch('/api/sea-time/bulk', { method: 'POST', body, timeout: 60000 });
+    return res.json();
+  } catch (e: any) {
+    if (e?.status === 404) return null;
+    throw e;
+  }
 };
 
 export const rejectSeaTimeEntry = async (entryId: string) => {
@@ -600,6 +689,26 @@ export const setMarketingConsent = async (
     body: { marketing_consent, source },
   });
   return res.json();
+};
+
+export interface PasswordStatus {
+  hasPassword: boolean;
+  hasApple: boolean;
+  email: string;
+  privateRelay: boolean;
+}
+
+export const getPasswordStatus = async (): Promise<PasswordStatus> => {
+  const res = await authFetch('/api/auth/password');
+  return res.json();
+};
+
+/** Set a password (Apple accounts) or change it (needs the current one). */
+export const setPassword = async (newPassword: string, currentPassword?: string): Promise<void> => {
+  await authFetch('/api/auth/password', {
+    method: 'PUT',
+    body: currentPassword ? { newPassword, currentPassword } : { newPassword },
+  });
 };
 
 export type ExitReason =
@@ -791,8 +900,10 @@ export const getUnredeemedHistoryPurchases = async (): Promise<{
   return res.json();
 };
 
-export const getReportSummary = async () => {
-  const res = await authFetch('/api/reports/summary');
+/** Summary of confirmed sea time; `startDate` (YYYY-MM-DD) counts only entries from that day. */
+export const getReportSummary = async (params?: { startDate?: string }) => {
+  const query = params?.startDate ? `?startDate=${encodeURIComponent(params.startDate)}` : '';
+  const res = await authFetch(`/api/reports/summary${query}`);
   return res.json();
 };
 
@@ -827,6 +938,15 @@ export const trackLightshipClick = async () => {
 export const getReferralInfo = async () => {
   const res = await authFetch('/api/referral');
   return res.json();
+};
+
+// Apply a friend's referral code to this (new) account. Resolves with the
+// server's message, or rejects with its reason (already used, too late, etc.).
+export const redeemReferralCode = async (code: string): Promise<string> => {
+  const res = await authFetch('/api/referral/redeem', { method: 'POST', body: { code: code.trim().toUpperCase() } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Could not apply the code');
+  return body?.message || '';
 };
 
 export const togglePublicProfile = async (enabled: boolean) => {

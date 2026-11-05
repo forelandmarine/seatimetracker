@@ -28,7 +28,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
-  signInWithApple: (identityToken: string, appleUser?: any) => Promise<void>;
+  /** Resolves true when the Apple sign-in created a new account. */
+  signInWithApple: (identityToken: string, appleUser?: any) => Promise<boolean>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -50,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ref to track in-flight auth operations.
   // Using a ref (not state) prevents stale-closure false-positives.
   const authInFlight = useRef(false);
+  // Set by authenticateWith from the server reply, read by signInWithApple.
+  const lastAuthCreatedUser = useRef(false);
 
   // Ref to track whether checkAuth is currently running so signIn/signUp
   // can avoid clobbering the loading state.
@@ -207,7 +210,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     authInFlight.current = true;
-    setLoading(true);
+    // No setLoading(true) here: the auth screen has its own spinner, and the
+    // tabs layout that stays mounted after a sign-out reacts to loading going
+    // true then false by replacing /auth, which wiped a failed sign-in's form.
 
     try {
       await withAuthRetry(async () => {
@@ -296,6 +301,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await response.json();
+        // Apple sign-in reports whether this call created the account.
+        lastAuthCreatedUser.current = !!data.isNewUser;
 
         if (!data.session?.token) {
           throw new Error('No session token received. Please try again.');
@@ -399,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       label: 'Apple sign in',
       persist: true,
     });
+    return lastAuthCreatedUser.current;
   }, []);
 
   const signInWithGoogle = useCallback(async () => {

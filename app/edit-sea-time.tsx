@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
-import { confirmFutureDates } from '@/utils/futureDateCheck';
+import { confirmFutureDates, yardDateForCheck } from '@/utils/futureDateCheck';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -479,7 +479,7 @@ export default function EditSeaTimeScreen() {
       let extractedTo = '';
       let remainingNotes: string[] = [];
       
-      lines.forEach(line => {
+      lines.forEach((line: string) => {
         if (line.startsWith('From:')) {
           extractedFrom = line.replace('From:', '').trim();
         } else if (line.startsWith('To:')) {
@@ -537,7 +537,7 @@ export default function EditSeaTimeScreen() {
         if (cancelled) return;
         const authority = userProfile?.maritime_authority ?? null;
         setPathway({
-          authority: (['mca', 'uscg', 'amsa', 'mnz'].includes(authority) ? authority : null) as MaritimeAuthority | null,
+          authority: (['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(authority) ? authority : null) as MaritimeAuthority | null,
           department: userProfile?.department?.toLowerCase() || 'deck',
         });
       } catch (error) {
@@ -570,7 +570,11 @@ export default function EditSeaTimeScreen() {
     }
 
     // Future dates are allowed, but ask first.
-    if (!futureDatesConfirmed && confirmFutureDates(entry.start_time, entry.end_time, () => handleSave(true))) {
+    if (!futureDatesConfirmed && confirmFutureDates(
+        isYard ? yardDateForCheck(entry.start_time) : entry.start_time,
+        isYard ? yardDateForCheck(entry.end_time) : entry.end_time,
+        () => handleSave(true),
+      )) {
       return;
     }
 
@@ -698,8 +702,9 @@ export default function EditSeaTimeScreen() {
     : 'Up to 90 days total (continuous or split)';
   const serviceTypeLabel = 'Service Type';
   const vesselLabel = 'Vessel';
-  const startDateLabel = 'Start Date & Time';
-  const endDateLabel = 'End Date & Time';
+  const isYard = serviceType === 'yard';
+  const startDateLabel = isYard ? 'Start Date' : 'Start Date & Time';
+  const endDateLabel = isYard ? 'End Date' : 'End Date & Time';
   const voyageLocationsLabel = 'Voyage Locations';
   const voyageHelperText = 'Enter location names or coordinates (e.g., "51.5074, -0.1278")';
   const fromLabel = 'From';
@@ -771,9 +776,12 @@ export default function EditSeaTimeScreen() {
     );
   }
 
-  const startDateDisplay = `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`;
-  const endDateDisplay = entry.end_time 
-    ? `${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`
+  // Yard time is logged by date only, so its times are not shown
+  const startDateDisplay = isYard
+    ? formatDate(entry.start_time)
+    : `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`;
+  const endDateDisplay = entry.end_time
+    ? (isYard ? formatDate(entry.end_time) : `${formatDate(entry.end_time)} at ${formatTime(entry.end_time)}`)
     : 'Not set';
 
   return (

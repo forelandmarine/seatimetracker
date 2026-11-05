@@ -1,4 +1,5 @@
-import { eq, and, desc, isNotNull, lte, gte, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNotNull, lte, gte, isNull, sql, inArray } from 'drizzle-orm';
+import { formatHoursMinutes } from '../utils/duration.js';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
 import type { App } from '../index.js';
@@ -11,6 +12,9 @@ import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
+import { processPassageRefinements } from './passageRefinement.js';
+import { processReferrals } from './referrals.js';
+import { extendableStatuses, isCommercialSector, newLiveEntryStatus } from '../utils/passageRefinement.js';
 import { isInShiftMode } from './shifts.js';
 
 const SCHEDULER_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
@@ -23,11 +27,6 @@ const LOCATION_CHANGE_THRESHOLD = 0.1; // degrees (latitude/longitude)
 const INACTIVE_RECHECK_HOURS = 12;
 // While a user is off board, at most one "your vessel is underway" push per this many hours.
 const UNDERWAY_ALERT_COOLDOWN_HOURS = 24;
-
-// Track which users have received drip emails (in-memory cache; resets on restart
-// but the database createdAt window prevents double-sends across restarts).
-const day3Sent = new Set<string>();
-const day7Sent = new Set<string>();
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 let isSchedulerRunning = false;
@@ -71,65 +70,75 @@ export function stopScheduler(app: App): void {
 /**
  * Process the welcome email drip sequence.
  *
- * Sends day-3 email to users created 3-4 days ago that haven't received it.
- * Sends day-7 email to users created 7-8 days ago that haven't received it.
+ * Sends the day-3 email to users created 3-4 days ago, and the day-7 email
+ * (Lightship, which is marketing) to users created 7-8 days ago who opted in
+ * to marketing email.
  *
- * Uses an in-memory cache to avoid double-sending within the same process
- * lifetime. The createdAt window prevents the same user being eligible across
- * multiple iterations on the same day.
+ * Each send is claimed in the database first (day3_email_sent_at /
+ * day7_email_sent_at set only while still null), so a restart, or two
+ * instances overlapping during a deploy, can't send the same email twice.
+ * A failed send releases the claim so the next iteration can retry.
  */
-async function processDripEmails(app: App): Promise<void> {
+export async function processDripEmails(app: App): Promise<void> {
   const now = new Date();
-  const day3Start = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
-  const day3End = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-  const day7Start = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
-  const day7End = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const day = 24 * 60 * 60 * 1000;
 
-  // Day 3: users created 3-4 days ago
-  const day3Users = await app.db
-    .select()
-    .from(authSchema.user)
-    .where(
-      and(
-        gte(authSchema.user.createdAt, day3Start),
-        lte(authSchema.user.createdAt, day3End)
-      )
-    );
+  const drips = [
+    {
+      label: 'Day-3',
+      column: authSchema.user.day3_email_sent_at,
+      key: 'day3_email_sent_at' as const,
+      from: new Date(now.getTime() - 4 * day),
+      to: new Date(now.getTime() - 3 * day),
+      marketingOnly: false,
+      send: (u: typeof authSchema.user.$inferSelect) => sendDay3Email({ email: u.email, name: u.name }, app.logger),
+    },
+    {
+      label: 'Day-7',
+      column: authSchema.user.day7_email_sent_at,
+      key: 'day7_email_sent_at' as const,
+      from: new Date(now.getTime() - 8 * day),
+      to: new Date(now.getTime() - 7 * day),
+      marketingOnly: true,
+      send: (u: typeof authSchema.user.$inferSelect) =>
+        sendDay7Email({ email: u.email, name: u.name, userId: u.id }, app.logger),
+    },
+  ];
 
-  for (const u of day3Users) {
-    if (!u.email || day3Sent.has(u.id)) continue;
-    try {
-      const result = await sendDay3Email({ email: u.email, name: u.name }, app.logger);
-      if (result.success) {
-        day3Sent.add(u.id);
-        app.logger.info({ userId: u.id, email: u.email }, 'Day-3 drip email sent');
+  for (const drip of drips) {
+    const users = await app.db
+      .select()
+      .from(authSchema.user)
+      .where(
+        and(
+          gte(authSchema.user.createdAt, drip.from),
+          lte(authSchema.user.createdAt, drip.to),
+          isNull(drip.column),
+          drip.marketingOnly ? eq(authSchema.user.marketing_consent, true) : undefined
+        )
+      );
+
+    for (const u of users) {
+      if (!u.email) continue;
+      const claimed = await app.db
+        .update(authSchema.user)
+        .set({ [drip.key]: new Date() })
+        .where(and(eq(authSchema.user.id, u.id), isNull(drip.column)))
+        .returning({ id: authSchema.user.id });
+      if (claimed.length === 0) continue; // another instance got there first
+
+      let sent = false;
+      try {
+        const result = await drip.send(u);
+        sent = result.success;
+        if (sent) app.logger.info({ userId: u.id, email: u.email }, `${drip.label} drip email sent`);
+        else app.logger.warn({ userId: u.id, error: result.error }, `${drip.label} email failed`);
+      } catch (err) {
+        app.logger.warn({ err, userId: u.id }, `${drip.label} email failed`);
       }
-    } catch (err) {
-      app.logger.warn({ err, userId: u.id }, 'Day-3 email failed');
-    }
-  }
-
-  // Day 7: users created 7-8 days ago
-  const day7Users = await app.db
-    .select()
-    .from(authSchema.user)
-    .where(
-      and(
-        gte(authSchema.user.createdAt, day7Start),
-        lte(authSchema.user.createdAt, day7End)
-      )
-    );
-
-  for (const u of day7Users) {
-    if (!u.email || day7Sent.has(u.id)) continue;
-    try {
-      const result = await sendDay7Email({ email: u.email, name: u.name }, app.logger);
-      if (result.success) {
-        day7Sent.add(u.id);
-        app.logger.info({ userId: u.id, email: u.email }, 'Day-7 drip email sent');
+      if (!sent) {
+        await app.db.update(authSchema.user).set({ [drip.key]: null }).where(eq(authSchema.user.id, u.id));
       }
-    } catch (err) {
-      app.logger.warn({ err, userId: u.id }, 'Day-7 email failed');
     }
   }
 }
@@ -165,6 +174,20 @@ async function runSchedulerIteration(app: App): Promise<void> {
       await processHistoryImports(app);
     } catch (error) {
       app.logger.error({ err: error }, 'Error processing history imports');
+    }
+
+    // Check finished passages against the AIS track before they go to the user
+    try {
+      await processPassageRefinements(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing passage refinements');
+    }
+
+    // Referral rewards: look for referred friends' first payments (throttled to every 10 min)
+    try {
+      await processReferrals(app);
+    } catch (error) {
+      app.logger.error({ err: error }, 'Error processing referrals');
     }
 
     // Find all due scheduled tasks that are active AND for active vessels only
@@ -394,7 +417,8 @@ async function runSchedulerIteration(app: App): Promise<void> {
  * Adaptive interval: shorter checks when underway, longer when stationary.
  * Saves API credits and gives sub-hour resolution to active voyages.
  *
- * - Underway (moving): 30 minutes
+ * - Underway (moving): 30 minutes, whether or not passage refinement is on, so the
+ *   live position stays fresh
  * - Stationary in port: 6 hours
  * - Default (no movement data yet): use task's configured interval
  */
@@ -621,7 +645,7 @@ async function processScheduledTask(
       await handleOffshorePassage(app, vesselId, vessel_name, mmsi, user_id, ais_check, taskId, entryStatus);
 
       // Then handle regular 2-hour window detections
-      await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus);
+      await handleSeaTimeEntries(app, vessel, vesselId, vessel_name, mmsi, ais_data.is_moving, check_time, taskId, user_id, entryStatus, user.vessel_sector);
     }
 
     if (ais_data.is_moving === true && user.on_board === false) {
@@ -957,8 +981,11 @@ async function handleSeaTimeEntries(
   check_time: Date,
   taskId: string,
   userId: string,
-  entryStatus: 'pending' | 'off_board'
+  entryStatus: 'pending' | 'off_board',
+  userSector?: string | null
 ): Promise<void> {
+  // Commercial passages aren't checked against the AIS track (see newLiveEntryStatus)
+  const commercial = isCommercialSector(vessel.sector, userSector);
   // Using 2-hour position check interval
   const twoHoursAgo = new Date(check_time.getTime() - 2 * 60 * 60 * 1000);
 
@@ -1107,7 +1134,7 @@ async function handleSeaTimeEntries(
     .where(
       and(
         eq(schema.sea_time_entries.vessel_id, vesselId),
-        eq(schema.sea_time_entries.status, entryStatus)
+        inArray(schema.sea_time_entries.status, extendableStatuses(entryStatus))
       )
     );
 
@@ -1198,9 +1225,26 @@ async function handleSeaTimeEntries(
           distance_nm: String(totalDistance),
           is_stationary: isStationary,
           notes: updatedNotes,
+          // Its times change, so a passage already released for review is checked again
+          status: existingEntryForDay.status === 'off_board' ? 'off_board' : newLiveEntryStatus(entryStatus, commercial),
         })
-        .where(eq(schema.sea_time_entries.id, existingEntryForDay.id))
+        // Only while it is still open: the user may have confirmed or rejected it
+        // since it was read above (resolveDestinationPort can take a while).
+        .where(
+          and(
+            eq(schema.sea_time_entries.id, existingEntryForDay.id),
+            inArray(schema.sea_time_entries.status, extendableStatuses(entryStatus))
+          )
+        )
         .returning();
+
+      if (!updated_entry) {
+        app.logger.info(
+          { taskId, vesselId, userId, entryId: existingEntryForDay.id },
+          'Entry was reviewed while being extended; leaving it as the user set it'
+        );
+        return;
+      }
 
       app.logger.info(
         {
@@ -1239,7 +1283,7 @@ async function handleSeaTimeEntries(
     }
 
     // CREATE a new pending sea time entry
-    const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${durationHours} hours`;
+    const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${formatHoursMinutes(durationHours)}`;
 
     // Determine MCA compliance based on duration
     const isMCACompliant = durationHours >= 4.0;
@@ -1260,7 +1304,7 @@ async function handleSeaTimeEntries(
           start_longitude: String(oldLng),
           end_latitude: String(currentLat),
           end_longitude: String(currentLng),
-          status: entryStatus,
+          status: newLiveEntryStatus(entryStatus, commercial),
           service_type: 'actual_sea_service',
           mca_compliant: isMCACompliant,
           distance_nm: String(distanceNm),

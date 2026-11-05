@@ -11,6 +11,7 @@ import { calculateDistanceNauticalMiles, calculateSeaDays } from "../utils/seaTi
 import { classifyFixForStorage } from "../utils/seaAreas/classifyFix.js";
 import { sendPushToUser } from "../utils/push.js";
 import { noteAisIdentity, recordMmsiChange } from "../services/vesselIdentity.js";
+import { extendableStatuses } from "../utils/passageRefinement.js";
 import { isInShiftMode } from "../services/shifts.js";
 
 const MOVING_SPEED_THRESHOLD = 2; // knots
@@ -1514,7 +1515,7 @@ export function register(app: App, fastify: FastifyInstance) {
             and(
               eq(schema.sea_time_entries.vessel_id, vesselId),
               eq(schema.sea_time_entries.user_id, userId),
-              eq(schema.sea_time_entries.status, entryStatus),
+              inArray(schema.sea_time_entries.status, extendableStatuses(entryStatus)),
               gte(schema.sea_time_entries.end_time, new Date(check_time.getTime() - ACTIVE_PASSAGE_WINDOW_MS))
             )
           )

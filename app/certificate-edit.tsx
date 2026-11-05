@@ -20,6 +20,7 @@ import {
   CERTIFICATE_TYPE_GROUPS,
   CERTIFICATE_TYPE_LABELS,
   Certificate,
+  certificateTypeMatches,
   createCertificate,
   deleteCertificate,
   listCertificates,
@@ -48,14 +49,12 @@ export default function CertificateEditScreen() {
   // 80 certificate types is too many for a flat list, so the picker groups them
   // and filters on the labels the user actually reads.
   const visibleTypeGroups = useMemo(() => {
-    const query = typeSearch.trim().toLowerCase();
+    const query = typeSearch.trim();
     return CERTIFICATE_TYPE_GROUPS
       .map((group) => ({
         title: group.title,
         types: query
-          ? group.types.filter((t) =>
-              (CERTIFICATE_TYPE_LABELS[t] || t).toLowerCase().includes(query),
-            )
+          ? group.types.filter((t) => certificateTypeMatches(t, query))
           : group.types,
       }))
       .filter((group) => group.types.length > 0);
@@ -63,7 +62,14 @@ export default function CertificateEditScreen() {
   const [showIssuedPicker, setShowIssuedPicker] = useState(false);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
 
-  const [type, setType] = useState<string>('stcw_basic_safety');
+  // The oral checklist opens this screen with the course already chosen.
+  // A course_ code is accepted even without a label, rather than quietly
+  // switching to STCW basic safety and recording the wrong certificate.
+  const presetType =
+    typeof params.type === 'string' && (CERTIFICATE_TYPE_LABELS[params.type] || params.type.startsWith('course_'))
+      ? params.type
+      : null;
+  const [type, setType] = useState<string>(presetType ?? 'stcw_basic_safety');
   const [number, setNumber] = useState('');
   const [issuingBody, setIssuingBody] = useState('');
   const [issuedDate, setIssuedDate] = useState<Date | null>(null);

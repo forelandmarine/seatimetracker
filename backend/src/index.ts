@@ -30,7 +30,10 @@ if (process.env.SKIP_MIGRATIONS === 'true') {
 import { register as registerAuthRoutes } from './routes/auth.js';
 import { register as registerProfileRoutes } from './routes/profile.js';
 import { register as registerVesselsRoutes } from './routes/vessels.js';
+import { register as registerVesselLookupRoutes } from './routes/vessel-lookup.js';
+import { register as registerAppEventsRoutes } from './routes/app-events.js';
 import { register as registerSeaTimeRoutes } from './routes/sea-time.js';
+import { register as registerSeaTimeBulkRoutes } from './routes/sea-time-bulk.js';
 import { register as registerAisRoutes } from './routes/ais.js';
 import { register as registerReportsRoutes } from './routes/reports.js';
 import { register as registerNotificationsRoutes } from './routes/notifications.js';
@@ -46,6 +49,7 @@ import { register as registerHistoryImportRoutes } from './routes/history-import
 import { register as registerFeedbackRoutes } from './routes/feedback.js';
 import { register as registerPublicRoutes } from './routes/public.js';
 import { register as registerPathwayAssistantRoutes } from './routes/pathway-assistant.js';
+import { register as registerTrainingRoutes } from './routes/training.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
@@ -73,7 +77,10 @@ export type App = typeof app;
 registerAuthRoutes(app, app.fastify);
 registerProfileRoutes(app, app.fastify);
 registerVesselsRoutes(app, app.fastify);
+registerVesselLookupRoutes(app, app.fastify);
+registerAppEventsRoutes(app, app.fastify);
 registerSeaTimeRoutes(app, app.fastify);
+registerSeaTimeBulkRoutes(app, app.fastify);
 registerAisRoutes(app, app.fastify);
 registerReportsRoutes(app, app.fastify);
 registerNotificationsRoutes(app, app.fastify);
@@ -89,6 +96,7 @@ registerHistoryImportRoutes(app, app.fastify);
 registerFeedbackRoutes(app, app.fastify);
 registerPublicRoutes(app, app.fastify);
 registerPathwayAssistantRoutes(app, app.fastify);
+registerTrainingRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
 app.fastify.get('/api/health', async () => ({ status: 'ok' }));
@@ -102,3 +110,8 @@ import('./services/scheduler.js').then(({ startScheduler }) => {
     app.logger.error({ err }, 'Failed to start scheduler');
   });
 });
+
+// Weekly re-read of training providers' published course dates ("Find a course")
+import('./services/courseDates.js')
+  .then(({ startCourseDateRefresh }) => startCourseDateRefresh(app))
+  .catch((err) => app.logger.error({ err }, 'Failed to start course dates refresh'));

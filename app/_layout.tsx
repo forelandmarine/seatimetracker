@@ -142,6 +142,9 @@ function RootLayoutContent() {
             headerBackTitle: t('common.back'),
           }}
         />
+        <Stack.Screen name="oral-checklist" options={{ title: 'Before your oral', headerBackTitle: t('common.back') }} />
+        <Stack.Screen name="training-providers" options={{ title: 'Find a course', headerBackTitle: t('common.back') }} />
+        <Stack.Screen name="training-provider/[id]" options={{ title: '', headerBackTitle: t('common.back') }} />
         <Stack.Screen
           name="manual-tracking"
           options={{
@@ -154,13 +157,6 @@ function RootLayoutContent() {
           options={{
             title: t('navigation.signature'),
             headerBackTitle: t('common.cancel'),
-          }}
-        />
-        <Stack.Screen
-          name="refer"
-          options={{
-            title: t('refer.title'),
-            headerBackTitle: t('common.back'),
           }}
         />
         <Stack.Screen
@@ -206,6 +202,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="password"
+          options={{
+            title: 'Password',
+            headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
           name="email-preferences"
           options={{
             title: 'Email preferences',
@@ -237,13 +240,6 @@ function RootLayoutContent() {
           name="paywall"
           options={{
             title: t('navigation.upgrade'),
-            headerBackTitle: t('common.back'),
-          }}
-        />
-        <Stack.Screen
-          name="two-factor"
-          options={{
-            title: t('navigation.verifyIdentity'),
             headerBackTitle: t('common.back'),
           }}
         />

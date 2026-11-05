@@ -6,8 +6,9 @@
  *   and time in port associated with the work on a workboat. Yard service is not
  *   in the definition, so it is left out.
  * - Watchkeeping service (4.1): in full charge of a navigational watch for at least
- *   4 out of every 24 hours. Only entries the user logged as watchkeeping count;
- *   AIS cannot show who held the watch.
+ *   4 out of every 24 hours. Only entries the user logged as watchkeeping count,
+ *   plus sea days on a vessel the user has marked as one where they are the sole
+ *   watchkeeper; AIS cannot show who held the watch.
  * - 15 m gates (11.2 to 11.5): service on vessels of 15 m or over, and 6 months on
  *   a workboat of 15 m or over.
  * - Recency (4.3): at least 6 months within the 5 years before applying.
@@ -22,7 +23,7 @@
  * tidal classification, and AIS records as evidence in place of testimonials.
  */
 
-import { countDistinctSeaDays } from './seaTime.js';
+import { countDistinctSeaDays, isSoleWatchEntry } from './seaTime.js';
 
 export const WORKBOAT_MIN_LENGTH_M = 15;
 export const DAYS_PER_MONTH = 30;
@@ -37,7 +38,7 @@ export interface WorkboatEntry {
   sea_days?: number | null;
   status?: string | null;
   service_type?: string | null;
-  vessel?: { length_metres?: string | number | null; is_workboat?: boolean | null } | null;
+  vessel?: { length_metres?: string | number | null; is_workboat?: boolean | null; is_sole_watchkeeper?: boolean | null } | null;
 }
 
 export interface WorkboatService {
@@ -69,7 +70,7 @@ export function workboatService(entries: WorkboatEntry[], now: Date = new Date()
   return {
     sea_service: countDistinctSeaDays(sea),
     sea_service_15m: countDistinctSeaDays(over15),
-    watchkeeping_15m: countDistinctSeaDays(over15.filter((e) => e.service_type === 'watchkeeping_service')),
+    watchkeeping_15m: countDistinctSeaDays(over15.filter((e) => e.service_type === 'watchkeeping_service' || isSoleWatchEntry(e))),
     workboat_15m: countDistinctSeaDays(over15.filter((e) => e.vessel?.is_workboat === true)),
     recent_sea_service: countDistinctSeaDays(sea.filter((e) => new Date(e.start_time) >= cutoff)),
     workboats_without_length: unsized.size,

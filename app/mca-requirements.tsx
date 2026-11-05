@@ -14,6 +14,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
+import { PathwayLinks } from '@/components/PathwayLinks';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   AUTHORITY_FULL_NAMES,
@@ -25,11 +26,12 @@ import {
   getDefaultTargetId,
   getRequirementsByAuthority,
   groupRequirementsByCategory,
+  isTrackableRequirement,
 } from '@/constants/mcaRequirements';
 
 import { log, error as logError } from '@/utils/log';
 
-const AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz'];
+const AUTHORITIES: MaritimeAuthority[] = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
 
 const isAuthority = (value: unknown): value is MaritimeAuthority =>
   typeof value === 'string' && (AUTHORITIES as string[]).includes(value);
@@ -296,14 +298,13 @@ export default function CertificationRequirementsScreen() {
   );
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return requirements;
-    return requirements.filter((req) =>
-      [req.title, req.regulation, req.description, req.category ?? '']
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
+    // Every word must appear, in any order, so "master tug 500" finds "Master (Tug) <500 GT".
+    const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return requirements;
+    return requirements.filter((req) => {
+      const text = [req.title, req.regulation, req.description, req.category ?? ''].join(' ').toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
   }, [requirements, search]);
 
   const groups = useMemo(() => groupRequirementsByCategory(filtered), [filtered]);
@@ -323,7 +324,8 @@ export default function CertificationRequirementsScreen() {
       setTargetId(next);
       setSavingTarget(true);
       try {
-        await seaTimeApi.updateUserProfile({ target_certification: next });
+        // A route belongs to one certificate, so a new target starts on its default route.
+        await seaTimeApi.updateUserProfile({ target_certification: next, target_route: null, route_start_date: null });
         log('[CertificationRequirements] Target certification saved:', next);
       } catch (err) {
         logError('[CertificationRequirements] Failed to save target certification', err);
@@ -409,6 +411,7 @@ export default function CertificationRequirementsScreen() {
               </Text>
             )}
             <AskPathwayButton authority={authority} isDark={isDark} />
+            <PathwayLinks isDark={isDark} />
           </View>
 
           {requirements.length > 6 && (
@@ -508,7 +511,8 @@ export default function CertificationRequirementsScreen() {
                       </View>
                     )}
 
-                    {requirement.totalDays != null && (
+                    {/* Measurable targets only: a day total, or a Master (Workboat) route with its own bars */}
+                    {isTrackableRequirement(requirement) && (
                       <View style={styles.targetRow}>
                         <Text style={styles.detailText}>
                           {isTarget ? 'Tracking progress toward this' : 'Track progress toward this'}

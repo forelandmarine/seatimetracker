@@ -9,9 +9,10 @@
 
 export interface ReportSummaryTotals {
   total_days: number;
-  uscg_service?: { creditable: number } | null;
+  uscg_service?: { creditable: number; creditable_total?: number } | null;
   amsa_service?: { underway: number; not_underway: number } | null;
   mnz_service?: { qualifying_total: number } | null;
+  samsa_service?: { seagoing: number; standby_yard: number } | null;
   entries_by_vessel?: { vessel_name: string; total_days: number }[];
 }
 
@@ -23,13 +24,16 @@ export function headlineSeaDays(
   if (!summary) return null;
   switch (authority) {
     case 'uscg':
-      return summary.uscg_service?.creditable ?? summary.total_days;
+      // creditable_total adds the two-watch half days; older backends only send creditable.
+      return summary.uscg_service?.creditable_total ?? summary.uscg_service?.creditable ?? summary.total_days;
     case 'amsa':
       return summary.amsa_service
         ? summary.amsa_service.underway + summary.amsa_service.not_underway
         : summary.total_days;
     case 'mnz':
       return summary.mnz_service?.qualifying_total ?? summary.total_days;
+    case 'samsa':
+      return summary.samsa_service ? summary.samsa_service.seagoing + summary.samsa_service.standby_yard : summary.total_days;
     default:
       return summary.total_days;
   }

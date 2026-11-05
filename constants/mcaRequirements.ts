@@ -9,8 +9,36 @@ import {
   MNZ_ENGINEERING_REQUIREMENTS,
   MNZ_SERVICE_DEFINITIONS,
 } from './mnzRequirements';
+import { SAMSA_DECK_REQUIREMENTS, SAMSA_ENGINEERING_REQUIREMENTS } from './samsaRequirements';
+import { SAMSA_SERVICE_DEFINITIONS } from './samsaDefinitions';
 
 export type VesselSector = 'yachting' | 'commercial';
+
+/**
+ * One engine-department service gate: days of a kind of service on vessels of at
+ * least `minKw` propulsion power (0 = any power). `rating` is MSN 1863 service
+ * (over 15 m, 350 kW+, last 5 years, at most a quarter not underway).
+ */
+export interface EngineGate {
+  label: string;
+  kind: 'seagoing' | 'watch' | 'onboard' | 'rating';
+  minKw: 0 | 200 | 350 | 750;
+  days: number;
+}
+
+/**
+ * One MCA yacht progress bar, for certificates (or routes) whose yacht figures
+ * differ from the fixed ones (mcaRows in CertificationProgress). `onboard` is
+ * every day on board in any service type, as MSN 1904 5.9 counts onboard yacht
+ * service.
+ */
+export interface YachtBar {
+  label: string;
+  kind: 'seagoing' | 'watch' | 'additional' | 'onboard';
+  days: number;
+  /** Only service on or after the route's start date counts. */
+  afterStart?: boolean;
+}
 
 export interface MCARequirement {
   id: string;
@@ -46,6 +74,18 @@ export interface MCARequirement {
   /** Sector lists that show this entry. Absent means both. */
   sectors?: VesselSector[];
   /**
+   * Progress comes from the fixed MCA yacht deck bars (250 days seagoing plus
+   * 115 days additional service, mcaRows in CertificationProgress), which are
+   * the OOW (Yachts) rule, so this entry can be a target without totalDays.
+   */
+  mcaYachtBars?: boolean;
+  /**
+   * Yacht progress bars for this certificate, replacing the fixed 250/115 deck
+   * or 240/180 engineering bars, where the notice states other yacht figures
+   * (the MSN 1904 5.9.1 table for the SV Chief Engineer CoCs).
+   */
+  yachtBars?: YachtBar[];
+  /**
    * Whether sea time on vessels tagged commercial counts toward this
    * certificate. MSN 1858 only credits yacht service toward the yacht deck
    * CoCs; ratings (MSN 1862), small vessel engineer (MSN 1904) and ETO
@@ -65,6 +105,49 @@ export interface MCARequirement {
     watchkeeping15mDays: number;
     workboat15mDays: number;
   };
+  /**
+   * MCA engineering gates by propulsion power (MSN 1904, MSN 1857, MSN 1863),
+   * measured from the summary's engine figures. Months are 30 days (MSN 1904 5.2).
+   * `sectors` limits the route to users in those sectors; the others keep the
+   * older yacht bars, which follow the MSN 1904 5.9 yacht table.
+   */
+  engineRoute?: {
+    gates: EngineGate[];
+    /**
+     * How the MCA treats service inside UK categorised waters: it limits the CoC
+     * (MSN 1904 5.7), counts at half rate (MSN 1857 5.2), counts in full
+     * (MSN 1863 4.3), or the notice does not say.
+     */
+    categorisedWater: 'limits' | 'half_rate' | 'full_rate' | 'unstated';
+    sectors?: VesselSector[];
+  };
+  /**
+   * Tug deck certificate route (MGN 495), measured from the summary's tug
+   * figures. Tug service counts vessels the user has marked as tugs. Day
+   * targets use 30-day months.
+   */
+  tugRoute?: {
+    /** Tug service in any deck capacity. */
+    tugDays?: number;
+    /** Tug service as a rating. */
+    ratingDays?: number;
+    /** Tug service as an officer. */
+    officerDays?: number;
+    /** Days with 4 hours or more outside UK categorised waters. */
+    outsideDays?: number;
+    /** Days with 4 hours or more of bridge watchkeeping outside UK categorised waters. */
+    outsideWatchDays?: number;
+    /** Tug service within the 5 years before applying (MGN 495 4.3). */
+    recentDays?: number;
+    /** Offer the 12-month deck apprentice route (at least 8 months on tugs) for cadets. */
+    apprenticeRoute?: boolean;
+  };
+  /**
+   * Tier 1 Boatmasters' Licence (MSN 1853 Annex 5 Table A): days of qualifying
+   * service in the licence's waters, and the minimum qualifying period in
+   * months from the first of them.
+   */
+  boatmasterRoute?: { level: 1 | 2; days: number; months: number };
   requirements: {
     label: string;
     value: string;
@@ -323,6 +406,14 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     category: 'Deck Officer (Yachts <3000 GT)',
     description: 'Qualifying sea service to apply (NOE)',
     commercialService: 'yacht_only',
+    mcaYachtBars: true,
+    // MSN 1858 3.3 (c): the fixed 250 + 115 bars plus 36 months onboard yacht
+    // service since age 16.
+    yachtBars: [
+      { label: 'Seagoing Service', kind: 'seagoing', days: 250 },
+      { label: 'Additional Service', kind: 'additional', days: 115 },
+      { label: 'Onboard Yacht Service', kind: 'onboard', days: 1080 },
+    ],
     requirements: [
       {
         label: 'Total Onboard Service',
@@ -468,7 +559,6 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'Complete nine management-level academic modules at an MCA approved nautical college (exempt with an approved management-level qualification such as an HND or degree)',
       'Pass the MCA Chief Mate Navigation and Stability (Yacht Unlimited) assessments and an MCA oral exam',
-      'Master (Yachts) <3000 GT and Chief Mate Unlimited holders are exempt from this oral',
     ],
   },
   {
@@ -494,7 +584,10 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
         ],
       },
     ],
-    notes: ['Pass the Master Unlimited GT Yacht oral examination'],
+    notes: [
+      'Pass the Master Unlimited GT Yacht oral examination',
+      'Holders of Master (Yachts) <3000 GT or a Chief Mate Unlimited CoC are exempt from the Chief Mate Yacht Unlimited oral for this CoC, but still sit the Master Unlimited GT Yacht oral (MSN 1858, footnote 10)',
+    ],
   },
   // ── Master (Workboat) <500 GT: MGN 496 (M+F) section 11 ─────────────
   // Still the live MCA notice (2013). Gates are taken as written; day targets
@@ -550,7 +643,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'At least 6 months of the service within the 5 years before you apply',
       'Complete the approved Workboat Training Record Book',
-      'Yachtmaster Ocean (with shore-based course), EDH, Advanced Fire Fighting, Medical Care, the Master (Yachts) modules, HELM (Management) and the Workboat Operations module and exam',
+      'Yachtmaster Ocean (with shore-based course), EDH, Advanced Fire Fighting, Medical Care, the Master (Yachts) modules, HELM (Management), the Workboat Operations module and exam, and GMDSS GOC (MSF 4257)',
       'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
     ],
   },
@@ -601,8 +694,247 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     notes: [
       'At least 6 months of the service within the 5 years before you apply',
       'Complete the approved Workboat Training Record Book',
-      'STCW basic training, Security Awareness, Medical Care, PSC&RB, Advanced Fire Fighting, Medical First Aid and the Workboat Operations module and exam',
+      'STCW basic training, Security Awareness, Medical Care, PSC&RB, Advanced Fire Fighting, Medical First Aid, the Workboat Operations module and exam, HELM (Management) and GMDSS GOC',
       'Pass the Master Workboat <500 GT oral examination. Apply on form MSF 4257',
+    ],
+  },
+
+  // Tugs: MGN 495 (M+F), June 2013, still current. Tug service is time at
+  // sea, at anchor, on river or canal transits and in port with the work of a
+  // tug (4.1). Deck department only; dual deck and engine service counts at 50%.
+  {
+    id: 'tug-watch-rating',
+    title: 'Tug Watch Rating (Navigational Watch Rating)',
+    regulation: 'STCW A-II/4',
+    category: 'Tugs',
+    description: 'Entry rating certificate for tug crews (MGN 495, section 10.2)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { tugDays: 180 },
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '6 months',
+        details: [
+          'In the deck department of a tug',
+          'Reduced to 2 months with MCA approved special training (MSQ units, MGN 495 Annex B)',
+        ],
+      },
+    ],
+    notes: [
+      'Complete the Watch Rating section of the Training Record Book Level 2 (from the British Tug Association)',
+      'Requires the four STCW basic training elements and Security Awareness, or the MSQ units in Annex B',
+      'Service in a dual deck and engine capacity counts at 50% (MGN 495, 4.5)',
+      'With 6 months seagoing service and a steering certificate, a Tug Rating can enter the EDH course (MSN 1862)',
+    ],
+  },
+  {
+    id: 'tug-able-seafarer',
+    title: 'Tug Able Seafarer Rating',
+    regulation: 'STCW A-II/5',
+    category: 'Tugs',
+    description: 'Senior deck rating for tug crews (MGN 495, section 10.3)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { tugDays: 360 },
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '12 months',
+        details: ['While holding a Navigational Watch Rating Certificate'],
+      },
+    ],
+    notes: [
+      'Requires Proficiency in Survival Craft and Rescue Boats and an EDH certificate',
+      'Pass the MSQ units in MGN 495 Annex B within the last 5 years',
+      'The service must be after your NWR was issued. The app counts all your service, so check the dates',
+    ],
+  },
+  {
+    id: 'oow-tug-500gt-nc',
+    title: 'OOW (Tug) <500 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug officer of the watch (MGN 495, section 10.4)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { ratingDays: 1080, outsideDays: 90, recentDays: 180, apprenticeRoute: true },
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '36 months',
+        details: [
+          'As a tug rating',
+          'Or 12 months as a deck apprentice, with at least 8 months on tugs',
+        ],
+      },
+      {
+        label: 'Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day counts only with at least 4 hours outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 3 (British Tug Association)',
+      'STCW basic training, Security Awareness, GMDSS ROC, PSC&RB, EDH, Advanced Fire Fighting, Medical First Aid, NAEST (Operational), HELM (Operational) and Signals within the last 3 years',
+      'Pass the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral E (T), OOW (Tug) near coastal, within the last 3 years',
+    ],
+  },
+  {
+    id: 'oow-tug-3000gt-nc',
+    title: 'OOW (Tug) <3000 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug officer of the watch, larger tugs (MGN 495, section 10.5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { ratingDays: 1080, outsideDays: 90, recentDays: 180, apprenticeRoute: true },
+    requirements: [
+      {
+        label: 'Tug Service',
+        value: '36 months',
+        details: [
+          'The same service as OOW (Tug) <500 GT: 36 months as a tug rating, or 12 months as a deck apprentice with at least 8 months on tugs',
+          'Including 90 days with at least 4 hours outside categorised waters, or the CoC is limited to 30 miles from a safe haven',
+        ],
+      },
+    ],
+    notes: [
+      'Meet every requirement for OOW (Tug) <500 GT',
+      'Plus the SQA exam 035-21 Chartwork and Practical Navigation, passed within the last 3 years',
+    ],
+  },
+  {
+    id: 'master-tug-500gt-nc',
+    title: 'Master (Tug) <500 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug master (MGN 495, section 10.6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { officerDays: 360, outsideWatchDays: 90, recentDays: 180 },
+    requirements: [
+      {
+        label: 'Tug Service as Officer',
+        value: '12 months',
+        details: ['Serving as an officer on tugs'],
+      },
+      {
+        label: 'Bridge Watchkeeping Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day with at least 4 hours bridge watchkeeping outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'Hold an OOW (Tug) <500 GT CoC',
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 4 (British Tug Association)',
+      'GMDSS ROC and Medical Care, plus the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral N (T), Master (Tug) <500 GT near coastal, within the last 3 years',
+      'Revalidate every 5 years: 12 months as an officer on vessels of 15m+ load line length in the last 5 years (MGN 495, section 11)',
+    ],
+  },
+  {
+    id: 'master-tug-3000gt-nc',
+    title: 'Master (Tug) <3000 GT Near Coastal',
+    regulation: 'STCW II/3',
+    category: 'Tugs',
+    description: 'Tug master, larger tugs (MGN 495, section 10.7)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    tugRoute: { officerDays: 720, outsideWatchDays: 90, recentDays: 180 },
+    requirements: [
+      {
+        label: 'Tug Service as Officer',
+        value: '24 months',
+        details: ['Serving as an officer on tugs'],
+      },
+      {
+        label: 'Bridge Watchkeeping Outside Categorised Waters',
+        value: '90 days',
+        details: [
+          'Each day with at least 4 hours bridge watchkeeping outside categorised waters',
+          'Without it the CoC is limited to 30 miles from a safe haven around the UK coast until the time is made up',
+        ],
+      },
+    ],
+    notes: [
+      'Hold at least an OOW (Tug) <3000 GT CoC, with all its written exams and short courses passed',
+      'At least 6 months of the tug service within the 5 years before you apply',
+      'Complete the Training Record Book Level 4 (British Tug Association)',
+      'GMDSS ROC, Medical Care and NAEST (Management), plus the MSQ units in MGN 495 Annex B within the last 5 years',
+      'Pass oral P (T), Master (Tug) <3000 GT near coastal, within the last 3 years',
+    ],
+  },
+
+  // Boatmasters' Licence: SI 2015/410 and MSN 1853 (M) Amendment 1, Annex 5.
+  // Qualifying service must be in the UK, in a deck capacity, in the waters
+  // and on vessels the licence covers, all within the 5 years before applying
+  // (reg 20). The notice sets no minimum hours for a day of service.
+  {
+    id: 'bml-tier1-level2',
+    title: "Boatmasters' Licence Tier 1 Level 2",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'National licence for UK inland waters (categories A to D) and limited coastal areas (MSN 1853, Annex 5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 240, months: 24 },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '240 days',
+        details: [
+          'In a deck capacity, in tidal and non-tidal waters',
+          'Over at least 24 months from the first day of service to the application',
+          'All within the 5 years before you apply',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Limited coastal means outside categorised waters but no more than 15 miles from the point of departure or arrival and 5 miles to sea. Service further offshore is not BML service',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book',
+      'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
+      'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
+      'The generic licence allows up to 12 passengers. Passenger, towing and pushing, and other operations need an endorsement, with its own service after the licence service (towing and pushing in tidal waters: 120 days over 12 months, age 21)',
+      'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth',
+      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience',
+    ],
+  },
+  {
+    id: 'bml-tier1-level1',
+    title: "Boatmasters' Licence Tier 1 Level 1",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'National licence for UK non-tidal waters (categories A, B and non-linked C) (MSN 1853, Annex 5)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 120, months: 12 },
+    requirements: [
+      {
+        label: 'Qualifying Service',
+        value: '120 days',
+        details: [
+          'In a deck capacity, in non-tidal waters',
+          'Over at least 12 months from the first day of service to the application',
+          'All within the 5 years before you apply',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book',
+      'Three one-day courses: Personal Survival, First Aid and Fire Safety (or the MSQ units)',
+      'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
     ],
   },
 ];
@@ -613,6 +945,156 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
 // Replaces the discontinued Y1/Y2/Y3 yacht engineering pathway.
 
 const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
+  // Engine ratings: MSN 1863 (M+F) Amendment 1. Service on workboats, tugs,
+  // yachts and fishing vessels counts (footnote 5).
+  {
+    id: 'engine-room-watch-rating',
+    title: 'Engine Room Watch Rating (ERWR)',
+    regulation: 'STCW A-III/4',
+    category: 'Engine Ratings and Operators',
+    description: 'Rating in an engine room watch on ships of 750 kW or more (MSN 1863, section 2)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Rating Service, 350 kW+', kind: 'rating', minKw: 350, days: 180 }],
+      categorisedWater: 'full_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service',
+        value: '6 months',
+        details: [
+          'In the engine department on vessels of at least 350 kW propulsion power',
+          'Vessels over 15m registered length, in category C and D waters or beyond (counted at full rate)',
+          'At least 75% underway on sea passage; up to 25% in lay-up, dry dock, at anchor or in port',
+          'All within the 5 years before you apply',
+        ],
+      },
+      {
+        label: 'Reduced Route',
+        value: '2 months',
+        details: ['With MCA approved special training, or prior engineering training the MCA accepts (section 2.2)'],
+      },
+    ],
+    notes: [
+      'Minimum age 16',
+      'Requires the four STCW basic training elements (PST, FPFF, EFA, PSSR) and ENG1',
+      'Complete the ERWR training record book (MSN 1863 Annex A)',
+      'Apply through an MCA approved company or direct to the MCA on form MSF 4371',
+    ],
+  },
+  {
+    id: 'able-seafarer-engine',
+    title: 'Able Seafarer Engine',
+    regulation: 'STCW A-III/5',
+    category: 'Engine Ratings and Operators',
+    description: 'Senior engine rating (MSN 1863, section 3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Rating Service, 350 kW+', kind: 'rating', minKw: 350, days: 360 }],
+      categorisedWater: 'full_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as ERWR',
+        value: '12 months',
+        details: [
+          'While qualified as an Engine Room Watch Rating',
+          'As a rating on vessels of at least 350 kW propulsion power',
+          'Plus an MCA approved engine course',
+        ],
+      },
+      {
+        label: 'Diploma Route',
+        value: '6 months',
+        details: ['With the Diploma in Maritime Studies Able Seafarer Engine Room'],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'The service must be after you qualified as an ERWR. The bar counts all your rating service, so check the dates',
+      'Complete the relevant sections of the MCA approved training record book',
+      'Apply through your local Marine Office',
+      'Holding Able Seafarer Engine meets the training requirement for the MEOL (MSN 1857 10.2)',
+    ],
+  },
+  // MEOL / SMEOL: MSN 1857 (M+F) Amendment 1, section 10. Non-STCW.
+  {
+    id: 'meol-merchant',
+    title: 'Marine Engine Operator Licence (MEOL)',
+    regulation: 'Non-STCW',
+    category: 'Engine Ratings and Operators',
+    description: 'Chief engineer on vessels under 750 kW within 150 miles of a safe haven (MSN 1857, section 10)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Seagoing Service', kind: 'seagoing', minKw: 0, days: 180 }],
+      categorisedWater: 'half_rate',
+    },
+    requirements: [
+      {
+        label: 'Diploma Route',
+        value: '6 months',
+        details: [
+          'Diploma (level 2) in Maritime Studies Able Seafarer Engine',
+          'Plus 6 months seagoing as a trainee engine operator, or as a rating in the engineering watch while holding an ERWR',
+        ],
+      },
+      {
+        label: 'Able Seafarer Engine Route',
+        value: 'No further service',
+        details: ['Hold Able Seafarer Engine certification (MSN 1857 10.2 (c) III)'],
+      },
+      {
+        label: 'Shore Engineering Route',
+        value: '3 months',
+        details: [
+          '24 months shore employment in engineering the MCA accepts',
+          '3 months seagoing as a trainee engine operator on a vessel of at least 200 kW',
+          'Plus the Approved Engine Course',
+        ],
+      },
+      {
+        label: 'Apprenticeship Route',
+        value: 'Set by the MCA',
+        details: [
+          'Marine, diesel, heavy vehicle or agricultural machinery apprenticeship',
+          'Seagoing service as a trainee on vessels of at least 200 kW, set after an MCA examiner assessment',
+          'Plus the Approved Engine Course',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18',
+      'Covers vessels of 350 to 750 kW where STCW does not apply',
+      'Under the Workboat Code (Table A5.2) it can be used above 750 kW on workboats under 24m',
+      'Requires the ancillary and safety courses in MSN 1857 section 6, ENG1 and the MCA MEOL oral',
+      'Does not need revalidating',
+    ],
+  },
+  {
+    id: 'smeol',
+    title: 'Senior Marine Engine Operator Licence (SMEOL)',
+    regulation: 'Non-STCW',
+    category: 'Engine Ratings and Operators',
+    description: 'Chief engineer on vessels under 750 kW, no area limit (MSN 1857, section 10.3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Seagoing Service, 200 kW+', kind: 'seagoing', minKw: 200, days: 180 }],
+      categorisedWater: 'half_rate',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as MEOL',
+        value: '6 months',
+        details: ['While serving as an MEOL', 'On vessels of at least 200 kW'],
+      },
+    ],
+    notes: [
+      'The service must be after your MEOL was issued. The bar counts all your seagoing service, so check the dates',
+      'Pass the MCA SMEOL oral examination',
+      'Check that other administrations accept the SMEOL in their waters',
+      'Does not need revalidating',
+    ],
+  },
   {
     id: 'meol-sv',
     title: 'Marine Engine Operator Licence (MEOL SV)',
@@ -620,6 +1102,14 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Small vessels 200-750 kW (where STCW does not apply)',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Onboard Service, 200 kW+', kind: 'onboard', minKw: 200, days: 720 },
+        { label: 'Seagoing Service, 200 kW+', kind: 'seagoing', minKw: 200, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Onboard Service',
@@ -646,6 +1136,14 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: '<9,000 kW, <3,000 GT, unlimited area',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Seagoing Service, 350 kW+', kind: 'seagoing', minKw: 350, days: 330 },
+        { label: 'Watchkeeping or UMS, 350 kW+', kind: 'watch', minKw: 350, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
     requirements: [
       {
         label: 'Standard Route (section 4.3)',
@@ -695,6 +1193,17 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as EOOW, 350 kW+', kind: 'watch', minKw: 350, days: 180 }],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
+    // MSN 1904 5.9.1 yacht table: 6 months onboard, 4 months seagoing, all in
+    // full charge of the watch or on UMS duties (5.4).
+    yachtBars: [
+      { label: 'Onboard Service', kind: 'onboard', days: 180 },
+      { label: 'Watch or UMS, in Full Charge', kind: 'watch', days: 120 },
+    ],
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -719,6 +1228,20 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     category: 'Small Vessel Engineer (MSN 1904)',
     description: 'Service after EOOW',
     commercialService: 'counts',
+    engineRoute: {
+      gates: [
+        { label: 'Watch or UMS as EOOW, 350 kW+', kind: 'watch', minKw: 350, days: 360 },
+        { label: 'Of Which on 750 kW+', kind: 'watch', minKw: 750, days: 180 },
+      ],
+      categorisedWater: 'limits',
+      sectors: ['commercial'],
+    },
+    // MSN 1904 5.9.1 yacht table, from the EOOW yacht CoC: 12 months onboard,
+    // 8 months seagoing, all in full charge of the watch or on UMS duties (5.4).
+    yachtBars: [
+      { label: 'Onboard Service', kind: 'onboard', days: 360 },
+      { label: 'Watch or UMS, in Full Charge', kind: 'watch', days: 240 },
+    ],
     requirements: [
       {
         label: 'Seagoing Service as EOOW',
@@ -736,6 +1259,106 @@ const ENGINEERING_REQUIREMENTS: MCARequirement[] = [
       'Requires General Engineering Science I & II OR Diploma in Maritime Studies (SV Engineer + SV Chief Engineer)',
       'Requires HELM (Management)',
       'MCA oral examination for Chief Engineer <9,000 kW, <3,000 GT, III/2',
+    ],
+  },
+  // Small vessel to Merchant Navy: MSN 1904 section 13. All need service on
+  // vessels of 750 kW or more, in full charge of the watch or with UMS duties.
+  {
+    id: 'sv-eoow-to-eoow-unlimited',
+    title: 'EOOW Unlimited (from SV EOOW)',
+    regulation: 'STCW III/1',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV EOOW to the unlimited merchant EOOW (section 13.1)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV EOOW, 750 kW+', kind: 'watch', minKw: 750, days: 180 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV EOOW',
+        value: '6 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'EOOW exams: Engineering Knowledge General, Motor and Control Engineering, and General Engineering Science A & B (or I & II)',
+      'Pass the MCA III/1 Engineer Officer of the Watch oral',
+    ],
+  },
+  {
+    id: 'sv-chief-to-3000kw',
+    title: 'Second Engineer <3,000 kW (from SV Chief <500 GT)',
+    regulation: 'STCW III/3',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV Chief Engineer <3,000 kW, <500 GT (section 13.2)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 180 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <500 GT',
+        value: '6 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      'Section 13.2 also calls this the EOOW <3,000 kW, unlimited area, III/3 CoC',
+      '3 months approved Workshop Skills Training',
+      'Exams: Engineering Knowledge General, Motor and Control Engineering; General Engineering Science I & II; Applied Marine Engineering',
+      'Pass the MCA III/3 oral for under 3,000 kW',
+    ],
+  },
+  {
+    id: 'sv-chief-to-second-unlimited',
+    title: 'Second Engineer Unlimited (from SV Chief <3,000 GT)',
+    regulation: 'STCW III/2',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Converts the SV Chief Engineer <9,000 kW, <3,000 GT (section 13.3)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 360 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <3,000 GT',
+        value: '12 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'All Second Engineer (management level) exams in MSN 1857 sections 3.5.2 and 7.4.2',
+      'Pass the MCA III/2 oral',
+    ],
+  },
+  {
+    id: 'sv-chief-to-chief-3000kw',
+    title: 'Chief Engineer <3,000 kW (from SV Chief <3,000 GT)',
+    regulation: 'STCW III/3',
+    category: 'Small Vessel to Merchant Navy (MSN 1904)',
+    description: 'Unlimited area under 3,000 kW, and under 9,000 kW near coastal (section 13.4)',
+    commercialService: 'counts',
+    engineRoute: {
+      gates: [{ label: 'Watch or UMS as SV Chief, 750 kW+', kind: 'watch', minKw: 750, days: 360 }],
+      categorisedWater: 'unstated',
+    },
+    requirements: [
+      {
+        label: 'Seagoing Service as SV Chief Engineer <3,000 GT',
+        value: '12 months',
+        details: ['On vessels of at least 750 kW', 'In full charge of the watch or with designated UMS duties'],
+      },
+    ],
+    notes: [
+      '3 months approved Workshop Skills Training',
+      'EOOW exams: Engineering Knowledge Motor and Control Engineering',
+      'Pass the MCA III/3 Chief Engineer under 3,000 kW oral',
+      'Higher Merchant Navy CoCs follow MSN 1857 (Amendment 1)',
     ],
   },
   // ETO: MSN 1860 (M) Amendment 1. Unlimited STCW CoC, not yacht restricted.
@@ -2648,13 +3271,13 @@ const USCG_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
     regulation: '46 CFR 11.335',
     description: 'STCW Regulation III/6, vessels of 750 kW / 1,000 HP or more',
     category: 'STCW Engineer',
-    totalDays: 1080,
+    totalDays: 900,
     requirements: [
       {
         label: 'Combined Workshop Training and Seagoing Service',
-        value: '1,080 days (36 months)',
+        value: '36 months combined, at least 30 months (900 days) seagoing',
         details: [
-          'Of which at least 900 days must be seagoing service in the engine department',
+          'Workshop skills training is not tracked, so the bar measures the 900 days of seagoing service in the engine department',
           'Deck department service credits up to 90 days',
           'Alternative: an approved training programme combining workshop skills training with at least 360 days of seagoing service, meeting Section A-III/6',
         ],
@@ -2669,7 +3292,7 @@ const USCG_ENGINEERING_REQUIREMENTS: MCARequirement[] = [
 
 // ── Combined exports ────────────────────────────────────────────────
 
-export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz';
+export type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
 
 // MCA (all pathways)
 export const MCA_DECK = MCA_REQUIREMENTS;
@@ -2687,6 +3310,10 @@ export const AMSA_ENGINEERING = AMSA_ENGINEERING_REQUIREMENTS;
 export const MNZ_DECK = MNZ_DECK_REQUIREMENTS;
 export const MNZ_ENGINEERING = MNZ_ENGINEERING_REQUIREMENTS;
 
+// SAMSA (South Africa)
+export const SAMSA_DECK = SAMSA_DECK_REQUIREMENTS;
+export const SAMSA_ENGINEERING = SAMSA_ENGINEERING_REQUIREMENTS;
+
 // Legacy exports (backwards compatibility)
 export const DECK_REQUIREMENTS = MCA_REQUIREMENTS;
 export const ENGINEERING_REQUIREMENTS_LIST = ENGINEERING_REQUIREMENTS;
@@ -2699,6 +3326,8 @@ export const ALL_REQUIREMENTS = [
   ...AMSA_ENGINEERING_REQUIREMENTS,
   ...MNZ_DECK_REQUIREMENTS,
   ...MNZ_ENGINEERING_REQUIREMENTS,
+  ...SAMSA_DECK_REQUIREMENTS,
+  ...SAMSA_ENGINEERING_REQUIREMENTS,
 ];
 
 export const getRequirementById = (id: string): MCARequirement | undefined => {
@@ -2717,6 +3346,15 @@ export const filterRequirementsBySector = (
   return requirements.filter((req) => !req.sectors || req.sectors.includes(effective));
 };
 
+/** Whether the app can show progress bars for this requirement, so it can be a target. */
+export const isTrackableRequirement = (req: MCARequirement): boolean =>
+  req.totalDays != null ||
+  req.mcaYachtBars === true ||
+  req.workboatRoute != null ||
+  req.engineRoute != null ||
+  req.tugRoute != null ||
+  req.boatmasterRoute != null;
+
 export const getRequirementsByAuthority = (
   authority: MaritimeAuthority,
   department: 'deck' | 'engineering',
@@ -2730,6 +3368,8 @@ export const getRequirementsByAuthority = (
       return department === 'deck' ? AMSA_DECK : AMSA_ENGINEERING;
     case 'mnz':
       return department === 'deck' ? MNZ_DECK : MNZ_ENGINEERING;
+    case 'samsa':
+      return department === 'deck' ? SAMSA_DECK : SAMSA_ENGINEERING;
     default:
       return department === 'deck' ? MCA_DECK : MCA_ENGINEERING;
   }
@@ -2749,6 +3389,7 @@ export const AUTHORITY_LABELS: Record<MaritimeAuthority, string> = {
   uscg: 'USCG',
   amsa: 'AMSA',
   mnz: 'Maritime NZ',
+  samsa: 'SAMSA',
 };
 
 /** Full titles, used for screen headings and report headers. */
@@ -2757,6 +3398,7 @@ export const AUTHORITY_FULL_NAMES: Record<MaritimeAuthority, string> = {
   uscg: 'United States Coast Guard',
   amsa: 'Australian Maritime Safety Authority',
   mnz: 'Maritime New Zealand',
+  samsa: 'South African Maritime Safety Authority',
 };
 
 export interface RequirementGroup {
@@ -2811,6 +3453,8 @@ export const DEFAULT_TARGET_BY_PATHWAY: Record<string, string> = {
   'amsa:engineering': 'amsa-med3-nc',
   'mnz:deck': 'mnz-srl',
   'mnz:engineering': 'mnz-mec6',
+  'samsa:deck': 'samsa-oow-unlimited',
+  'samsa:engineering': 'samsa-eoow',
 };
 
 export const getDefaultTargetId = (
@@ -2838,7 +3482,7 @@ export const USCG_SERVICE_DEFINITIONS: ServiceDefinition[] = [
   {
     title: 'A Day of Service',
     description:
-      '8 hours of watchstanding or day-working, not counting overtime (46 CFR 10.107). On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days, which an evaluator applies to your application.',
+      '8 hours of watchstanding or day-working, not counting overtime (46 CFR 10.107). On a vessel authorised to run a two-watch system under 46 U.S.C. 8104, a 12-hour working day may be credited as 1.5 days. Mark the vessel as two-watch on its screen and the app adds the extra half days; the evaluator checks the authorisation.',
     department: 'both',
   },
   {
@@ -2918,6 +3562,8 @@ export const getAuthorityServiceDefinitions = (
       return AMSA_SERVICE_DEFINITIONS;
     case 'mnz':
       return MNZ_SERVICE_DEFINITIONS;
+    case 'samsa':
+      return SAMSA_SERVICE_DEFINITIONS;
     default:
       return null;
   }
@@ -2979,6 +3625,12 @@ export const getServiceDefinitionsHeading = (
         title: `${dept} Department - Maritime NZ Service Definitions (SeaCert)`,
         intro:
           'How Maritime NZ counts service toward a certificate, under Maritime Rules Part 32. Service is stated in 30-day months and must be gained in the 10 years before you apply.',
+      };
+    case 'samsa':
+      return {
+        title: `${dept} Department - SAMSA Service Definitions (2021 Regulations)`,
+        intro:
+          'How SAMSA counts service toward a certificate of competency, under the Merchant Shipping (Training, Certification and Safe Manning) Regulations 2021. Any day signed on counts, inside a 10-year window.',
       };
     default:
       return {

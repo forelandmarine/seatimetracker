@@ -1,4 +1,5 @@
 
+import { formatEntryNotes } from '@/utils/entryNotes';
 import {
   View,
   Text,
@@ -19,11 +20,24 @@ import { colors } from '@/styles/commonStyles';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import {
+  useBulkSelection,
+  SelectToggle,
+  SelectionHeader,
+  SelectCircle,
+  BulkActionBar,
+  BulkConfirmModal,
+  bulkConfirm,
+  bulkReject,
+  askBulkReject,
+  BulkServiceType,
+} from '@/components/BulkReview';
+import { CheckingPassages, isChecking } from '@/components/CheckingPassages';
 
 import { log, warn, error as logError } from '@/utils/log';
 
@@ -41,7 +55,7 @@ interface SeaTimeEntry {
   start_time: string;
   end_time: string | null;
   duration_hours: number | string | null;
-  status: 'pending' | 'confirmed' | 'rejected';
+  status: 'pending' | 'checking' | 'confirmed' | 'rejected';
   notes: string | null;
   created_at: string;
   start_latitude?: number | string | null;
@@ -51,12 +65,15 @@ interface SeaTimeEntry {
   service_type?: string | null;
   mca_compliant?: boolean | null;
   detection_window_hours?: number | string | null;
+  to_port?: string | null;
 }
 
 type ServiceType = 'actual_sea_service' | 'watchkeeping_service';
 
 export default function ConfirmationsScreen() {
   const [entries, setEntries] = useState<SeaTimeEntry[]>([]);
+  // Live passages still being checked against the AIS track: shown read-only above the pending list.
+  const [checkingEntries, setCheckingEntries] = useState<SeaTimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
@@ -73,6 +90,9 @@ export default function ConfirmationsScreen() {
   const notifiedEntriesRef = useRef<Set<string>>(new Set());
   // pollIntervalRef removed — replaced by AppState foreground listener
   const { triggerRefresh } = useAuth();
+  const bulk = useBulkSelection(entries);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const toNumber = (value: number | string | null | undefined): number => {
     if (value === null || value === undefined) return 0;
@@ -84,7 +104,7 @@ export default function ConfirmationsScreen() {
   const loadData = useCallback(async () => {
     try {
       log('[Confirmations iOS] Loading pending entries');
-      const pendingEntries = await seaTimeApi.getPendingEntries();
+      const pendingEntries = await seaTimeApi.getPendingEntries(true);
       
       if (!Array.isArray(pendingEntries)) {
         warn('[Confirmations iOS] pendingEntries is not an array, resetting to empty');
@@ -96,7 +116,8 @@ export default function ConfirmationsScreen() {
       
       // Show ALL pending entries returned by the backend
       // The backend determines what should be pending, not the frontend
-      setEntries(pendingEntries);
+      setCheckingEntries(pendingEntries.filter(isChecking));
+      setEntries(pendingEntries.filter((e: SeaTimeEntry) => !isChecking(e)));
     } catch (error: any) {
       logError('[Confirmations iOS] Failed to load data:', error);
       Alert.alert('Error', 'Failed to load data: ' + error.message);
@@ -159,10 +180,13 @@ export default function ConfirmationsScreen() {
     }
   }, [loadData]);
 
-  // Initial load
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Load whenever the tab comes into view, not only on first mount: tabs stay
+  // mounted, so a passage released from 'checking' would otherwise sit stale.
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   // Re-fetch when app returns to foreground
   useEffect(() => {
@@ -287,6 +311,29 @@ export default function ConfirmationsScreen() {
     );
   };
 
+  // Bulk accept / reject: anything that fails stays selected for another go.
+  const runBulk = async (action: (ids: string[]) => Promise<{ failed: { id: string }[] }>) => {
+    setBulkBusy(true);
+    try {
+      const { failed } = await action(bulk.selectedIds);
+      await loadData();
+      triggerRefresh();
+      if (failed.length === 0) bulk.cancel();
+      else bulk.setSelected(new Set(failed.map((f) => f.id)));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkConfirm = (serviceType: BulkServiceType) => {
+    setShowBulkConfirm(false);
+    runBulk((ids) => bulkConfirm(ids, serviceType));
+  };
+
+  const handleBulkReject = () => {
+    askBulkReject(bulk.selectedEntries, () => runBulk((ids) => bulkReject(ids)));
+  };
+
   const toggleExpanded = (entryId: string) => {
     log('[Confirmations iOS] Toggling expanded state for entry:', entryId);
     setExpandedEntries(prev => {
@@ -325,6 +372,15 @@ export default function ConfirmationsScreen() {
       logError('[Confirmations iOS] Failed to format time:', e);
       return dateString;
     }
+  };
+
+  // Yard time counts by date, so yard entries show dates without times.
+  const isYardEntry = (entry: SeaTimeEntry) => entry.service_type === 'yard_service';
+
+  const formatYardDates = (entry: SeaTimeEntry) => {
+    const start = formatDate(entry.start_time);
+    const end = entry.end_time ? formatDate(entry.end_time) : null;
+    return end && end !== start ? `${start} - ${end}` : start;
   };
 
   const getStatusColor = (status: string): string => {
@@ -441,11 +497,31 @@ export default function ConfirmationsScreen() {
                 {entries.length} {entries.length === 1 ? 'entry' : 'entries'} pending confirmation
               </Text>
             </View>
+            {!bulk.selecting && entries.length >= 2 && (
+              <SelectToggle isDark={isDark} onPress={bulk.start} />
+            )}
           </View>
+          {bulk.selecting && (
+            <SelectionHeader
+              isDark={isDark}
+              count={bulk.count}
+              allSelected={bulk.allSelected}
+              onCancel={bulk.cancel}
+              onToggleAll={bulk.toggleAll}
+            />
+          )}
         </View>
 
         <View style={styles.content}>
-          {entries.length === 0 ? (
+          {!bulk.selecting && (
+            <CheckingPassages
+              entries={checkingEntries}
+              isDark={isDark}
+              processingId={processingEntryId}
+              onReject={handleRejectEntry}
+            />
+          )}
+          {entries.length === 0 && checkingEntries.length === 0 ? (
             <View style={styles.emptyState}>
               <IconSymbol
                 ios_icon_name="checkmark.circle"
@@ -464,9 +540,10 @@ export default function ConfirmationsScreen() {
               const isProcessing = processingEntryId === entry.id;
               const mcaCompliant = isMCACompliant(entry);
               const warningText = getMCAWarningText(entry);
+              const isChecked = bulk.selected.has(entry.id);
               
               return (
-                <View key={entry.id} style={styles.entryCard}>
+                <View key={entry.id} style={[styles.entryCard, bulk.selecting && isChecked && styles.entryCardSelected]}>
                   {!mcaCompliant && (
                     <View style={styles.warningBanner}>
                       <IconSymbol
@@ -483,15 +560,16 @@ export default function ConfirmationsScreen() {
 
                   <TouchableOpacity
                     style={styles.entryHeader}
-                    onPress={() => toggleExpanded(entry.id)}
-                    disabled={isProcessing}
+                    onPress={() => (bulk.selecting ? bulk.toggle(entry.id) : toggleExpanded(entry.id))}
+                    disabled={isProcessing || bulkBusy}
                   >
+                    {bulk.selecting && <SelectCircle checked={isChecked} isDark={isDark} />}
                     <View style={styles.entryHeaderLeft}>
                       <Text style={styles.vesselName}>
                         {entry.vessel?.vessel_name || 'Unknown Vessel'}
                       </Text>
                       <Text style={styles.entryDate}>
-                        {formatDate(entry.start_time)} at {formatTime(entry.start_time)}
+                        {isYardEntry(entry) ? formatYardDates(entry) : `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`}
                       </Text>
                       <View style={styles.durationBadge}>
                         <Text style={styles.durationText}>
@@ -499,15 +577,17 @@ export default function ConfirmationsScreen() {
                         </Text>
                       </View>
                     </View>
-                    <IconSymbol
-                      ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
-                      android_material_icon_name={isExpanded ? 'expand-less' : 'expand-more'}
-                      size={24}
-                      color={isDark ? colors.textSecondary : colors.textSecondaryLight}
-                    />
+                    {!bulk.selecting && (
+                      <IconSymbol
+                        ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
+                        android_material_icon_name={isExpanded ? 'expand-less' : 'expand-more'}
+                        size={24}
+                        color={isDark ? colors.textSecondary : colors.textSecondaryLight}
+                      />
+                    )}
                   </TouchableOpacity>
 
-                  {isExpanded && (
+                  {isExpanded && !bulk.selecting && (
                     <View style={styles.entryDetails}>
                       {warningText && (
                         <View style={styles.warningBox}>
@@ -527,14 +607,14 @@ export default function ConfirmationsScreen() {
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Start:</Text>
                         <Text style={styles.detailValue}>
-                          {formatDate(entry.start_time)} {formatTime(entry.start_time)}
+                          {formatDate(entry.start_time)}{isYardEntry(entry) ? '' : ` ${formatTime(entry.start_time)}`}
                         </Text>
                       </View>
                       {entry.end_time && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>End:</Text>
                           <Text style={styles.detailValue}>
-                            {formatDate(entry.end_time)} {formatTime(entry.end_time)}
+                            {formatDate(entry.end_time)}{isYardEntry(entry) ? '' : ` ${formatTime(entry.end_time)}`}
                           </Text>
                         </View>
                       )}
@@ -570,12 +650,13 @@ export default function ConfirmationsScreen() {
                       {entry.notes && (
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Notes:</Text>
-                          <Text style={styles.detailValue}>{entry.notes}</Text>
+                          <Text style={styles.detailValue}>{formatEntryNotes(entry.notes)}</Text>
                         </View>
                       )}
                     </View>
                   )}
 
+                  {!bulk.selecting && (
                   <View style={styles.entryActions}>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.confirmButton, { width: '100%' }, isProcessing && styles.disabledButton]}
@@ -604,12 +685,31 @@ export default function ConfirmationsScreen() {
                       <Text style={{ color: colors.error, fontSize: 14, fontWeight: '600' }}>Reject Entry</Text>
                     </TouchableOpacity>
                   </View>
+                  )}
                 </View>
               );
             })
           )}
         </View>
       </ScrollView>
+
+      {bulk.selecting && (
+        <BulkActionBar
+          isDark={isDark}
+          count={bulk.count}
+          busy={bulkBusy}
+          onReject={handleBulkReject}
+          onConfirm={() => setShowBulkConfirm(true)}
+        />
+      )}
+
+      <BulkConfirmModal
+        visible={showBulkConfirm}
+        isDark={isDark}
+        entries={bulk.selectedEntries}
+        onCancel={() => setShowBulkConfirm(false)}
+        onConfirm={handleBulkConfirm}
+      />
 
       <Modal
         visible={showServiceTypeModal}
@@ -762,6 +862,10 @@ function createStyles(isDark: boolean, topInset: number) {
       borderWidth: 1,
       borderColor: isDark ? colors.border : colors.borderLight,
       overflow: 'hidden',
+    },
+    entryCardSelected: {
+      borderColor: colors.primary,
+      borderWidth: 2,
     },
     warningBanner: {
       flexDirection: 'row',
