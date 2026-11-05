@@ -163,9 +163,10 @@ const Qs: Q[] = [
   { tier: '3 engineer', q: 'approved engine course', codes: ['aec1', 'aec2'] },
   { tier: '3 engineer', q: 'AEC Antibes', codes: ['aec1', 'aec2'], near: P.antibes },
   { tier: '3 engineer', q: 'AEC Palma', codes: ['aec1', 'aec2'], near: P.palma },
-  { tier: '3 engineer', q: 'MEOL', codes: ['aec2', 'sv_eng_marine_diesel', 'sv_eng_op_procedures'] },
-  { tier: '3 engineer', q: 'small vessel engineer', codes: ['sv_eng_applied_me', 'sv_eng_aux1', 'sv_eng_aux2', 'sv_eng_aux_equipment_1', 'sv_eng_chief_stat_ops', 'sv_eng_ges', 'sv_eng_marine_diesel', 'sv_eng_op_procedures', 'sv_eng_workshop_skills'] },
-  { tier: '3 engineer', q: 'SV engineering', codes: ['sv_eng_applied_me', 'sv_eng_aux1', 'sv_eng_aux2', 'sv_eng_aux_equipment_1', 'sv_eng_chief_stat_ops', 'sv_eng_ges', 'sv_eng_marine_diesel', 'sv_eng_op_procedures', 'sv_eng_workshop_skills'] },
+  // MEOL (SV) needs AEC 1 and 2 (the app's meol-sv checklist); corrected 2026-11-05 with the CTV pass.
+  { tier: '3 engineer', q: 'MEOL', codes: ['aec1', 'aec2'] },
+  { tier: '3 engineer', q: 'small vessel engineer', codes: ['aec1', 'aec2', 'sv_eng_applied_me', 'sv_eng_aux1', 'sv_eng_aux2', 'sv_eng_aux_equipment_1', 'sv_eng_chief_stat_ops', 'sv_eng_ges', 'sv_eng_marine_diesel', 'sv_eng_op_procedures', 'sv_eng_workshop_skills'] },
+  { tier: '3 engineer', q: 'SV engineering', codes: ['aec1', 'aec2', 'sv_eng_applied_me', 'sv_eng_aux1', 'sv_eng_aux2', 'sv_eng_aux_equipment_1', 'sv_eng_chief_stat_ops', 'sv_eng_ges', 'sv_eng_marine_diesel', 'sv_eng_op_procedures', 'sv_eng_workshop_skills'] },
   { tier: '3 engineer', q: 'marine diesel', codes: ['sv_eng_marine_diesel', 'rya_diesel_engine'] },
   { tier: '3 engineer', q: 'auxiliary equipment', codes: ['sv_eng_aux1', 'sv_eng_aux2', 'sv_eng_aux_equipment_1'] },
   { tier: '3 engineer', q: 'workshop skills', codes: ['sv_eng_workshop_skills', 'ews'] },

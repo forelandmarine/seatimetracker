@@ -200,7 +200,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   uscg_lifeboatman_limited: 'lifeboat lifeboatman',
   ym_coastal: 'yachtmaster yacht master ym fast track zero hero prep preparation mile miles building builder',
   ym_offshore:
-    'yachtmaster yacht master ym fast track zero hero prep preparation mile miles building builder offshore passage sail sailing',
+    'ctvskipper yachtmaster yacht master ym fast track zero hero prep preparation mile miles building builder offshore passage sail sailing',
   ym_ocean: 'yachtmaster yacht master ym ocean passage sail sailing',
   ym_offshore_sb: 'yachtmaster yacht master ym theory',
   ym_ocean_sb: 'yachtmaster yacht master ym theory celestial astro astronavigation navigation sextant sights',
@@ -210,12 +210,12 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   oow_yachts_gsk: 'oow 3000 oow3000 yacht gsk',
   oow_yachts_nav_radar: 'oow 3000 oow3000 yacht nav',
   oow_yachts_oral_prep: 'oow 3000 oow3000 yacht',
-  wbc3_nav_radar: 'nav workboat',
-  wbc3_stability: 'workboat',
-  aec1: 'aec yacht engineer y4',
-  aec2: 'aec yacht engineer meol y4',
-  sv_eng_marine_diesel: 'small vessel sv engineer engineering meol y4 y3 eoow',
-  sv_eng_op_procedures: 'small vessel sv engineer engineering meol y4 y3 eoow',
+  wbc3_nav_radar: 'nav workboat ctvskipper ctvmaster',
+  wbc3_stability: 'workboat ctvskipper ctvmaster',
+  aec1: 'aec yacht engineer y4 meol small vessel sv ctvengineer workboat',
+  aec2: 'aec yacht engineer y4 meol small vessel sv ctvengineer workboat',
+  sv_eng_marine_diesel: 'small vessel sv engineer engineering y3 eoow ctvengineer workboat',
+  sv_eng_op_procedures: 'small vessel sv engineer engineering y3 eoow ctvengineer workboat',
   sv_eng_applied_me: 'small vessel sv engineer engineering y2 y1',
   sv_eng_aux1: 'small vessel sv engineer engineering y3 eoow',
   sv_eng_aux2: 'small vessel sv engineer engineering y2 y1',
@@ -228,10 +228,10 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   master_yachts_nav: 'master yachts yacht 500 3000 master500 master3000',
   master_yachts_seamanship: 'master yachts yacht 500 3000 master500 master3000',
   master_yachts_stability: 'master yachts yacht 500 3000 master500 master3000',
-  master_500gt_prep: '500 master500',
+  master_500gt_prep: '500 master500 workboat',
   fr_capitaine_500: 'master 500 master500',
   fr_capitaine_3000: 'master 3000 master3000',
-  master_200gt_prep: '200 master200 workboat',
+  master_200gt_prep: '200 master200 workboat ctvskipper ctvmaster',
   fr_capitaine_200: 'master 200 master200',
   crowd_mgmt: 'passenger ship',
   crisis_mgmt: 'passenger ship',
@@ -240,16 +240,16 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   polar_basic: 'polar code',
   polar_adv: 'polar code',
   polar_advanced: 'polar code',
-  workboat_ops: 'code ctv crew transfer vessel',
-  gwo_bst: 'ctv crew transfer vessel wind basic safety',
+  workboat_ops: 'code ctv crew transfer vessel ctvskipper ctvmaster master workboats 500 master500',
+  gwo_bst: 'ctv crew transfer vessel wind farm turbine ctvdeckhand ctvcrew basic safety',
   gwo_bst_onshore: 'basic safety',
   helm_op: 'human element leadership operational',
   helm_mgmt: 'human element leadership management',
   ecdis: 'electronic chart display information system',
   passenger_ship_training: 'crowd crisis management',
-  gwo_bst_refresher: 'ctv crew transfer vessel wind basic safety',
-  gwo_sea_survival: 'ctv crew transfer vessel wind offshore',
-  marine_transfer: 'ctv crew transfer vessel wind',
+  gwo_bst_refresher: 'ctv crew transfer vessel wind farm turbine ctvdeckhand ctvcrew basic safety',
+  gwo_sea_survival: 'ctv crew transfer vessel wind farm turbine ctvdeckhand ctvcrew offshore',
+  marine_transfer: 'ctv crew transfer vessel wind farm turbine ctvdeckhand ctvcrew',
   dp_induction: 'dynamic positioning',
   dp_simulator: 'dynamic positioning',
   opito_bosiet: 'huet helicopter underwater escape offshore survival safety induction emergency',
@@ -402,6 +402,9 @@ const ABBREVIATIONS: Record<string, string[][]> = {
   cel: [['celestial']],
 };
 
+const PHRASES = new Set(['ctv deckhand', 'ctv crew', 'ctv skipper', 'ctv master', 'ctv engineer']);
+const PHRASE_TOKENS = new Set(Array.from(PHRASES, (p) => p.replace(' ', '')));
+
 // "eng one", "powerboat level two".
 const NUMBER_WORDS: Record<string, string> = {
   one: '1',
@@ -445,6 +448,13 @@ const EXTRA_PLACES: Record<string, [number, number]> = {
   'st maarten': [18.03, -63.05],
   'sint maarten': [18.03, -63.05],
   newport: [41.49, -71.31],
+  hornsea: [53.91, -0.17],
+  bridlington: [54.08, -0.19],
+  scarborough: [54.28, -0.4],
+  humber: [53.7, -0.4],
+  'east yorkshire': [53.84, -0.43],
+  lincolnshire: [53.2, -0.3],
+  'east anglia': [52.6, 1.3],
   thames: [51.47, 0.2],
   'river thames': [51.47, 0.2],
   gravesend: [51.44, 0.37],
@@ -540,7 +550,11 @@ const doc = (text: string): Doc => {
     .join(' ');
   return {
     words: new Set(n.split(' ').filter(Boolean)),
-    compact: n.replace(/ /g, ''),
+    // Phrase tokens ("ctvdeckhand") stay out, or "deckhand" would be found inside them.
+    compact: n
+      .split(' ')
+      .filter((w) => !PHRASE_TOKENS.has(w))
+      .join(''),
     text: ` ${n} `,
   };
 };
@@ -756,6 +770,11 @@ export function queryWords(q: string): string[] {
     const prev = joined[joined.length - 1];
     if (prev && /^\d+$/.test(w) && /[a-z]$/.test(prev) && !FILLER.has(prev)) joined[joined.length - 1] = prev + w;
     else joined.push(w);
+  }
+  // Role phrases that only mean something together ("CTV deckhand" is GWO and transfer training).
+  for (let i = 0; i < joined.length - 1; i++) {
+    const pair = `${joined[i]} ${joined[i + 1]}`;
+    if (PHRASES.has(pair)) joined.splice(i, 2, pair.replace(' ', ''));
   }
   const words = joined.filter((w) => !FILLER.has(w));
   // "Training centre" on its own still means something.

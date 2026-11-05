@@ -26,7 +26,7 @@ const PASSES: Pass[] = [
     ['approved engine course hampshire', ['aec1', 'aec2'], true], ['pdsd', ['dsd']], ['rya diesel engine', ['rya_diesel_engine']], ['powerboat 2 solent', ['powerboat_l2'], true],
   ] },
   { n: 2, stage: 'Junior engineer on a 40 m, Palma', at: [39.57, 2.65, 'Palma'], region: 'GB', pathway: 'meol-sv', queries: [
-    ['aec 2 palma', ['aec2'], true], ['AEC2', ['aec2']], ['MEOL', ['aec2', 'sv_eng_marine_diesel', 'sv_eng_op_procedures']], ['meol y4 palma', ['aec2', 'sv_eng_marine_diesel', 'sv_eng_op_procedures'], true],
+    ['aec 2 palma', ['aec2'], true], ['AEC2', ['aec2']], ['MEOL', ['aec1', 'aec2']], ['meol y4 palma', ['aec1', 'aec2'], true],
     ['pscrb mallorca', ['pscrb', 'pscrb_otl'], true], ['advanced fire fighting palma', ['aff'], true], ['mfa palma', ['mfa'], true], ['eng1 doctor palma', ['eng1'], true],
   ] },
   { n: 3, stage: 'Third engineer on a 55 m, Antibes, studying for SV EOOW (Y3)', at: [43.58, 7.12, 'Antibes'], region: 'GB', pathway: 'eoow-sv', queries: [
