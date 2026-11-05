@@ -1,0 +1,2122 @@
+[
+ {
+  "area": "Kyle of Durness",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.55405,
+  "lon": -4.79315,
+  "source": "chart position"
+ },
+ {
+  "area": "Balnakiel Bay",
+  "expect": "D",
+  "season": "any",
+  "lat": 58.585,
+  "lon": -4.77,
+  "source": "chart position"
+ },
+ {
+  "area": "Dornoch Firth",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.865,
+  "lon": -4.08,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Fleet",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.94,
+  "lon": -4.04,
+  "source": "chart position"
+ },
+ {
+  "area": "Cromarty Firth",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.68,
+  "lon": -4.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Cromarty Firth / Inverness (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 57.62,
+  "lon": -3.98,
+  "source": "chart position"
+ },
+ {
+  "area": "Inverness",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.52,
+  "lon": -4.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Findhorn Bay",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.645,
+  "lon": -3.6,
+  "source": "chart position"
+ },
+ {
+  "area": "Aberdeen",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.1435,
+  "lon": -2.08,
+  "source": "chart position"
+ },
+ {
+  "area": "Montrose Basin",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.71,
+  "lon": -2.49,
+  "source": "chart position"
+ },
+ {
+  "area": "River Tay - Dundee",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.445,
+  "lon": -3.05,
+  "source": "chart position"
+ },
+ {
+  "area": "River Tay - Dundee (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 56.455,
+  "lon": -2.9,
+  "source": "chart position"
+ },
+ {
+  "area": "Firth of Forth (C, above the Forth Bridge)",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.03,
+  "lon": -3.48,
+  "source": "chart position"
+ },
+ {
+  "area": "Firth of Forth (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 56,
+  "lon": -3.25,
+  "source": "chart position"
+ },
+ {
+  "area": "Leith (Edinburgh), Western Harbour",
+  "expect": "B",
+  "season": "any",
+  "lat": 55.98233,
+  "lon": -3.19634,
+  "source": "chart position"
+ },
+ {
+  "area": "Leith (Edinburgh), Imperial Dock",
+  "expect": "B",
+  "season": "any",
+  "lat": 55.979,
+  "lon": -3.16639,
+  "source": "chart position"
+ },
+ {
+  "area": "Dumfries",
+  "expect": "C",
+  "season": "any",
+  "lat": 55,
+  "lon": -3.58,
+  "source": "chart position"
+ },
+ {
+  "area": "Solway Firth",
+  "expect": "D",
+  "season": "any",
+  "lat": 54.9,
+  "lon": -3.45,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Ryan (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.95,
+  "lon": -5.05,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Ryan (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 55,
+  "lon": -5.07,
+  "source": "chart position"
+ },
+ {
+  "area": "Ayr Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.46817,
+  "lon": -4.6383,
+  "source": "chart position"
+ },
+ {
+  "area": "Glasgow, Forth and Clyde Canal (Maryhill)",
+  "expect": "A",
+  "season": "any",
+  "lat": 55.893,
+  "lon": -4.28661,
+  "source": "chart position"
+ },
+ {
+  "area": "Glasgow, Monkland Canal (Drumpellier)",
+  "expect": "A",
+  "season": "any",
+  "lat": 55.86092,
+  "lon": -4.04387,
+  "source": "osm waterway:Monkland Canal@55.86,-4.02"
+ },
+ {
+  "area": "Glasgow, Hogganfield Loch",
+  "expect": "A",
+  "season": "any",
+  "lat": 55.88045,
+  "lon": -4.16748,
+  "source": "chart position"
+ },
+ {
+  "area": "Glasgow, Strathclyde Loch",
+  "expect": "B",
+  "season": "any",
+  "lat": 55.795,
+  "lon": -4.035,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (C, River Clyde at Glasgow)",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.8563,
+  "lon": -4.26416,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (C, Greenock)",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.955,
+  "lon": -4.75,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (C, Gareloch)",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.04,
+  "lon": -4.82,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (D, Cumbrae to Bute)",
+  "expect": "D",
+  "season": "any",
+  "lat": 55.77,
+  "lon": -4.98,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (summer C, off Wemyss Bay)",
+  "expect": "C",
+  "season": "summer",
+  "lat": 55.9,
+  "lon": -4.9,
+  "source": "chart position"
+ },
+ {
+  "area": "The Clyde (winter D, off Wemyss Bay)",
+  "expect": "D",
+  "season": "winter",
+  "lat": 55.9,
+  "lon": -4.9,
+  "source": "chart position"
+ },
+ {
+  "area": "Ardrossan (marina)",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.6405,
+  "lon": -4.8175,
+  "source": "chart position"
+ },
+ {
+  "area": "Kyles of Bute",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.925,
+  "lon": -5.155,
+  "source": "chart position"
+ },
+ {
+  "area": "Campbeltown Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.425,
+  "lon": -5.585,
+  "source": "chart position"
+ },
+ {
+  "area": "Oban",
+  "expect": "D",
+  "season": "any",
+  "lat": 56.415,
+  "lon": -5.48,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Etive",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.46,
+  "lon": -5.3,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Leven",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.688,
+  "lon": -5.12,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Linnhe",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.78529,
+  "lon": -5.1581,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Eil",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.85419,
+  "lon": -5.25187,
+  "source": "chart position"
+ },
+ {
+  "area": "Kyle of Loch Alsh (C, Kyle Akin)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.276,
+  "lon": -5.72,
+  "source": "chart position"
+ },
+ {
+  "area": "Kyle of Loch Alsh (D, Loch Alsh)",
+  "expect": "D",
+  "season": "any",
+  "lat": 57.28,
+  "lon": -5.6,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Carron (Strome narrows)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.3532,
+  "lon": -5.55615,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Harport",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.33,
+  "lon": -6.38,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Broom (Ullapool)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.88,
+  "lon": -5.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Kylesku (Loch Cairnbawn)",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.27,
+  "lon": -5.1,
+  "source": "chart position"
+ },
+ {
+  "area": "Union Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 55.9751,
+  "lon": -3.59986,
+  "source": "osm waterway:Union Canal@55.975,-3.6"
+ },
+ {
+  "area": "Crinan Canal",
+  "expect": "B",
+  "season": "any",
+  "lat": 56.06051,
+  "lon": -5.46972,
+  "source": "osm waterway:Crinan Canal@56.06,-5.47"
+ },
+ {
+  "area": "Caledonian Canal (canal section)",
+  "expect": "B",
+  "season": "any",
+  "lat": 57.0255,
+  "lon": -4.8256,
+  "source": "osm waterway:Caledonian Canal@57,-4.8"
+ },
+ {
+  "area": "Caledonian Canal (Loch Ness)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.3,
+  "lon": -4.45,
+  "source": "chart position"
+ },
+ {
+  "area": "Caledonian Canal (Loch Lochy)",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.97053,
+  "lon": -4.90633,
+  "source": "nominatim:Loch Lochy"
+ },
+ {
+  "area": "Caledonian Canal (Loch Oich)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.0676,
+  "lon": -4.77442,
+  "source": "nominatim:Loch Oich"
+ },
+ {
+  "area": "Loch Loyal",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.3948,
+  "lon": -4.35867,
+  "source": "nominatim:Loch Loyal, Scotland"
+ },
+ {
+  "area": "Loch Hope",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.46039,
+  "lon": -4.63004,
+  "source": "nominatim:Loch Hope, Scotland"
+ },
+ {
+  "area": "Loch Shin",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.1009,
+  "lon": -4.53703,
+  "source": "nominatim:Loch Shin, Scotland"
+ },
+ {
+  "area": "Loch Assynt",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.16992,
+  "lon": -5.01824,
+  "source": "nominatim:Loch Assynt, Scotland"
+ },
+ {
+  "area": "Loch Glascarnoch",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.71126,
+  "lon": -4.82867,
+  "source": "nominatim:Loch Glascarnoch, Scotland"
+ },
+ {
+  "area": "Loch Fannich",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.65017,
+  "lon": -5.05568,
+  "source": "nominatim:Loch Fannich, Scotland"
+ },
+ {
+  "area": "Loch Maree",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.68458,
+  "lon": -5.50896,
+  "source": "nominatim:Loch Maree, Scotland"
+ },
+ {
+  "area": "Loch Rimsdale",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.29729,
+  "lon": -4.15887,
+  "source": "nominatim:Loch Rimsdale, Scotland"
+ },
+ {
+  "area": "Loch Monar",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.419,
+  "lon": -5.10351,
+  "source": "nominatim:Loch Monar, Scotland"
+ },
+ {
+  "area": "Loch Mullardoch",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.32489,
+  "lon": -5.11136,
+  "source": "nominatim:Loch Mullardoch, Scotland"
+ },
+ {
+  "area": "Loch Cluanie",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.14607,
+  "lon": -5.11744,
+  "source": "nominatim:Loch Cluanie, Scotland"
+ },
+ {
+  "area": "Loch Loyne",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.10966,
+  "lon": -4.99809,
+  "source": "nominatim:Loch Loyne, Scotland"
+ },
+ {
+  "area": "Loch Garry",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.07153,
+  "lon": -4.94527,
+  "source": "nominatim:Loch Garry, Scotland"
+ },
+ {
+  "area": "Loch Quoich",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.063,
+  "lon": -5.28,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Arkaig",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.96499,
+  "lon": -5.07572,
+  "source": "nominatim:Loch Arkaig, Scotland"
+ },
+ {
+  "area": "Loch Morar",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.95675,
+  "lon": -5.74739,
+  "source": "nominatim:Loch Morar, Scotland"
+ },
+ {
+  "area": "Loch Awe",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.40182,
+  "lon": -5.04169,
+  "source": "nominatim:Loch Awe, Scotland"
+ },
+ {
+  "area": "Loch Katrine",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.25758,
+  "lon": -4.49527,
+  "source": "nominatim:Loch Katrine, Scotland"
+ },
+ {
+  "area": "Loch Lomond",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.1562,
+  "lon": -4.65638,
+  "source": "nominatim:Loch Lomond, Scotland"
+ },
+ {
+  "area": "Loch Tay",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.52801,
+  "lon": -4.12982,
+  "source": "nominatim:Loch Tay, Scotland"
+ },
+ {
+  "area": "Loch Shiel",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.80739,
+  "lon": -5.55085,
+  "source": "nominatim:Loch Shiel, Scotland"
+ },
+ {
+  "area": "Loch Earn",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.38732,
+  "lon": -4.20671,
+  "source": "nominatim:Loch Earn, Scotland"
+ },
+ {
+  "area": "Loch Rannoch",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.69081,
+  "lon": -4.25954,
+  "source": "nominatim:Loch Rannoch, Scotland"
+ },
+ {
+  "area": "Loch Ericht",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.83033,
+  "lon": -4.3764,
+  "source": "nominatim:Loch Ericht, Scotland"
+ },
+ {
+  "area": "Loch Tummel",
+  "expect": "C",
+  "season": "any",
+  "lat": 56.71156,
+  "lon": -3.92689,
+  "source": "nominatim:Loch Tummel, Scotland"
+ },
+ {
+  "area": "Loch Insh",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.11798,
+  "lon": -3.93025,
+  "source": "nominatim:Loch Insh, Scotland"
+ },
+ {
+  "area": "Loch Glass",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.71484,
+  "lon": -4.4868,
+  "source": "nominatim:Loch Glass, Scotland"
+ },
+ {
+  "area": "Fionn Loch (Poolewe)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.76578,
+  "lon": -5.44916,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Gairloch (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 57.698,
+  "lon": -5.69,
+  "source": "chart position"
+ },
+ {
+  "area": "Loch Gairloch (winter, none)",
+  "expect": "none",
+  "season": "winter",
+  "lat": 57.71,
+  "lon": -5.72,
+  "source": "chart position"
+ },
+ {
+  "area": "Blue Mull Sound",
+  "expect": "D",
+  "season": "any",
+  "lat": 60.68,
+  "lon": -0.985,
+  "source": "chart position"
+ },
+ {
+  "area": "Yell Sound",
+  "expect": "D",
+  "season": "any",
+  "lat": 60.48,
+  "lon": -1.19,
+  "source": "chart position"
+ },
+ {
+  "area": "Sullom Voe",
+  "expect": "D",
+  "season": "any",
+  "lat": 60.45935,
+  "lon": -1.29362,
+  "source": "chart position"
+ },
+ {
+  "area": "Lerwick",
+  "expect": "D",
+  "season": "any",
+  "lat": 60.155,
+  "lon": -1.14,
+  "source": "chart position"
+ },
+ {
+  "area": "Kirkwall (Wide Firth)",
+  "expect": "D",
+  "season": "any",
+  "lat": 59.04,
+  "lon": -2.98,
+  "source": "chart position"
+ },
+ {
+  "area": "Scapa Flow (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.83,
+  "lon": -3.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Stromness",
+  "expect": "D",
+  "season": "any",
+  "lat": 58.955,
+  "lon": -3.29,
+  "source": "chart position"
+ },
+ {
+  "area": "Stornoway Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 58.204,
+  "lon": -6.385,
+  "source": "chart position"
+ },
+ {
+  "area": "Tarbert Harbour (Harris)",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.89616,
+  "lon": -6.79167,
+  "source": "chart position"
+ },
+ {
+  "area": "Carlingford Lough",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.06,
+  "lon": -6.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Strangford Lough",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.45,
+  "lon": -5.6,
+  "source": "chart position"
+ },
+ {
+  "area": "Belfast Lough (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.635,
+  "lon": -5.87,
+  "source": "chart position"
+ },
+ {
+  "area": "Belfast Lough (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 54.69,
+  "lon": -5.75,
+  "source": "chart position"
+ },
+ {
+  "area": "Larne",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.84,
+  "lon": -5.8,
+  "source": "chart position"
+ },
+ {
+  "area": "Lough Foyle",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.1,
+  "lon": -7.1,
+  "source": "chart position"
+ },
+ {
+  "area": "River Bann",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.13,
+  "lon": -6.675,
+  "source": "chart position"
+ },
+ {
+  "area": "Lough Erne",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.44497,
+  "lon": -7.72822,
+  "source": "nominatim:Lower Lough Erne"
+ },
+ {
+  "area": "Lough Neagh (more than 2 miles out)",
+  "expect": "D",
+  "season": "any",
+  "lat": 54.62,
+  "lon": -6.42,
+  "source": "chart position"
+ },
+ {
+  "area": "River Lagan",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.58296,
+  "lon": -5.92176,
+  "source": "osm waterway:Lagan@54.585,-5.922"
+ },
+ {
+  "area": "Berwick",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.766,
+  "lon": -2,
+  "source": "chart position"
+ },
+ {
+  "area": "Warkworth (Amble)",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.3359,
+  "lon": -1.583,
+  "source": "chart position"
+ },
+ {
+  "area": "Blyth",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.12568,
+  "lon": -1.49695,
+  "source": "chart position"
+ },
+ {
+  "area": "River Tyne",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.99033,
+  "lon": -1.50326,
+  "source": "chart position"
+ },
+ {
+  "area": "River Wear",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.91216,
+  "lon": -1.39154,
+  "source": "chart position"
+ },
+ {
+  "area": "Seaham",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.8375,
+  "lon": -1.326,
+  "source": "chart position"
+ },
+ {
+  "area": "Hartlepool",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.69,
+  "lon": -1.2,
+  "source": "chart position"
+ },
+ {
+  "area": "River Tees (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.58663,
+  "lon": -1.19512,
+  "source": "chart position"
+ },
+ {
+  "area": "River Tees (B, above the barrage)",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.565,
+  "lon": -1.3,
+  "source": "chart position"
+ },
+ {
+  "area": "Whitby",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.48816,
+  "lon": -0.61347,
+  "source": "chart position"
+ },
+ {
+  "area": "Scarborough",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.2825,
+  "lon": -0.393,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridlington",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.081,
+  "lon": -0.19,
+  "source": "chart position"
+ },
+ {
+  "area": "River Humber (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.7074,
+  "lon": -0.65,
+  "source": "chart position"
+ },
+ {
+  "area": "River Humber (D, Hull)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.735,
+  "lon": -0.33,
+  "source": "chart position"
+ },
+ {
+  "area": "River Humber (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 53.6,
+  "lon": -0.02,
+  "source": "chart position"
+ },
+ {
+  "area": "Wells Harbour (summer C)",
+  "expect": "C",
+  "season": "summer",
+  "lat": 52.966,
+  "lon": 0.86,
+  "source": "chart position"
+ },
+ {
+  "area": "Blakeney",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.97,
+  "lon": 0.99,
+  "source": "chart position"
+ },
+ {
+  "area": "Yarmouth (River Yare)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.6009,
+  "lon": 1.72623,
+  "source": "chart position"
+ },
+ {
+  "area": "Yarmouth (Breydon Water)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.60493,
+  "lon": 1.66304,
+  "source": "chart position"
+ },
+ {
+  "area": "Lowestoft",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.473,
+  "lon": 1.745,
+  "source": "chart position"
+ },
+ {
+  "area": "Walton Backwaters",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.88107,
+  "lon": 1.24854,
+  "source": "chart position"
+ },
+ {
+  "area": "River Colne (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 51.78,
+  "lon": 1.02,
+  "source": "chart position"
+ },
+ {
+  "area": "River Thames (C, Woolwich)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.495,
+  "lon": 0.07,
+  "source": "chart position"
+ },
+ {
+  "area": "River Thames (D, Barrow Deep)",
+  "expect": "D",
+  "season": "any",
+  "lat": 51.55,
+  "lon": 1,
+  "source": "chart position"
+ },
+ {
+  "area": "River Thames (B, above Teddington)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.40503,
+  "lon": -0.34561,
+  "source": "osm waterway:River Thames@51.405,-0.345"
+ },
+ {
+  "area": "Grand Union Canal (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.50281,
+  "lon": -0.34043,
+  "source": "osm waterway:Grand Union Canal@51.505,-0.34"
+ },
+ {
+  "area": "Regents Canal (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.54112,
+  "lon": -0.1455,
+  "source": "osm waterway:Regent's Canal@51.54,-0.145"
+ },
+ {
+  "area": "River Lee (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.59174,
+  "lon": -0.05355,
+  "source": "osm waterway:River Lee Navigation@51.59,-0.05"
+ },
+ {
+  "area": "River Wey (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.29995,
+  "lon": -0.52008,
+  "source": "osm waterway:River Wey Navigation@51.3,-0.52"
+ },
+ {
+  "area": "Kennet and Avon Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.35485,
+  "lon": -1.9895,
+  "source": "osm waterway:Kennet and Avon Canal@51.355,-1.99"
+ },
+ {
+  "area": "Oxford Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.06003,
+  "lon": -1.33011,
+  "source": "osm waterway:Oxford Canal@52.06,-1.33"
+ },
+ {
+  "area": "River Medway (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.40122,
+  "lon": 0.60233,
+  "source": "chart position"
+ },
+ {
+  "area": "River Medway (A, above Allington)",
+  "expect": "A",
+  "season": "any",
+  "lat": 51.27189,
+  "lon": 0.52216,
+  "source": "chart position"
+ },
+ {
+  "area": "The Swale",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.355,
+  "lon": 0.85,
+  "source": "chart position"
+ },
+ {
+  "area": "Ramsgate Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.329,
+  "lon": 1.41944,
+  "source": "chart position"
+ },
+ {
+  "area": "River Blackwater",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.735,
+  "lon": 0.8,
+  "source": "chart position"
+ },
+ {
+  "area": "River Crouch",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.63426,
+  "lon": 0.70263,
+  "source": "chart position"
+ },
+ {
+  "area": "River Stour (Kent)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.31133,
+  "lon": 1.33586,
+  "source": "chart position"
+ },
+ {
+  "area": "Dover Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.115,
+  "lon": 1.33,
+  "source": "chart position"
+ },
+ {
+  "area": "Newhaven",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.787,
+  "lon": 0.056,
+  "source": "chart position"
+ },
+ {
+  "area": "River Arun",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.805,
+  "lon": -0.54358,
+  "source": "chart position"
+ },
+ {
+  "area": "Brighton Marina (outer harbour)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.8105,
+  "lon": -0.1,
+  "source": "chart position"
+ },
+ {
+  "area": "Shoreham (River Adur)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.83015,
+  "lon": -0.24049,
+  "source": "chart position"
+ },
+ {
+  "area": "Chichester (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.79,
+  "lon": -0.9,
+  "source": "chart position"
+ },
+ {
+  "area": "Chichester (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 50.8277,
+  "lon": -0.85175,
+  "source": "chart position"
+ },
+ {
+  "area": "Langstone Harbour",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.82,
+  "lon": -1,
+  "source": "chart position"
+ },
+ {
+  "area": "Portsmouth",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.81,
+  "lon": -1.11,
+  "source": "chart position"
+ },
+ {
+  "area": "Bembridge (Brading Harbour)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.695,
+  "lon": -1.095,
+  "source": "chart position"
+ },
+ {
+  "area": "Cowes (River Medina)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.75545,
+  "lon": -1.29123,
+  "source": "chart position"
+ },
+ {
+  "area": "Southampton",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.89,
+  "lon": -1.39,
+  "source": "chart position"
+ },
+ {
+  "area": "Solent (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 50.78,
+  "lon": -1.25,
+  "source": "chart position"
+ },
+ {
+  "area": "Beaulieu River",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.8093,
+  "lon": -1.43464,
+  "source": "chart position"
+ },
+ {
+  "area": "Keyhaven Lake",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.722,
+  "lon": -1.56,
+  "source": "chart position"
+ },
+ {
+  "area": "Christchurch Harbour",
+  "expect": "B",
+  "season": "any",
+  "lat": 50.72,
+  "lon": -1.76358,
+  "source": "chart position"
+ },
+ {
+  "area": "Poole",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.7,
+  "lon": -1.98,
+  "source": "chart position"
+ },
+ {
+  "area": "Weymouth (Portland Harbour)",
+  "expect": "D",
+  "season": "any",
+  "lat": 50.575,
+  "lon": -2.43,
+  "source": "chart position"
+ },
+ {
+  "area": "Weymouth Bay (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 50.6,
+  "lon": -2.44,
+  "source": "chart position"
+ },
+ {
+  "area": "Wyke Regis (Fleet Lagoon)",
+  "expect": "B",
+  "season": "any",
+  "lat": 50.6027,
+  "lon": -2.4967,
+  "source": "chart position"
+ },
+ {
+  "area": "Aire and Calder Navigation",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.71066,
+  "lon": -1.24986,
+  "source": "osm waterway:Aire and Calder Navigation@53.71,-1.25"
+ },
+ {
+  "area": "River Ancholme (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.55721,
+  "lon": -0.50321,
+  "source": "osm waterway:River Ancholme@53.6,-0.5"
+ },
+ {
+  "area": "Immingham Dock",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.62995,
+  "lon": -0.20138,
+  "source": "chart position"
+ },
+ {
+  "area": "Hull Docks (Alexandra Dock)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.74432,
+  "lon": -0.28919,
+  "source": "chart position"
+ },
+ {
+  "area": "Boston Dock",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.96893,
+  "lon": -0.01849,
+  "source": "chart position"
+ },
+ {
+  "area": "Chesterfield Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.32015,
+  "lon": -0.9496,
+  "source": "osm waterway:Chesterfield Canal@53.32,-0.95"
+ },
+ {
+  "area": "Fossdyke Canal",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.266,
+  "lon": -0.66095,
+  "source": "osm waterway:Fossdyke Navigation@53.27,-0.66"
+ },
+ {
+  "area": "Hornsea Mere",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.9052,
+  "lon": -0.18581,
+  "source": "nominatim:Hornsea Mere"
+ },
+ {
+  "area": "Kielder Water",
+  "expect": "C",
+  "season": "any",
+  "lat": 55.18943,
+  "lon": -2.52793,
+  "source": "nominatim:Kielder Water"
+ },
+ {
+  "area": "River Ouse (C, to Naburn)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.77714,
+  "lon": -1.02915,
+  "source": "chart position"
+ },
+ {
+  "area": "River Ouse (B, York)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.95585,
+  "lon": -1.08248,
+  "source": "chart position"
+ },
+ {
+  "area": "River Witham",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.20803,
+  "lon": -0.33669,
+  "source": "osm waterway:River Witham@53.21,-0.33"
+ },
+ {
+  "area": "Norfolk Broads (A, Hickling Broad)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.73892,
+  "lon": 1.57637,
+  "source": "nominatim:Hickling Broad"
+ },
+ {
+  "area": "Rivers Alde and Ore (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.07,
+  "lon": 1.5,
+  "source": "chart position"
+ },
+ {
+  "area": "River Deben (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.986,
+  "lon": 1.393,
+  "source": "chart position"
+ },
+ {
+  "area": "River Orwell (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 52,
+  "lon": 1.21,
+  "source": "chart position"
+ },
+ {
+  "area": "River Orwell (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.95,
+  "lon": 1.29,
+  "source": "chart position"
+ },
+ {
+  "area": "Grafham Water",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.29804,
+  "lon": -0.31815,
+  "source": "nominatim:Grafham Water"
+ },
+ {
+  "area": "Rutland Water",
+  "expect": "B",
+  "season": "any",
+  "lat": 52.65564,
+  "lon": -0.62228,
+  "source": "nominatim:Rutland Water"
+ },
+ {
+  "area": "Bewl Water",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.0676,
+  "lon": 0.40495,
+  "source": "nominatim:Bewl Water"
+ },
+ {
+  "area": "Exeter (River Exe)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.65,
+  "lon": -3.45,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater (River Parrett)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.16726,
+  "lon": -3.00248,
+  "source": "osm waterway:River Parrett@51.17,-3"
+ },
+ {
+  "area": "Teignmouth",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.545,
+  "lon": -3.51,
+  "source": "chart position"
+ },
+ {
+  "area": "River Dart",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.35,
+  "lon": -3.57624,
+  "source": "chart position"
+ },
+ {
+  "area": "Salcombe",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.23,
+  "lon": -3.77,
+  "source": "chart position"
+ },
+ {
+  "area": "Plymouth (C, Hamoaze)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.375,
+  "lon": -4.185,
+  "source": "chart position"
+ },
+ {
+  "area": "Plymouth Sound (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 50.345,
+  "lon": -4.145,
+  "source": "chart position"
+ },
+ {
+  "area": "Fowey",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.33516,
+  "lon": -4.63361,
+  "source": "chart position"
+ },
+ {
+  "area": "Falmouth (C, Carrick Roads)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.18,
+  "lon": -5.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Falmouth Bay (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 50.135,
+  "lon": -5.05,
+  "source": "chart position"
+ },
+ {
+  "area": "River Camel (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 50.53187,
+  "lon": -4.92052,
+  "source": "chart position"
+ },
+ {
+  "area": "River Severn (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.75,
+  "lon": -2.45,
+  "source": "chart position"
+ },
+ {
+  "area": "Severn Estuary (winter D)",
+  "expect": "D",
+  "season": "winter",
+  "lat": 51.52,
+  "lon": -2.75,
+  "source": "chart position"
+ },
+ {
+  "area": "Bristol Channel (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 51.38,
+  "lon": -3.1,
+  "source": "chart position"
+ },
+ {
+  "area": "River Wye (C, Chepstow)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.64545,
+  "lon": -2.66874,
+  "source": "chart position"
+ },
+ {
+  "area": "River Avon (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.48133,
+  "lon": -2.68412,
+  "source": "chart position"
+ },
+ {
+  "area": "Bristol City Docks (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.448,
+  "lon": -2.59856,
+  "source": "chart position"
+ },
+ {
+  "area": "Newport (River Usk)",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.57368,
+  "lon": -2.98423,
+  "source": "chart position"
+ },
+ {
+  "area": "Cardiff Bay",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.455,
+  "lon": -3.165,
+  "source": "chart position"
+ },
+ {
+  "area": "Barry",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.395,
+  "lon": -3.26276,
+  "source": "chart position"
+ },
+ {
+  "area": "Port Talbot (enclosed docks)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.585,
+  "lon": -3.795,
+  "source": "chart position"
+ },
+ {
+  "area": "Swansea (enclosed docks)",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.61869,
+  "lon": -3.92407,
+  "source": "chart position"
+ },
+ {
+  "area": "Llanelli and Burry Port",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.65,
+  "lon": -4.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Milford Haven",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.7,
+  "lon": -5.05,
+  "source": "chart position"
+ },
+ {
+  "area": "Fishguard",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.012,
+  "lon": -4.985,
+  "source": "chart position"
+ },
+ {
+  "area": "Cardigan (River Teifi)",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.1,
+  "lon": -4.68,
+  "source": "chart position"
+ },
+ {
+  "area": "Aberystwyth",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.408,
+  "lon": -4.09,
+  "source": "chart position"
+ },
+ {
+  "area": "Aberdyfi",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.54,
+  "lon": -4.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Barmouth (Mawddach)",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.72,
+  "lon": -4.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Porthmadog",
+  "expect": "C",
+  "season": "any",
+  "lat": 52.9,
+  "lon": -4.12,
+  "source": "chart position"
+ },
+ {
+  "area": "Holyhead",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.31524,
+  "lon": -4.62731,
+  "source": "chart position"
+ },
+ {
+  "area": "Menai Strait (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.19924,
+  "lon": -4.19277,
+  "source": "chart position"
+ },
+ {
+  "area": "Menai Strait (D, south-west)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.12138,
+  "lon": -4.34041,
+  "source": "chart position"
+ },
+ {
+  "area": "Conwy",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.28751,
+  "lon": -3.83257,
+  "source": "chart position"
+ },
+ {
+  "area": "River Dee (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.22069,
+  "lon": -3.04903,
+  "source": "chart position"
+ },
+ {
+  "area": "River Dee (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.35,
+  "lon": -3.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Rivers Taw and Torridge",
+  "expect": "C",
+  "season": "any",
+  "lat": 51.07366,
+  "lon": -4.15212,
+  "source": "chart position"
+ },
+ {
+  "area": "River Mersey (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.4,
+  "lon": -3.01,
+  "source": "chart position"
+ },
+ {
+  "area": "River Mersey (B, docks)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.40216,
+  "lon": -2.99051,
+  "source": "chart position"
+ },
+ {
+  "area": "Liverpool Bay (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 53.5,
+  "lon": -3.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Preston and Southport (Ribble, C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.73,
+  "lon": -2.9,
+  "source": "chart position"
+ },
+ {
+  "area": "Fleetwood (River Wyre)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.9,
+  "lon": -3.005,
+  "source": "chart position"
+ },
+ {
+  "area": "River Lune (C)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54,
+  "lon": -2.86,
+  "source": "chart position"
+ },
+ {
+  "area": "Morecambe Bay (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 54.05,
+  "lon": -2.95,
+  "source": "chart position"
+ },
+ {
+  "area": "Morecambe Bay (winter, none)",
+  "expect": "none",
+  "season": "winter",
+  "lat": 54.05,
+  "lon": -2.95,
+  "source": "chart position"
+ },
+ {
+  "area": "Barrow-in-Furness (Walney Channel)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.08,
+  "lon": -3.2,
+  "source": "chart position"
+ },
+ {
+  "area": "Barrow-in-Furness (Piel Channel, west of the line)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.06,
+  "lon": -3.19,
+  "source": "chart position"
+ },
+ {
+  "area": "Barrow, west of the Rossall to Humphrey Head line (not D)",
+  "expect": "none",
+  "season": "summer",
+  "lat": 54.03,
+  "lon": -3.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Duddon Estuary (not named in Annex 1)",
+  "expect": "none",
+  "season": "any",
+  "lat": 54.22,
+  "lon": -3.23,
+  "source": "chart position"
+ },
+ {
+  "area": "Whitehaven",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.551,
+  "lon": -3.595,
+  "source": "chart position"
+ },
+ {
+  "area": "Workington",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.651,
+  "lon": -3.57,
+  "source": "chart position"
+ },
+ {
+  "area": "Maryport",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.71689,
+  "lon": -3.50227,
+  "source": "chart position"
+ },
+ {
+  "area": "Carlisle (River Eden)",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.94,
+  "lon": -3.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Gloucester and Sharpness Canal",
+  "expect": "B",
+  "season": "any",
+  "lat": 51.77091,
+  "lon": -2.37215,
+  "source": "osm waterway:Gloucester and Sharpness Canal@51.77,-2.37"
+ },
+ {
+  "area": "Coniston Water",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.33504,
+  "lon": -3.07722,
+  "source": "nominatim:Coniston Water"
+ },
+ {
+  "area": "Derwent Water",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.5789,
+  "lon": -3.14664,
+  "source": "nominatim:Derwentwater"
+ },
+ {
+  "area": "Ullswater",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.57514,
+  "lon": -2.89321,
+  "source": "nominatim:Ullswater"
+ },
+ {
+  "area": "Windermere",
+  "expect": "C",
+  "season": "any",
+  "lat": 54.34776,
+  "lon": -2.93658,
+  "source": "nominatim:Windermere lake"
+ },
+ {
+  "area": "Leeds and Liverpool Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.96005,
+  "lon": -2.01978,
+  "source": "osm waterway:Leeds and Liverpool Canal@53.96,-2.02"
+ },
+ {
+  "area": "Lancaster Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.89916,
+  "lon": -2.77991,
+  "source": "osm waterway:Lancaster Canal@53.9,-2.78"
+ },
+ {
+  "area": "Shropshire Union Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.9023,
+  "lon": -2.46896,
+  "source": "osm waterway:Shropshire Union Canal@52.9,-2.48"
+ },
+ {
+  "area": "Llangollen Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.89887,
+  "lon": -2.90041,
+  "source": "osm waterway:Llangollen Canal@52.9,-2.9"
+ },
+ {
+  "area": "Trent and Mersey Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.90406,
+  "lon": -2.15277,
+  "source": "osm waterway:Trent and Mersey Canal@52.9,-2.15"
+ },
+ {
+  "area": "Manchester Ship Canal",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.4374,
+  "lon": -2.41368,
+  "source": "osm waterway:Manchester Ship Canal@53.44,-2.42"
+ },
+ {
+  "area": "River Weaver (B, below Northwich)",
+  "expect": "B",
+  "season": "any",
+  "lat": 53.29038,
+  "lon": -2.67964,
+  "source": "osm waterway:River Weaver@53.29,-2.68"
+ },
+ {
+  "area": "River Trent (C, Gainsborough)",
+  "expect": "C",
+  "season": "any",
+  "lat": 53.40016,
+  "lon": -0.78149,
+  "source": "chart position"
+ },
+ {
+  "area": "Birmingham Canal Navigations",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.51976,
+  "lon": -2.03529,
+  "source": "osm waterway:Birmingham New Main Line Canal@52.51,-2.04"
+ },
+ {
+  "area": "Rochdale Canal",
+  "expect": "A",
+  "season": "any",
+  "lat": 53.73996,
+  "lon": -2.00993,
+  "source": "osm waterway:Rochdale Canal@53.74,-2.01"
+ },
+ {
+  "area": "Humber at Hull (inside New Holland to Paull, D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.735,
+  "lon": -0.33,
+  "source": "chart position"
+ },
+ {
+  "area": "Severn below Sharpness (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 51.65,
+  "lon": -2.58,
+  "source": "chart position"
+ },
+ {
+  "area": "Severn Estuary seaward of Black Nore (winter, none)",
+  "expect": "none",
+  "season": "winter",
+  "lat": 51.42,
+  "lon": -2.95,
+  "source": "chart position"
+ },
+ {
+  "area": "Severn Estuary seaward of Black Nore (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 51.42,
+  "lon": -2.95,
+  "source": "chart position"
+ },
+ {
+  "area": "Bristol Channel off Minehead (not categorised)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.22,
+  "lon": -3.47,
+  "source": "chart position"
+ },
+ {
+  "area": "Liverpool Bay inside Formby to Point of Air (summer D)",
+  "expect": "D",
+  "season": "summer",
+  "lat": 53.45,
+  "lon": -3.12,
+  "source": "chart position"
+ },
+ {
+  "area": "Liverpool Bay inside Formby to Point of Air (winter, none)",
+  "expect": "none",
+  "season": "winter",
+  "lat": 53.45,
+  "lon": -3.12,
+  "source": "chart position"
+ },
+ {
+  "area": "Off Blackpool (not categorised)",
+  "expect": "none",
+  "season": "any",
+  "lat": 53.82,
+  "lon": -3.1,
+  "source": "chart position"
+ },
+ {
+  "area": "Off Whitehaven (not categorised)",
+  "expect": "none",
+  "season": "any",
+  "lat": 54.55,
+  "lon": -3.62,
+  "source": "chart position"
+ },
+ {
+  "area": "Solway, Moricambe Bay side (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 54.93,
+  "lon": -3.35,
+  "source": "chart position"
+ },
+ {
+  "area": "Swansea Bay (not categorised)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.57,
+  "lon": -3.88,
+  "source": "chart position"
+ },
+ {
+  "area": "Dee Estuary off Flint (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 53.27,
+  "lon": -3.15,
+  "source": "chart position"
+ },
+ {
+  "area": "Clyde, Rothesay Bay (summer C)",
+  "expect": "C",
+  "season": "summer",
+  "lat": 55.85,
+  "lon": -5.04,
+  "source": "chart position"
+ },
+ {
+  "area": "Clyde, Rothesay Bay (winter D)",
+  "expect": "D",
+  "season": "winter",
+  "lat": 55.85,
+  "lon": -5.04,
+  "source": "chart position"
+ },
+ {
+  "area": "Clyde, Loch Fyne (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 55.95,
+  "lon": -5.35,
+  "source": "chart position"
+ },
+ {
+  "area": "River Deben above Felixstowe Ferry (A)",
+  "expect": "A",
+  "season": "any",
+  "lat": 52.04,
+  "lon": 1.34,
+  "source": "chart position"
+ },
+ {
+  "area": "Control: London Array (open sea)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.63,
+  "lon": 1.5,
+  "source": "chart position"
+ },
+ {
+  "area": "Control: Dogger Bank (open sea)",
+  "expect": "none",
+  "season": "any",
+  "lat": 55,
+  "lon": 2.5,
+  "source": "chart position"
+ },
+ {
+  "area": "Control: Minch (open sea)",
+  "expect": "none",
+  "season": "any",
+  "lat": 58,
+  "lon": -5.8,
+  "source": "chart position"
+ }
+]

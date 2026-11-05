@@ -13,8 +13,9 @@
  *
  * Limits of the AIS check:
  *  - "Safe haven" is not a fixed list. The distance is measured to the nearest MSN
- *    1837 categorised water (the UK harbours and estuaries the classifier holds),
- *    so a trip near a small harbour that is not listed reads further out than it was.
+ *    1837 categorised water: the WFD estuaries plus the hand-drawn coastal harbours
+ *    (harbour-overrides.geojson), not inland waters. A trip near a small harbour
+ *    that Annex 1 does not list still reads further out than it was.
  *  - Weather and daylight cannot be checked from AIS, so they are returned as
  *    conditions, never as passed.
  *  - Only UK waters are measured.

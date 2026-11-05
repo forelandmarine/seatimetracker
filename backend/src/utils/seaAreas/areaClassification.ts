@@ -71,7 +71,7 @@ export interface ClassifierLayers {
   tidal: GeoJSONFeatureCollection; // tidal-waters.geojson
   land: GeoJSONFeatureCollection; // uk-land.geojson
   dExtensions?: GeoJSONFeatureCollection; // cat-d-extensions.geojson (outer seasonal bands)
-  overrides?: GeoJSONFeatureCollection; // area-overrides.geojson (hand-drawn MSN 1837 areas, checked first)
+  overrides?: GeoJSONFeatureCollection; // area-overrides.geojson + harbour-overrides.geojson (hand-drawn MSN 1837 areas, checked first)
 }
 
 /** MSN 1837 Cat D outer bands are seasonal. Default when unspecified: summer (max extent). */
@@ -153,6 +153,40 @@ function seasonLayer(fc: GeoJSONFeatureCollection | undefined, want: string): Po
 const asCategory = (v: unknown, fallback: CategorisedWater | null = null): CategorisedWater | null =>
   v === 'A' || v === 'B' || v === 'C' || v === 'D' ? v : fallback;
 
+/** An override with category 'none' marks water that MSN 1837 does not categorise (it masks the layers below). */
+const NOT_CATEGORISED = 'none';
+
+/** Approximate area (km2) of a Polygon or MultiPolygon, for picking the smallest override. */
+function areaKm2(geometry: GeoJSONFeatureCollection['features'][number]['geometry']): number {
+  const polys =
+    geometry.type === 'Polygon'
+      ? [geometry.coordinates as number[][][]]
+      : geometry.type === 'MultiPolygon'
+        ? (geometry.coordinates as number[][][][])
+        : [];
+  let total = 0;
+  for (const rings of polys) {
+    rings.forEach((ring, i) => {
+      let a = 0;
+      for (let k = 0; k < ring.length - 1; k++) a += ring[k][0] * ring[k + 1][1] - ring[k + 1][0] * ring[k][1];
+      const kx = 111.32 * Math.cos(((ring[0]?.[1] ?? 0) * Math.PI) / 180);
+      total += (i === 0 ? 1 : -1) * Math.abs(a / 2) * kx * 110.57;
+    });
+  }
+  return total;
+}
+
+/** Overrides with their area attached (built ones carry area_km2; older hand-drawn ones get it here). */
+function withAreas(fc: GeoJSONFeatureCollection | undefined): GeoJSONFeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: (fc?.features ?? []).map((f) => ({
+      ...f,
+      properties: { ...f.properties, area_km2: typeof f.properties.area_km2 === 'number' ? f.properties.area_km2 : areaKm2(f.geometry) },
+    })),
+  };
+}
+
 export class AreaClassifier {
   private catLayer: PolygonLayer;
   private tidalLayer: PolygonLayer;
@@ -160,9 +194,9 @@ export class AreaClassifier {
   private dAll: PolygonLayer;
   private dSummer: PolygonLayer;
   private dWinter: PolygonLayer;
-  private oAll: PolygonLayer;
-  private oSummer: PolygonLayer;
-  private oWinter: PolygonLayer;
+  private oLayer: PolygonLayer;
+  /** WFD bodies an override marks as wholly not categorised (left out of distance-to-categorised). */
+  private maskedWfd: Set<unknown>;
 
   constructor(layers: ClassifierLayers) {
     this.catLayer = new PolygonLayer(layers.categorised);
@@ -171,9 +205,8 @@ export class AreaClassifier {
     this.dAll = seasonLayer(layers.dExtensions, 'all');
     this.dSummer = seasonLayer(layers.dExtensions, 'summer');
     this.dWinter = seasonLayer(layers.dExtensions, 'winter');
-    this.oAll = seasonLayer(layers.overrides, 'all');
-    this.oSummer = seasonLayer(layers.overrides, 'summer');
-    this.oWinter = seasonLayer(layers.overrides, 'winter');
+    this.oLayer = new PolygonLayer(withAreas(layers.overrides));
+    this.maskedWfd = new Set((layers.overrides?.features ?? []).map((f) => f.properties.masks_wfd).filter(Boolean));
   }
 
   /** A categorised-layer feature applies in this season (features with no season apply all year). */
@@ -185,15 +218,26 @@ export class AreaClassifier {
   }
 
   /**
+   * The in-season hand-drawn override containing the point. Where several overlap
+   * (a dock inside a harbour inside an estuary) the smallest wins, so the most
+   * specific MSN 1837 limit applies.
+   */
+  private overrideAt(p: LatLon, season: Season): Record<string, unknown> | null {
+    const hits = this.oLayer.findAllContaining(ll(p), AreaClassifier.inSeason(season));
+    if (hits.length <= 1) return hits[0] ?? null;
+    return hits.reduce((a, b) => ((b.area_km2 as number) < (a.area_km2 as number) ? b : a));
+  }
+
+  /**
    * MSN 1837 category for a point, or null if outside the classified waters.
-   * Precedence: hand-drawn overrides (all year, then the season's), then the WFD
-   * inner zones in season, then the outer seasonal bands (default summer).
+   * Precedence: hand-drawn overrides in season (smallest first; category 'none'
+   * means not categorised and stops here), then the WFD inner zones in season,
+   * then the outer seasonal bands (default summer).
    */
   categorisedWatersForPoint(p: LatLon, opts?: ClassifyOptions): CategorisedWater | null {
     const pt = ll(p);
     const season = resolveSeason(opts);
-    const o =
-      this.oAll.findContaining(pt) ?? (season === 'winter' ? this.oWinter : this.oSummer).findContaining(pt);
+    const o = this.overrideAt(p, season);
     if (o) return asCategory(o.category);
     const hit = this.catLayer.findContainingWhere(pt, AreaClassifier.inSeason(season));
     if (hit) return asCategory(hit.category);
@@ -206,28 +250,33 @@ export class AreaClassifier {
    * A hand-drawn override marked tidal: false (the non-tidal Thames above
    * Teddington Lock) that contains, or lies within maxNm of, the point.
    */
-  private nonTidalOverride(p: LatLon, maxNm = 0): boolean {
+  private nonTidalOverride(p: LatLon, maxNm = 0, season: Season = 'summer'): boolean {
     const pt = ll(p);
     const nonTidal = (props: Record<string, unknown>) => props.tidal === false;
     if (maxNm === 0) {
-      const hit = this.oAll.findContaining(pt);
+      const hit = this.overrideAt(p, season);
       return hit != null && nonTidal(hit);
     }
-    return this.oAll.findNearestWithin(pt, maxNm, nonTidal) !== null;
+    const inSeason = AreaClassifier.inSeason(season);
+    return this.oLayer.findNearestWithin(pt, maxNm, (pr) => nonTidal(pr) && inSeason(pr)) !== null;
   }
 
-  /** Nearest categorised water within maxNm (in season), for snapping harbour-edge fixes. */
+  /**
+   * Nearest categorised water within maxNm (in season), for snapping harbour-edge
+   * fixes. Inside a 'not categorised' override only the overrides are looked at,
+   * so the masked layers below cannot pull the fix back in.
+   */
   private nearestCategorised(p: LatLon, maxNm: number, season: Season): CategorisedWater | null {
     const pt = ll(p);
     const accept = AreaClassifier.inSeason(season);
+    const masked = this.overrideAt(p, season)?.category === NOT_CATEGORISED;
     let best: { cat: CategorisedWater | null; d: number } | null = null;
-    const consider = (layer: PolygonLayer, filter: (props: Record<string, unknown>) => boolean, fallback: CategorisedWater | null) => {
+    const consider = (layer: PolygonLayer, filter: (props: Record<string, unknown>) => boolean) => {
       const n = layer.findNearestWithin(pt, maxNm, filter);
-      if (n && (!best || n.distanceNm < best.d)) best = { cat: asCategory(n.props.category, fallback), d: n.distanceNm };
+      if (n && (!best || n.distanceNm < best.d)) best = { cat: asCategory(n.props.category), d: n.distanceNm };
     };
-    consider(this.oAll, () => true, null);
-    consider(season === 'winter' ? this.oWinter : this.oSummer, () => true, null);
-    consider(this.catLayer, accept, null);
+    consider(this.oLayer, (pr) => accept(pr) && pr.category !== NOT_CATEGORISED);
+    if (!masked) consider(this.catLayer, accept);
     return (best as { cat: CategorisedWater | null; d: number } | null)?.cat ?? null;
   }
 
@@ -252,10 +301,19 @@ export class AreaClassifier {
     return this.landLayer.nearestDistanceNm(ll(p));
   }
 
-  /** Distance to the edge of the nearest categorised water (0 inside it). */
+  /**
+   * Distance to the edge of the nearest categorised water (0 inside it). Used as
+   * the seaward edge of categorised waters and as the safe-haven distance, so it
+   * counts the WFD estuaries and the hand-drawn coastal harbours, but not the
+   * inland canals, lochs and lakes (marked non-tidal) or the 'none' masks.
+   */
   distanceFromCategorisedNm(p: LatLon, opts?: ClassifyOptions): number {
     if (this.categorisedWatersForPoint(p, opts)) return 0;
-    return this.catLayer.nearestDistanceNm(ll(p));
+    const pt = ll(p);
+    const inSeason = AreaClassifier.inSeason(resolveSeason(opts));
+    const harbour = this.oLayer.nearestDistanceNm(pt, (pr) => pr.category !== NOT_CATEGORISED && pr.tidal !== false && inSeason(pr));
+    const wfd = this.catLayer.nearestDistanceNm(pt, (pr) => !this.maskedWfd.has(pr.wfd_water_body) && inSeason(pr));
+    return Math.min(wfd, harbour);
   }
 
   /**
@@ -276,7 +334,7 @@ export class AreaClassifier {
     const onLand = this.landLayer.contains(pt);
     const base = { onLand, snapped: false };
     if (cat) {
-      if (this.nonTidalOverride(p)) {
+      if (this.nonTidalOverride(p, 0, season)) {
         return { ...base, areaCategory: cat, isTidal: false, atSea: false, inUk: true, basis: `Categorised water (MSN 1837 Cat ${cat}, non-tidal)` };
       }
       return { ...base, areaCategory: cat, isTidal: true, atSea: false, inUk: true, basis: `Categorised water (MSN 1837 Cat ${cat}, ${season})` };
@@ -294,7 +352,7 @@ export class AreaClassifier {
     }
     const near = this.nearestCategorised(p, SNAP_NM, season);
     if (near) {
-      const tidal = !this.nonTidalOverride(p, SNAP_NM);
+      const tidal = !this.nonTidalOverride(p, SNAP_NM, season);
       return { ...base, areaCategory: near, isTidal: tidal, atSea: false, inUk: true, snapped: true, basis: `Near the shore, snapped to categorised water (Cat ${near}${tidal ? '' : ', non-tidal'})` };
     }
     if (this.tidalLayer.findNearestWithin(pt, SNAP_NM)) {
