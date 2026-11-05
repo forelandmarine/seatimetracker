@@ -15,7 +15,7 @@ import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { engineService } from "../utils/engineService.js";
 import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
-import { boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
+import { BML_LICENCE_TYPES, boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
 import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, soleWatchPart, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
@@ -870,7 +870,7 @@ export function register(app: App, fastify: FastifyInstance) {
     try {
       const rows = await app.db.execute(sql`
         select min(issued_date)::text as issued from certificates
-        where user_id = ${userId} and certificate_type = 'boatmaster' and issued_date is not null
+        where user_id = ${userId} and certificate_type in (${sql.join(BML_LICENCE_TYPES.map((t) => sql`${t}`), sql`, `)}) and issued_date is not null
       `);
       licenceIssued = (((rows as any).rows ?? rows)[0]?.issued as string | null) ?? null;
     } catch (err) {
