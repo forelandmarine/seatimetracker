@@ -962,7 +962,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
       'The generic licence allows up to 12 passengers. Passenger, towing and pushing, and other operations need an endorsement, with its own service after the licence service (towing and pushing in tidal waters: 120 days over 12 months, age 21)',
       'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth. The app counts the Port of London LKE (60 days) as its own target',
-      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience',
+      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience. The Tier 2 targets show its guideline figures',
     ],
   },
   {
@@ -995,6 +995,60 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
 
   // Boatmasters' Licence endorsements (MSN 1853 Annex 5 Table C) and the Port of
   // London Local Knowledge Endorsement (Table B). Service must follow the licence service.
+  // Tier 2 (MSN 1853 11.8, Annex 6): no set qualifying service. The figures are
+  // the MCA's guideline for the generic licence, so the bar is guidance only.
+  {
+    id: 'bml-tier2-level2',
+    title: "Boatmasters' Licence Tier 2 Level 2 (guideline)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Restricted licence for named areas of category A to D waters and a limited coastal area (MSN 1853, Annex 6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 40, months: 6 },
+    requirements: [
+      {
+        label: 'Guideline Qualifying Service',
+        value: '40 days',
+        details: [
+          'In a deck capacity, over at least 6 months',
+          'No set service time: the MCA assesses your experience for the area and operation (MSN 1853 11.8)',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18. Not available for the Thames below Teddington',
+      'Guideline for operations (Annex 6): passengers up to 100, 40 days in 6 months; 101 to 250 passengers (age 20), 80 days in 6 months; towing, 80 days in 12 months; cargo, dredging, fast craft and Ro-Ro, 60 days in 9 months',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book as far as it applies',
+      'Revalidation: 50 days of qualifying service in the 5 years before (MSN 1853 19.3)',
+    ],
+  },
+  {
+    id: 'bml-tier2-level1',
+    title: "Boatmasters' Licence Tier 2 Level 1 (guideline)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Restricted licence for category A canals and named areas of category A, B or non-linked C waters (MSN 1853, Annex 6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 40, months: 6 },
+    requirements: [
+      {
+        label: 'Guideline Qualifying Service',
+        value: '40 days',
+        details: [
+          'In a deck capacity, in non-tidal waters, over at least 6 months',
+          'No set service time: the MCA assesses your experience for the area and operation (MSN 1853 11.8)',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18; 20 for 101 to 250 passengers and 21 for more than 250',
+      'Guideline for every operation (Annex 6): 40 days in a minimum of 6 months',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book as far as it applies',
+      'Revalidation: 50 days of qualifying service in the 5 years before (MSN 1853 19.3)',
+    ],
+  },
   {
     id: 'bml-passenger-tidal',
     title: "BML Passenger Endorsement (Tidal)",
