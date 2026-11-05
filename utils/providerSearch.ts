@@ -136,7 +136,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   eng1: 'seafarer seafarers seaman seamans medical approved doctor doctors examination exam ml5',
   pst: `${STCW_BASIC} sea survival`,
   fpff: `${STCW_BASIC} firefighting`,
-  efa: `${STCW_BASIC}`,
+  efa: `${STCW_BASIC} bml boatmaster`,
   pssr: `${STCW_BASIC}`,
   stcw_basic_refresher: `${STCW_BASIC} update updating revalidation firefighting fire fighting sea survival`,
   amsa_continued_competence: 'stcw refresher update revalidation',
@@ -181,11 +181,12 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   iyt_superyacht_hospitality: 'stew stewardess steward interior',
   iyt_superyacht_chef: 'chef cook',
   ship_cook: 'chef cook yacht superyacht',
-  nav_watch_rating: 'nwr',
+  nav_watch_rating: 'nwr tug',
+  tug_master_prep: 'mate oow officer 500 3000 towage',
   rating_nav_watch: 'nwr',
   nwr_special_route: 'nwr',
   uscg_rfpnw: 'nwr navigational watch rating',
-  able_seafarer_deck: 'ab able seaman',
+  able_seafarer_deck: 'ab able seaman tug',
   able_seafarer_engine: 'ab engine rating',
   uscg_able_seaman: 'ab deck',
   uscg_able_seafarer_deck: 'ab able seaman',
@@ -255,7 +256,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   opito_tbosiet: 'huet helicopter underwater escape offshore survival safety induction emergency tropical',
   opito_foet: 'huet helicopter underwater escape offshore survival emergency bosiet refresher further',
   opito_tfoet: 'huet helicopter underwater escape offshore survival emergency bosiet refresher tropical',
-  boatmaster: 'bml tier1 level2 tier1 level1 tier2',
+  boatmaster: 'bml tier1 level2 tier1 level1 tier2 towing tow endorsement',
   huet: 'helicopter underwater escape',
   tanker_oil_chem_basic: 'familiarisation familiarization tff',
   tanker_basic_oil_chem: 'familiarisation familiarization tff',
@@ -309,7 +310,6 @@ const FILLER = new Set([
   'around',
   'me',
   'nearest',
-  'local',
   'find',
   'where',
   'to',
@@ -445,6 +445,19 @@ const EXTRA_PLACES: Record<string, [number, number]> = {
   'st maarten': [18.03, -63.05],
   'sint maarten': [18.03, -63.05],
   newport: [41.49, -71.31],
+  thames: [51.47, 0.2],
+  'river thames': [51.47, 0.2],
+  gravesend: [51.44, 0.37],
+  tilbury: [51.46, 0.36],
+  greenwich: [51.48, 0.0],
+  woolwich: [51.49, 0.07],
+  erith: [51.48, 0.18],
+  dartford: [51.45, 0.22],
+  purfleet: [51.48, 0.24],
+  medway: [51.39, 0.54],
+  chatham: [51.38, 0.53],
+  sheerness: [51.44, 0.76],
+  southend: [51.54, 0.71],
   nz: [-36.85, 174.76],
   uk: [52.5, -1.5],
   usa: [26.12, -80.14],
@@ -563,6 +576,8 @@ interface Index {
   approvalPhrases: string[][];
   /** Words in so many provider names and towns ("sea", "marine") that they can't be required. */
   common: Set<string>;
+  /** Middle of each country's providers, to order other countries by how far away they are. */
+  centres: Map<string, { lat: number; lng: number }>;
 }
 const indexes = new WeakMap<Provider[], Index>();
 
@@ -625,6 +640,10 @@ function buildIndex(list: Provider[]): Index {
       .filter(([w, n]) => n > list.length * 0.06 && w.length > 2)
       .map(([w]) => w),
   );
+  const centres = new Map<string, { lat: number; lng: number }>();
+  const byCountry = new Map<string, Provider[]>();
+  for (const p of list) if (p.lat != null && p.lng != null) byCountry.set(p.country, [...(byCountry.get(p.country) ?? []), p]);
+  byCountry.forEach((ps, cc) => centres.set(cc, { lat: median(ps.map((p) => p.lat!)), lng: median(ps.map((p) => p.lng!)) }));
   return {
     entries,
     vocab: Array.from(vocab),
@@ -632,6 +651,7 @@ function buildIndex(list: Provider[]): Index {
     places,
     approvalPhrases,
     common,
+    centres,
   };
 }
 
@@ -838,7 +858,7 @@ function scoreEntry(e: Entry, terms: Term[]): { score: number; tier: number } | 
     let missing = 0;
     for (let i = 0; i < terms.length; i++) {
       // Crew shorthand indexed for the course counts a little more than a word that happens to be in a label.
-      const qc = Math.max(termInDoc(terms[i], d) * 3, kw ? termInDoc(terms[i], kw) * 3.2 : 0);
+      const qc = Math.max(termInDoc(terms[i], d) * 3, kw ? termInDoc(terms[i], kw) * 3.05 : 0);
       const q = Math.max(qc, meta[i]);
       if (!q) {
         if (!terms[i].optional) missing++;
@@ -852,6 +872,10 @@ function scoreEntry(e: Entry, terms: Term[]): { score: number; tier: number } | 
       // Words in the order typed: "master yachts" is Master (Yachts), not Yachtmaster's "yacht master".
       if (i > 0 && d.text.includes(` ${terms[i - 1].forms[0][0].text} ${terms[i].forms[0][0].text} `)) score += 1;
     }
+    // GWO and OPITO courses answer "sea survival" too, but only count for wind and
+    // offshore work: they follow the STCW and RYA ones unless the scheme is named.
+    if (/^(gwo|opito)_/.test(c) && !terms.some((t) => ['gwo', 'opito', 'wind', 'offshore'].some((w) => t.forms[0][0].text === w)))
+      score -= 1;
     if (!missing) {
       consider(score, inCourse === required ? 2 : 1);
       if (inCourse === required) matchedCourses++;
@@ -900,6 +924,18 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
   const ix = indexFor(list);
   const hc = f.homeCountry?.toUpperCase();
   const home = new Set(hc ? (HOME_GROUPS[hc] ?? [hc]) : []);
+  const homeCentre = hc ? ix.centres.get(hc) : undefined;
+  const away = new Map<string, number>();
+  const awayFromHome = (p: Provider) => {
+    if (!homeCentre) return 0;
+    let d = away.get(p.country);
+    if (d == null) {
+      const c = ix.centres.get(p.country);
+      d = c ? Math.round(haversineKm(homeCentre.lat, homeCentre.lng, c.lat, c.lng) / 500) : 99;
+      away.set(p.country, d);
+    }
+    return d;
+  };
   const { terms, place, placeWords, relax } = parseQuery(f.query, ix, hc);
   const placeAsName = placeWords.length ? placeWords.map((w) => termFor(w, ix.vocab)) : null;
   const courseCodes = f.course ? [f.course, ...(PROVIDER_CODES[f.course] ?? [])] : null;
@@ -964,6 +1000,8 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
       Math.floor(b.score) - Math.floor(a.score) ||
       Number(!home.has(a.provider.country)) - Number(!home.has(b.provider.country)) ||
       b.score - a.score ||
+      // Other countries nearest to the user's own first (a UK user sees Ireland before Australia).
+      awayFromHome(a.provider) - awayFromHome(b.provider) ||
       a.provider.country.localeCompare(b.provider.country) ||
       a.provider.name.localeCompare(b.provider.name)
     );
