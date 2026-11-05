@@ -957,11 +957,6 @@ export const togglePublicProfile = async (enabled: boolean) => {
   return res.json();
 };
 
-export const createTestSeaDayEntry = async () => {
-  const res = await authFetch('/api/sea-time/test-entry', { method: 'POST', body: {} });
-  return res.json();
-};
-
 export const generateSampleSeaTimeEntries = async () => {
   const res = await authFetch('/api/sea-time/generate-samples', { method: 'POST', body: {} });
   return res.json();

@@ -37,7 +37,6 @@ import { register as registerSeaTimeBulkRoutes } from './routes/sea-time-bulk.js
 import { register as registerAisRoutes } from './routes/ais.js';
 import { register as registerReportsRoutes } from './routes/reports.js';
 import { register as registerNotificationsRoutes } from './routes/notifications.js';
-import { register as registerTrackingRoutes } from './routes/tracking.js';
 import { register as registerSubscriptionRoutes } from './routes/subscription.js';
 import { register as registerUsersRoutes } from './routes/users.js';
 import { register as registerCertificatesRoutes } from './routes/certificates.js';
@@ -84,7 +83,8 @@ registerSeaTimeBulkRoutes(app, app.fastify);
 registerAisRoutes(app, app.fastify);
 registerReportsRoutes(app, app.fastify);
 registerNotificationsRoutes(app, app.fastify);
-registerTrackingRoutes(app, app.fastify);
+// /api/tracking/* (MyShipTracking proxy) is not registered: no sign-in check, unused by the app,
+// and it would spend API credits for anyone once a key is set.
 registerSubscriptionRoutes(app, app.fastify);
 registerUsersRoutes(app, app.fastify);
 registerCertificatesRoutes(app, app.fastify);
