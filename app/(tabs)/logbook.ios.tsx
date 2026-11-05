@@ -63,6 +63,7 @@ interface SeaTimeEntry {
   service_type?: string | null;
   /** Inside a sole watchkeeper period, so it also counts as watchkeeping. */
   is_sole_watch?: boolean;
+  signature?: { signer_name: string; signed_at: string } | null;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -1035,6 +1036,21 @@ export default function LogbookScreen() {
                           </View>
                         )}
 
+                        {entry.signature && (
+                          <View style={styles.entryRow}>
+                            <IconSymbol
+                              ios_icon_name="checkmark.seal.fill"
+                              android_material_icon_name="verified"
+                              size={16}
+                              color={colors.success}
+                              style={styles.entryIcon}
+                            />
+                            <Text style={styles.entryText}>
+                              Signed by {entry.signature.signer_name}, {entry.signature.signed_at.slice(0, 10).split('-').reverse().join('/')}
+                            </Text>
+                          </View>
+                        )}
+
                         {showSeaArea(entry) && (
                           <SeaAreaChip areaCategory={entry.area_category} isTidal={entry.is_tidal} />
                         )}
@@ -1220,6 +1236,21 @@ export default function LogbookScreen() {
                                     style={styles.entryIcon}
                                   />
                                   <Text style={[styles.entryText, { color: colors.primary }]}>{t('soleWatch.badge')}</Text>
+                                </View>
+                              )}
+
+                              {entry.signature && (
+                                <View style={styles.entryRow}>
+                                  <IconSymbol
+                                    ios_icon_name="checkmark.seal.fill"
+                                    android_material_icon_name="verified"
+                                    size={16}
+                                    color={colors.success}
+                                    style={styles.entryIcon}
+                                  />
+                                  <Text style={styles.entryText}>
+                                    Signed by {entry.signature.signer_name}, {entry.signature.signed_at.slice(0, 10).split('-').reverse().join('/')}
+                                  </Text>
                                 </View>
                               )}
 

@@ -20,6 +20,7 @@ import { formatHoursMinutes } from "../utils/duration.js";
 import { enrichEntryClassification } from "../utils/seaAreas/enrichEntry.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
 import { entriesWithSoleWatch } from "../services/soleWatch.js";
+import { SIGNATURE_CLEARED, changesSignedFields, entrySignatureView } from "../utils/entrySignature.js";
 
 // Validate certificate belongs to the authenticated user
 async function validateCertificateOwnership(app: App, certificateId: string | null | undefined, userId: string): Promise<boolean> {
@@ -148,6 +149,16 @@ const ENTRY_DETAIL_PROPS = {
   certificate_id: { type: ['string', 'null'] },
   from_port: { type: ['string', 'null'] },
   to_port: { type: ['string', 'null'] },
+  // Who signed the entry (entrySignatureView); the image itself is not sent
+  signature: {
+    type: ['object', 'null'],
+    properties: {
+      signer_name: { type: 'string' },
+      signer_capacity: { type: 'string' },
+      signed_at: { type: 'string' },
+      method: { type: 'string' },
+    },
+  },
 } as const;
 
 // Helper function to transform sea time entry for API response
@@ -224,6 +235,8 @@ function transformSeaTimeEntryForResponse(entry: any) {
     is_tidal: entry.is_tidal ?? null,
     is_categorised_water: entry.is_categorised_water ?? null,
     dual_capacity: entry.dual_capacity ?? null,
+    // Signed by the Master or a responsible person; null when unsigned or edited since (no image here)
+    signature: entrySignatureView(entry),
     created_at: entry.created_at.toISOString ? entry.created_at.toISOString() : entry.created_at,
     vessel: entry.vessel ? transformVesselForResponse(entry.vessel) : null,
   };
@@ -1163,6 +1176,11 @@ export function register(app: App, fastify: FastifyInstance) {
     if (is_tidal !== undefined) updateData.is_tidal = is_tidal;
     // MGN 496 4.5: dual deck and engine capacity counts at 50% in the workboat figures
     if (dual_capacity !== undefined) updateData.dual_capacity = dual_capacity;
+
+    // The signer signed the vessel, times and service type they saw: changing any of them removes the signature
+    if (current_entry.signature_image && changesSignedFields(current_entry, updateData)) {
+      Object.assign(updateData, SIGNATURE_CLEARED);
+    }
 
     // If no fields to update, return the current entry
     if (Object.keys(updateData).length === 0) {

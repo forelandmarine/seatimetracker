@@ -37,7 +37,7 @@ const STYLE = `
   footer { margin-top: 40px; font-size: 12px; color: var(--text); }
 `;
 
-function shell(title: string, body: string): string {
+export function shell(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex"><title>${escapeHtml(title)}</title><style>${STYLE}</style></head>
 <body><main>${body}<footer>SeaTime Tracker, Foreland Marine Consultancy Ltd</footer></main></body></html>`;

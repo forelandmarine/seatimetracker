@@ -1246,3 +1246,65 @@ export const getRyaService = async () => {
 export const cancelTestimonialRequest = async (id: string): Promise<void> => {
   await authFetch(`/api/testimonial-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
 };
+
+// Per-entry signatures: the Master or a responsible person signs one entry, on
+// this phone or from a one-time link the app shares (the server sends nothing).
+export type SignerCapacity = 'master' | 'responsible_person';
+
+export interface EntrySignature {
+  signer_name: string;
+  signer_capacity: SignerCapacity;
+  signed_at: string;
+  method: 'in_person' | 'link';
+}
+
+export interface EntrySignatureRequest {
+  id: string;
+  entry_id: string;
+  status: 'pending' | 'signed' | 'cancelled';
+  signer_name: string | null;
+  signed_at: string | null;
+  expires_at: string;
+  created_at: string;
+  expired: boolean;
+  /** Only on the response that creates the request. */
+  url?: string;
+}
+
+export interface EntrySignatureState {
+  signature: EntrySignature | null;
+  /** Why the entry cannot be signed yet, or null when it can. */
+  cannot_sign_reason: string | null;
+  /** MGN 496 5.3: the seafarer was Master, so a responsible person signs. */
+  served_as_master: boolean;
+  pending_link: EntrySignatureRequest | null;
+}
+
+export const getEntrySignature = async (entryId: string): Promise<EntrySignatureState> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`);
+  return res.json();
+};
+
+export const signEntryInPerson = async (
+  entryId: string,
+  body: { signer_name: string; signer_capacity: SignerCapacity; signature_image: string },
+): Promise<{ signature: EntrySignature | null }> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`, {
+    method: 'POST',
+    body: { ...body, confirm: true },
+  });
+  return res.json();
+};
+
+export const removeEntrySignature = async (entryId: string): Promise<void> => {
+  await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`, { method: 'DELETE' });
+};
+
+export const createEntrySignatureRequest = async (entryId: string): Promise<EntrySignatureRequest> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature-requests`, { method: 'POST' });
+  return res.json();
+};
+
+export const cancelEntrySignatureRequest = async (id: string): Promise<void> => {
+  await authFetch(`/api/entry-signature-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+};

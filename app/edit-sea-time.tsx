@@ -28,6 +28,7 @@ import { log, error as logError } from '@/utils/log';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { SeaAreaPicker, type SeaAreaValue } from '@/components/SeaAreaPicker';
 import { AreaGuidanceCard } from '@/components/AreaGuidanceCard';
+import { EntrySignatureCard } from '@/components/EntrySignatureCard';
 import { isCommercialVessel } from '@/components/SeaAreaChip';
 
 interface Vessel {
@@ -62,6 +63,7 @@ interface SeaTimeEntry {
   area_category?: SeaArea | null;
   is_tidal?: boolean | null;
   dual_capacity?: boolean | null;
+  signature?: seaTimeApi.EntrySignature | null;
 }
 
 type ServiceType = 'seagoing' | 'watchkeeping' | 'standby' | 'yard';
@@ -584,7 +586,7 @@ export default function EditSeaTimeScreen() {
     });
   };
 
-  const handleSave = async (futureDatesConfirmed?: boolean) => {
+  const handleSave = async (futureDatesConfirmed?: boolean, signatureChangeConfirmed?: boolean) => {
     if (saving) return;
     log('[EditSeaTimeScreen] User tapped Save');
 
@@ -597,8 +599,22 @@ export default function EditSeaTimeScreen() {
     if (!futureDatesConfirmed && confirmFutureDates(
         isYard ? yardDateForCheck(entry.start_time) : entry.start_time,
         isYard ? yardDateForCheck(entry.end_time) : entry.end_time,
-        () => handleSave(true),
+        () => handleSave(true, signatureChangeConfirmed),
       )) {
+      return;
+    }
+
+    // The signer signed the service type they saw: changing it removes the signature
+    const newServiceType = ({ seagoing: 'actual_sea_service', watchkeeping: 'watchkeeping_service', standby: 'standby_service', yard: 'yard_service' } as Record<string, string>)[serviceType] || 'actual_sea_service';
+    if (!signatureChangeConfirmed && entry.signature && newServiceType !== (entry.service_type || 'actual_sea_service')) {
+      Alert.alert(
+        'Remove the signature?',
+        `${entry.signature.signer_name} signed this entry with its current service type. Changing it removes the signature, and the entry will need signing again.`,
+        [
+          { text: 'Keep editing', style: 'cancel' },
+          { text: 'Save anyway', style: 'destructive', onPress: () => handleSave(futureDatesConfirmed, true) },
+        ],
+      );
       return;
     }
 
@@ -1199,6 +1215,8 @@ export default function EditSeaTimeScreen() {
               </View>
             </View>
           )}
+
+          {entry && <EntrySignatureCard entryId={entry.id} isDark={isDark} />}
 
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}

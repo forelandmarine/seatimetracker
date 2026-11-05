@@ -89,7 +89,12 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   from_port: text('from_port'),
   to_port: text('to_port'),
   cargo_type: text('cargo_type'),
-  signature_image: text('signature_image'), // Base64 PNG of user's signature for this entry's testimonial
+  signature_image: text('signature_image'), // data:image/png;base64 signature of the Master or responsible person for this entry (utils/entrySignature.ts)
+  signature_signer_name: text('signature_signer_name'),
+  signature_signer_capacity: text('signature_signer_capacity'), // 'master' | 'responsible_person'
+  signature_signed_at: timestamp('signature_signed_at', { withTimezone: true }),
+  signature_method: text('signature_method'), // 'in_person' | 'link'
+  signature_fingerprint: text('signature_fingerprint'), // vessel|start|end|service_type as signed; a mismatch means the signature no longer counts
   created_at: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('sea_time_entries_user_id_idx').on(table.user_id),
