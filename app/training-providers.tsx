@@ -23,11 +23,13 @@ import { courseLabel } from '@/utils/courseChecklist';
 import { localDate, todayIso } from '@/utils/localDate';
 import {
   searchProviders,
+  labelMatches,
   offeredCourses,
   offeredApprovals,
   approvalLabel,
   formatDistance,
   usesMiles,
+  phoneRegion,
   courseDatesFor,
   useProviders,
   type CourseDate,
@@ -54,6 +56,7 @@ export default function TrainingProvidersScreen() {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
   const miles = usesMiles();
+  const homeCountry = useMemo(() => phoneRegion(), []);
 
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState<string | null>(typeof params.course === 'string' ? params.course : null);
@@ -85,8 +88,8 @@ export default function TrainingProvidersScreen() {
 
   const radiusKm = RADII_KM[radiusIdx];
   const hits = useMemo(
-    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null }),
-    [directory, query, course, sector, approval, origin, radiusKm],
+    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }),
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry],
   );
 
   // Dates for the chosen course, across every provider (one request per course).
@@ -218,7 +221,7 @@ export default function TrainingProvidersScreen() {
       : picker === 'approval'
         ? approvals.map((a) => ({ key: a, label: approvalLabel(a) }))
         : [];
-  const filteredPicker = pickerItems.filter((i) => i.label.toLowerCase().includes(pickerQuery.trim().toLowerCase()));
+  const filteredPicker = pickerItems.filter((i) => labelMatches(i.label, i.key, pickerQuery));
 
   const header = (
     <View>
@@ -228,7 +231,7 @@ export default function TrainingProvidersScreen() {
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
-          placeholder="Provider, town or country"
+          placeholder="Course, provider, town or country"
           placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
           autoCorrect={false}
           returnKeyType="search"
