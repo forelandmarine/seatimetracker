@@ -140,7 +140,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   pssr: `${STCW_BASIC}`,
   stcw_basic_refresher: `${STCW_BASIC} update updating revalidation firefighting fire fighting sea survival`,
   amsa_continued_competence: 'stcw refresher update revalidation',
-  chief_second_eng_unlimited: 'class1 class2 class 1 2 chief second engineer unlimited ekg engineering knowledge motor management iii',
+  chief_second_eng_unlimited: 'class1 class2 chief second engineer unlimited ekg engineering knowledge motor management iii',
   oew_unlimited: 'class4 class 4 eoow',
   pst_refresher: 'stcw refresher update sea survival',
   fpff_refresher: 'stcw refresher update firefighting',
@@ -154,6 +154,10 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   bml_fire_safety: 'firefighting fighting',
   bml_fire_safety_restricted: 'firefighting fighting',
   powerboat_l1: 'pb1',
+  competent_crew: 'learn sail sailing beginner beginners start novice intro introduction',
+  essential_navigation: 'beginner beginners intro introduction',
+  day_skipper: 'sail sailing',
+  coastal_skipper: 'mile miles building builder sail sailing passage',
   powerboat_l2: 'pb2 powerboat2 tender driver driving',
   powerboat_intermediate: 'pb3',
   rya_tender_operator: 'tender driver driving',
@@ -193,11 +197,12 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   pscrb_refresher: 'survival craft lifeboat update',
   pscrb_otl_refresher: 'survival craft lifeboat',
   uscg_lifeboatman_limited: 'lifeboat lifeboatman',
-  ym_coastal: 'yachtmaster yacht master ym',
-  ym_offshore: 'yachtmaster yacht master ym',
-  ym_ocean: 'yachtmaster yacht master ym',
+  ym_coastal: 'yachtmaster yacht master ym fast track zero hero prep preparation mile miles building builder',
+  ym_offshore:
+    'yachtmaster yacht master ym fast track zero hero prep preparation mile miles building builder offshore passage sail sailing',
+  ym_ocean: 'yachtmaster yacht master ym ocean passage sail sailing',
   ym_offshore_sb: 'yachtmaster yacht master ym theory',
-  ym_ocean_sb: 'yachtmaster yacht master ym theory celestial',
+  ym_ocean_sb: 'yachtmaster yacht master ym theory celestial astro astronavigation navigation sextant sights',
   irish_sailing_yachtmaster: 'yacht master',
   iyt_master_of_yachts: 'yachtmaster yacht master',
   iyt_master_yachts_unlimited: 'yachtmaster yacht master',
@@ -218,7 +223,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   sv_eng_ges: 'small vessel sv engineer engineering y2 y1',
   sv_eng_workshop_skills: 'small vessel sv engineer engineering y4 y3',
   master_yachts_business_law: 'master yachts yacht 500 3000 master500 master3000',
-  master_yachts_celestial: 'master yachts yacht 500 3000 master500 master3000',
+  master_yachts_celestial: 'master yachts yacht 500 3000 master500 master3000 astro astronavigation sextant sights',
   master_yachts_nav: 'master yachts yacht 500 3000 master500 master3000',
   master_yachts_seamanship: 'master yachts yacht 500 3000 master500 master3000',
   master_yachts_stability: 'master yachts yacht 500 3000 master500 master3000',
@@ -264,6 +269,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   igf_advanced: 'lng',
   tc_cadet_deck: 'cadetship',
   tc_cadet_engine: 'cadetship',
+  uscg_celestial_nav: 'astro astronavigation sextant sights',
   uscg_oupv: 'six pack 6 captain captains license licence charter',
   uscg_master_100: 'captain captains license licence 100 ton tons',
   uscg_master_200: 'captain captains license licence ton tons',
@@ -368,6 +374,9 @@ const OPTIONAL = new Set([
   'generic',
   'online',
   'lvl',
+  'week',
+  'weeks',
+  'intensive',
 ]);
 
 // Shorthand for words the labels spell out.
@@ -960,4 +969,24 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
     );
   });
   return hits.map(({ provider, distanceKm }) => ({ provider, distanceKm }));
+}
+
+// Bodies that run their own course schemes worldwide. A course mostly taught
+// under one of these (RYA Yachtmaster, SRC, PPR) isn't an authority's course.
+const SCHEME_BODIES = ['rya', 'iyt', 'gwo', 'opito'];
+
+/**
+ * The approval "Find a course" starts on for a user of this authority: their
+ * own, unless nobody runs the course under it (ENG1 for a USCG user) or it is
+ * a scheme course mostly run under the RYA, IYT, GWO or OPITO (Yachtmaster
+ * theory, SRC, PPR), where an authority filter would hide most of the schools.
+ */
+export function defaultApproval(list: Provider[], course: string | null, authority: string | null): string | null {
+  if (!authority || !list.some((p) => p.approvals.includes(authority))) return null;
+  if (!course) return authority;
+  const codes = [course, ...(PROVIDER_CODES[course] ?? [])];
+  const runs = list.filter((p) => p.courses.some((c) => codes.includes(c)));
+  if (!runs.some((p) => p.approvals.includes(authority))) return null;
+  const scheme = SCHEME_BODIES.some((b) => b !== authority && runs.filter((p) => p.approvals.includes(b)).length >= runs.length * 0.6);
+  return scheme ? null : authority;
 }

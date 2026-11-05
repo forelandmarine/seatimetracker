@@ -5,7 +5,15 @@ import { courseLabel } from '@/utils/courseChecklist';
 import { OFFERED_COURSES } from '@/constants/offeredCourses';
 import { APPROVAL_LABELS, approvalLabel, type Provider } from '@/utils/providerSearch';
 
-export { searchProviders, haversineKm, labelMatches, providerCodesFor, approvalLabel, APPROVAL_LABELS } from '@/utils/providerSearch';
+export {
+  searchProviders,
+  haversineKm,
+  labelMatches,
+  providerCodesFor,
+  defaultApproval,
+  approvalLabel,
+  APPROVAL_LABELS,
+} from '@/utils/providerSearch';
 export type { Provider, ProviderFilters, ProviderHit } from '@/utils/providerSearch';
 
 /**

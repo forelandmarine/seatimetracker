@@ -2,13 +2,14 @@
 // so they measure how search handles phrasings nobody tuned it for.
 //   npx tsx scripts/search-eval-unseen.ts      (exits 1 if any query fails)
 // Set 1 first ran at 33/60 and set 2 at 48/60 (2026-11-05). After general
-// fixes: 60/60 and 59/60; "celestial nav" is a known miss, left untuned on purpose.
+// fixes: 60/60 and 59/60. "celestial nav" was left untuned on purpose and passed
+// once the Yachtmaster pass taught search that Ocean theory is celestial navigation.
 import { searchProviders } from '@/utils/providerSearch';
 import { TRAINING_PROVIDERS_JSON } from '@/backend/src/data/training-providers';
 const list = JSON.parse(TRAINING_PROVIDERS_JSON).providers as any[];
 const km = (a: number[], p: any) => { if (p.lat == null) return Infinity; const r = (d: number) => d * Math.PI / 180; const x = Math.sin(r(p.lat - a[0]) / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(p.lat)) * Math.sin(r(p.lng - a[1]) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)); };
 // [query, expected codes (any), near?, name expected in the top 3?]
-const KNOWN_MISSES = new Set(['celestial nav']);
+const KNOWN_MISSES = new Set<string>();
 const H: [string, string[], number[]?, string?][] = [
   // Set 1
   ['stcw basic course', ['pst','fpff','efa','pssr','stcw_basic_refresher','uscg_basic_training','amsa_cst','tc_med']],

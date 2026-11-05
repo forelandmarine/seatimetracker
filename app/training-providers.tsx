@@ -30,6 +30,7 @@ import {
   formatDistance,
   usesMiles,
   phoneRegion,
+  defaultApproval,
   courseDatesFor,
   useProviders,
   type CourseDate,
@@ -74,17 +75,20 @@ export default function TrainingProvidersScreen() {
   const directory = useMemo(() => providers ?? [], [providers]);
   const approvals = useMemo(() => offeredApprovals(directory), [directory]);
 
-  // Start on the user's own authority where providers carry that approval.
+  // Start on the user's own authority where providers run this course under it.
+  // Not for RYA-scheme courses (Yachtmaster theory, SRC, PPR) or ones nobody runs
+  // under their authority (ENG1 for a USCG user): that filter would hide the schools.
+  const initialCourse = typeof params.course === 'string' ? params.course : null;
   useEffect(() => {
     if (!providers) return;
     seaTimeApi
       .getUserProfile()
       .then((p) => {
-        const auth = p?.maritime_authority;
-        if (auth && approvals.includes(auth)) setApproval(auth);
+        const start = defaultApproval(providers, initialCourse, p?.maritime_authority ?? null);
+        if (start) setApproval(start);
       })
       .catch(() => {});
-  }, [providers, approvals]);
+  }, [providers, initialCourse]);
 
   const radiusKm = RADII_KM[radiusIdx];
   const hits = useMemo(

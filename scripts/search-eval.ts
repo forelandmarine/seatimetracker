@@ -179,7 +179,8 @@ const Qs: Q[] = [
   { tier: '4 master yacht', q: 'master 500', codes: ['master_500gt_prep', 'master_yachts_business_law', 'master_yachts_celestial', 'master_yachts_nav', 'master_yachts_seamanship', 'master_yachts_stability', 'fr_capitaine_500', 'be_yacht_master_500gt', 'hr_zapovjednik_jahte_b'] },
   { tier: '4 master yacht', q: 'master 3000', codes: ['master_yachts_business_law', 'master_yachts_celestial', 'master_yachts_nav', 'master_yachts_seamanship', 'master_yachts_stability', 'fr_capitaine_3000'] },
   { tier: '4 master yacht', q: 'master yachts', codes: ['master_yachts_business_law', 'master_yachts_celestial', 'master_yachts_nav', 'master_yachts_seamanship', 'master_yachts_stability', 'iyt_master_of_yachts', 'iyt_master_yachts_unlimited'] },
-  { tier: '4 master yacht', q: 'celestial navigation', codes: ['master_yachts_celestial', 'uscg_celestial_nav'] },
+  // Yachtmaster Ocean theory is celestial navigation too (added 2026-11-05 with the Yachtmaster pass).
+  { tier: '4 master yacht', q: 'celestial navigation', codes: ['master_yachts_celestial', 'uscg_celestial_nav', 'ym_ocean_sb'] },
   { tier: '4 master yacht', q: 'stability', codes: ['master_yachts_stability', 'wbc3_stability', 'seafish_stability', 'uscg_fishing_stability'] },
   { tier: '4 master yacht', q: 'business and law', codes: ['master_yachts_business_law'] },
   { tier: '4 master yacht', q: 'seamanship and meteorology', codes: ['master_yachts_seamanship'] },
