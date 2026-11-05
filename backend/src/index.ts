@@ -39,6 +39,7 @@ import { register as registerReportsRoutes } from './routes/reports.js';
 import { register as registerBoatmasterReportsRoutes } from './routes/boatmasterReports.js';
 import { register as registerWorkboatTestimonialRoutes } from './routes/workboatTestimonial.js';
 import { register as registerTestimonialRequestRoutes } from './routes/testimonialRequests.js';
+import { register as registerEntrySignatureRoutes } from './routes/entrySignatures.js';
 import { register as registerRyaReportsRoutes } from './routes/ryaReports.js';
 import { register as registerNotificationsRoutes } from './routes/notifications.js';
 import { register as registerSubscriptionRoutes } from './routes/subscription.js';
@@ -91,6 +92,7 @@ registerReportsRoutes(app, app.fastify);
 registerBoatmasterReportsRoutes(app, app.fastify);
 registerWorkboatTestimonialRoutes(app, app.fastify);
 registerTestimonialRequestRoutes(app, app.fastify);
+registerEntrySignatureRoutes(app, app.fastify);
 registerRyaReportsRoutes(app, app.fastify);
 registerNotificationsRoutes(app, app.fastify);
 // /api/tracking/* (MyShipTracking proxy) is not registered: no sign-in check, unused by the app,

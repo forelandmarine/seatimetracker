@@ -11,6 +11,7 @@ import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { entriesWithIdentity } from "../services/vesselIdentity.js";
 import { entriesWithSoleWatch } from "../services/soleWatch.js";
+import { withCurrentSignatures } from "../utils/entrySignature.js";
 import {
   ANNEX_C_CAPACITIES,
   annexCCapacity,
@@ -358,7 +359,7 @@ export function testimonialPdf(
     doc.addPage();
     doc.y = 60;
     sectionLabel(`Service record: ${vessel.vessel_name}`);
-    note(`${t.entries.length} entries${t.signed_entries ? `, ${t.signed_entries} signed on the day` : ''}. Hours are from sign-on to sign-off for each entry, in UTC.`);
+    note(`${t.entries.length} entries${t.signed_entries ? `, ${t.signed_entries} signed by the Master or a responsible person` : ''}. Hours are from sign-on to sign-off for each entry, in UTC.`);
     const cols = [62, 105, 105, 40, 70, 50, CW - 432];
     const heads = ['Date', 'From', 'To', 'Hours', 'Service', 'Capacity', 'Signed'];
     const headerRow = () => {
@@ -372,7 +373,7 @@ export function testimonialPdf(
     headerRow();
     for (const e of t.entries) {
       const signed = typeof e.signature_image === 'string' && e.signature_image.startsWith('data:image/');
-      const rowH = signed ? 24 : 15;
+      const rowH = signed ? 30 : 15;
       if (doc.y + rowH > PAGE_BOTTOM) { doc.addPage(); doc.y = 60; headerRow(); }
       const y = Math.round(doc.y);
       const cells = [
@@ -389,9 +390,13 @@ export function testimonialPdf(
       if (signed) {
         try {
           const buf = Buffer.from(e.signature_image!.split(',')[1], 'base64');
-          doc.image(buf, x + 3, y - 2, { fit: [cols[6] - 6, 22] });
+          doc.image(buf, x + 3, y - 2, { fit: [cols[6] - 6, 20] });
         } catch (err) {
           logger.warn({ err }, 'Failed to embed entry signature');
+        }
+        if (e.signature_signer_name) {
+          const by = `${e.signature_signer_name}${e.signature_signed_at ? `, ${ukDate(new Date(e.signature_signed_at))}` : ''}`;
+          doc.font('NunitoSans').fontSize(5.5).fillColor(DEEP_NAVY).text(by, x + 3, y + 19, { width: cols[6] - 6, height: 8, ellipsis: true });
         }
       }
       doc.strokeColor(BORDER).lineWidth(0.3).moveTo(ML, y + rowH - 2).lineTo(ML + CW, y + rowH - 2).stroke();
@@ -543,6 +548,8 @@ export async function loadTestimonialBlocks(app: App, userId: string, vesselId?:
   // Name and flag as they were on each entry's day; sole watchkeeper periods by date
   entries = await entriesWithIdentity(app, entries);
   entries = await entriesWithSoleWatch(app, entries);
+  // Only signatures that still match their entry go on the testimonial
+  entries = withCurrentSignatures(entries);
 
   const vessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
   const leave = await app.db.select().from(schema.leave_periods).where(eq(schema.leave_periods.user_id, userId));

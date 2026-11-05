@@ -154,6 +154,13 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="sign-entry"
+          options={{
+            title: 'Sign entry',
+            headerBackTitle: t('common.cancel'),
+          }}
+        />
+        <Stack.Screen
           name="signature"
           options={{
             title: t('navigation.signature'),

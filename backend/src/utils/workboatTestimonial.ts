@@ -58,6 +58,8 @@ export interface TestimonialEntry extends WorkboatEntry {
   from_port?: string | null;
   to_port?: string | null;
   signature_image?: string | null;
+  signature_signer_name?: string | null;
+  signature_signed_at?: Date | string | null;
 }
 
 export interface TestimonialLeave {
