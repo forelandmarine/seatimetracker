@@ -31,7 +31,7 @@ import {
   type ItemState,
 } from '@/utils/courseChecklist';
 import { COURSE_CATALOG } from '@/constants/courseCatalog';
-import { OFFERED_COURSES } from '@/constants/offeredCourses';
+import { providerCodesFor } from '@/utils/providerSearch';
 import { error as logError } from '@/utils/log';
 import { localDate, daysUntil } from '@/utils/localDate';
 
@@ -122,7 +122,6 @@ export default function OralChecklistScreen() {
 
   const result = useMemo(() => (targetId ? evaluateChecklist(targetId, certs) : null), [targetId, certs]);
   // Only offer "Find a course" where a listed provider runs it.
-  const offered = useMemo(() => new Set(OFFERED_COURSES), []);
 
   const groups = useMemo(() => {
     const states = result?.states ?? [];
@@ -194,7 +193,7 @@ export default function OralChecklistScreen() {
               </Text>
             ) : null}
           </TouchableOpacity>
-          {s.status === 'todo' && s.item.type !== 'manual' && offered.has(s.item.code) && (
+          {s.status === 'todo' && s.item.type !== 'manual' && providerCodesFor(s.item.code).length > 0 && (
             <TouchableOpacity
               onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } } as any)}
             >

@@ -23,11 +23,16 @@ import { courseLabel } from '@/utils/courseChecklist';
 import { localDate, todayIso } from '@/utils/localDate';
 import {
   searchProviders,
+  labelMatches,
   offeredCourses,
   offeredApprovals,
   approvalLabel,
   formatDistance,
   usesMiles,
+  phoneRegion,
+  defaultApproval,
+  closerUnderOtherApprovals,
+  hiddenByApproval,
   courseDatesFor,
   useProviders,
   type CourseDate,
@@ -54,6 +59,7 @@ export default function TrainingProvidersScreen() {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
   const miles = usesMiles();
+  const homeCountry = useMemo(() => phoneRegion(), []);
 
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState<string | null>(typeof params.course === 'string' ? params.course : null);
@@ -71,22 +77,47 @@ export default function TrainingProvidersScreen() {
   const directory = useMemo(() => providers ?? [], [providers]);
   const approvals = useMemo(() => offeredApprovals(directory), [directory]);
 
-  // Start on the user's own authority where providers carry that approval.
+  // Start on the user's own authority where providers run this course under it.
+  // Not for RYA-scheme courses (Yachtmaster theory, SRC, PPR) or ones nobody runs
+  // under their authority (ENG1 for a USCG user): that filter would hide the schools.
+  const initialCourse = typeof params.course === 'string' ? params.course : null;
   useEffect(() => {
     if (!providers) return;
     seaTimeApi
       .getUserProfile()
       .then((p) => {
-        const auth = p?.maritime_authority;
-        if (auth && approvals.includes(auth)) setApproval(auth);
+        const start = defaultApproval(providers, initialCourse, p?.maritime_authority ?? null);
+        if (start) setApproval(start);
       })
       .catch(() => {});
-  }, [providers, approvals]);
+  }, [providers, initialCourse]);
 
   const radiusKm = RADII_KM[radiusIdx];
   const hits = useMemo(
-    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null }),
-    [directory, query, course, sector, approval, origin, radiusKm],
+    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }),
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry],
+  );
+  // When the authority filter leaves nothing, say how many other providers match.
+  const otherApprovals = useMemo(
+    () =>
+      approval && hits.length === 0
+        ? searchProviders(directory, { query, course, sector, approval: null, origin, radiusKm: origin ? radiusKm : null, homeCountry }).length
+        : 0,
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
+  );
+  // The approval filter starts on by itself, so say what it hides from a search.
+  const hidden = useMemo(
+    () => (hits.length > 0 ? hiddenByApproval(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }) : 0),
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
+  );
+  // When it doesn't leave nothing but sends the nearest one far away (PSCRB on the
+  // Riviera for an MCA user), say how many closer providers run it under other approvals.
+  const closer = useMemo(
+    () =>
+      approval && hits.length > 0
+        ? closerUnderOtherApprovals(directory, { query, course, sector, approval, origin, radiusKm: null, homeCountry })
+        : { count: 0, nearestKm: null },
+    [directory, query, course, sector, approval, origin, homeCountry, hits.length],
   );
 
   // Dates for the chosen course, across every provider (one request per course).
@@ -218,7 +249,7 @@ export default function TrainingProvidersScreen() {
       : picker === 'approval'
         ? approvals.map((a) => ({ key: a, label: approvalLabel(a) }))
         : [];
-  const filteredPicker = pickerItems.filter((i) => i.label.toLowerCase().includes(pickerQuery.trim().toLowerCase()));
+  const filteredPicker = pickerItems.filter((i) => labelMatches(i.label, i.key, pickerQuery));
 
   const header = (
     <View>
@@ -228,7 +259,7 @@ export default function TrainingProvidersScreen() {
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
-          placeholder="Provider, town or country"
+          placeholder="Course, provider, town or country"
           placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}
           autoCorrect={false}
           returnKeyType="search"
@@ -254,9 +285,22 @@ export default function TrainingProvidersScreen() {
           <Text style={styles.count}>
             {hits.length} {hits.length === 1 ? 'provider' : 'providers'}
             {origin ? ' · nearest first' : ''}
+            {hidden > 0 && approval ? ` · ${hidden} more not ${approvalLabel(approval)} approved` : ''}
           </Text>
           <TouchableOpacity onPress={() => setShowMap(!showMap)}>
             <Text style={styles.link}>{showMap ? 'Show list' : 'Show on map'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {providers && closer.count > 0 && approval && closer.nearestKm != null && (
+        <View style={styles.hint}>
+          <Text style={styles.hintText}>
+            Nearest {approvalLabel(approval)} approved provider is {formatDistance(closer.nearestKm, miles)} away. {closer.count}{' '}
+            {closer.count === 1 ? 'provider runs' : 'providers run'} it closer under another approval. Check {approvalLabel(approval)} accepts the
+            certificate before you book.
+          </Text>
+          <TouchableOpacity onPress={() => setApproval(null)}>
+            <Text style={styles.link}>Show all approvals</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -325,7 +369,20 @@ export default function TrainingProvidersScreen() {
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No providers match</Text>
-              <Text style={styles.emptyText}>Try a wider distance, another course, or clear a filter.</Text>
+              {otherApprovals > 0 && approval ? (
+                <>
+                  <Text style={styles.emptyText}>
+                    No {approvalLabel(approval)} approved providers{origin ? ' in this distance' : ''}. {otherApprovals}{' '}
+                    {otherApprovals === 1 ? 'provider runs' : 'providers run'} it under another approval. Check {approvalLabel(approval)} accepts
+                    the certificate before you book.
+                  </Text>
+                  <TouchableOpacity onPress={() => setApproval(null)} style={{ marginTop: 10 }}>
+                    <Text style={styles.link}>Show all approvals</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>Try a wider distance, another course, or clear a filter.</Text>
+              )}
             </View>
           )
         }
@@ -394,6 +451,8 @@ function createStyles(isDark: boolean) {
     chipTextOn: { color: colors.white, fontWeight: '600' },
     resultsBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 18, marginTop: 14, marginBottom: 4 },
     count: { fontSize: 13, color: muted },
+    hint: { marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: card, gap: 6 },
+    hintText: { fontSize: 14, color: muted },
     link: { fontSize: 15, color: colors.primary, fontWeight: '600' },
     card: { backgroundColor: card, borderColor: border, borderWidth: 1, borderRadius: 12, marginHorizontal: 16, marginTop: 8, padding: 12 },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
