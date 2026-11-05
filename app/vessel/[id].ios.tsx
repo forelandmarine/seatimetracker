@@ -603,7 +603,7 @@ export default function VesselDetailScreen() {
             </View>
           )}
 
-          {vessel.engine_kilowatts && (
+          {!!vessel.engine_kilowatts && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Engine Kilowatts (KW)</Text>
               <Text style={styles.detailValue}>{vessel.engine_kilowatts} KW</Text>
