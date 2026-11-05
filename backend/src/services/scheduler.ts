@@ -1249,6 +1249,14 @@ async function handleSeaTimeEntries(
         return;
       }
 
+      if (!updated_entry) {
+        app.logger.info(
+          { taskId, vesselId, userId, entryId: existingEntryForDay.id },
+          'Entry was reviewed while being extended; leaving it as the user set it'
+        );
+        return;
+      }
+
       app.logger.info(
         {
           taskId,

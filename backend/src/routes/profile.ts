@@ -155,7 +155,7 @@ export function register(app: App, fastify: FastifyInstance) {
       email?: string;
       address?: string;
       tel_no?: string;
-      date_of_birth?: string;
+      date_of_birth?: string | null;
       srb_no?: string;
       nationality?: string;
       pya_membership_no?: string;
@@ -180,7 +180,7 @@ export function register(app: App, fastify: FastifyInstance) {
             email: { type: 'string', format: 'email' },
             address: { type: 'string' },
             tel_no: { type: 'string' },
-            date_of_birth: { type: 'string', format: 'date', description: 'Date in YYYY-MM-DD format' },
+            date_of_birth: { type: ['string', 'null'], format: 'date', description: 'Date in YYYY-MM-DD format, or null to clear' },
             srb_no: { type: 'string' },
             nationality: { type: 'string' },
             pya_membership_no: { type: 'string' },
@@ -319,7 +319,8 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Check if any fields are provided - if none, return current user data without updating
-      const hasUpdates = name || email || address || tel_no || date_of_birth || srb_no || nationality || pya_membership_no || department || maritime_authority || target_certification !== undefined || target_route !== undefined || route_start_date !== undefined || has_record_book !== undefined || vessel_sector !== undefined;
+      // !== undefined, so clearing a single field (sent as null or "") still counts as an update.
+      const hasUpdates = name !== undefined || email !== undefined || address !== undefined || tel_no !== undefined || date_of_birth !== undefined || srb_no !== undefined || nationality !== undefined || pya_membership_no !== undefined || department !== undefined || maritime_authority !== undefined || target_certification !== undefined || target_route !== undefined || route_start_date !== undefined || has_record_book !== undefined || vessel_sector !== undefined;
       if (!hasUpdates) {
         app.logger.info({ userId: user.id }, 'Profile update with no changes requested - returning current data');
         // Generate signed URL for profile image if it exists
@@ -372,8 +373,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
       // Update user
       const updateData: Record<string, any> = { updatedAt: new Date() };
-      if (name !== undefined) updateData.name = name;
-      if (email !== undefined) updateData.email = email;
+      // A blank name or email is never saved (they can't be cleared).
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
       if (address !== undefined) updateData.address = address || null;
       if (tel_no !== undefined) updateData.tel_no = tel_no || null;
       if (date_of_birth !== undefined) updateData.date_of_birth = date_of_birth || null;

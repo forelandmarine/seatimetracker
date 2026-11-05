@@ -55,7 +55,8 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
       setState(candidates.length ? { kind: 'results', candidates } : { kind: 'none', message: NOT_FOUND });
     } catch (e: any) {
       trackEvent('vessel_lookup', 'error');
-      const msg = e?.status === 429 && e?.message ? e.message : 'Vessel search is not available right now. Please enter the MMSI below.';
+      // 400 (name too short once "MY" etc. is removed) and 429 carry a message meant for the user.
+      const msg = (e?.status === 429 || e?.status === 400) && e?.message ? e.message : 'Vessel search is not available right now. Please enter the MMSI below.';
       setState({ kind: 'none', message: msg });
     }
   };

@@ -30,6 +30,11 @@ const CREDIT_FLOOR = 1_000;
 /** Passages handled per run, oldest first. */
 const BATCH_SIZE = 20;
 const HOUR_MS = 3_600_000;
+/** A passage whose check keeps failing is released unchecked after this long. */
+const GIVE_UP_AFTER_HOURS = 24;
+/** A failed passage waits this long before it's tried again, so it can't block the queue. */
+const RETRY_AFTER_MS = HOUR_MS;
+const lastFailureAt = new Map<string, number>();
 
 let lastRunAt = 0;
 let creditCache: { value: number | null; at: number } | null = null;
@@ -55,15 +60,52 @@ export async function processPassageRefinements(app: App, now: Date = new Date()
     .innerJoin(schema.vessels, eq(schema.vessels.id, schema.sea_time_entries.vessel_id))
     .where(and(eq(schema.sea_time_entries.status, CHECKING_STATUS), isNotNull(schema.sea_time_entries.end_time)))
     .orderBy(asc(schema.sea_time_entries.end_time))
-    .limit(BATCH_SIZE);
+    .limit(BATCH_SIZE * 5);
 
-  for (const { entry, vessel } of waiting) {
+  const due = waiting
+    .filter(({ entry }) => now.getTime() - (lastFailureAt.get(entry.id) ?? 0) >= RETRY_AFTER_MS)
+    .slice(0, BATCH_SIZE);
+  for (const { entry, vessel } of due) {
     try {
       await refineEntry(app, entry, vessel, now);
+      lastFailureAt.delete(entry.id);
     } catch (err) {
-      app.logger.error({ err, entryId: entry.id, vesselId: vessel.id }, 'Passage refinement failed; will retry');
+      lastFailureAt.set(entry.id, now.getTime());
+      const hoursSinceEnd = (now.getTime() - entry.end_time!.getTime()) / HOUR_MS;
+      if (hoursSinceEnd >= GIVE_UP_AFTER_HOURS) {
+        app.logger.error({ err, entryId: entry.id, vesselId: vessel.id }, 'Passage refinement keeps failing; releasing passage unchecked');
+        try {
+          await releaseUnchecked(app, entry, 'timed_out');
+          lastFailureAt.delete(entry.id);
+        } catch (releaseErr) {
+          app.logger.error({ err: releaseErr, entryId: entry.id }, 'Could not release passage; will retry');
+        }
+      } else {
+        app.logger.error({ err, entryId: entry.id, vesselId: vessel.id }, 'Passage refinement failed; will retry');
+      }
     }
   }
+}
+
+/** Hand the passage to the user with its live times, recording why it wasn't checked. */
+async function releaseUnchecked(
+  app: App,
+  entry: typeof schema.sea_time_entries.$inferSelect,
+  outcome: string
+): Promise<void> {
+  await release(app, entry, refinePassage(liveTimes(entry), []), outcome);
+}
+
+function liveTimes(entry: typeof schema.sea_time_entries.$inferSelect) {
+  const num = (v: unknown) => (v != null ? parseFloat(String(v)) : null);
+  return {
+    start_time: entry.start_time,
+    end_time: entry.end_time!,
+    start_latitude: num(entry.start_latitude),
+    start_longitude: num(entry.start_longitude),
+    end_latitude: num(entry.end_latitude),
+    end_longitude: num(entry.end_longitude),
+  };
 }
 
 async function refineEntry(
@@ -81,19 +123,12 @@ async function refineEntry(
     .limit(1);
   if (!isSettled({ now, entryEnd: end, latestCheck: latestCheck ?? null })) return;
 
-  const live = {
-    start_time: entry.start_time,
-    end_time: end,
-    start_latitude: entry.start_latitude != null ? parseFloat(String(entry.start_latitude)) : null,
-    start_longitude: entry.start_longitude != null ? parseFloat(String(entry.start_longitude)) : null,
-    end_latitude: entry.end_latitude != null ? parseFloat(String(entry.end_latitude)) : null,
-    end_longitude: entry.end_longitude != null ? parseFloat(String(entry.end_longitude)) : null,
-  };
+  const live = liveTimes(entry);
 
   const credits = await creditsRemaining();
   if (credits !== null && credits < CREDIT_FLOOR) {
     app.logger.warn({ entryId: entry.id, credits, floor: CREDIT_FLOOR }, 'Datalastic credits low: releasing passage unchecked');
-    await release(app, entry, refinePassage(live, []), 'skipped_low_credits');
+    await releaseUnchecked(app, entry, 'skipped_low_credits');
     return;
   }
 

@@ -450,16 +450,17 @@ export function register(app: App, fastify: FastifyInstance) {
         properties: {
           mmsi: { type: 'string' },
           vessel_name: { type: 'string' },
-          imo_number: { type: 'string' },
-          callsign: { type: 'string' },
-          flag: { type: 'string' },
-          official_number: { type: 'string' },
-          type: { type: 'string', enum: ['Motor', 'Sail'] },
-          length_metres: { type: 'number' },
-          gross_tonnes: { type: 'number' },
-          tonnage_itc: { type: 'number' },
-          engine_kilowatts: { type: 'number' },
-          engine_type: { type: 'string' },
+          // Nullable so a blank (or unparseable, sent as null) value is stored as null, never 0 or "".
+          imo_number: { type: ['string', 'null'] },
+          callsign: { type: ['string', 'null'] },
+          flag: { type: ['string', 'null'] },
+          official_number: { type: ['string', 'null'] },
+          type: { type: ['string', 'null'], maxLength: 60 },
+          length_metres: { type: ['number', 'null'] },
+          gross_tonnes: { type: ['number', 'null'] },
+          tonnage_itc: { type: ['number', 'null'] },
+          engine_kilowatts: { type: ['number', 'null'] },
+          engine_type: { type: ['string', 'null'] },
           sector: { type: 'string', enum: ['yachting', 'commercial'] },
           is_active: { type: 'boolean', default: false },
         },
@@ -625,15 +626,15 @@ export function register(app: App, fastify: FastifyInstance) {
         mmsi,
         vessel_name,
         imo_number: imo_number || null,
-        callsign,
-        flag,
-        official_number,
-        type,
+        callsign: callsign || null,
+        flag: flag || null,
+        official_number: official_number || null,
+        type: type || null,
         length_metres: length_metres != null ? String(length_metres) : null,
         gross_tonnes: gross_tonnes != null ? String(gross_tonnes) : null,
         tonnage_itc: tonnage_itc != null ? String(tonnage_itc) : null,
         engine_kilowatts: engine_kilowatts != null ? String(engine_kilowatts) : null,
-        engine_type,
+        engine_type: engine_type || null,
         // A new vessel takes the sector the user works in unless the client says
         // otherwise, so commercial time is kept apart from yacht time from the start.
         sector: sector ?? ((user as any).vessel_sector === 'commercial' ? 'commercial' : 'yachting'),
@@ -1027,14 +1028,15 @@ export function register(app: App, fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
+          // Nullable for the same reason as /particulars: null must not become 0 or "".
           vessel_name: { type: 'string' },
           imo_number: { type: ['string', 'null'] },
-          callsign: { type: 'string' },
-          flag: { type: 'string' },
-          official_number: { type: 'string' },
-          type: { type: 'string', enum: ['Motor', 'Sail'] },
-          length_metres: { type: 'number' },
-          gross_tonnes: { type: 'number' },
+          callsign: { type: ['string', 'null'] },
+          flag: { type: ['string', 'null'] },
+          official_number: { type: ['string', 'null'] },
+          type: { type: ['string', 'null'], maxLength: 60 },
+          length_metres: { type: ['number', 'null'] },
+          gross_tonnes: { type: ['number', 'null'] },
           tonnage_itc: { type: ['number', 'null'] },
           engine_kilowatts: { type: ['number', 'null'] },
           engine_type: { type: ['string', 'null'] },
@@ -1121,10 +1123,10 @@ export function register(app: App, fastify: FastifyInstance) {
     const updateData: Record<string, any> = { updated_at: new Date() };
     if (vessel_name !== undefined) updateData.vessel_name = vessel_name;
     if (imo_number !== undefined) updateData.imo_number = imo_number || null;
-    if (callsign !== undefined) updateData.callsign = callsign;
-    if (flag !== undefined) updateData.flag = flag;
-    if (official_number !== undefined) updateData.official_number = official_number;
-    if (type !== undefined) updateData.type = type;
+    if (callsign !== undefined) updateData.callsign = callsign || null;
+    if (flag !== undefined) updateData.flag = flag || null;
+    if (official_number !== undefined) updateData.official_number = official_number || null;
+    if (type !== undefined) updateData.type = type || null;
     if (length_metres !== undefined) updateData.length_metres = length_metres != null ? String(length_metres) : null;
     if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes != null ? String(gross_tonnes) : null;
     if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
@@ -1494,17 +1496,21 @@ export function register(app: App, fastify: FastifyInstance) {
         body: {
           type: 'object',
           properties: {
+            // Blank fields arrive as null and must stay null: a plain 'number' or
+            // 'string' type makes Fastify coerce null to 0 or "", which saved
+            // 0 m / 0 GT / 0 kW vessels. Type is free text because AIS fills it
+            // with values such as "Yacht", not only Motor or Sail.
             vessel_name: { type: 'string' },
             imo_number: { type: ['string', 'null'] },
-            callsign: { type: 'string' },
-            flag: { type: 'string' },
-            official_number: { type: 'string' },
-            type: { type: 'string', enum: ['Motor', 'Sail'] },
-            length_metres: { type: 'number' },
-            gross_tonnes: { type: 'number' },
+            callsign: { type: ['string', 'null'] },
+            flag: { type: ['string', 'null'] },
+            official_number: { type: ['string', 'null'] },
+            type: { type: ['string', 'null'], maxLength: 60 },
+            length_metres: { type: ['number', 'null'] },
+            gross_tonnes: { type: ['number', 'null'] },
             tonnage_itc: { type: ['number', 'null'] },
-            engine_kilowatts: { type: 'number' },
-            engine_type: { type: 'string' },
+            engine_kilowatts: { type: ['number', 'null'] },
+            engine_type: { type: ['string', 'null'] },
           },
         },
         response: {
@@ -1608,15 +1614,15 @@ export function register(app: App, fastify: FastifyInstance) {
       const updateData: Record<string, any> = { updated_at: new Date() };
       if (vessel_name !== undefined) updateData.vessel_name = vessel_name;
       if (imo_number !== undefined) updateData.imo_number = imo_number || null;
-      if (callsign !== undefined) updateData.callsign = callsign;
-      if (flag !== undefined) updateData.flag = flag;
-      if (official_number !== undefined) updateData.official_number = official_number;
-      if (type !== undefined) updateData.type = type;
+      if (callsign !== undefined) updateData.callsign = callsign || null;
+      if (flag !== undefined) updateData.flag = flag || null;
+      if (official_number !== undefined) updateData.official_number = official_number || null;
+      if (type !== undefined) updateData.type = type || null;
       if (length_metres !== undefined) updateData.length_metres = length_metres != null ? String(length_metres) : null;
       if (gross_tonnes !== undefined) updateData.gross_tonnes = gross_tonnes != null ? String(gross_tonnes) : null;
       if (tonnage_itc !== undefined) updateData.tonnage_itc = tonnage_itc != null ? String(tonnage_itc) : null;
       if (engine_kilowatts !== undefined) updateData.engine_kilowatts = engine_kilowatts != null ? String(engine_kilowatts) : null;
-      if (engine_type !== undefined) updateData.engine_type = engine_type;
+      if (engine_type !== undefined) updateData.engine_type = engine_type || null;
       Object.assign(updateData, await renameFromDetails(app, vessel[0], vessel_name));
 
       // Auto-fill blank fields from recent AIS data
