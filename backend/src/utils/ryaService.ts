@@ -34,7 +34,9 @@
  *   It loads whatever COMMERCIAL_PATHWAYS_ENABLED says, since hobby sailors take
  *   Ocean too. The RYA also counts charted objects capable of being used for navigation as
  *   land, and the coastline does not show rigs or offshore lights, so this can
- *   over-count near them. The astro sights are not checked.
+ *   over-count near them. Sights cannot be seen from AIS: the RYA's minimum
+ *   records (a sun-run-merpass or sun-run-sun sight, a compass check on a
+ *   celestial body, a log extract) are tick items on the Ocean checklist.
  * - Reduced targets (ryaTargets): holders of Yachtmaster Offshore in the other
  *   discipline need 25 days, 3 as skipper, 1,250 miles and 3 passages (1
  *   overnight, 1 as skipper). For Yachtmaster Coastal, with a Coastal Skipper
