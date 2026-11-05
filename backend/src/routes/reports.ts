@@ -15,7 +15,7 @@ import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
 import { boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
-import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -455,6 +455,7 @@ export function register(app: App, fastify: FastifyInstance) {
               properties: {
                 actual: { type: 'number' },
                 standby: { type: 'number' },
+                standby_logged: { type: 'number' },
                 yard: { type: 'number' },
                 port: { type: 'number' },
                 yard_credited: { type: 'number' },
@@ -680,9 +681,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Total qualifying sea service: yard service capped at 90 days (MSN 1858)
-    // and service in port excluded (not sea service). Stand-by is counted in
-    // full; its certificate-structure limits are left to the assessor. Days are
+    // Total qualifying sea service: yard service capped at 90 days, stand-by
+    // credited within its 14-day and previous-voyage limits (MSN 1858), and
+    // service in port excluded (not sea service). Days are
     // deduplicated across service types so a calendar date is only counted once.
     // `total_days` is this figure; `sea_service` exposes the breakdown behind it.
     const breakdown = qualifyingSeaDays(entries as any);
@@ -740,10 +741,12 @@ export function register(app: App, fastify: FastifyInstance) {
       if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
     });
 
+    // Stand-by is credited within the MSN 1858 limits (14 consecutive days, no
+    // more than the voyage before), so the yacht bars match the qualifying total.
     const entries_by_service_type = Object.entries(serviceTypeGroups)
       .map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(entries as any) : countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
@@ -753,8 +756,8 @@ export function register(app: App, fastify: FastifyInstance) {
     // over for the certificate being tracked. Untagged vessels count as yachts.
     const commercialEntries = entries.filter((entry) => entry.vessel?.sector === 'commercial');
     const yachtTypeGroups: { [key: string]: any[] } = {};
-    entries
-      .filter((entry) => entry.vessel?.sector !== 'commercial')
+    const yachtEntries = entries.filter((entry) => entry.vessel?.sector !== 'commercial');
+    yachtEntries
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
@@ -765,7 +768,7 @@ export function register(app: App, fastify: FastifyInstance) {
       vessels: [...new Set(commercialEntries.map((entry) => entry.vessel?.vessel_name || 'Unknown'))],
       yacht_entries_by_service_type: Object.entries(yachtTypeGroups).map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(yachtEntries as any) : countDistinctSeaDays(group as any),
       })),
     };
 
