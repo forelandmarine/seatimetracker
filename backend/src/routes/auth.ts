@@ -1111,10 +1111,13 @@ export function register(app: App, fastify: FastifyInstance) {
             },
           },
           400: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
     async (request, reply) => {
+      // Hands out a session without a password, so it only exists where explicitly enabled (never production).
+      if (process.env.ALLOW_TEST_USER !== 'true') return reply.code(404).send({ error: 'Not found' });
       const email = 'test@seatime.com';
       const password = 'testpassword123';
       const name = 'Test User';
