@@ -15,6 +15,7 @@ export {
   hiddenByApproval,
   approvalLabel,
   APPROVAL_LABELS,
+  searchHomeCountry,
 } from '@/utils/providerSearch';
 export type { Provider, ProviderFilters, ProviderHit } from '@/utils/providerSearch';
 

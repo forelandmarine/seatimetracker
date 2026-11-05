@@ -729,6 +729,7 @@ export const updateSeaTimeEntry = async (
     shipyard_service_days?: number | null; watchkeeping_days?: number | null;
     leave_days?: number | null; duties_and_tasks?: string | null;
     area_cruised?: string | null; notes?: string | null;
+    from_port?: string | null; to_port?: string | null;
     status?: string; service_type?: string | null;
     sea_days?: number | null;
     start_latitude?: number | null;

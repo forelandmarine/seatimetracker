@@ -5,12 +5,14 @@
  * signs.
  *
  * A signature covers what the signer saw: the vessel, the start and end times and
- * the service type. Those are kept as a fingerprint with the signature, and a
- * signature whose fingerprint no longer matches the entry does not count. Edits
+ * the service type (and the number of days for a declared day entry). Those are
+ * kept as a fingerprint with the signature, and a signature whose fingerprint no
+ * longer matches the entry does not count. Edits
  * through PUT /api/sea-time/:id also clear it outright.
  */
 
 import { annexCCapacity } from './workboatTestimonial.js';
+import { isDeclaredDayEntry } from './seaTime.js';
 
 export type SignerCapacity = 'master' | 'responsible_person';
 export type SignatureMethod = 'in_person' | 'link';
@@ -40,13 +42,20 @@ interface FingerprintFields {
   start_time: Date | string;
   end_time: Date | string | null;
   service_type: string | null;
+  sea_days?: number | null;
 }
 
 const iso = (d: Date | string | null) => (d == null ? '' : new Date(d).toISOString());
 
-/** What a signature covers: vessel, start, end and service type. */
+/**
+ * What a signature covers: vessel, start, end and service type. A declared day
+ * entry has no end time, so its sea_days count is covered instead (timed
+ * entries keep the four-part fingerprint, so their signatures are unchanged).
+ */
 export function signatureFingerprint(e: FingerprintFields): string {
-  return [e.vessel_id, iso(e.start_time), iso(e.end_time), e.service_type || 'actual_sea_service'].join('|');
+  const parts = [e.vessel_id, iso(e.start_time), iso(e.end_time), e.service_type || 'actual_sea_service'];
+  if (e.end_time == null) parts.push(`days:${e.sea_days ?? ''}`);
+  return parts.join('|');
 }
 
 export interface SignedEntryFields extends FingerprintFields {
@@ -100,9 +109,21 @@ export function entrySignatureView(e: SignedEntryFields) {
   };
 }
 
-/** Why an entry cannot be signed yet, or null when it can. */
-export function cannotSignReason(e: { status: string; end_time: Date | string | null }): string | null {
-  if (!e.end_time) return 'This entry has not finished yet. It can be signed once it has an end time.';
+/**
+ * Why an entry cannot be signed yet, or null when it can. An entry with no end
+ * time is either a declared day (logged with the end time left blank, stored
+ * with a sea_days count, see isDeclaredDayEntry) which can be signed, or a
+ * passage or shift still running, which cannot.
+ */
+export function cannotSignReason(e: {
+  status: string;
+  start_time?: Date | string;
+  end_time: Date | string | null;
+  sea_days?: number | null;
+}): string | null {
+  if (!e.end_time && !isDeclaredDayEntry({ start_time: e.start_time ?? '', ...e })) {
+    return 'This entry has not finished yet. It can be signed once it has an end time.';
+  }
   if (!SIGNABLE_STATUSES.includes(e.status)) return 'Only pending or confirmed entries can be signed.';
   return null;
 }
@@ -167,8 +188,12 @@ export interface EntrySnapshot {
   seafarer_name: string;
   vessel_name: string;
   start_time: string;
-  end_time: string;
-  hours: number;
+  /** Null for a declared day entry, which has a date and a sea_days count instead. */
+  end_time: string | null;
+  /** Null for a declared day entry. */
+  hours: number | null;
+  /** Declared days only: how many consecutive dates from start_time. */
+  sea_days?: number | null;
   service_type: string;
   capacity: string | null;
   from_port: string | null;
@@ -177,18 +202,19 @@ export interface EntrySnapshot {
 }
 
 export function entrySnapshot(
-  e: FingerprintFields & { rank?: string | null; from_port?: string | null; to_port?: string | null },
+  e: FingerprintFields & { rank?: string | null; from_port?: string | null; to_port?: string | null; sea_days?: number | null },
   vesselName: string,
   seafarerName: string,
 ): EntrySnapshot {
   const start = new Date(e.start_time);
-  const end = new Date(e.end_time!);
+  const end = e.end_time ? new Date(e.end_time) : null;
   return {
     seafarer_name: seafarerName,
     vessel_name: vesselName,
     start_time: start.toISOString(),
-    end_time: end.toISOString(),
-    hours: Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 10) / 10,
+    end_time: end ? end.toISOString() : null,
+    hours: end ? Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 10) / 10 : null,
+    sea_days: end ? null : Math.max(1, Math.floor(e.sea_days ?? 1)),
     service_type: SERVICE_TYPE_LABELS[e.service_type || 'actual_sea_service'] ?? 'Sea service',
     capacity: annexCCapacity(e.rank) ?? null,
     from_port: e.from_port ?? null,
