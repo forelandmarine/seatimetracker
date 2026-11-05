@@ -5,7 +5,7 @@ import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { entryFixes } from "../services/trackDistance.js";
 import { cumulativeTrackDistanceNm } from "../utils/seaTime.js";
-import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
+import { getCoastlineClassifier } from "../utils/seaAreas/singleton.js";
 import { OCEAN_OFFSHORE_FROM_LAND_NM, ryaHeldFrom, ryaService } from "../utils/ryaService.js";
 
 /**
@@ -33,7 +33,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const fixes = await entryFixes(app, userId, entries);
     // Same mileage as services/trackDistance.ts trackDistances, from the one read
     const track = new Map([...fixes].map(([id, f]) => [id, cumulativeTrackDistanceNm(f)] as const));
-    const classifier = getSeaAreaClassifier();
+    const classifier = getCoastlineClassifier();
     return reply.code(200).send(ryaService(entries as any, track, new Date(), {
       fixes,
       held: ryaHeldFrom(certs),

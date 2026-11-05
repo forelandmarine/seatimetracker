@@ -31,7 +31,8 @@
  *   skipper or mate, are listed as possible qualifying passages. Each also gets
  *   the miles run with both ends of an AIS leg more than 50 miles from land, from
  *   the classifier's coastline (Natural Earth 1:10m worldwide, ONS around GB).
- *   The RYA also counts charted objects capable of being used for navigation as
+ *   It loads whatever COMMERCIAL_PATHWAYS_ENABLED says, since hobby sailors take
+ *   Ocean too. The RYA also counts charted objects capable of being used for navigation as
  *   land, and the coastline does not show rigs or offshore lights, so this can
  *   over-count near them. The astro sights are not checked.
  * - Reduced targets (ryaTargets): holders of Yachtmaster Offshore in the other
