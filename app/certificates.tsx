@@ -28,6 +28,7 @@ import {
   type CertificateRevalidation,
 } from '@/utils/certificatesApi';
 import { RevalidationPanel } from '@/components/RevalidationPanel';
+import { syncRevalidationReminders } from '@/utils/revalidationReminders';
 import { error as logError } from '@/utils/log';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { getRequirementsByAuthority, getDefaultTargetId, type MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -88,7 +89,10 @@ export default function CertificatesScreen() {
       setCerts(Array.isArray(data) ? data : []);
       // Revalidation guidance is extra: the list still shows if it fails
       listRevalidation()
-        .then((rows) => setRevalidation(Object.fromEntries(rows.map((r) => [r.certificate_id, r]))))
+        .then((rows) => {
+          setRevalidation(Object.fromEntries(rows.map((r) => [r.certificate_id, r])));
+          void syncRevalidationReminders(rows);
+        })
         .catch((err) => logError('[Certificates] Failed to load revalidation:', err));
     } catch (err) {
       logError('[Certificates] Failed to load:', err);

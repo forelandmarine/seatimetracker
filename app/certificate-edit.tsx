@@ -30,6 +30,7 @@ import {
   scheduleCertificateExpiryReminders,
   cancelCertificateExpiryReminders,
 } from '@/utils/notifications';
+import { cancelRevalidationReminders } from '@/utils/revalidationReminders';
 import { error as logError } from '@/utils/log';
 
 export default function CertificateEditScreen() {
@@ -157,6 +158,7 @@ export default function CertificateEditScreen() {
             try {
               await deleteCertificate(editId);
               await cancelCertificateExpiryReminders(editId);
+              await cancelRevalidationReminders(editId);
               router.back();
             } catch (e: any) {
               Alert.alert('Error', e?.message || 'Failed to delete');
