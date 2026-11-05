@@ -29,6 +29,7 @@ import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { SeaAreaPicker, type SeaAreaValue } from '@/components/SeaAreaPicker';
 import { AreaGuidanceCard } from '@/components/AreaGuidanceCard';
 import { EntrySignatureCard } from '@/components/EntrySignatureCard';
+import { readVoyagePorts, writeVoyagePorts } from '@/utils/voyagePorts';
 import { isCommercialVessel } from '@/components/SeaAreaChip';
 
 interface Vessel {
@@ -49,6 +50,8 @@ interface SeaTimeEntry {
   sea_days: number | null;
   status: 'pending' | 'confirmed' | 'rejected';
   notes: string | null;
+  from_port?: string | null;
+  to_port?: string | null;
   created_at: string;
   start_latitude?: number | string | null;
   start_longitude?: number | string | null;
@@ -391,6 +394,8 @@ export default function EditSeaTimeScreen() {
   const [serviceType, setServiceType] = useState<ServiceType>('seagoing');
   const [voyageFrom, setVoyageFrom] = useState('');
   const [voyageTo, setVoyageTo] = useState('');
+  // Which From / To sides are stored in from_port / to_port rather than the notes
+  const [portsInColumns, setPortsInColumns] = useState({ from: false, to: false });
   const [startLat, setStartLat] = useState('');
   const [startLng, setStartLng] = useState('');
   const [endLat, setEndLat] = useState('');
@@ -486,26 +491,12 @@ export default function EditSeaTimeScreen() {
         : 'seagoing';
       setServiceType(uiServiceType);
       
-      const notesText = foundEntry.notes || '';
-      const lines = notesText.split('\n');
-      
-      let extractedFrom = '';
-      let extractedTo = '';
-      let remainingNotes: string[] = [];
-      
-      lines.forEach((line: string) => {
-        if (line.startsWith('From:')) {
-          extractedFrom = line.replace('From:', '').trim();
-        } else if (line.startsWith('To:')) {
-          extractedTo = line.replace('To:', '').trim();
-        } else if (line.trim()) {
-          remainingNotes.push(line);
-        }
-      });
-      
-      setVoyageFrom(extractedFrom);
-      setVoyageTo(extractedTo);
-      setNotes(remainingNotes.join('\n'));
+      // From / To: the from_port / to_port columns first, then the notes lines
+      const ports = readVoyagePorts(foundEntry);
+      setVoyageFrom(ports.from);
+      setVoyageTo(ports.to);
+      setNotes(ports.notes);
+      setPortsInColumns({ from: ports.fromInColumn, to: ports.toInColumn });
 
       // Populate position editor state
       setStartLat(foundEntry.start_latitude != null ? String(foundEntry.start_latitude) : '');
@@ -629,11 +620,14 @@ export default function EditSeaTimeScreen() {
       };
       const backendServiceType = serviceTypeMap[serviceType] || 'actual_sea_service';
 
-      const voyageFromNote = voyageFrom ? `From: ${voyageFrom}` : '';
-      const voyageToNote = voyageTo ? `To: ${voyageTo}` : '';
-      
-      const noteParts = [voyageFromNote, voyageToNote, notes].filter(Boolean);
-      const fullNotes = noteParts.join('\n');
+      // Each port goes back where it came from, so a from_port is not copied into the notes
+      const portFields = writeVoyagePorts({
+        from: voyageFrom,
+        to: voyageTo,
+        notes,
+        fromInColumn: portsInColumns.from,
+        toInColumn: portsInColumns.to,
+      });
 
       log('[EditSeaTimeScreen] Updating sea time entry');
 
@@ -645,7 +639,7 @@ export default function EditSeaTimeScreen() {
       };
 
       const updatePayload: any = {
-        notes: fullNotes || null,
+        ...portFields,
         service_type: backendServiceType,
         rank: rankCapacity || null,
         trade_area: tradeArea || null,
