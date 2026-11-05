@@ -96,6 +96,9 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   wbc3_ecs_bridge: { label: 'Small Ships ECS and Bridge Watchkeeping (module 1, MGN 691)', group: 'Workboat and offshore', validity: 'none' },
   wbc3_radar_met: { label: 'Small Ships Radar and Meteorology (module 2, MGN 691)', group: 'Workboat and offshore', validity: 'none' },
   wbc3_stability: { label: 'Small vessel stability course (Workboat Code Ed. 3)', group: 'Workboat and offshore', validity: 'none' },
+  // MSN 1868 8.4: masters and officers with an operational role on HSC Code craft need a
+  // type rating for the craft. Its expiry is the date on the certificate.
+  hsc_type_rating: { label: 'High Speed Craft Type Rating Certificate', group: 'Workboat and offshore', validity: 'as_dated' },
   opito_bosiet: { label: 'OPITO BOSIET', group: 'Workboat and offshore', validity: '2y' },
   opito_foet: { label: 'OPITO FOET', group: 'Workboat and offshore', validity: '2y' },
   huet: { label: 'HUET', group: 'Workboat and offshore', validity: '2y' },

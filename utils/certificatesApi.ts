@@ -146,6 +146,7 @@ const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
   course_wbc3_stability: ['workboat code'],
   course_food_hygiene: ['food safety'],
   course_rya_commercial_endorsement: ['ce'],
+  course_hsc_type_rating: ['hsc', 'fast craft', 'type rating'],
 };
 
 /** Lower-cases and drops spaces and punctuation, so "ENG-1" and "eng 1" both read "eng1". */

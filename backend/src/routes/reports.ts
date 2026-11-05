@@ -9,6 +9,8 @@ import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
 import { AREA_GUIDANCE_NOTE, areaDayBreakdown, areaReportLabel, tidalReportLabel } from '../utils/workboatArea.js';
+import { coastalDayBreakdown, coastalLimitByEntry, coastalReportLabel, type CoastalVesselFix } from '../utils/nearCoastal.js';
+import { coastalFixes, nearCoastalMeasures } from '../services/nearCoastal.js';
 import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { engineService } from "../utils/engineService.js";
 import { tugService } from "../utils/tugService.js";
@@ -181,12 +183,30 @@ export function register(app: App, fastify: FastifyInstance) {
     // Workboat sea area columns for commercial users (guidance only)
     const csvCommercial =
       (user as any).vessel_sector === 'commercial' || entries.some((e) => isCommercialWork(e.vessel));
-    const areaHeaders = csvCommercial ? [`Sea Area (${AREA_GUIDANCE_NOTE})`, 'Tidal', 'Dual Deck and Engine Capacity'] : [];
+    // Near coastal or unlimited from the AIS fixes (MSN 1856 s.5: 150 nm from a UK safe haven, 30 nm from Ireland)
+    let coastalByEntry = new Map<string, { limit: 'near_coastal' | 'unlimited' | null }>();
+    const csvMeasures = csvCommercial ? nearCoastalMeasures() : null;
+    if (csvMeasures) {
+      try {
+        const commercialEntries = entries.filter((e) => isCommercialWork(e.vessel, (user as any).vessel_sector));
+        coastalByEntry = coastalLimitByEntry(commercialEntries, await coastalFixes(app, userId, commercialEntries), csvMeasures);
+      } catch (err) {
+        app.logger.warn({ err }, 'Near-coastal labels failed; CSV sent without them');
+      }
+    }
+    const areaHeaders = csvCommercial
+      ? [`Sea Area (${AREA_GUIDANCE_NOTE})`, 'Tidal', 'Near Coastal or Unlimited (from AIS)', 'Dual Deck and Engine Capacity']
+      : [];
     const areaCells = (entry: any): string[] =>
       csvCommercial
         ? isCommercialWork(entry.vessel, (user as any).vessel_sector)
-          ? [areaReportLabel(entry.area_category), tidalReportLabel(entry.is_tidal), entry.dual_capacity ? 'Yes (counts at 50%)' : '']
-          : ['', '', '']
+          ? [
+              areaReportLabel(entry.area_category),
+              tidalReportLabel(entry.is_tidal),
+              coastalReportLabel(coastalByEntry.get(entry.id)?.limit),
+              entry.dual_capacity ? 'Yes (counts at 50%)' : '',
+            ]
+          : ['', '', '', '']
         : [];
 
     // SECTION 1: Build CSV with vessel particulars (existing summary section)
@@ -1153,6 +1173,18 @@ export function register(app: App, fastify: FastifyInstance) {
     // Get user's vessels only
     const allVessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
 
+    // Near coastal or unlimited days on commercial vessels, from the AIS fixes (MSN 1856 s.5)
+    const pdfCommercialEntries = confirmedEntries.filter((e) => isCommercialWork(e.vessel, (userProfile as any).vessel_sector));
+    const pdfMeasures = pdfCommercialEntries.length > 0 ? nearCoastalMeasures() : null;
+    let pdfCoastalFixes: CoastalVesselFix[] = [];
+    if (pdfMeasures) {
+      try {
+        pdfCoastalFixes = await coastalFixes(app, userId, pdfCommercialEntries);
+      } catch (err) {
+        app.logger.warn({ err }, 'Near-coastal fix lookup failed; PDF sent without it');
+      }
+    }
+
     // Fetch leave periods for the user
     const pdfLeavePeriods = await app.db.select()
       .from(schema.leave_periods)
@@ -1489,8 +1521,13 @@ export function register(app: App, fastify: FastifyInstance) {
         // Workboat sea areas (commercial users, guidance only)
         if (isCommercialWork(vessel, (userProfile as any).vessel_sector)) {
           const b = areaDayBreakdown(vesselEntries as any);
+          const nc = pdfMeasures ? coastalDayBreakdown(vesselEntries as any, pdfCoastalFixes, pdfMeasures) : null;
           const areaRows: [string, number][] = (
-            [['Cat A', b.A], ['Cat B', b.B], ['Cat C', b.C], ['Cat D', b.D], ['Sea', b.sea], ['Not classified', b.not_classified], ['Tidal', b.tidal], ['Non-tidal', b.non_tidal]] as [string, number][]
+            [
+              ['Cat A', b.A], ['Cat B', b.B], ['Cat C', b.C], ['Cat D', b.D], ['Sea', b.sea], ['Not classified', b.not_classified],
+              ['Tidal', b.tidal], ['Non-tidal', b.non_tidal],
+              ['Near coastal (from AIS)', nc?.near_coastal ?? 0], ['Unlimited (from AIS)', nc?.unlimited ?? 0],
+            ] as [string, number][]
           ).filter(([, n]) => n > 0);
           if (areaRows.length > 0) {
             ensureSpace(30 + areaRows.length * 16);

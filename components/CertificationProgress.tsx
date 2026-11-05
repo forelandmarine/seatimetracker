@@ -169,6 +169,8 @@ export interface BmlEndorsementsSummary {
   licence_issued: string | null;
   passenger: BmlEndorsementCount;
   towing: BmlEndorsementCount;
+  /** Deck service on high-speed craft (fast craft endorsement); missing from older backends. */
+  fast_craft?: BmlEndorsementCount;
   lke_full: { days: number; months: number };
   lke_lower: { days: number; months: number };
   lke_upper: { days: number; months: number };
@@ -596,9 +598,12 @@ export function CertificationProgress({
           ];
         }
         const { kind, water } = route.endorsement!;
-        const c = kind === 'passenger' ? e.passenger : e.towing;
+        const c = kind === 'passenger' ? e.passenger : kind === 'fast_craft' ? e.fast_craft : e.towing;
+        if (!c) return [];
+        const onLabel =
+          kind === 'passenger' ? 'On Passenger Vessels' : kind === 'fast_craft' ? 'On High-Speed Craft' : 'On Towing and Pushing Vessels';
         return [
-          { label: kind === 'passenger' ? 'On Passenger Vessels' : 'On Towing and Pushing Vessels', current: c.days, required: route.days },
+          { label: onLabel, current: c.days, required: route.days },
           {
             label: water === 'tidal' ? 'Of Which in Tidal Waters' : 'Of Which in Non-Tidal Waters',
             current: water === 'tidal' ? c.tidal_days : c.non_tidal_days,

@@ -110,6 +110,7 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "signals": "Signals certificate",
   "coc_oow_tug_500": "OOW (Tug) <500 GT Near Coastal CoC",
   "coc_oow_tug_3000": "OOW (Tug) <3000 GT Near Coastal CoC",
+  "bml_fast_craft_training": "Fast craft ISM or DSM training, or type rating",
   "bml_work_record": "BML Work Record (MSF 4366)",
   "bml_trb": "BML Training Record Book",
   "bml_first_aid": "Boatmasters' Licence first aid course",
@@ -6751,6 +6752,84 @@ export const CHECKLISTS: Record<string, Checklist> = {
       "MSN 1853"
     ]
   },
+  "bml-fast-craft-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on a high-speed craft on its normal routes, at least half in tidal waters, over at least 12 months, after the licence service (passenger figure)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-fast-craft-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on a high-speed craft on its normal routes, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
   "pla-lke-full": {
     "exam": "oral",
     "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
@@ -6856,4 +6935,4 @@ export const CHECKLISTS: Record<string, Checklist> = {
 };
 
 /** Every course code some checklist asks for (offered as certificate types). */
-export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","bml_fire_safety","bml_first_aid","bml_pswt","bml_trb","bml_work_record","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_tug_3000","coc_oow_tug_500","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","signals","sqa_035_21","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","tug_msq_units","tug_trb_l2","tug_trb_l3","tug_trb_l4","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_sb","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];
+export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","bml_fire_safety","bml_fast_craft_training","bml_first_aid","bml_pswt","bml_trb","bml_work_record","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_tug_3000","coc_oow_tug_500","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","signals","sqa_035_21","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","tug_msq_units","tug_trb_l2","tug_trb_l3","tug_trb_l4","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_sb","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];

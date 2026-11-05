@@ -28,6 +28,7 @@ import {
   type CertificateRevalidation,
 } from '@/utils/certificatesApi';
 import { RevalidationPanel } from '@/components/RevalidationPanel';
+import { HighSpeedCertificateCard } from '@/components/HighSpeedCertificateCard';
 import { error as logError } from '@/utils/log';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { getRequirementsByAuthority, getDefaultTargetId, type MaritimeAuthority } from '@/constants/mcaRequirements';
@@ -320,6 +321,8 @@ export default function CertificatesScreen() {
         )}
 
         {!loading && !(certs.length === 0 && loadError) && quickAddSection}
+        {/* WBC3 Table A5.1 Note F: Advanced Powerboat for the master of a high-speed workboat */}
+        {!loading && <HighSpeedCertificateCard refreshKey={certs} onAdd={tick} savingCode={savingCode} />}
 
         {/* Lightship CTA */}
         <View style={styles.lightshipCard}>

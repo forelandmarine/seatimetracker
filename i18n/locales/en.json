@@ -416,6 +416,18 @@
     "revalBody": "{{days}} of {{required}} days as an officer on vessels of 15 m or over in the last 5 years.",
     "revalMet": "You have the 12 months of officer service.",
     "revalAssumed": "Counts entries logged with a deck officer rank or as watchkeeping, and vessels where you are the sole watchkeeper. A valid medical and GOC are also needed and are not checked here.",
-    "dualDays": "{{count}} dual capacity days counted at 50%."
+    "dualDays": "{{count}} dual capacity days counted at 50%.",
+    "nearCoastal": "Near coastal",
+    "unlimited": "Unlimited",
+    "notMeasured": "No AIS positions",
+    "coastalTitle": "Near coastal or unlimited",
+    "coastal_near_coastal": "Near coastal: every AIS position was within 150 nm of a UK harbour or estuary, or 30 nm of Ireland.",
+    "coastal_unlimited": "Unlimited: at least one AIS position was beyond 150 nm of a UK harbour or estuary and 30 nm of Ireland.",
+    "coastalFurthest": "Furthest out: {{haven}} nm from the nearest listed harbour or estuary.",
+    "coastalDefinition": "Near coastal is 150 miles from a safe haven on the coast of the UK and 30 miles from Ireland (MSN 1856, MSN 1857).",
+    "highSpeedTitle": "High-speed craft (Table A5.1 Note F)",
+    "highSpeedBody": "On a high-speed craft the master needs at least the RYA/MCA Advanced Powerboat Certificate, taken in a high-speed vessel.",
+    "highSpeedHeld": "Advanced Powerboat is on file.",
+    "highSpeedMissing": "No Advanced Powerboat certificate on file."
   }
 }

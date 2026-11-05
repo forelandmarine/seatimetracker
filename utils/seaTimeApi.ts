@@ -752,8 +752,18 @@ export interface SeaAreaBreakdown {
   not_classified: number; tidal: number; non_tidal: number; total: number;
 }
 
+/** Days near coastal or unlimited from AIS (MSN 1856 s.5: 150 nm from a UK safe haven, 30 nm from Ireland). */
+export interface CoastalDays {
+  near_coastal: number;
+  unlimited: number;
+  not_measured: number;
+  total: number;
+}
+
 /** Days by sea area for commercial work (guidance only). */
-export const getSeaAreaBreakdown = async (vesselId?: string): Promise<{ commercial: boolean; breakdown: SeaAreaBreakdown }> => {
+export const getSeaAreaBreakdown = async (
+  vesselId?: string,
+): Promise<{ commercial: boolean; breakdown: SeaAreaBreakdown; coastal?: CoastalDays | null }> => {
   const res = await authFetch(vesselId ? `/api/sea-areas/breakdown?vesselId=${encodeURIComponent(vesselId)}` : '/api/sea-areas/breakdown');
   return res.json();
 };
@@ -775,6 +785,10 @@ export interface AreaGuidance {
   is_categorised_water: boolean | null;
   wbc3: Wbc3Guidance | null;
   tickets: { id: string; note?: string; covers: number[]; held: boolean }[];
+  /** Near coastal or unlimited from this trip's AIS fixes (guidance). */
+  near_coastal?: { limit: 'near_coastal' | 'unlimited' | null; max_from_safe_haven_nm: number | null; fixes: number } | null;
+  /** On a high-speed craft: WBC3 Table A5.1 Note F (master needs Advanced Powerboat). */
+  high_speed?: { rule: string; as_master: boolean; powerboat_advanced_held: boolean } | null;
 }
 
 /** One trip's Workboat Code area category and the tickets that cover it (guidance only). */
@@ -1187,6 +1201,26 @@ export { getAuthToken, getApiHeaders };
 // Boatmasters' Licence settings for a vessel (MSN 1853). default_trade_area 'inland'
 // makes its entries logged without a trade area count as Inland (river boats with no
 // AIS); null clears it. is_passenger marks a passenger vessel for the passenger endorsement.
+/** Mark a vessel as a high-speed craft (WBC3 Table A5.1 Note F, BML fast craft endorsement). */
+export const updateVesselHighSpeed = async (vesselId: string, isHighSpeed: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/high-speed`, { method: 'PUT', body: { is_high_speed: isHighSpeed } });
+  return normalizeVessel(await res.json());
+};
+
+/** The certificate the user's high-speed workboats call for (WBC3 Table A5.1 Note F), or null. */
+export interface HighSpeedNeed {
+  certificate_type: 'course_powerboat_advanced';
+  rule: 'wbc3_table_a5_1_note_f';
+  vessels: { id: string; name: string }[];
+  served_as_master: boolean;
+  held: boolean;
+}
+
+export const getHighSpeedNeeds = async (): Promise<HighSpeedNeed | null> => {
+  const res = await authFetch('/api/certificates/high-speed');
+  return res.json();
+};
+
 export const updateVesselBoatmaster = async (
   vesselId: string,
   settings: { default_trade_area?: 'inland' | null; is_passenger?: boolean },

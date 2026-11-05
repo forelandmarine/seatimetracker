@@ -28,6 +28,7 @@ import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { TugToggle } from '@/components/TugToggle';
+import { HighSpeedToggle } from '@/components/HighSpeedToggle';
 import { BoatmasterVesselCard } from '@/components/BoatmasterVesselCard';
 import { WorkboatTestimonialButton } from '@/components/WorkboatTestimonialButton';
 import { SeaAreaBreakdownCard } from '@/components/SeaAreaBreakdownCard';
@@ -55,6 +56,7 @@ interface Vessel {
   tug_capacity?: string | null;
   default_trade_area?: string | null;
   is_passenger?: boolean | null;
+  is_high_speed?: boolean | null;
   imo_number?: string;
   tonnage_itc?: number;
 }
@@ -754,6 +756,17 @@ export default function VesselDetailScreen() {
             setVessel((v) => (v ? { ...v, is_tug: isTug, tug_capacity: tugCapacity } : v));
             seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
             triggerRefresh(); // Home totals and profile progress use these flags too
+          }}
+        />
+
+        {/* High-speed craft: WBC3 Note F (Advanced Powerboat for the master) and the BML fast craft endorsement */}
+        <HighSpeedToggle
+          vesselId={vessel.id}
+          isHighSpeed={vessel.is_high_speed}
+          onChange={(isHighSpeed) => {
+            setVessel((v) => (v ? { ...v, is_high_speed: isHighSpeed } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Profile progress uses this flag too
           }}
         />
 

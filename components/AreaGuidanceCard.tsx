@@ -13,8 +13,9 @@ interface Props {
 /**
  * For a workboat trip: where it went (sea area chip), the Workboat Code 3 Area
  * Category its AIS track fits (3.10.1), and which tickets in Table A5.1 cover
- * that area, against the certificates on file. Guidance only. Hidden for
- * yachting users.
+ * that area, against the certificates on file; whether the trip stayed near
+ * coastal (MSN 1856 s.5); and, on a high-speed craft, the Advanced Powerboat
+ * rule (WBC3 Table A5.1 Note F). Guidance only. Hidden for yachting users.
  */
 export function AreaGuidanceCard({ entryId }: Props) {
   const { t } = useTranslation();
@@ -36,6 +37,8 @@ export function AreaGuidanceCard({ entryId }: Props) {
   const w = data.wbc3;
   const conditions = (list: string[]) => list.map((c) => t(`seaAreas.condition_${c}`)).join(t('seaAreas.wbc3And'));
   const held = data.tickets.filter((x) => x.held);
+  const nc = data.near_coastal;
+  const hs = data.high_speed;
 
   return (
     <View style={styles.card}>
@@ -76,6 +79,26 @@ export function AreaGuidanceCard({ entryId }: Props) {
             </View>
           ))}
           {held.length === 0 && <Text style={styles.note}>{t('seaAreas.noTicketHeld')}</Text>}
+        </>
+      )}
+      {nc?.limit && (
+        <>
+          <Text style={styles.label}>{t('seaAreas.coastalTitle')}</Text>
+          <Text style={styles.option}>{t(`seaAreas.coastal_${nc.limit}`)}</Text>
+          {nc.max_from_safe_haven_nm != null && nc.max_from_safe_haven_nm > 0 && (
+            <Text style={styles.note}>{t('seaAreas.coastalFurthest', { haven: nc.max_from_safe_haven_nm })}</Text>
+          )}
+          <Text style={styles.note}>{t('seaAreas.coastalDefinition')}</Text>
+        </>
+      )}
+
+      {hs && (
+        <>
+          <Text style={styles.label}>{t('seaAreas.highSpeedTitle')}</Text>
+          <Text style={styles.option}>{t('seaAreas.highSpeedBody')}</Text>
+          <Text style={[styles.note, hs.powerboat_advanced_held && styles.ticketHeld]}>
+            {t(hs.powerboat_advanced_held ? 'seaAreas.highSpeedHeld' : 'seaAreas.highSpeedMissing')}
+          </Text>
         </>
       )}
       <Text style={styles.note}>{t('seaAreas.areaGuidance')}</Text>

@@ -414,6 +414,18 @@
     "revalBody": "{{days}} sur {{required}} jours comme officier sur des navires de 15 m ou plus ces 5 dernières années.",
     "revalMet": "Vous avez les 12 mois de service comme officier.",
     "revalAssumed": "Compte les entrées avec un grade d'officier de pont ou en quart, et les navires où vous êtes seul de quart. Un certificat médical et un GOC valides sont aussi requis et ne sont pas vérifiés ici.",
-    "dualDays": "{{count}} jours en double fonction comptés à 50%."
+    "dualDays": "{{count}} jours en double fonction comptés à 50%.",
+    "nearCoastal": "Côtier proche",
+    "unlimited": "Illimité",
+    "notMeasured": "Aucune position AIS",
+    "coastalTitle": "Côtier proche ou illimité",
+    "coastal_near_coastal": "Côtier proche : toutes les positions AIS étaient à moins de 150 nm d'un port ou estuaire du Royaume-Uni, ou à 30 nm de l'Irlande.",
+    "coastal_unlimited": "Illimité : au moins une position AIS était à plus de 150 nm d'un port ou estuaire du Royaume-Uni et à plus de 30 nm de l'Irlande.",
+    "coastalFurthest": "Point le plus éloigné : {{haven}} nm du port ou estuaire répertorié le plus proche.",
+    "coastalDefinition": "Côtier proche signifie 150 milles d'un abri sûr sur la côte du Royaume-Uni et 30 milles de l'Irlande (MSN 1856, MSN 1857).",
+    "highSpeedTitle": "Engin à grande vitesse (Tableau A5.1 Note F)",
+    "highSpeedBody": "Sur un engin à grande vitesse, le capitaine doit détenir au moins le RYA/MCA Advanced Powerboat Certificate, obtenu sur un engin à grande vitesse.",
+    "highSpeedHeld": "Advanced Powerboat enregistré.",
+    "highSpeedMissing": "Aucun certificat Advanced Powerboat enregistré."
   }
 }
