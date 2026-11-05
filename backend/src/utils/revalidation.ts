@@ -21,8 +21,11 @@
  * - Master (Workboat) <500 GT, MGN 496 12.1: officer service on vessels of 15 m
  *   or over in the last 5 years, 12 months (utils/workboat.ts).
  * - Boatmasters' Licence, MSN 1853 19.3: Tier 1 (Level 1 or 2) 120 days of
- *   qualifying service in the 5 years before applying. Endorsement figures and
- *   LKE rules (19.5) are not checked here.
+ *   qualifying service in the 5 years before applying. Of the endorsements,
+ *   only fast craft is checked: 60 days in the 5 years (19.3), on high-speed
+ *   craft in a deck capacity (19.1: "vessel/operation specific service time").
+ *   19.2(b) also accepts an equivalent certificate instead. The other endorsement
+ *   figures and the LKE rules (19.5) are not checked here.
  *
  * Days are distinct dates with at least 4 hours of logged service, as every
  * other MCA figure in the app is counted. MSN 1861 reckons service from
@@ -35,7 +38,7 @@ import { distinctSeaDates, getCalendarDay, serviceDatesAnyHours } from './seaTim
 import { DECK_OFFICER_RANKS, ENGINE_RANKS } from './tugService.js';
 import { DAYS_PER_MONTH, countWorkboatDays, isOfficerEntry, type WorkboatEntry } from './workboat.js';
 
-export type RevalidationRuleId = 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml';
+export type RevalidationRuleId = 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml' | 'bml_fast_craft';
 
 export interface RevalidationRule {
   id: RevalidationRuleId;
@@ -75,6 +78,11 @@ export const REVALIDATION_RULES: Record<RevalidationRuleId, RevalidationRule> = 
     notice: 'MSN 1853 19.3',
     counts: 'Qualifying service as a boatmaster on commercial vessels',
   },
+  bml_fast_craft: {
+    id: 'bml_fast_craft',
+    notice: 'MSN 1853 19.3',
+    counts: 'Deck service on high-speed craft (vessels marked as high-speed craft)',
+  },
 };
 
 /**
@@ -97,6 +105,7 @@ export const REVALIDATION_RULE_BY_TYPE: Record<string, RevalidationRuleId> = {
   course_coc_ce_sv_500: 'engine',
   course_boatmaster: 'bml',
   course_coc_bml_t1l2: 'bml',
+  course_bml_fast_craft: 'bml_fast_craft',
 };
 
 const MONTHS_12 = 12 * DAYS_PER_MONTH;
@@ -104,6 +113,8 @@ const MONTHS_3 = 3 * DAYS_PER_MONTH;
 const MONTHS_6 = 6 * DAYS_PER_MONTH;
 /** MSN 1853 19.3: Tier 1 Level 1 and Level 2. */
 export const BML_REVALIDATION_DAYS = 120;
+/** MSN 1853 19.3: Fast Craft endorsement. */
+export const BML_FAST_CRAFT_REVALIDATION_DAYS = 60;
 /** MSN 1861 2.4: within 6 months of expiry the new CoC runs from the old expiry date. */
 export const ANNIVERSARY_WINDOW_MONTHS = 6;
 
@@ -116,6 +127,7 @@ export interface RevalidationEntry extends WorkboatEntry {
     sector?: string | null;
     default_trade_area?: string | null;
     is_tug?: boolean | null;
+    is_high_speed?: boolean | null;
   }) | null;
 }
 
@@ -256,6 +268,13 @@ export function revalidationProgress(
         (e) => !isYacht(e) && type(e) !== 'yard_service' && !ENGINE_RANKS.has(e.rank ?? ''),
       );
       out = routes(deck, anyCapacity, [{ key: 'five_years', months: 60, required: BML_REVALIDATION_DAYS }], now, serviceDatesAnyHours as any);
+      break;
+    }
+    case 'bml_fast_craft': {
+      const fast = all.filter(
+        (e) => e.vessel?.is_high_speed === true && type(e) !== 'yard_service' && !ENGINE_RANKS.has(e.rank ?? ''),
+      );
+      out = routes(fast, anyCapacity, [{ key: 'five_years', months: 60, required: BML_FAST_CRAFT_REVALIDATION_DAYS }], now, serviceDatesAnyHours as any);
       break;
     }
   }

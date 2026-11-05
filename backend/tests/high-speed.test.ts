@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { highSpeedNeeds } from "../src/utils/highSpeed";
 import { boatmasterEndorsements } from "../src/utils/boatmasterEndorsements";
 import { ticketsForTrip, type Wbc3Result } from "../src/utils/workboatArea";
+import { REVALIDATION_RULE_BY_TYPE, revalidationProgress } from "../src/utils/revalidation";
 
 const NOW = new Date("2026-11-05T12:00:00Z");
 
@@ -97,5 +98,41 @@ describe("BML fast craft endorsement (MSN 1853 Annex 5 Table C)", () => {
     ];
     const r = boatmasterEndorsements(entries as any, [], "2026-04-01", NOW);
     expect(r.fast_craft.days).toBe(1);
+  });
+});
+
+// MSN 1853 19.3: Fast Craft endorsement revalidation, 60 days in the 5 years before.
+describe("BML fast craft revalidation (MSN 1853 19.3)", () => {
+  const fast = { length_metres: "18", sector: "commercial", is_workboat: true, is_high_speed: true };
+  const slow = { ...fast, is_high_speed: false };
+  const day = (i: number) => new Date(Date.UTC(2025, 0, 1) + i * 86_400_000).toISOString().slice(0, 10);
+  const e = (d: string, vessel: any, extra: Record<string, unknown> = {}) => ({
+    vessel_id: "v",
+    start_time: `${d}T07:00:00Z`,
+    end_time: `${d}T17:00:00Z`,
+    status: "confirmed",
+    service_type: "actual_sea_service",
+    rank: "deckhand",
+    vessel,
+    ...extra,
+  });
+
+  test("the endorsement certificate carries the rule", () => {
+    expect(REVALIDATION_RULE_BY_TYPE.course_bml_fast_craft).toBe("bml_fast_craft");
+  });
+
+  test("60 deck days on high-speed craft meet it; slow craft, engine ranks and yard do not count", () => {
+    const list = [
+      ...Array.from({ length: 59 }, (_, i) => e(day(i), fast)),
+      e(day(100), slow),
+      e(day(101), fast, { rank: "chief_engineer" }),
+      e(day(102), fast, { service_type: "yard_service" }),
+    ];
+    const short = revalidationProgress("bml_fast_craft", list as any, NOW);
+    expect(short.routes[0].required).toBe(60);
+    expect(short.routes[0].days).toBe(59);
+    expect(short.met).toBe(false);
+    const met = revalidationProgress("bml_fast_craft", [...list, e(day(103), fast)] as any, NOW);
+    expect(met.met).toBe(true);
   });
 });

@@ -7,7 +7,11 @@
  *   "'Near-coastal' means an area of operation restricted to 150 miles from a
  *   safe haven on the coast of the UK and 30 miles from Ireland."
  * MGN 496 limits Master (Workboat) <500 GT near coastal to "UK near coastal
- * waters only", so the same area applies to workboat CoCs.
+ * waters only", so the same area applies to workboat CoCs. MGN 495 (tug deck)
+ * issues every tug CoC as "near coastal" (2.2, 2.3) without restating the area;
+ * its own 30-mile limit ("not more than 30 miles from a safe haven around the
+ * coast of the United Kingdom" without 90 days outside categorised waters, 10.4)
+ * is counted in tugService.ts as days outside categorised waters, not here.
  *
  * A point is near coastal when it is within 150 nm of a UK safe haven, or within
  * 30 nm of the coast of Ireland. A day (or entry) is unlimited when any AIS fix

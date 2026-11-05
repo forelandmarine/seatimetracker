@@ -6830,6 +6830,45 @@ export const CHECKLISTS: Record<string, Checklist> = {
       "MSN 1853"
     ]
   },
+  "bml-fast-craft-cargo": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on a cargo-carrying high-speed craft on its normal routes, at least half in the relevant category of waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
   "pla-lke-full": {
     "exam": "oral",
     "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",

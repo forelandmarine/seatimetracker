@@ -645,12 +645,23 @@ export function register(app: App, fastify: FastifyInstance) {
                 licence_issued: { type: ['string', 'null'] },
                 passenger: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
                 towing: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                fast_craft: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
                 lke_full: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
                 lke_lower: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
                 lke_upper: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
                 lke_night_days: { type: 'number' },
                 lke_upriver_days: { type: 'number' },
                 lke_downriver_days: { type: 'number' },
+              },
+            },
+            // Near coastal or unlimited days from AIS (MSN 1856 s.5), commercial vessels; null without the classifier
+            coastal_days: {
+              type: ['object', 'null'],
+              properties: {
+                near_coastal: { type: 'number' },
+                unlimited: { type: 'number' },
+                not_measured: { type: 'number' },
+                total: { type: 'number' },
               },
             },
           },
@@ -861,6 +872,16 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     const bml_endorsements = boatmasterEndorsements(entries as any, areaFixes, licenceIssued);
 
+    // Near coastal or unlimited days (MSN 1856 s.5) from the same classified fixes, commercial vessels only
+    const summaryMeasures = areaFixes.length > 0 ? nearCoastalMeasures() : null;
+    const coastal_days = summaryMeasures
+      ? coastalDayBreakdown(
+          entries.filter((e) => e.vessel && (e.vessel.is_tug === true || e.vessel.is_workboat === true || e.vessel.sector === 'commercial')) as any,
+          areaFixes,
+          summaryMeasures,
+        )
+      : null;
+
     app.logger.info(
       {
         total_days,
@@ -889,6 +910,7 @@ export function register(app: App, fastify: FastifyInstance) {
       tug_service,
       boatmaster_service,
       bml_endorsements,
+      coastal_days,
     });
   });
 

@@ -147,6 +147,7 @@ const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
   course_food_hygiene: ['food safety'],
   course_rya_commercial_endorsement: ['ce'],
   course_hsc_type_rating: ['hsc', 'fast craft', 'type rating'],
+  course_bml_fast_craft: ['boatmaster', 'bml', 'fast craft', 'endorsement'],
 };
 
 /** Lower-cases and drops spaces and punctuation, so "ENG-1" and "eng 1" both read "eng1". */
@@ -329,7 +330,7 @@ export interface CertificateRevalidation {
   days_to_expiry: number | null;
   /** Applying now keeps the anniversary date (within 6 months of expiry). */
   keeps_anniversary: boolean;
-  rule: 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml';
+  rule: 'deck' | 'engine' | 'yacht_deck' | 'code_vessel' | 'workboat' | 'bml' | 'bml_fast_craft';
   notice: string;
   counts: string;
   routes: RevalidationRoute[];
