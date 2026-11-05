@@ -163,6 +163,11 @@ export interface MCARequirement {
      */
     lke?: 'full' | 'lower' | 'upper';
   };
+  /**
+   * RYA/MCA Yachtmaster pre-exam sea time, counted the RYA's way (8-hour days,
+   * miles, 60-mile passages) by GET /api/reports/rya-service.
+   */
+  ryaRoute?: 'coastal' | 'offshore' | 'ocean';
   requirements: {
     label: string;
     value: string;
@@ -305,12 +310,46 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
   },
   {
+    id: 'yachtmaster-coastal',
+    title: 'RYA/MCA Yachtmaster Coastal',
+    regulation: 'RYA CoC',
+    category: 'Yachtmaster',
+    description: 'Skipper on coastal passages; the step before Yachtmaster Offshore',
+    commercialService: 'yacht_only',
+    ryaRoute: 'coastal',
+    requirements: [
+      {
+        label: 'Sea Time',
+        value: '30 days',
+        details: [
+          'On vessels under 24m LOA, in the last 10 years',
+          '2 days as skipper, on vessels under 24m LOA',
+          'At least half in tidal waters',
+          'All in the same discipline as the exam (sail or power)',
+        ],
+      },
+      {
+        label: 'Distance',
+        value: '800 miles',
+        details: ['12 night hours'],
+      },
+    ],
+    notes: [
+      'RYA counts a day as 8 consecutive hours living on board, mostly at sea, with only one counted in any 24 hours',
+      'With a Coastal Skipper Practical course certificate, or Yachtmaster Coastal in the other discipline: 12 days and 400 miles on vessels under 24m (or 30 days and 800 miles on yachts under 500 GT)',
+      'Night hours are not tracked by the app; keep your own record',
+      'Sea time on yachts over 24m and 500 GT: contact the RYA (training@rya.org.uk)',
+      'Needs a VHF SRC or higher and a valid first aid certificate',
+    ],
+  },
+  {
     id: 'yachtmaster-offshore',
     title: 'RYA/MCA Yachtmaster Offshore (Commercially Endorsed)',
     regulation: 'RYA CoC',
     category: 'Yachtmaster',
     description: 'Skipper up to 200 GT (or Mate to 500 GT), up to 150 miles from a safe haven',
     commercialService: 'yacht_only',
+    ryaRoute: 'offshore',
     requirements: [
       {
         label: 'Sea Time',
@@ -331,8 +370,8 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       },
     ],
     notes: [
-      'RYA counts a day as 8 consecutive hours living on board, mostly at sea. This differs from the MCA 4-hour day the app uses, so check short days',
-      'Mileage and passages are not tracked by the app; keep your own record',
+      'RYA counts a day as 8 consecutive hours living on board, mostly at sea, with only one counted in any 24 hours. The progress bars count it that way',
+      'Miles come from the AIS track; passages over 60 miles are found from the track, so keep your own log too',
       'Holders of Yachtmaster Offshore in the other discipline: 25 days, 3 as skipper, 1,250 miles, 3 passages',
       'Sea time on yachts over 24m and 500 GT: contact the RYA (training@rya.org.uk)',
       'Commercial endorsement needs a sea survival course and medical fitness certificate',
@@ -345,6 +384,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     category: 'Yachtmaster',
     description: 'Ocean qualifying passage; needed for Chief Mate (Yachts)',
     commercialService: 'yacht_only',
+    ryaRoute: 'ocean',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -367,7 +407,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
     notes: [
       'Candidates must show astro navigation worked at sea',
-      'The app does not track passage distance; keep your own passage record',
+      'The app lists passages of 600 miles over 96 hours as skipper or mate; the 200 miles more than 50 miles from land and the astro sights are for you to show',
     ],
   },
   {

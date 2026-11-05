@@ -22,6 +22,7 @@ import { fileURLToPath } from "url";
 import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
 import { entriesWithSoleWatch } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
+import { trackDistances } from '../services/trackDistance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -175,53 +176,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // straight line. This captures continuous / short-leg operations (e.g. a CTV
     // working turbine to turbine in a wind farm), which point-to-point understates.
     // Entries without fixes fall back to the point-to-point distance below.
-    const trackDistanceByEntry = new Map<string, number>();
-    if (entries.length > 0) {
-      const vesselIds = [...new Set(entries.map((e) => e.vessel_id).filter(Boolean))] as string[];
-      const times = entries.flatMap((e) => [
-        new Date(e.start_time).getTime(),
-        e.end_time ? new Date(e.end_time).getTime() : new Date(e.start_time).getTime(),
-      ]);
-      if (vesselIds.length > 0 && times.length > 0) {
-        const windowStart = new Date(Math.min(...times));
-        const windowEnd = new Date(Math.max(...times));
-        const fixes = await app.db
-          .select({
-            vessel_id: schema.ais_checks.vessel_id,
-            latitude: schema.ais_checks.latitude,
-            longitude: schema.ais_checks.longitude,
-            check_time: schema.ais_checks.check_time,
-          })
-          .from(schema.ais_checks)
-          .where(
-            and(
-              eq(schema.ais_checks.user_id, userId),
-              inArray(schema.ais_checks.vessel_id, vesselIds),
-              gte(schema.ais_checks.check_time, windowStart),
-              lte(schema.ais_checks.check_time, windowEnd),
-            ),
-          );
-        const byVessel = new Map<string, TrackFix[]>();
-        for (const f of fixes) {
-          if (!f.vessel_id) continue;
-          const arr = byVessel.get(f.vessel_id) ?? [];
-          arr.push(f as TrackFix);
-          byVessel.set(f.vessel_id, arr);
-        }
-        for (const e of entries) {
-          if (!e.vessel_id || !e.end_time) continue;
-          const vf = byVessel.get(e.vessel_id);
-          if (!vf) continue;
-          const s = new Date(e.start_time).getTime();
-          const en = new Date(e.end_time).getTime();
-          const inWindow = vf.filter((f) => {
-            const t = f.check_time instanceof Date ? f.check_time.getTime() : new Date(f.check_time).getTime();
-            return t >= s && t <= en;
-          });
-          if (inWindow.length >= 2) trackDistanceByEntry.set(e.id, cumulativeTrackDistanceNm(inWindow));
-        }
-      }
-    }
+    const trackDistanceByEntry = await trackDistances(app, userId, entries);
 
     // Workboat sea area columns for commercial users (guidance only)
     const csvCommercial =

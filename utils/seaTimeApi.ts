@@ -1237,6 +1237,12 @@ export const listTestimonialRequests = async (vesselId: string): Promise<Testimo
   return res.json();
 };
 
+// Sea time toward the RYA Yachtmaster exams, counted the RYA's way (8-hour days, miles, 60-mile passages)
+export const getRyaService = async () => {
+  const res = await authFetch('/api/reports/rya-service');
+  return res.json();
+};
+
 export const cancelTestimonialRequest = async (id: string): Promise<void> => {
   await authFetch(`/api/testimonial-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
 };
