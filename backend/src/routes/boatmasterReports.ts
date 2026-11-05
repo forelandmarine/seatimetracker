@@ -12,6 +12,7 @@ import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { serviceDatesAnyHours } from "../utils/seaTime.js";
 import { effectiveTradeArea } from "../utils/boatmasterService.js";
 import {
+  BML_LICENCE_TYPES,
   deckEntries,
   endorsementFromDay,
   groupFixesByVesselDay,
@@ -150,7 +151,7 @@ export function register(app: App, fastify: FastifyInstance) {
     try {
       const rows = await app.db.execute(sql`
         select issued_date::text as issued, certificate_number as number from certificates
-        where user_id = ${userId} and certificate_type = 'boatmaster'
+        where user_id = ${userId} and certificate_type in (${sql.join(BML_LICENCE_TYPES.map((t) => sql`${t}`), sql`, `)})
         order by issued_date asc nulls last limit 1
       `);
       const r = ((rows as any).rows ?? rows)[0];

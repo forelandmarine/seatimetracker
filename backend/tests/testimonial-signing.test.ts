@@ -92,7 +92,7 @@ describe("signing page", () => {
 
   test("shows the Part 1 figures, NIL where there are none", () => {
     const html = signPage(snapshot(), "/public/testimonial/abc");
-    expect(html).toContain("0 months 1 days");
+    expect(html).toContain("0 months 1 day");
     expect(html).toContain("1 days");
     expect(html).toContain("<dt>Leave of absence</dt><dd>NIL</dd>");
     expect(html).toContain('"/public/testimonial/abc"');

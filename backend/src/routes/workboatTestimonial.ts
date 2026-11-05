@@ -250,7 +250,7 @@ export function testimonialPdf(
     const months = t.sea_service_months;
     const rem = t.sea_service_remaining_days;
     const seaText = t.sea_service_days
-      ? `${months} months ${Number.isInteger(rem) ? rem : rem.toFixed(1)} days`
+      ? `${months} ${months === 1 ? 'month' : 'months'} ${Number.isInteger(rem) ? rem : rem.toFixed(1)} ${rem === 1 ? 'day' : 'days'}`
       : 'NIL';
     field('The above service includes', `${seaText} sea service`);
     doc.font('NunitoSans').fontSize(9).fillColor(TEXT_BODY);

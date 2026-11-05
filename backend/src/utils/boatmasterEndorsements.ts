@@ -81,6 +81,14 @@ export interface BoatmasterEndorsements {
 
 // Section edges (WGS84). London Bridge and Putney Bridge are the bridge
 // centres; Margaretness is the London VTS reporting point (51°30'.70N 0°05'.50E).
+/**
+ * Certificate types that are a Boatmasters' Licence, for the licence issue date
+ * the endorsements and the LKE count from. The app saves a ticked or added
+ * licence as course_boatmaster or course_coc_bml_t1l2 (checklist codes) or as a
+ * Tier 2 CoC; 'boatmaster' is kept for any record saved under the bare code.
+ */
+export const BML_LICENCE_TYPES = ['course_boatmaster', 'course_coc_bml_t1l2', 'coc_bml_t2l1', 'coc_bml_t2l2', 'boatmaster'];
+
 export const LKE_PUTNEY_LON = -0.2131;
 export const LKE_LONDON_BRIDGE_LON = -0.0877;
 export const LKE_MARGARETNESS_LON = 0.0917;
