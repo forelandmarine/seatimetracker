@@ -57,7 +57,7 @@ export function signPageMessage(kind: 'not_found' | 'expired' | 'cancelled' | 's
 export function signPage(s: TestimonialSnapshot, postUrl: string): string {
   const months = s.sea_service_months;
   const rem = s.sea_service_remaining_days;
-  const sea = s.sea_service_days ? `${months} months ${Number.isInteger(rem) ? rem : rem.toFixed(1)} days` : 'NIL';
+  const sea = s.sea_service_days ? `${months} ${months === 1 ? 'month' : 'months'} ${Number.isInteger(rem) ? rem : rem.toFixed(1)} ${rem === 1 ? 'day' : 'days'}` : 'NIL';
   const watch = s.watchkeeping_days ? `${s.watchkeeping_days} days` : 'NIL';
   const leave = s.leave.length
     ? s.leave.map((l) => `${ukDate(l.start_date)} to ${ukDate(l.end_date)}`).join(', ')
