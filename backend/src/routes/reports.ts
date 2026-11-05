@@ -23,6 +23,7 @@ import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity
 import { entriesWithSoleWatch } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
 import { trackDistances } from '../services/trackDistance.js';
+import { mcaReportFigures } from '../utils/reportTotals.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1203,6 +1204,16 @@ export function register(app: App, fastify: FastifyInstance) {
         entriesByVessel[key].push(entry);
       });
 
+    // MCA: the total and each vessel's stand-by follow the MSN 1858 limits (yard
+    // capped at 90 days, stand-by at most 14 in a row and never more than the
+    // voyage before), so the report matches the qualifying total in the app.
+    const isMcaTemplate = template === 'mca';
+    const mcaFigures = isMcaTemplate
+      ? mcaReportFigures(confirmedEntries as any, Object.values(entriesByVessel) as any)
+      : null;
+    const blockIndex = new Map(Object.keys(entriesByVessel).map((k, i) => [k, i]));
+    if (mcaFigures) totalDays = mcaFigures.total;
+
     // --- Foreland Marine brand palette ---
     const STEEL_BLUE = '#5386B6';
     const DEEP_NAVY = '#040D1A';
@@ -1330,6 +1341,14 @@ export function register(app: App, fastify: FastifyInstance) {
 
     doc.font('NunitoSans-Light').fontSize(22).fillColor(DEEP_NAVY);
     doc.text(`${totalDays} days`, ML + 15, summaryY + 22);
+    if (mcaFigures && (mcaFigures.standby_not_credited > 0 || mcaFigures.yard_over_cap > 0)) {
+      const left = [
+        mcaFigures.standby_not_credited > 0 ? `${mcaFigures.standby_not_credited} stand-by days` : '',
+        mcaFigures.yard_over_cap > 0 ? `${mcaFigures.yard_over_cap} yard days over the 90-day limit` : '',
+      ].filter(Boolean).join(' and ');
+      doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+      doc.text(`Qualifying service under MSN 1858. Not counted: ${left}.`, ML + 150, summaryY + 30, { width: CW - 165 });
+    }
 
     doc.y = summaryY + 58;
     doc.moveDown(0.3);
@@ -1395,6 +1414,13 @@ export function register(app: App, fastify: FastifyInstance) {
           if (!vesselServiceTypes[st]) vesselServiceTypes[st] = 0;
           if (entry.sea_days) vesselServiceTypes[st] += entry.sea_days;
         });
+        // MCA: stand-by shows the days credited under MSN 1858, with the rest noted
+        let standbyLeftOut = 0;
+        if (mcaFigures && vesselServiceTypes['standby_service'] != null) {
+          const credited = mcaFigures.block_standby_credited[blockIndex.get(vesselKey) ?? -1] ?? 0;
+          standbyLeftOut = Math.max(0, vesselServiceTypes['standby_service'] - credited);
+          vesselServiceTypes['standby_service'] = credited;
+        }
 
         const particularsRows = Math.ceil(particulars.length / 2);
         const serviceRows = Object.keys(vesselServiceTypes).length + (soleEntries.length ? 1 : 0);
@@ -1449,6 +1475,12 @@ export function register(app: App, fastify: FastifyInstance) {
           doc.text(`${days}d`, 0, rowY, { width: PW - MR, align: 'right' });
           doc.y = rowY + 16;
         });
+        if (standbyLeftOut > 0) {
+          const rowY = Math.round(doc.y);
+          doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+          doc.text(`${standbyLeftOut} more stand-by days logged, not credited (MSN 1858: at most 14 in a row, never more than the voyage before)`, ML + 10, rowY, { width: CW - 10 });
+          doc.y = rowY + 14;
+        }
         if (soleEntries.length) {
           const rowY = Math.round(doc.y);
           doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
@@ -1519,6 +1551,7 @@ export function register(app: App, fastify: FastifyInstance) {
         doc.y += 3;
         let vesselDays = 0;
         vesselEntries.forEach((entry) => { if (entry.sea_days) vesselDays += entry.sea_days; });
+        vesselDays -= standbyLeftOut;
 
         const subY = Math.round(doc.y);
         doc.fillColor(STEEL_BLUE).rect(ML, subY, 3, 24).fill();
@@ -1551,7 +1584,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const serviceTypeDefinitions = [
       { type: 'Actual Sea Service', desc: 'Sea service performed while the vessel is underway, engaged in trading or on passage.' },
       { type: 'Watchkeeping Service', desc: 'Time spent on bridge watch or engine room watch while at sea.' },
-      { type: 'Stand-by Service', desc: 'Service performed during periods of standby while the vessel is at sea.' },
+      { type: 'Stand-by Service', desc: 'The time immediately following a voyage while the vessel is prepared for the next one. For MCA certificates at most 14 consecutive days count at one time, and never more than the voyage before (MSN 1858).' },
       { type: 'Service in Port', desc: 'Service performed while the vessel is in port, including maintenance and cargo operations.' },
       { type: 'Yard Service', desc: 'Service performed during shipyard periods, including new building or major repairs.' },
     ];
