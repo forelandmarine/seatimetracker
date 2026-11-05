@@ -7,6 +7,8 @@ import { SeaTimeProgressCard } from '@/components/SeaTimeProgressCard';
 import { HomePrompts } from '@/components/HomePrompts';
 import { MmsiFixBanner } from '@/components/MmsiFixBanner';
 import { VesselRenameBanner } from '@/components/VesselRenameBanner';
+import { CertificateDetailsBanner } from '@/components/CertificateDetailsBanner';
+import { syncRevalidationRemindersDaily } from '@/utils/revalidationReminders';
 import { OnBoardCard } from '@/components/OnBoardCard';
 import { useOnBoard } from '@/hooks/useOnBoard';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -181,6 +183,8 @@ export default function SeaTimeScreen() {
     try {
       log('[Home] Loading vessels...');
       setLoadError(null);
+      // Revalidation sea service reminders, resynced at most once a day
+      void syncRevalidationRemindersDaily();
       const vesselsData: Vessel[] = await seaTimeApi.getVessels();
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
       
@@ -634,6 +638,8 @@ export default function SeaTimeScreen() {
         {/* Vessels saved with a short MMSI are never tracked: prompt to correct */}
         <MmsiFixBanner vessels={vessels} onFixed={loadData} />
         <VesselRenameBanner vessels={vessels} onAnswered={loadData} />
+        {/* Ticked certificates still missing a number or dates (in-app only, once a day) */}
+        <CertificateDetailsBanner />
         {/* On/off board switch (rotational crew and leave) */}
         <OnBoardCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
 

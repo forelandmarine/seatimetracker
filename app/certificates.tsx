@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
@@ -22,14 +23,34 @@ import {
   expiryStatus,
   certificateTypeMatches,
   listCertificates,
+  listRevalidation,
   normaliseCertificateSearch,
+  type CertificateRevalidation,
 } from '@/utils/certificatesApi';
+import { RevalidationPanel } from '@/components/RevalidationPanel';
+import { syncRevalidationReminders } from '@/utils/revalidationReminders';
+import { HighSpeedCertificateCard } from '@/components/HighSpeedCertificateCard';
 import { error as logError } from '@/utils/log';
+import * as seaTimeApi from '@/utils/seaTimeApi';
+import { getRequirementsByAuthority, getDefaultTargetId, type MaritimeAuthority } from '@/constants/mcaRequirements';
+import {
+  evaluateChecklist,
+  certificatesNeedingDetails,
+  courseLabel,
+  type ItemState,
+} from '@/utils/courseChecklist';
+import { COURSE_CATALOG } from '@/constants/courseCatalog';
+import { useCourseTicks } from '@/hooks/useCourseTicks';
+
+const AUTHORITIES = ['mca', 'uscg', 'amsa', 'mnz', 'samsa'];
+
+const quickTitle = (s: ItemState) => (COURSE_CATALOG[s.item.code] ? courseLabel(s.item.code) : s.item.label);
 
 const LIGHTSHIP_URL = 'https://forelandmarine.com/tools/lightship-ism';
 
 export default function CertificatesScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
@@ -39,13 +60,41 @@ export default function CertificatesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [targetTitle, setTargetTitle] = useState<string | null>(null);
+  const [revalidation, setRevalidation] = useState<Record<string, CertificateRevalidation>>({});
+
+  // The Quick add list follows the same target CoC as the oral checklist.
+  const loadTarget = useCallback(async () => {
+    try {
+      const profile = await seaTimeApi.getUserProfile();
+      const auth = (AUTHORITIES.includes(profile?.maritime_authority) ? profile.maritime_authority : 'mca') as MaritimeAuthority;
+      const dept = String(profile?.department ?? 'deck').toLowerCase() === 'engineering' ? 'engineering' : 'deck';
+      const id: string | null = profile?.target_certification ?? getDefaultTargetId(auth, dept) ?? null;
+      const target = id
+        ? getRequirementsByAuthority(auth, 'deck').find((r) => r.id === id) ??
+          getRequirementsByAuthority(auth, 'engineering').find((r) => r.id === id)
+        : undefined;
+      setTargetId(id);
+      setTargetTitle(target?.title ?? null);
+    } catch (err) {
+      logError('[Certificates] Failed to load target:', err);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(null);
-      const data = await listCertificates();
+      const [data] = await Promise.all([listCertificates(), loadTarget()]);
       setCerts(Array.isArray(data) ? data : []);
+      // Revalidation guidance is extra: the list still shows if it fails
+      listRevalidation()
+        .then((rows) => {
+          setRevalidation(Object.fromEntries(rows.map((r) => [r.certificate_id, r])));
+          void syncRevalidationReminders(rows);
+        })
+        .catch((err) => logError('[Certificates] Failed to load revalidation:', err));
     } catch (err) {
       logError('[Certificates] Failed to load:', err);
       setLoadError('Failed to load certificates. Pull down to retry.');
@@ -60,6 +109,24 @@ export default function CertificatesScreen() {
       load();
     }, [load])
   );
+
+  const reloadCerts = useCallback(async () => {
+    try {
+      const data = await listCertificates();
+      setCerts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      logError('[Certificates] Failed to reload:', err);
+    }
+  }, []);
+  const { savingCode, tick, untick } = useCourseTicks(reloadCerts);
+
+  const quickAdd = useMemo(() => {
+    const result = targetId ? evaluateChecklist(targetId, certs) : null;
+    if (!result) return [];
+    const seen = new Set<string>();
+    return [...result.states, ...result.recommended].filter((s) => !seen.has(s.item.code) && !!seen.add(s.item.code));
+  }, [targetId, certs]);
+  const needsDetailsIds = useMemo(() => new Set(certificatesNeedingDetails(certs).map((c) => c.id)), [certs]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -121,9 +188,58 @@ export default function CertificatesScreen() {
             Expiry: {new Date(cert.expiry_date).toLocaleDateString('en-GB')}
           </Text>
         )}
+        {needsDetailsIds.has(cert.id) && <Text style={styles.needsDetails}>{t('certChecker.needsDetails')}</Text>}
+        {revalidation[cert.id] && <RevalidationPanel data={revalidation[cert.id]} isDark={isDark} />}
       </TouchableOpacity>
     );
   };
+
+  const renderQuickRow = (s: ItemState, last: boolean) => {
+    const held = !!s.certificate;
+    const title = quickTitle(s);
+    return (
+      <View key={s.item.code} style={[styles.quickRow, last && { borderBottomWidth: 0 }]}>
+        {savingCode === s.item.code ? (
+          <View style={styles.tickbox}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={() => (held ? untick(s.item.code, title, s.certificate!) : tick(s.item.code))}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: held }}
+            accessibilityLabel={title}
+            style={[styles.tickbox, held ? styles.tickboxOn : styles.tickboxOff]}
+          >
+            {held ? (
+              <IconSymbol ios_icon_name="checkmark" android_material_icon_name="check" size={13} color={colors.white} />
+            ) : null}
+          </TouchableOpacity>
+        )}
+        <Text style={styles.quickTitle}>{title}</Text>
+        {held && s.missingDetails && (
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/certificate-edit', params: { id: s.certificate!.id } })}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.quickAction}>{t('certChecker.addDetails')}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  const quickAddSection =
+    quickAdd.length === 0 ? null : (
+      <View style={styles.quickSection}>
+        <Text style={styles.quickHeading}>{t('certChecker.quickAddTitle')}</Text>
+        <Text style={styles.quickBody}>
+          {t('certChecker.quickAddBody', { target: targetTitle ?? targetId })}
+        </Text>
+        <View style={styles.quickGroup}>{quickAdd.map((s, i) => renderQuickRow(s, i === quickAdd.length - 1))}</View>
+      </View>
+    );
 
   return (
     <>
@@ -207,6 +323,10 @@ export default function CertificatesScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {!loading && !(certs.length === 0 && loadError) && quickAddSection}
+        {/* WBC3 Table A5.1 Note F: Advanced Powerboat for the master of a high-speed workboat */}
+        {!loading && <HighSpeedCertificateCard refreshKey={certs} onAdd={tick} savingCode={savingCode} />}
 
         {/* Lightship CTA */}
         <View style={styles.lightshipCard}>
@@ -357,6 +477,68 @@ const createStyles = (isDark: boolean) =>
       fontSize: 12,
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       marginTop: 2,
+    },
+    needsDetails: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#B26A00',
+      marginTop: 4,
+    },
+    quickSection: {
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    quickHeading: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDark ? colors.text : colors.textLight,
+    },
+    quickBody: {
+      fontSize: 13,
+      color: isDark ? colors.textSecondary : colors.textSecondaryLight,
+      marginTop: 4,
+      marginBottom: 10,
+      lineHeight: 18,
+    },
+    quickGroup: {
+      backgroundColor: isDark ? colors.cardBackground : colors.cardBackgroundLight,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : colors.borderLight,
+      overflow: 'hidden',
+    },
+    quickRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.border : colors.borderLight,
+    },
+    tickbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tickboxOn: {
+      backgroundColor: colors.successDark,
+    },
+    tickboxOff: {
+      borderWidth: 2,
+      borderColor: isDark ? colors.textSecondary : colors.textSecondaryLight,
+    },
+    quickTitle: {
+      flex: 1,
+      fontSize: 15,
+      color: isDark ? colors.text : colors.textLight,
+    },
+    quickAction: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
     },
     statusDot: {
       width: 12,

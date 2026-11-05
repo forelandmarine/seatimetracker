@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
-import { Certificate, listCertificates, createCertificate } from '@/utils/certificatesApi';
+import { Certificate, listCertificates } from '@/utils/certificatesApi';
+import { useCourseTicks } from '@/hooks/useCourseTicks';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import {
   getRequirementsByAuthority,
@@ -28,7 +31,7 @@ import {
   type ItemState,
 } from '@/utils/courseChecklist';
 import { COURSE_CATALOG } from '@/constants/courseCatalog';
-import { OFFERED_COURSES } from '@/constants/offeredCourses';
+import { providerCodesFor } from '@/utils/providerSearch';
 import { error as logError } from '@/utils/log';
 import { localDate, daysUntil } from '@/utils/localDate';
 
@@ -39,7 +42,8 @@ const fmtDate = (iso: string) =>
 
 const daysFrom = (iso: string) => daysUntil(iso);
 
-function statusLine(s: ItemState): string | null {
+function statusLine(s: ItemState, t: TFunction): string | null {
+  if (s.missingDetails && (s.status === 'done' || s.status === 'done_no_date')) return t('certChecker.tickedAddDetails');
   switch (s.status) {
     case 'expired':
       return `Expired ${fmtDate(s.validUntil!)}${s.item.validity === '5y_update' ? ' · refresher needed' : ''}`;
@@ -52,9 +56,10 @@ function statusLine(s: ItemState): string | null {
     case 'done_no_date':
       return 'Add the issue or expiry date to track it';
     case 'todo':
+      if (s.item.validity === '5y') return 'Pass valid 5 years';
       if (s.item.validity === '3y') return 'Pass valid 3 years';
       if (s.item.validity === '1y') return 'Pass valid 1 year';
-      if (s.item.type === 'manual') return 'Mark done when complete';
+      if (s.item.type === 'manual') return t('certChecker.tickWhenComplete');
       return s.item.note ?? null;
   }
 }
@@ -71,6 +76,7 @@ function showDetail(s: ItemState) {
 
 export default function OralChecklistScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
 
@@ -79,7 +85,6 @@ export default function OralChecklistScreen() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [authority, setAuthority] = useState<MaritimeAuthority>('mca');
-  const [savingCode, setSavingCode] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +104,8 @@ export default function OralChecklistScreen() {
     }
   }, []);
 
+  const { savingCode, tick, untick } = useCourseTicks(load);
+
   useFocusEffect(
     useCallback(() => {
       load();
@@ -116,7 +123,6 @@ export default function OralChecklistScreen() {
 
   const result = useMemo(() => (targetId ? evaluateChecklist(targetId, certs) : null), [targetId, certs]);
   // Only offer "Find a course" where a listed provider runs it.
-  const offered = useMemo(() => new Set(OFFERED_COURSES), []);
 
   const groups = useMemo(() => {
     const states = result?.states ?? [];
@@ -127,49 +133,58 @@ export default function OralChecklistScreen() {
     };
   }, [result]);
 
-  const markDone = async (s: ItemState) => {
-    setSavingCode(s.item.code);
-    try {
-      await createCertificate({ certificate_type: certificateTypeFor(s.item.code), notes: 'Marked done on the oral checklist' });
-      await load();
-    } catch (err: any) {
-      Alert.alert("Couldn't save", err?.message ?? 'Try again.');
-    } finally {
-      setSavingCode(null);
-    }
-  };
-
   const onAction = (s: ItemState) => {
-    if (s.certificate && (s.status === 'expired' || s.status === 'soon' || s.status === 'done_no_date')) {
+    if (s.certificate && (s.missingDetails || s.status === 'expired' || s.status === 'soon' || s.status === 'done_no_date')) {
       router.push({ pathname: '/certificate-edit', params: { id: s.certificate.id } });
-    } else if (s.item.type === 'manual') {
-      markDone(s);
     } else {
       router.push({ pathname: '/certificate-edit', params: { type: certificateTypeFor(s.item.code) } });
     }
   };
 
+  // Manual items need no action button: the tickbox is all they need.
   const actionLabel = (s: ItemState): string | null => {
-    if (s.status === 'expired' || s.status === 'soon' || s.status === 'done_no_date') return 'Update';
-    if (s.status === 'todo') return s.item.type === 'manual' ? 'Mark done' : 'Add';
+    if (s.status === 'expired' || s.status === 'soon') return 'Update';
+    if (s.missingDetails) return t('certChecker.addDetails');
+    if (s.status === 'done_no_date') return 'Update';
+    if (s.status === 'todo') return s.item.type === 'manual' ? null : 'Add';
     return null;
+  };
+
+  // To-do and held courses get a tickbox; expired or expiring ones keep the warning mark.
+  const onToggle = (s: ItemState) => {
+    if (s.status === 'todo') tick(s.item.code);
+    else if (s.certificate) untick(s.item.code, rowTitle(s), s.certificate);
   };
 
   const renderRow = (s: ItemState, last: boolean) => {
     const label = actionLabel(s);
-    const line = statusLine(s);
+    const line = statusLine(s, t);
     const iconBg =
       s.status === 'expired' ? colors.error : s.status === 'soon' ? colors.warning : s.status === 'todo' ? 'transparent' : colors.successDark;
-    const lineColor = s.status === 'expired' ? colors.error : s.status === 'soon' ? '#B26A00' : undefined;
+    const lineColor =
+      s.status === 'expired' ? colors.error : s.status === 'soon' || s.missingDetails ? '#B26A00' : undefined;
+    const warn = s.status === 'expired' || s.status === 'soon';
     return (
       <View key={s.item.code} style={[styles.row, last && { borderBottomWidth: 0 }]}>
-        <View style={[styles.icon, { backgroundColor: iconBg }, s.status === 'todo' && styles.iconTodo]}>
-          {s.status === 'expired' || s.status === 'soon' ? (
+        {warn ? (
+          <View style={[styles.icon, { backgroundColor: iconBg }]}>
             <Text style={styles.iconText}>!</Text>
-          ) : s.status !== 'todo' ? (
-            <IconSymbol ios_icon_name="checkmark" android_material_icon_name="check" size={13} color={colors.white} />
-          ) : null}
-        </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={() => onToggle(s)}
+            disabled={savingCode === s.item.code}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: s.status !== 'todo' }}
+            accessibilityLabel={rowTitle(s)}
+            style={[styles.icon, styles.tickbox, { backgroundColor: iconBg }, s.status === 'todo' && styles.iconTodo]}
+          >
+            {s.status !== 'todo' ? (
+              <IconSymbol ios_icon_name="checkmark" android_material_icon_name="check" size={13} color={colors.white} />
+            ) : null}
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           <TouchableOpacity onPress={() => showDetail(s)} accessibilityHint="Shows the full requirement">
             <Text style={styles.rowTitle}>{rowTitle(s)}</Text>
@@ -179,7 +194,7 @@ export default function OralChecklistScreen() {
               </Text>
             ) : null}
           </TouchableOpacity>
-          {s.status === 'todo' && s.item.type !== 'manual' && offered.has(s.item.code) && (
+          {s.status === 'todo' && s.item.type !== 'manual' && providerCodesFor(s.item.code).length > 0 && (
             <TouchableOpacity
               onPress={() => router.push({ pathname: '/training-providers', params: { course: s.item.code } } as any)}
             >
@@ -187,14 +202,13 @@ export default function OralChecklistScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {label &&
-          (savingCode === s.item.code ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <TouchableOpacity onPress={() => onAction(s)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.action}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+        {savingCode === s.item.code ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : label ? (
+          <TouchableOpacity onPress={() => onAction(s)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.action}>{label}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   };
@@ -302,8 +316,7 @@ export default function OralChecklistScreen() {
             )}
 
             <Text style={styles.footnote}>
-              Ticks come from the certificates you have added. Course list taken from {result.sources.join(', ')}. Always check the
-              current notice before booking your oral.
+              {t('certChecker.checklistFootnote', { sources: result.sources.join(', ') })}
             </Text>
           </>
         )}
@@ -332,6 +345,7 @@ function createStyles(isDark: boolean) {
     row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: border, gap: 10 },
     icon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
     iconTodo: { borderWidth: 2, borderColor: muted },
+    tickbox: { borderRadius: 6 },
     iconText: { color: colors.white, fontWeight: '700', fontSize: 13 },
     rowTitle: { fontSize: 15, color: text },
     rowSub: { fontSize: 12, color: muted, marginTop: 2 },

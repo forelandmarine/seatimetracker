@@ -12,6 +12,9 @@
 import { getSeaAreaClassifier } from './singleton.js';
 import { seasonForDate } from './areaClassification.js';
 
+/** Stored area_category for a fix at sea outside categorised waters. */
+export const SEA_AREA = 'sea';
+
 export interface FixClassificationColumns {
   area_category?: string | null;
   is_tidal?: boolean | null;
@@ -38,7 +41,9 @@ export function classifyFixForStorage(
   try {
     const r = classifier.classifyPoint({ lat, lon }, { date: checkTime });
     return {
-      area_category: r.areaCategory,
+      // 'sea' marks a fix placed at sea outside categorised waters (UK or not),
+      // so it stays apart from fixes the classifier could not place (both null).
+      area_category: r.areaCategory ?? (r.atSea ? SEA_AREA : null),
       is_tidal: r.isTidal,
       season: seasonForDate(checkTime),
     };

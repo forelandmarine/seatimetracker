@@ -17,7 +17,10 @@ import {
 } from "../utils/seaTime.js";
 import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
 import { formatHoursMinutes } from "../utils/duration.js";
+import { enrichEntryClassification } from "../utils/seaAreas/enrichEntry.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
+import { entriesWithSoleWatch } from "../services/soleWatch.js";
+import { SIGNATURE_CLEARED, changesSignedFields, entrySignatureView } from "../utils/entrySignature.js";
 
 // Validate certificate belongs to the authenticated user
 async function validateCertificateOwnership(app: App, certificateId: string | null | undefined, userId: string): Promise<boolean> {
@@ -118,7 +121,21 @@ function transformVesselForResponse(vessel: any) {
   };
 }
 
-// Helper function to transform sea time entry for API response
+/** Workboat sea area and dual capacity the user can set on an entry (request body). */
+const AREA_BODY_PROPS = {
+  area_category: { type: ['string', 'null'], enum: ['A', 'B', 'C', 'D', 'sea', null], description: 'MSN 1837 category A to D, or sea (guidance)' },
+  is_tidal: { type: ['boolean', 'null'], description: 'Tidal waters (guidance)' },
+  dual_capacity: { type: ['boolean', 'null'], description: 'Served in a dual deck and engine capacity (MGN 496 4.5, counts at 50%)' },
+} as const;
+
+/** Workboat sea-area fields on an entry (response schema). */
+const ENTRY_AREA_PROPS = {
+  area_category: { type: ['string', 'null'] },
+  is_tidal: { type: ['boolean', 'null'] },
+  is_categorised_water: { type: ['boolean', 'null'] },
+  dual_capacity: { type: ['boolean', 'null'] },
+} as const;
+
 // Detail fields the edit screen loads back. Without them in the response schema
 // Fastify drops them, and saving the entry writes them back as null.
 const ENTRY_DETAIL_PROPS = {
@@ -132,7 +149,19 @@ const ENTRY_DETAIL_PROPS = {
   certificate_id: { type: ['string', 'null'] },
   from_port: { type: ['string', 'null'] },
   to_port: { type: ['string', 'null'] },
+  // Who signed the entry (entrySignatureView); the image itself is not sent
+  signature: {
+    type: ['object', 'null'],
+    properties: {
+      signer_name: { type: 'string' },
+      signer_capacity: { type: 'string' },
+      signed_at: { type: 'string' },
+      method: { type: 'string' },
+    },
+  },
 } as const;
+
+// Helper function to transform sea time entry for API response
 
 function transformSeaTimeEntryForResponse(entry: any) {
   // Calculate duration_hours if both start_time and end_time are present
@@ -202,6 +231,13 @@ function transformSeaTimeEntryForResponse(entry: any) {
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
+    is_sole_watch: entry.is_sole_watch === true,
+    area_category: entry.area_category ?? null,
+    is_tidal: entry.is_tidal ?? null,
+    is_categorised_water: entry.is_categorised_water ?? null,
+    dual_capacity: entry.dual_capacity ?? null,
+    // Signed by the Master or a responsible person; null when unsigned or edited since (no image here)
+    signature: entrySignatureView(entry),
     created_at: entry.created_at.toISOString ? entry.created_at.toISOString() : entry.created_at,
     vessel: entry.vessel ? transformVesselForResponse(entry.vessel) : null,
   };
@@ -232,12 +268,15 @@ export function register(app: App, fastify: FastifyInstance) {
               start_longitude: { type: ['string', 'null'] },
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
+              ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               mca_compliant: { type: ['boolean', 'null'] },
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
               additional_watchkeeping_hours: { type: ['number', 'null'] },
               ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
+              is_sole_watch: { type: 'boolean' }, // inside a sole watchkeeper period, so it also counts as watchkeeping
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
                 type: ['object', 'null'],
@@ -280,7 +319,7 @@ export function register(app: App, fastify: FastifyInstance) {
     });
 
     app.logger.info({ userId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send(entries.map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/:id - Get a single sea time entry by ID
@@ -310,6 +349,7 @@ export function register(app: App, fastify: FastifyInstance) {
             start_longitude: { type: ['string', 'null'] },
             end_latitude: { type: ['string', 'null'] },
             end_longitude: { type: ['string', 'null'] },
+            ...ENTRY_AREA_PROPS,
             mca_compliant: { type: ['boolean', 'null'] },
             detection_window_hours: { type: ['number', 'null'] },
             watchkeeping_hours: { type: ['number', 'null'] },
@@ -393,6 +433,10 @@ export function register(app: App, fastify: FastifyInstance) {
       certificate_id: entry.certificate_id || null,
       from_port: entry.from_port || null,
       to_port: entry.to_port || null,
+      area_category: entry.area_category ?? null,
+      is_tidal: entry.is_tidal ?? null,
+      is_categorised_water: entry.is_categorised_water ?? null,
+      dual_capacity: entry.dual_capacity ?? null,
       user_id: entry.user_id || null,
       created_at: entry.created_at.toISOString(),
     });
@@ -434,6 +478,9 @@ export function register(app: App, fastify: FastifyInstance) {
               additional_watchkeeping_hours: { type: ['number', 'null'] },
               ...ENTRY_DETAIL_PROPS,
               is_stationary: { type: ['boolean', 'null'] },
+              is_sole_watch: { type: 'boolean' }, // inside a sole watchkeeper period, so it also counts as watchkeeping
+              ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string', format: 'date-time' },
               vessel: {
                 type: 'object',
@@ -495,7 +542,7 @@ export function register(app: App, fastify: FastifyInstance) {
     });
 
     app.logger.info({ userId, vesselId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send(entries.map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/pending - Return pending entries awaiting confirmation
@@ -527,6 +574,8 @@ export function register(app: App, fastify: FastifyInstance) {
               start_longitude: { type: ['string', 'null'] },
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
+              ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
               mca_compliant: { type: ['boolean', 'null'] },
               detection_window_hours: { type: ['number', 'null'] },
               watchkeeping_hours: { type: ['number', 'null'] },
@@ -612,6 +661,8 @@ export function register(app: App, fastify: FastifyInstance) {
                   start_longitude: { type: ['string', 'null'] },
                   end_latitude: { type: ['string', 'null'] },
                   end_longitude: { type: ['string', 'null'] },
+                  ...ENTRY_AREA_PROPS,
+              ...ENTRY_DETAIL_PROPS,
                   mca_compliant: { type: ['boolean', 'null'] },
                   detection_window_hours: { type: ['number', 'null'] },
                   watchkeeping_hours: { type: ['number', 'null'] },
@@ -950,6 +1001,9 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_watch_hours?: number | null;
       night_watch_hours?: number | null;
       certificate_id?: string | null;
+      area_category?: string | null;
+      is_tidal?: boolean | null;
+      dual_capacity?: boolean | null;
     };
   }>('/api/sea-time/:id', {
     schema: {
@@ -981,6 +1035,7 @@ export function register(app: App, fastify: FastifyInstance) {
           engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
           night_watch_hours: { type: ['number', 'null'], description: 'Night watch hours (tracked separately)' },
           certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
+          ...AREA_BODY_PROPS,
         },
       },
       response: {
@@ -1017,6 +1072,9 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_watch_hours,
       night_watch_hours,
       certificate_id,
+      area_category,
+      is_tidal,
+      dual_capacity,
     } = request.body;
 
     // Validate service_type if provided
@@ -1119,6 +1177,19 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(403).send({ error: 'Certificate does not belong to this user' });
       }
       updateData.certificate_id = certificate_id;
+    }
+    // Workboat sea area set or corrected by the user (guidance; does not change counting)
+    if (area_category !== undefined) {
+      updateData.area_category = area_category;
+      updateData.is_categorised_water = area_category === null ? null : area_category !== 'sea';
+    }
+    if (is_tidal !== undefined) updateData.is_tidal = is_tidal;
+    // MGN 496 4.5: dual deck and engine capacity counts at 50% in the workboat figures
+    if (dual_capacity !== undefined) updateData.dual_capacity = dual_capacity;
+
+    // The signer signed the vessel, times and service type they saw: changing any of them removes the signature
+    if (current_entry.signature_image && changesSignedFields(current_entry, updateData)) {
+      Object.assign(updateData, SIGNATURE_CLEARED);
     }
 
     // If no fields to update, return the current entry
@@ -1648,6 +1719,7 @@ export function register(app: App, fastify: FastifyInstance) {
               start_longitude: { type: ['string', 'null'] },
               end_latitude: { type: ['string', 'null'] },
               end_longitude: { type: ['string', 'null'] },
+              ...ENTRY_AREA_PROPS,
               ...ENTRY_DETAIL_PROPS,
               created_at: { type: 'string' },
               vessel: {
@@ -1731,6 +1803,9 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_watch_hours?: number | null;
       night_watch_hours?: number | null;
       certificate_id?: string | null;
+      area_category?: string | null;
+      is_tidal?: boolean | null;
+      dual_capacity?: boolean | null;
     };
   }>('/api/logbook/manual-entry', {
     schema: {
@@ -1761,6 +1836,7 @@ export function register(app: App, fastify: FastifyInstance) {
           engine_watch_hours: { type: ['number', 'null'], description: 'Engine watch hours' },
           night_watch_hours: { type: ['number', 'null'], description: 'Night watch hours (tracked separately)' },
           certificate_id: { type: ['string', 'null'], description: 'Certificate ID held during this service' },
+          ...AREA_BODY_PROPS,
         },
       },
       response: {
@@ -1779,6 +1855,7 @@ export function register(app: App, fastify: FastifyInstance) {
             start_longitude: { type: ['string', 'null'] },
             end_latitude: { type: ['string', 'null'] },
             end_longitude: { type: ['string', 'null'] },
+            ...ENTRY_AREA_PROPS,
             created_at: { type: 'string' },
             vessel: {
               type: 'object',
@@ -1820,6 +1897,9 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_watch_hours: rawEngineWatchHours,
       night_watch_hours: rawNightWatchHours,
       certificate_id: rawCertificateId,
+      area_category: rawAreaCategory,
+      is_tidal: rawIsTidal,
+      dual_capacity: rawDualCapacity,
     } = request.body as any;
     // Coerce null → undefined for downstream code that uses ?? defaults
     const end_time = rawEndTime ?? undefined;
@@ -2011,6 +2091,12 @@ export function register(app: App, fastify: FastifyInstance) {
       if (manualEngineWatchHours !== undefined) manualEntryValues.engine_watch_hours = manualEngineWatchHours !== null ? String(manualEngineWatchHours) : null;
       if (manualNightWatchHours !== undefined) manualEntryValues.night_watch_hours = manualNightWatchHours !== null ? String(manualNightWatchHours) : null;
       if (manualCertificateId !== undefined) manualEntryValues.certificate_id = manualCertificateId;
+      if (rawAreaCategory != null) {
+        manualEntryValues.area_category = rawAreaCategory;
+        manualEntryValues.is_categorised_water = rawAreaCategory !== 'sea';
+      }
+      if (rawIsTidal != null) manualEntryValues.is_tidal = rawIsTidal;
+      if (rawDualCapacity != null) manualEntryValues.dual_capacity = rawDualCapacity;
 
       const [entry] = await app.db
         .insert(schema.sea_time_entries)
@@ -2253,6 +2339,7 @@ export function register(app: App, fastify: FastifyInstance) {
         .returning();
       if (!updated) return reply.code(404).send({ error: 'No active shift to clock out of' });
 
+      await enrichEntryClassification(app, updated);
       const rejected = await rejectAisPassagesCoveredByShift(app, userId, active.start_time, end);
       app.logger.info({ userId, entryId: active.id, durationHours, rejectedAisPassages: rejected }, 'Shift clock-out');
       return reply.code(200).send({ shift: shiftResponse(updated), durationHours, sea_days: updated.sea_days });

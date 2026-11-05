@@ -27,6 +27,9 @@ export interface Checklist {
 
 /** Codes found in the research that are not in COURSE_CATALOG (label only). */
 export const EXTRA_COURSE_LABELS: Record<string, string> = {
+  "ym_ocean_log_extract": "Extract of the ship's log for your ocean passage",
+  "ym_ocean_sun_sight": "Sun-run-merpass or sun-run-sun sight taken at sea",
+  "ym_ocean_compass_check": "Compass check using a celestial body",
   "coc_oow_yachts_3000": "OOW (Yachts) <3000 GT CoC",
   "coc_master_code_200": "Master (Code Vessels) <200 GT CoC",
   "coc_master_yachts_500": "Master (Yachts) <500 GT CoC",
@@ -110,6 +113,7 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "signals": "Signals certificate",
   "coc_oow_tug_500": "OOW (Tug) <500 GT Near Coastal CoC",
   "coc_oow_tug_3000": "OOW (Tug) <3000 GT Near Coastal CoC",
+  "bml_fast_craft_training": "Fast craft ISM or DSM training, or type rating",
   "bml_work_record": "BML Work Record (MSF 4366)",
   "bml_trb": "BML Training Record Book",
   "bml_first_aid": "Boatmasters' Licence first aid course",
@@ -174,7 +178,7 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "deck_crane_lifting": "Deck crane operation and safe lifting",
   "dp_induction": "Nautical Institute DP induction (basic)",
   "dp_simulator": "Nautical Institute DP simulator (advanced)",
-  "ebs": "Emergency Breathing System (OPITO CA-EBS)",
+  "ebs": "Emergency Breathing System (OPITO EBS / CA-EBS)",
   "essential_navigation": "RYA Essential Navigation and Seamanship",
   "eto_cadetship": "Electro-technical officer cadetship / foundation degree",
   "first_aid_responder": "PHECC First Aid Responder (Ireland)",
@@ -299,13 +303,10 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "imdg": "IMDG Code dangerous goods",
   "oprc": "Oil pollution preparedness, response and co-operation",
   "oil_spill_response": "IMO oil spill response levels 0 to 2",
-  "dp_basic": "Dynamic positioning basic (induction + simulator)",
-  "dp_advanced": "Dynamic positioning advanced / simulator",
   "no_gsk": "Norwegian offshore basic safety course (Offshore Norge)",
   "no_gsk_refresher": "Norwegian offshore basic safety refresher",
-  "gwo_wla": "GWO Working at Heights / Lift Assessment (wind lift module)",
+  "gwo_wla": "GWO Wind Limited Access (WLA): short awareness course for supervised visits to wind turbines",
   "gwo_sea_survival_refresher": "GWO Sea Survival refresher",
-  "opito_caebs": "OPITO Compressed Air Emergency Breathing System",
   "opito_tbosiet": "OPITO Tropical BOSIET",
   "opito_tfoet": "OPITO Tropical FOET",
   "opito_tsbb": "OPITO Travel Safely by Boat",
@@ -368,8 +369,8 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "be_yacht_master_500gt_ocean": "Belgium master commercial yachts under 500 GT, unlimited upgrade",
   "nl_maritiem_officier_ol": "Netherlands maritime officer programme, operational level",
   "nl_maritiem_officier_ml": "Netherlands maritime officer programme, management level",
-  "dk_duna": "Denmark proficiency test, navigational watch rating",
-  "dk_dumo": "Denmark proficiency test, engine-room watch rating",
+  "dk_duna": "Denmark DUNA proficiency test in navigation on merchant ships (for ship assistants who hold a watch certificate)",
+  "dk_dumo": "Denmark DUMO proficiency test in engine watchkeeping on merchant ships (engine counterpart of DUNA)",
   "ae_boatmaster": "UAE master under 200 GT near-coastal",
   "ae_pleasure_boat_24m": "UAE pleasure boat skipper licence under 24 m",
   "ae_pleasure_boat_12m": "UAE pleasure boat skipper licence under 12 m",
@@ -380,9 +381,6 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "master_chief_mate_unlimited": "STCW Master and Chief Mate unlimited programme",
   "chief_second_eng_unlimited": "STCW Chief and Second Engineer unlimited programme",
   "ews": "Engineering Workshop Skills training",
-  "diesel_engine": "RYA Diesel Engine course (small craft, non-STCW)",
-  "radar_course": "RYA Radar course (small craft, non-STCW)",
-  "ppr": "RYA Professional Practices and Responsibilities (online)",
   "gwo_bst_onshore": "GWO BST onshore modules only (first aid, manual handling, fire awareness, working at heights; no sea survival)",
   "opito_mem": "OPITO Major Emergency Management initial response / OIM controlling emergencies",
   "amsa_gph": "AU MAR10224 General Purpose Hand Near Coastal",
@@ -439,6 +437,35 @@ export const EXTRA_COURSE_LABELS: Record<string, string> = {
   "samsa_skipper_small_vessel": "SAMSA small-vessel skipper licence course, category not stated by provider",
   "kma_coxswain_g2": "Kenya Maritime Authority Coxswain Grade 2 course",
   "kma_coxswain_g3": "Kenya Maritime Authority Coxswain Grade 3 course",
+  "pssr_2026_supplement": "Supplementary PSSR training for STCW Table A-VI/1-4 as amended by MSC.560(108) (violence and harassment), in force 1 Jan 2026",
+  "amsa_first_aid_hltaid011": "AU HLTAID011 Provide First Aid (domestic MO 505 CoC prerequisite)",
+  "mnz_first_aid_national": "NZ national first aid proficiency (NZQA US 6400/6401/6402 or 6400/26551/26552)",
+  "mnz_fire_national": "NZ national fire-fighting proficiency (NZQA US 12310)",
+  "mnz_survival_national": "NZ national survival craft proficiency (NZQA US 12309)",
+  "rmi_sirb": "Marshall Islands Seafarer's Identification and Record Book (document, not a course)",
+  "rmi_coe": "Marshall Islands Certificate of Endorsement (STCW I/10)",
+  "rmi_yacht_coq": "Marshall Islands private-yacht Certificate of Qualification (non-STCW)",
+  "rmi_master_yacht_350gt": "Marshall Islands Master (Yacht) 350 GT / Mate (Yacht) 500 GT",
+  "rmi_master_yachts_unlimited": "Marshall Islands Master (Yachts) Unlimited (Capstone Course route)",
+  "mt_endorsement": "Transport Malta STCW I/10 endorsement",
+  "mt_oow_yachts_3000gt": "Malta OOW (Yachts) less than 3000 GT",
+  "mt_master_yachts_500gt": "Malta Master (Yachts) less than 500 GT",
+  "mt_master_yachts_3000gt": "Malta Master (Yachts) less than 3000 GT",
+  "mt_recreational_skipper": "Malta Recreational Skipper (non-STCW, 10-year validity)",
+  "mt_master_yachts_200gt_60nm": "Malta Master on yachts less than 200 GT, 60 nm (non-STCW)",
+  "mt_workboat_module": "Malta Workboat Module",
+  "mt_accredited_engine_course": "Malta Accredited Engine Course (10-year validity)",
+  "mt_yachting_record_book": "Malta yachting record book (manual, not a course)",
+  "ie_cec": "Ireland Certificate of Equivalent Competency",
+  "ie_medical_fitness": "Ireland Medical Fitness Certificate",
+  "no_small_ship_safety": "Norway safety course for smaller ships",
+  "no_fisher_safety": "Norway fishers' safety course (8-year cycle)",
+  "dk_medical_a_refresher": "Denmark ship's medical chest A refresher",
+  "dk_medical_b": "Denmark ship's medical chest B course",
+  "fr_chef_de_quart_500": "France Chef de quart 500",
+  "fr_chef_de_quart_500_yacht": "France Chef de quart 500 yacht",
+  "fr_capitaine_500_yacht": "France Capitaine 500 yacht",
+  "fr_capitaine_3000_yacht": "France Capitaine 3000 yacht",
   "fso": "Facility Security Officer",
   "helideck_safety": "Helideck safety / HLO / helideck emergency response",
   "hsc_type_rating": "High Speed Craft type rating / HSC BRM",
@@ -902,6 +929,27 @@ export const CHECKLISTS: Record<string, Checklist> = {
     "examNote": "RYA oral exam with an RYA examiner, not an MCA oral.",
     "items": [
       {
+        "code": "ym_ocean_log_extract",
+        "label": "Extract of the ship's log for your ocean passage",
+        "type": "manual",
+        "validity": "none",
+        "note": "Sent with the RYA exam application. SeaTime lists possible qualifying passages from AIS; the log extract is yours."
+      },
+      {
+        "code": "ym_ocean_sun_sight",
+        "label": "Sun-run-merpass or sun-run-sun sight taken at sea, with your reduction and plotting",
+        "type": "manual",
+        "validity": "none",
+        "note": "The RYA's minimum record of sights taken on the passage. AIS cannot show sights, so tick this when your workings are ready."
+      },
+      {
+        "code": "ym_ocean_compass_check",
+        "label": "Compass check using a celestial body, taken at sea",
+        "type": "manual",
+        "validity": "none",
+        "note": "For example the sun's bearing at sunrise or sunset against the steering compass. Part of the RYA's minimum records."
+      },
+      {
         "code": "ym_ocean_sb",
         "label": "Yachtmaster Ocean shore-based course",
         "type": "course",
@@ -952,6 +1000,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
       }
     ],
     "sources": [
+      "RYA Yachtmaster Ocean exam application form",
       "MSN 1858",
       "workboat and commercial endorsement notes"
     ]
@@ -2295,7 +2344,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2435,7 +2484,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2524,7 +2573,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2669,7 +2718,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -6595,8 +6644,359 @@ export const CHECKLISTS: Record<string, Checklist> = {
     "sources": [
       "MSN 1853"
     ]
+  },
+  "bml-passenger-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on passenger vessels, at least half in tidal waters, over at least 12 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-passenger-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on passenger vessels, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-towing-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on towing or pushing vessels, at least half in tidal waters, over at least 12 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-towing-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on towing or pushing vessels, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-fast-craft-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "120 days in a deck capacity on a high-speed craft on its normal routes, at least half in tidal waters, over at least 12 months, after the licence service (passenger figure)",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-fast-craft-non-tidal": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on a high-speed craft on its normal routes, at least half in non-tidal waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "bml-fast-craft-cargo": {
+    "exam": "oral",
+    "examNote": "MCA oral assessment for the endorsement (MSN 1853 Annex 5 Table C; syllabus Annex 10 section 8).",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity on a cargo-carrying high-speed craft on its normal routes, at least half in the relevant category of waters, over at least 6 months, after the licence service",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "bml_fast_craft_training",
+        "label": "Company ISM or DSM safety management training for fast craft, or a type rating certificate for the vessel and route",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_work_record",
+        "label": "BML Work Record (MSF 4366) showing the endorsement service",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "bml_trb",
+        "label": "BML Training Record Book, endorsement section",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853"
+    ]
+  },
+  "pla-lke-full": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between Margaretness and Putney Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
+  },
+  "pla-lke-lower": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between Margaretness and London Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
+  },
+  "pla-lke-upper": {
+    "exam": "oral",
+    "examNote": "90-minute oral before an MCA examiner and a PLA Harbour Master (syllabus HM-21). Valid 5 years.",
+    "items": [
+      {
+        "code": "sea_service",
+        "label": "60 days in a deck capacity between London Bridge and Putney Bridge, in varying conditions (both directions, hours of darkness), last day at least 6 months after the first",
+        "type": "sea_service",
+        "validity": "none"
+      },
+      {
+        "code": "boatmaster",
+        "label": "Tier 1 Boatmasters' Licence",
+        "type": "prerequisite_coc",
+        "validity": "as_dated"
+      },
+      {
+        "code": "pla_details_of_service",
+        "label": "PLA Details of Service sheets covering the 60 days",
+        "type": "manual",
+        "validity": "none"
+      },
+      {
+        "code": "testimonials",
+        "label": "Testimonials for each vessel class you want on the endorsement",
+        "type": "manual",
+        "validity": "none"
+      }
+    ],
+    "sources": [
+      "MSN 1853",
+      "PLA Thames Byelaw 22"
+    ]
   }
 };
 
 /** Every course code some checklist asks for (offered as certificate types). */
-export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","bml_fire_safety","bml_first_aid","bml_pswt","bml_trb","bml_work_record","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_tug_3000","coc_oow_tug_500","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","signals","sqa_035_21","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","tug_msq_units","tug_trb_l2","tug_trb_l3","tug_trb_l4","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_sb","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];
+export const CHECKLIST_CODES: string[] = ["aec1","aec2","aff","bml_fire_safety","bml_fast_craft_training","bml_first_aid","bml_pswt","bml_trb","bml_work_record","coastal_skipper","coc_bml_t1l2","coc_ce_sv_500","coc_cm_yachts_unlimited","coc_eoow_sv","coc_fishing_class1","coc_master_code_200","coc_master_yachts_3000","coc_master_yachts_500","coc_nwr","coc_oow_tug_3000","coc_oow_tug_500","coc_oow_unlimited","coc_oow_yachts_3000","coc_tug_rating","coc_yacht_rating","day_skipper","dsd","ecdis","edh","efa","eng1","eto_enem","eto_fd_hnd","eto_gmdss_radio_maint","eto_trb","eto_workshop_skills","first_aid_at_sea","fpff","gmdss_goc","gmdss_roc","helm_mgmt","helm_op","high_voltage","hv_mgmt","hv_op","iyt_master_yachts_coastal","iyt_master_yachts_limited","iyt_master_yachts_unlimited","lrc","master_yachts_business_law","master_yachts_celestial","master_yachts_nav","master_yachts_seamanship","master_yachts_stability","mca_part_a_master_code","medical_care","mfa","mgmt_level_qualification","ml5","naest_mgmt","naest_op","nwr_trb","oow_yachts_gsk","oow_yachts_nav_radar","psa","pscrb","pscrb_otl","pssr","pssr_vh_module","pst","rya_basic_sea_survival","rya_ppr","samsa_able_seafarer_deck","samsa_able_seafarer_engine","samsa_academic_results","samsa_comms_1","samsa_ens_mgmt","samsa_ens_non_stcw","samsa_ens_op","samsa_eyesight","samsa_medical","samsa_steering_cert","samsa_trb","samsa_workshop_skills","sea_service","sea_service_merchant","sea_service_recent","ship_cook","signals","sqa_035_21","src","sso","steering_cert","sv_doctors_cert","sv_eng_applied_marine_eng","sv_eng_aux_equip_1","sv_eng_aux_equip_2","sv_eng_ce_statutory_ops","sv_eng_dip_ms_sv","sv_eng_dip_ms_sv_ce","sv_eng_ges_1_2","sv_eng_marine_diesel","sv_eng_ops_hotel_construction","sv_eng_trb","sv_eng_workshop_additional","sv_eng_workshop_initial","sv_firefighting_1day","sv_firefighting_2day","sv_first_aid","sv_liferaft","sv_rt_restricted","tug_msq_units","tug_trb_l2","tug_trb_l3","tug_trb_l4","watch_leader","workboat_ops","workboat_trb","yacht_rating","yacht_rating_trb","yacht_trb","ym_coastal","ym_ocean","ym_ocean_compass_check","ym_ocean_log_extract","ym_ocean_sb","ym_ocean_sun_sight","ym_offshore","ym_offshore_sb","yu_applied_met","yu_bridge_ops","yu_cm_nav_assessment","yu_cm_stability_assessment","yu_law_business","yu_marine_eng_systems","yu_passage_planning","yu_ship_stability","yu_shipboard_mgmt","yu_structures_maintenance","yu_yacht_ops"];

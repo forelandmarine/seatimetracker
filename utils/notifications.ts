@@ -505,6 +505,54 @@ export async function scheduleCertificateExpiryReminders(
   }
 }
 
+/**
+ * Cancel the given scheduled reminders, then schedule the new ones (revalidation
+ * reminders, planned in utils/revalidationReminderPlan.ts). Returns false when
+ * nothing could be scheduled (web, no permission or not a device).
+ */
+export async function replaceRevalidationReminders(
+  cancelIds: string[],
+  reminders: Array<{ id: string; certificateId: string; fireAt: Date; title: string; body: string }>,
+): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  try {
+    const { Notifications } = await loadNotificationModules();
+    if (!Notifications) return false;
+    await Promise.all(cancelIds.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
+    if (reminders.length === 0) return true;
+
+    const granted = await registerForPushNotificationsAsync();
+    if (!granted) {
+      warn('[Notifications] Revalidation reminders not scheduled (no permission / not a device)');
+      return false;
+    }
+    for (const r of reminders) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: r.id,
+        content: {
+          title: r.title,
+          body: r.body,
+          data: { type: 'revalidation_service', certId: r.certificateId, screen: 'certificates', url: '/certificates' },
+          sound: 'default',
+          ...(Platform.OS === 'android' && {
+            channelId: 'sea-time-entries',
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          }),
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: r.fireAt,
+        } as any,
+      });
+    }
+    log('[Notifications] Scheduled', reminders.length, 'revalidation reminders');
+    return true;
+  } catch (error) {
+    logError('[Notifications] Failed to schedule revalidation reminders:', error);
+    return false;
+  }
+}
+
 const RETURN_REMINDER_ID = 'on-board-return-reminder';
 
 /**

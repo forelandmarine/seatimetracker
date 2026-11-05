@@ -19,12 +19,18 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import type { SeaArea } from '@/utils/seaTimeApi';
 import { confirmFutureDates, yardDateForCheck } from '@/utils/futureDateCheck';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import { SeaAreaPicker, type SeaAreaValue } from '@/components/SeaAreaPicker';
+import { AreaGuidanceCard } from '@/components/AreaGuidanceCard';
+import { EntrySignatureCard } from '@/components/EntrySignatureCard';
+import { readVoyagePorts, writeVoyagePorts } from '@/utils/voyagePorts';
+import { isCommercialVessel } from '@/components/SeaAreaChip';
 
 interface Vessel {
   id: string;
@@ -44,6 +50,8 @@ interface SeaTimeEntry {
   sea_days: number | null;
   status: 'pending' | 'confirmed' | 'rejected';
   notes: string | null;
+  from_port?: string | null;
+  to_port?: string | null;
   created_at: string;
   start_latitude?: number | string | null;
   start_longitude?: number | string | null;
@@ -54,6 +62,11 @@ interface SeaTimeEntry {
   trade_area?: string | null;
   bridge_watch_hours?: number | null;
   night_watch_hours?: number | null;
+  vessel_id?: string;
+  area_category?: SeaArea | null;
+  is_tidal?: boolean | null;
+  dual_capacity?: boolean | null;
+  signature?: seaTimeApi.EntrySignature | null;
 }
 
 type ServiceType = 'seagoing' | 'watchkeeping' | 'standby' | 'yard';
@@ -381,6 +394,8 @@ export default function EditSeaTimeScreen() {
   const [serviceType, setServiceType] = useState<ServiceType>('seagoing');
   const [voyageFrom, setVoyageFrom] = useState('');
   const [voyageTo, setVoyageTo] = useState('');
+  // Which From / To sides are stored in from_port / to_port rather than the notes
+  const [portsInColumns, setPortsInColumns] = useState({ from: false, to: false });
   const [startLat, setStartLat] = useState('');
   const [startLng, setStartLng] = useState('');
   const [endLat, setEndLat] = useState('');
@@ -390,6 +405,10 @@ export default function EditSeaTimeScreen() {
   const [tradeArea, setTradeArea] = useState<TradeArea | null>(null);
   const [watchkeepingHours, setWatchkeepingHours] = useState('');
   const [nightWatchHours, setNightWatchHours] = useState('');
+  // Workboat sea area and dual capacity (commercial work only)
+  const [seaArea, setSeaArea] = useState<SeaAreaValue>({ area_category: null, is_tidal: null, dual_capacity: false });
+  const [initialSeaArea, setInitialSeaArea] = useState<SeaAreaValue | null>(null);
+  const [commercial, setCommercial] = useState(false);
   const [showRankPicker, setShowRankPicker] = useState(false);
   const [showTradeAreaPicker, setShowTradeAreaPicker] = useState(false);
   // Track whether user has modified any fields
@@ -472,26 +491,12 @@ export default function EditSeaTimeScreen() {
         : 'seagoing';
       setServiceType(uiServiceType);
       
-      const notesText = foundEntry.notes || '';
-      const lines = notesText.split('\n');
-      
-      let extractedFrom = '';
-      let extractedTo = '';
-      let remainingNotes: string[] = [];
-      
-      lines.forEach((line: string) => {
-        if (line.startsWith('From:')) {
-          extractedFrom = line.replace('From:', '').trim();
-        } else if (line.startsWith('To:')) {
-          extractedTo = line.replace('To:', '').trim();
-        } else if (line.trim()) {
-          remainingNotes.push(line);
-        }
-      });
-      
-      setVoyageFrom(extractedFrom);
-      setVoyageTo(extractedTo);
-      setNotes(remainingNotes.join('\n'));
+      // From / To: the from_port / to_port columns first, then the notes lines
+      const ports = readVoyagePorts(foundEntry);
+      setVoyageFrom(ports.from);
+      setVoyageTo(ports.to);
+      setNotes(ports.notes);
+      setPortsInColumns({ from: ports.fromInColumn, to: ports.toInColumn });
 
       // Populate position editor state
       setStartLat(foundEntry.start_latitude != null ? String(foundEntry.start_latitude) : '');
@@ -504,6 +509,13 @@ export default function EditSeaTimeScreen() {
       if (foundEntry.trade_area) setTradeArea(foundEntry.trade_area as TradeArea);
       if (foundEntry.bridge_watch_hours != null) setWatchkeepingHours(String(foundEntry.bridge_watch_hours));
       if (foundEntry.night_watch_hours != null) setNightWatchHours(String(foundEntry.night_watch_hours));
+      const area: SeaAreaValue = {
+        area_category: foundEntry.area_category ?? null,
+        is_tidal: foundEntry.is_tidal ?? null,
+        dual_capacity: foundEntry.dual_capacity === true,
+      };
+      setSeaArea(area);
+      setInitialSeaArea(area);
     } catch (error) {
       logError('[EditSeaTimeScreen] Error loading entry:', error);
       showFeedback('Error', 'Failed to load sea time entry', 'error', () => router.back());
@@ -533,8 +545,13 @@ export default function EditSeaTimeScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const userProfile = await seaTimeApi.getUserProfile();
+        const [userProfile, vessels] = await Promise.all([
+          seaTimeApi.getUserProfile(),
+          seaTimeApi.getVessels().catch(() => []),
+        ]);
         if (cancelled) return;
+        const entryVessel = Array.isArray(vessels) ? vessels.find((v: any) => v.id === entry?.vessel_id) : null;
+        setCommercial(isCommercialVessel(entryVessel, userProfile?.vessel_sector));
         const authority = userProfile?.maritime_authority ?? null;
         setPathway({
           authority: (['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(authority) ? authority : null) as MaritimeAuthority | null,
@@ -547,7 +564,7 @@ export default function EditSeaTimeScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [entry?.vessel_id]);
 
   const handleViewMCARequirements = () => {
     log('[EditSeaTimeScreen] User tapped requirements link, pathway:', pathway);
@@ -560,7 +577,7 @@ export default function EditSeaTimeScreen() {
     });
   };
 
-  const handleSave = async (futureDatesConfirmed?: boolean) => {
+  const handleSave = async (futureDatesConfirmed?: boolean, signatureChangeConfirmed?: boolean) => {
     if (saving) return;
     log('[EditSeaTimeScreen] User tapped Save');
 
@@ -573,8 +590,22 @@ export default function EditSeaTimeScreen() {
     if (!futureDatesConfirmed && confirmFutureDates(
         isYard ? yardDateForCheck(entry.start_time) : entry.start_time,
         isYard ? yardDateForCheck(entry.end_time) : entry.end_time,
-        () => handleSave(true),
+        () => handleSave(true, signatureChangeConfirmed),
       )) {
+      return;
+    }
+
+    // The signer signed the service type they saw: changing it removes the signature
+    const newServiceType = ({ seagoing: 'actual_sea_service', watchkeeping: 'watchkeeping_service', standby: 'standby_service', yard: 'yard_service' } as Record<string, string>)[serviceType] || 'actual_sea_service';
+    if (!signatureChangeConfirmed && entry.signature && newServiceType !== (entry.service_type || 'actual_sea_service')) {
+      Alert.alert(
+        'Remove the signature?',
+        `${entry.signature.signer_name} signed this entry with its current service type. Changing it removes the signature, and the entry will need signing again.`,
+        [
+          { text: 'Keep editing', style: 'cancel' },
+          { text: 'Save anyway', style: 'destructive', onPress: () => handleSave(futureDatesConfirmed, true) },
+        ],
+      );
       return;
     }
 
@@ -589,11 +620,14 @@ export default function EditSeaTimeScreen() {
       };
       const backendServiceType = serviceTypeMap[serviceType] || 'actual_sea_service';
 
-      const voyageFromNote = voyageFrom ? `From: ${voyageFrom}` : '';
-      const voyageToNote = voyageTo ? `To: ${voyageTo}` : '';
-      
-      const noteParts = [voyageFromNote, voyageToNote, notes].filter(Boolean);
-      const fullNotes = noteParts.join('\n');
+      // Each port goes back where it came from, so a from_port is not copied into the notes
+      const portFields = writeVoyagePorts({
+        from: voyageFrom,
+        to: voyageTo,
+        notes,
+        fromInColumn: portsInColumns.from,
+        toInColumn: portsInColumns.to,
+      });
 
       log('[EditSeaTimeScreen] Updating sea time entry');
 
@@ -605,7 +639,7 @@ export default function EditSeaTimeScreen() {
       };
 
       const updatePayload: any = {
-        notes: fullNotes || null,
+        ...portFields,
         service_type: backendServiceType,
         rank: rankCapacity || null,
         trade_area: tradeArea || null,
@@ -614,6 +648,12 @@ export default function EditSeaTimeScreen() {
           : null,
         night_watch_hours: nightWatchHours ? parseFloat(nightWatchHours) : null,
       };
+      // Only send the sea area when the user changed it, so an AIS value is not overwritten by accident
+      if (commercial && initialSeaArea) {
+        if (seaArea.area_category !== initialSeaArea.area_category) updatePayload.area_category = seaArea.area_category;
+        if (seaArea.is_tidal !== initialSeaArea.is_tidal) updatePayload.is_tidal = seaArea.is_tidal;
+        if (seaArea.dual_capacity !== initialSeaArea.dual_capacity) updatePayload.dual_capacity = seaArea.dual_capacity;
+      }
       if (showPositionEditor) {
         const sLat = parseCoord(startLat);
         const sLng = parseCoord(startLng);
@@ -958,6 +998,13 @@ export default function EditSeaTimeScreen() {
             </TouchableOpacity>
           </View>
 
+          {commercial && entry && (
+            <>
+              <AreaGuidanceCard entryId={entry.id} />
+              <SeaAreaPicker value={seaArea} onChange={(next) => { setSeaArea(next); setIsDirty(true); }} />
+            </>
+          )}
+
           {serviceType === 'watchkeeping' && (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Bridge Watch Hours</Text>
@@ -1162,6 +1209,8 @@ export default function EditSeaTimeScreen() {
               </View>
             </View>
           )}
+
+          {entry && <EntrySignatureCard entryId={entry.id} isDark={isDark} />}
 
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}

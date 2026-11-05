@@ -52,12 +52,20 @@ function readFc(dir: string, file: string): GeoJSONFeatureCollection {
   return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
 }
 
+/** Hand-drawn overrides: area-overrides.geojson (Thames, Barrow, Leith, Ardrossan) plus harbour-overrides.geojson (build-harbour-overrides.mjs). */
+function readOverrides(dir: string): GeoJSONFeatureCollection | undefined {
+  const files = ['area-overrides.geojson', 'harbour-overrides.geojson'].filter((f) => fs.existsSync(path.join(dir, f)));
+  if (!files.length) return undefined;
+  return { type: 'FeatureCollection', features: files.flatMap((f) => readFc(dir, f).features) };
+}
+
 export function loadLayers(dataDir: string = resolveDataDir()): ClassifierLayers {
   return {
     categorised: readFc(dataDir, 'categorised-waters.geojson'),
     tidal: readFc(dataDir, 'tidal-waters.geojson'),
     land: readFc(dataDir, 'uk-land.geojson'),
     dExtensions: readFc(dataDir, 'cat-d-extensions.geojson'),
+    overrides: readOverrides(dataDir),
   };
 }
 

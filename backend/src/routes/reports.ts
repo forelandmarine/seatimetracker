@@ -8,16 +8,24 @@ import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import { workboatService } from "../utils/workboat.js";
+import { AREA_GUIDANCE_NOTE, areaDayBreakdown, areaReportLabel, tidalReportLabel } from '../utils/workboatArea.js';
+import { coastalDayBreakdown, coastalLimitByEntry, coastalReportLabel, type CoastalVesselFix } from '../utils/nearCoastal.js';
+import { coastalFixes, nearCoastalMeasures } from '../services/nearCoastal.js';
+import { isCommercialWork } from '../utils/seaAreas/enrichEntry.js';
 import { engineService } from "../utils/engineService.js";
 import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
+import { BML_LICENCE_TYPES, boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
-import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, soleWatchPart, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
+import { entriesWithSoleWatch } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
+import { trackDistances } from '../services/trackDistance.js';
+import { mcaReportFigures } from '../utils/reportTotals.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,6 +150,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -169,53 +179,36 @@ export function register(app: App, fastify: FastifyInstance) {
     // straight line. This captures continuous / short-leg operations (e.g. a CTV
     // working turbine to turbine in a wind farm), which point-to-point understates.
     // Entries without fixes fall back to the point-to-point distance below.
-    const trackDistanceByEntry = new Map<string, number>();
-    if (entries.length > 0) {
-      const vesselIds = [...new Set(entries.map((e) => e.vessel_id).filter(Boolean))] as string[];
-      const times = entries.flatMap((e) => [
-        new Date(e.start_time).getTime(),
-        e.end_time ? new Date(e.end_time).getTime() : new Date(e.start_time).getTime(),
-      ]);
-      if (vesselIds.length > 0 && times.length > 0) {
-        const windowStart = new Date(Math.min(...times));
-        const windowEnd = new Date(Math.max(...times));
-        const fixes = await app.db
-          .select({
-            vessel_id: schema.ais_checks.vessel_id,
-            latitude: schema.ais_checks.latitude,
-            longitude: schema.ais_checks.longitude,
-            check_time: schema.ais_checks.check_time,
-          })
-          .from(schema.ais_checks)
-          .where(
-            and(
-              eq(schema.ais_checks.user_id, userId),
-              inArray(schema.ais_checks.vessel_id, vesselIds),
-              gte(schema.ais_checks.check_time, windowStart),
-              lte(schema.ais_checks.check_time, windowEnd),
-            ),
-          );
-        const byVessel = new Map<string, TrackFix[]>();
-        for (const f of fixes) {
-          if (!f.vessel_id) continue;
-          const arr = byVessel.get(f.vessel_id) ?? [];
-          arr.push(f as TrackFix);
-          byVessel.set(f.vessel_id, arr);
-        }
-        for (const e of entries) {
-          if (!e.vessel_id || !e.end_time) continue;
-          const vf = byVessel.get(e.vessel_id);
-          if (!vf) continue;
-          const s = new Date(e.start_time).getTime();
-          const en = new Date(e.end_time).getTime();
-          const inWindow = vf.filter((f) => {
-            const t = f.check_time instanceof Date ? f.check_time.getTime() : new Date(f.check_time).getTime();
-            return t >= s && t <= en;
-          });
-          if (inWindow.length >= 2) trackDistanceByEntry.set(e.id, cumulativeTrackDistanceNm(inWindow));
-        }
+    const trackDistanceByEntry = await trackDistances(app, userId, entries);
+
+    // Workboat sea area columns for commercial users (guidance only)
+    const csvCommercial =
+      (user as any).vessel_sector === 'commercial' || entries.some((e) => isCommercialWork(e.vessel));
+    // Near coastal or unlimited from the AIS fixes (MSN 1856 s.5: 150 nm from a UK safe haven, 30 nm from Ireland)
+    let coastalByEntry = new Map<string, { limit: 'near_coastal' | 'unlimited' | null }>();
+    const csvMeasures = csvCommercial ? nearCoastalMeasures() : null;
+    if (csvMeasures) {
+      try {
+        const commercialEntries = entries.filter((e) => isCommercialWork(e.vessel, (user as any).vessel_sector));
+        coastalByEntry = coastalLimitByEntry(commercialEntries, await coastalFixes(app, userId, commercialEntries), csvMeasures);
+      } catch (err) {
+        app.logger.warn({ err }, 'Near-coastal labels failed; CSV sent without them');
       }
     }
+    const areaHeaders = csvCommercial
+      ? [`Sea Area (${AREA_GUIDANCE_NOTE})`, 'Tidal', 'Near Coastal or Unlimited (from AIS)', 'Dual Deck and Engine Capacity']
+      : [];
+    const areaCells = (entry: any): string[] =>
+      csvCommercial
+        ? isCommercialWork(entry.vessel, (user as any).vessel_sector)
+          ? [
+              areaReportLabel(entry.area_category),
+              tidalReportLabel(entry.is_tidal),
+              coastalReportLabel(coastalByEntry.get(entry.id)?.limit),
+              entry.dual_capacity ? 'Yes (counts at 50%)' : '',
+            ]
+          : ['', '', '', '']
+        : [];
 
     // SECTION 1: Build CSV with vessel particulars (existing summary section)
     const headers = [
@@ -240,8 +233,10 @@ export function register(app: App, fastify: FastifyInstance) {
       'Bridge Watch Hours',
       'Engine Watch Hours',
       'Night Watch Hours',
+      ...areaHeaders,
       'Status',
       'Notes',
+      'Sole Watchkeeper',
     ];
     const rows = entries.map((entry) => [
       new Date(entry.start_time).toISOString().split('T')[0],
@@ -265,8 +260,10 @@ export function register(app: App, fastify: FastifyInstance) {
       entry.bridge_watch_hours ?? '',
       entry.engine_watch_hours ?? '',
       entry.night_watch_hours ?? '',
+      ...areaCells(entry),
       entry.status,
       formatEntryNotes(entry.notes),
+      (entry as any).is_sole_watch ? 'Yes' : '',
     ]);
 
     const summarySection = [
@@ -302,6 +299,7 @@ export function register(app: App, fastify: FastifyInstance) {
       'Bridge Watch Hours',
       'Engine Watch Hours',
       'Night Watch Hours',
+      ...areaHeaders,
       'Notes',
     ];
 
@@ -358,7 +356,7 @@ export function register(app: App, fastify: FastifyInstance) {
         endPosition,
         distance,
         entry.sea_days ?? 0,
-        formatServiceType(entry.service_type),
+        formatServiceType(entry.service_type) + ((entry as any).is_sole_watch ? ' (sole watchkeeper)' : ''),
         entry.rank || '',
         entry.date_joined ? formatDate(entry.date_joined) : '',
         entry.date_left ? formatDate(entry.date_left) : '',
@@ -366,6 +364,7 @@ export function register(app: App, fastify: FastifyInstance) {
         entry.bridge_watch_hours ?? '',
         entry.engine_watch_hours ?? '',
         entry.night_watch_hours ?? '',
+        ...areaCells(entry),
         formatEntryNotes(entry.notes),
       ];
     });
@@ -477,6 +476,7 @@ export function register(app: App, fastify: FastifyInstance) {
               properties: {
                 actual: { type: 'number' },
                 standby: { type: 'number' },
+                standby_logged: { type: 'number' },
                 yard: { type: 'number' },
                 port: { type: 'number' },
                 yard_credited: { type: 'number' },
@@ -592,6 +592,9 @@ export function register(app: App, fastify: FastifyInstance) {
                 workboat_15m: { type: 'number' },
                 recent_sea_service: { type: 'number' },
                 workboats_without_length: { type: 'number' },
+                dual_capacity_days: { type: 'number' },
+                revalidation_officer_15m: { type: 'number' },
+                revalidation_required: { type: 'number' },
               },
             },
             engine_service: {
@@ -638,6 +641,31 @@ export function register(app: App, fastify: FastifyInstance) {
                 level1_months: { type: 'number' },
               },
             },
+            bml_endorsements: {
+              type: 'object',
+              properties: {
+                licence_issued: { type: ['string', 'null'] },
+                passenger: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                towing: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                fast_craft: { type: 'object', properties: { days: { type: 'number' }, tidal_days: { type: 'number' }, non_tidal_days: { type: 'number' }, months: { type: 'number' } } },
+                lke_full: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_lower: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_upper: { type: 'object', properties: { days: { type: 'number' }, months: { type: 'number' } } },
+                lke_night_days: { type: 'number' },
+                lke_upriver_days: { type: 'number' },
+                lke_downriver_days: { type: 'number' },
+              },
+            },
+            // Near coastal or unlimited days from AIS (MSN 1856 s.5), commercial vessels; null without the classifier
+            coastal_days: {
+              type: ['object', 'null'],
+              properties: {
+                near_coastal: { type: 'number' },
+                unlimited: { type: 'number' },
+                not_measured: { type: 'number' },
+                total: { type: 'number' },
+              },
+            },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -664,6 +692,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -683,9 +713,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Total qualifying sea service: yard service capped at 90 days (MSN 1858)
-    // and service in port excluded (not sea service). Stand-by is counted in
-    // full; its certificate-structure limits are left to the assessor. Days are
+    // Total qualifying sea service: yard service capped at 90 days, stand-by
+    // credited within its 14-day and previous-voyage limits (MSN 1858), and
+    // service in port excluded (not sea service). Days are
     // deduplicated across service types so a calendar date is only counted once.
     // `total_days` is this figure; `sea_service` exposes the breakdown behind it.
     const breakdown = qualifyingSeaDays(entries as any);
@@ -740,13 +770,16 @@ export function register(app: App, fastify: FastifyInstance) {
       const service_type = entry.service_type || 'actual_sea_service';
       (serviceTypeGroups[service_type] ||= []).push(entry);
       // A sole watchkeeper's sea days are watchkeeping days too (days stay distinct)
-      if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
+      const solePart = soleWatchPart(entry as any);
+      if (solePart) (serviceTypeGroups['watchkeeping_service'] ||= []).push(solePart);
     });
 
+    // Stand-by is credited within the MSN 1858 limits (14 consecutive days, no
+    // more than the voyage before), so the yacht bars match the qualifying total.
     const entries_by_service_type = Object.entries(serviceTypeGroups)
       .map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(entries as any) : countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
@@ -756,19 +789,20 @@ export function register(app: App, fastify: FastifyInstance) {
     // over for the certificate being tracked. Untagged vessels count as yachts.
     const commercialEntries = entries.filter((entry) => entry.vessel?.sector === 'commercial');
     const yachtTypeGroups: { [key: string]: any[] } = {};
-    entries
-      .filter((entry) => entry.vessel?.sector !== 'commercial')
+    const yachtEntries = entries.filter((entry) => entry.vessel?.sector !== 'commercial');
+    yachtEntries
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
-        if (isSoleWatchEntry(entry as any)) (yachtTypeGroups['watchkeeping_service'] ||= []).push(entry);
+        const solePart = soleWatchPart(entry as any);
+        if (solePart) (yachtTypeGroups['watchkeeping_service'] ||= []).push(solePart);
       });
     const commercial_service = {
       qualifying_total: qualifyingSeaDays(commercialEntries as any).qualifying_total,
       vessels: [...new Set(commercialEntries.map((entry) => entry.vessel?.vessel_name || 'Unknown'))],
       yacht_entries_by_service_type: Object.entries(yachtTypeGroups).map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(yachtEntries as any) : countDistinctSeaDays(group as any),
       })),
     };
 
@@ -788,7 +822,7 @@ export function register(app: App, fastify: FastifyInstance) {
           and a.check_time <= coalesce(e.end_time, e.start_time)
         where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
         group by e.id
-        having bool_and(a.area_category is not null)
+        having bool_and(a.area_category in ('A', 'B', 'C', 'D'))
       `);
       categorisedIds = new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
     } catch (err) {
@@ -830,6 +864,30 @@ export function register(app: App, fastify: FastifyInstance) {
       classifier ? (track, departure) => classifier.classifyDay({ track, departure }).isLimitedCoastal : null,
     );
 
+    // Boatmasters' Licence endorsements and the Port of London LKE count service
+    // after the licence, so read the earliest licence the user has on file.
+    let licenceIssued: string | null = null;
+    try {
+      const rows = await app.db.execute(sql`
+        select min(issued_date)::text as issued from certificates
+        where user_id = ${userId} and certificate_type in (${sql.join(BML_LICENCE_TYPES.map((t) => sql`${t}`), sql`, `)}) and issued_date is not null
+      `);
+      licenceIssued = (((rows as any).rows ?? rows)[0]?.issued as string | null) ?? null;
+    } catch (err) {
+      app.logger.warn({ err }, 'Boatmasters licence lookup failed; endorsements count from 5 years back');
+    }
+    const bml_endorsements = boatmasterEndorsements(entries as any, areaFixes, licenceIssued);
+
+    // Near coastal or unlimited days (MSN 1856 s.5) from the same classified fixes, commercial vessels only
+    const summaryMeasures = areaFixes.length > 0 ? nearCoastalMeasures() : null;
+    const coastal_days = summaryMeasures
+      ? coastalDayBreakdown(
+          entries.filter((e) => e.vessel && (e.vessel.is_tug === true || e.vessel.is_workboat === true || e.vessel.sector === 'commercial')) as any,
+          areaFixes,
+          summaryMeasures,
+        )
+      : null;
+
     app.logger.info(
       {
         total_days,
@@ -857,6 +915,8 @@ export function register(app: App, fastify: FastifyInstance) {
       engine_service,
       tug_service,
       boatmaster_service,
+      bml_endorsements,
+      coastal_days,
     });
   });
 
@@ -905,6 +965,8 @@ export function register(app: App, fastify: FastifyInstance) {
       where: eq(schema.sea_time_entries.user_id, userId),
     });
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
@@ -962,7 +1024,7 @@ export function register(app: App, fastify: FastifyInstance) {
           type: e.vessel?.type || '',
           length: e.vessel?.length_metres ?? '',
           gt: e.vessel?.gross_tonnes ?? '',
-          serviceType: e.service_type || '',
+          serviceType: (e.service_type || '') + (e.is_sole_watch ? ' (sole watchkeeper)' : ''),
           days: e.sea_days ?? 0,
           hours: e.duration_hours ?? '',
           notes: formatEntryNotes(e.notes),
@@ -1117,6 +1179,8 @@ export function register(app: App, fastify: FastifyInstance) {
     });
     // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
     entries = await entriesWithIdentity(app, entries);
+    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -1136,6 +1200,18 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Get user's vessels only
     const allVessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
+
+    // Near coastal or unlimited days on commercial vessels, from the AIS fixes (MSN 1856 s.5)
+    const pdfCommercialEntries = confirmedEntries.filter((e) => isCommercialWork(e.vessel, (userProfile as any).vessel_sector));
+    const pdfMeasures = pdfCommercialEntries.length > 0 ? nearCoastalMeasures() : null;
+    let pdfCoastalFixes: CoastalVesselFix[] = [];
+    if (pdfMeasures) {
+      try {
+        pdfCoastalFixes = await coastalFixes(app, userId, pdfCommercialEntries);
+      } catch (err) {
+        app.logger.warn({ err }, 'Near-coastal fix lookup failed; PDF sent without it');
+      }
+    }
 
     // Fetch leave periods for the user
     const pdfLeavePeriods = await app.db.select()
@@ -1183,6 +1259,16 @@ export function register(app: App, fastify: FastifyInstance) {
         if (!entriesByVessel[key]) entriesByVessel[key] = [];
         entriesByVessel[key].push(entry);
       });
+
+    // MCA: the total and each vessel's stand-by follow the MSN 1858 limits (yard
+    // capped at 90 days, stand-by at most 14 in a row and never more than the
+    // voyage before), so the report matches the qualifying total in the app.
+    const isMcaTemplate = template === 'mca';
+    const mcaFigures = isMcaTemplate
+      ? mcaReportFigures(confirmedEntries as any, Object.values(entriesByVessel) as any)
+      : null;
+    const blockIndex = new Map(Object.keys(entriesByVessel).map((k, i) => [k, i]));
+    if (mcaFigures) totalDays = mcaFigures.total;
 
     // --- Foreland Marine brand palette ---
     const STEEL_BLUE = '#5386B6';
@@ -1311,6 +1397,14 @@ export function register(app: App, fastify: FastifyInstance) {
 
     doc.font('NunitoSans-Light').fontSize(22).fillColor(DEEP_NAVY);
     doc.text(`${totalDays} days`, ML + 15, summaryY + 22);
+    if (mcaFigures && (mcaFigures.standby_not_credited > 0 || mcaFigures.yard_over_cap > 0)) {
+      const left = [
+        mcaFigures.standby_not_credited > 0 ? `${mcaFigures.standby_not_credited} stand-by days` : '',
+        mcaFigures.yard_over_cap > 0 ? `${mcaFigures.yard_over_cap} yard days over the 90-day limit` : '',
+      ].filter(Boolean).join(' and ');
+      doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+      doc.text(`Qualifying service under MSN 1858. Not counted: ${left}.`, ML + 150, summaryY + 30, { width: CW - 165 });
+    }
 
     doc.y = summaryY + 58;
     doc.moveDown(0.3);
@@ -1353,6 +1447,22 @@ export function register(app: App, fastify: FastifyInstance) {
           particulars.push(['Service Dates', `${formatDate(vesselEntries[0].start_time)} to ${formatDate(last.end_time ?? last.start_time)}`]);
         }
 
+        // Sole watchkeeper: the dates the user says they were the only watchkeeper in
+        // their department, so a reviewer can see why those sea days count as watchkeeping.
+        const soleEntries = vesselEntries.filter((entry: any) => entry.is_sole_watch);
+        const solePeriods: Array<{ start_date: string | null; end_date: string | null }> =
+          (vesselEntries[0]?.vessel as any)?.sole_watch_periods ?? [];
+        if (soleEntries.length) {
+          const when = solePeriods.length
+            ? solePeriods
+                .map((p) => `${p.start_date ? formatDate(p.start_date) : 'First entry'} to ${p.end_date ? formatDate(p.end_date) : 'present'}`)
+                .join(', ')
+            : 'All service on this vessel';
+          particulars.push(['Sole Watchkeeper', when]);
+        }
+        let soleDays = 0;
+        soleEntries.forEach((entry) => { if (entry.sea_days) soleDays += entry.sea_days; });
+
         // Calculate service types for this vessel
         const vesselServiceTypes: { [key: string]: number } = {};
         vesselEntries.forEach((entry) => {
@@ -1360,9 +1470,16 @@ export function register(app: App, fastify: FastifyInstance) {
           if (!vesselServiceTypes[st]) vesselServiceTypes[st] = 0;
           if (entry.sea_days) vesselServiceTypes[st] += entry.sea_days;
         });
+        // MCA: stand-by shows the days credited under MSN 1858, with the rest noted
+        let standbyLeftOut = 0;
+        if (mcaFigures && vesselServiceTypes['standby_service'] != null) {
+          const credited = mcaFigures.block_standby_credited[blockIndex.get(vesselKey) ?? -1] ?? 0;
+          standbyLeftOut = Math.max(0, vesselServiceTypes['standby_service'] - credited);
+          vesselServiceTypes['standby_service'] = credited;
+        }
 
         const particularsRows = Math.ceil(particulars.length / 2);
-        const serviceRows = Object.keys(vesselServiceTypes).length;
+        const serviceRows = Object.keys(vesselServiceTypes).length + (soleEntries.length ? 1 : 0);
         const spaceNeeded = 35 + (particularsRows * 18) + 25 + (serviceRows * 16) + 35;
         ensureSpace(spaceNeeded);
 
@@ -1414,6 +1531,20 @@ export function register(app: App, fastify: FastifyInstance) {
           doc.text(`${days}d`, 0, rowY, { width: PW - MR, align: 'right' });
           doc.y = rowY + 16;
         });
+        if (standbyLeftOut > 0) {
+          const rowY = Math.round(doc.y);
+          doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+          doc.text(`${standbyLeftOut} more stand-by days logged, not credited (MSN 1858: at most 14 in a row, never more than the voyage before)`, ML + 10, rowY, { width: CW - 10 });
+          doc.y = rowY + 14;
+        }
+        if (soleEntries.length) {
+          const rowY = Math.round(doc.y);
+          doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+          doc.text('of which as sole watchkeeper (also watchkeeping)', ML + 10, rowY, { width: 350 });
+          doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+          doc.text(`${soleDays}d`, 0, rowY, { width: PW - MR, align: 'right' });
+          doc.y = rowY + 16;
+        }
 
         // Watchkeeping hours for this vessel
         let vesselBridgeHours = 0;
@@ -1446,10 +1577,42 @@ export function register(app: App, fastify: FastifyInstance) {
           }
         }
 
+        // Workboat sea areas (commercial users, guidance only)
+        if (isCommercialWork(vessel, (userProfile as any).vessel_sector)) {
+          const b = areaDayBreakdown(vesselEntries as any);
+          const nc = pdfMeasures ? coastalDayBreakdown(vesselEntries as any, pdfCoastalFixes, pdfMeasures) : null;
+          const areaRows: [string, number][] = (
+            [
+              ['Cat A', b.A], ['Cat B', b.B], ['Cat C', b.C], ['Cat D', b.D], ['Sea', b.sea], ['Not classified', b.not_classified],
+              ['Tidal', b.tidal], ['Non-tidal', b.non_tidal],
+              ['Near coastal (from AIS)', nc?.near_coastal ?? 0], ['Unlimited (from AIS)', nc?.unlimited ?? 0],
+            ] as [string, number][]
+          ).filter(([, n]) => n > 0);
+          if (areaRows.length > 0) {
+            ensureSpace(30 + areaRows.length * 16);
+            const aY = Math.round(doc.y);
+            doc.font('NunitoSans-SemiBold').fontSize(7.5).fillColor(STEEL_BLUE);
+            doc.text('SEA AREAS (DAYS)', ML, aY, { characterSpacing: 1 });
+            doc.y = aY + 14;
+            for (const [label, n] of areaRows) {
+              const rY = Math.round(doc.y);
+              doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
+              doc.text(label, ML + 10, rY, { width: 350 });
+              doc.font('NunitoSans-SemiBold').fontSize(9).fillColor(DEEP_NAVY);
+              doc.text(`${n}d`, 0, rY, { width: PW - MR, align: 'right' });
+              doc.y = rY + 16;
+            }
+            doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+            doc.text(AREA_GUIDANCE_NOTE, ML + 10, doc.y, { width: CW - 10 });
+            doc.y += 4;
+          }
+        }
+
         // Vessel subtotal
         doc.y += 3;
         let vesselDays = 0;
         vesselEntries.forEach((entry) => { if (entry.sea_days) vesselDays += entry.sea_days; });
+        vesselDays -= standbyLeftOut;
 
         const subY = Math.round(doc.y);
         doc.fillColor(STEEL_BLUE).rect(ML, subY, 3, 24).fill();
@@ -1482,7 +1645,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const serviceTypeDefinitions = [
       { type: 'Actual Sea Service', desc: 'Sea service performed while the vessel is underway, engaged in trading or on passage.' },
       { type: 'Watchkeeping Service', desc: 'Time spent on bridge watch or engine room watch while at sea.' },
-      { type: 'Stand-by Service', desc: 'Service performed during periods of standby while the vessel is at sea.' },
+      { type: 'Stand-by Service', desc: 'The time immediately following a voyage while the vessel is prepared for the next one. For MCA certificates at most 14 consecutive days count at one time, and never more than the voyage before (MSN 1858).' },
       { type: 'Service in Port', desc: 'Service performed while the vessel is in port, including maintenance and cargo operations.' },
       { type: 'Yard Service', desc: 'Service performed during shipyard periods, including new building or major repairs.' },
     ];

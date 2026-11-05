@@ -142,6 +142,7 @@ function RootLayoutContent() {
             headerBackTitle: t('common.back'),
           }}
         />
+        <Stack.Screen name="sole-watchkeeping" options={{ title: t('soleWatch.screen.title'), headerBackTitle: t('common.back') }} />
         <Stack.Screen name="oral-checklist" options={{ title: 'Before your oral', headerBackTitle: t('common.back') }} />
         <Stack.Screen name="training-providers" options={{ title: 'Find a course', headerBackTitle: t('common.back') }} />
         <Stack.Screen name="training-provider/[id]" options={{ title: '', headerBackTitle: t('common.back') }} />
@@ -150,6 +151,13 @@ function RootLayoutContent() {
           options={{
             title: t('navigation.manualTracking'),
             headerBackTitle: t('common.back'),
+          }}
+        />
+        <Stack.Screen
+          name="sign-entry"
+          options={{
+            title: 'Sign entry',
+            headerBackTitle: t('common.cancel'),
           }}
         />
         <Stack.Screen

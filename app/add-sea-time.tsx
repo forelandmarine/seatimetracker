@@ -26,9 +26,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { AUTHORITY_LABELS, MaritimeAuthority } from '@/constants/mcaRequirements';
 import { log, error as logError } from '@/utils/log';
+import { SeaAreaPicker, type SeaAreaValue } from '@/components/SeaAreaPicker';
+import { isCommercialVessel } from '@/components/SeaAreaChip';
 
 interface Vessel {
   id: string;
+  sector?: string | null;
+  is_workboat?: boolean | null;
+  is_tug?: boolean | null;
   mmsi: string;
   vessel_name: string;
   is_active: boolean;
@@ -372,6 +377,10 @@ export default function AddSeaTimeScreen() {
   const [saving, setSaving] = useState(false);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
+  // Workboat sea area and dual capacity (commercial work only)
+  const [seaArea, setSeaArea] = useState<SeaAreaValue>({ area_category: null, is_tidal: null, dual_capacity: false });
+  const [userSector, setUserSector] = useState<string | null>(null);
+  const commercial = selectedVessel ? isCommercialVessel(selectedVessel, userSector) : userSector === 'commercial';
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -505,6 +514,7 @@ export default function AddSeaTimeScreen() {
       try {
         const userProfile = await seaTimeApi.getUserProfile();
         if (cancelled) return;
+        setUserSector(userProfile?.vessel_sector ?? null);
         const authority = userProfile?.maritime_authority ?? null;
         setPathway({
           authority: (['mca', 'uscg', 'amsa', 'mnz', 'samsa'].includes(authority) ? authority : null) as MaritimeAuthority | null,
@@ -638,6 +648,9 @@ export default function AddSeaTimeScreen() {
             ? parseFloat(watchkeepingHours)
             : null,
           night_watch_hours: nightWatchHours ? parseFloat(nightWatchHours) : null,
+          ...(commercial
+            ? { area_category: seaArea.area_category, is_tidal: seaArea.is_tidal, dual_capacity: seaArea.dual_capacity || null }
+            : {}),
         }),
         signal: saveController.signal,
       });
@@ -913,6 +926,8 @@ export default function AddSeaTimeScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {commercial && <SeaAreaPicker value={seaArea} onChange={setSeaArea} />}
 
           {serviceType === 'watchkeeping' && (
             <View style={styles.inputGroup}>

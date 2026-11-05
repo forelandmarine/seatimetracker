@@ -14,9 +14,10 @@
  * checked against what the model was actually shown before it reaches the app.
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { amsaCreditableDays, countDistinctSeaDays, mnzCreditableDays, qualifyingSeaDays, uscgCreditableDays } from './seaTime.js';
+import { toDay } from './soleWatch.js';
 
 // Sonnet 5.5 at medium effort matched Opus 5.5 on the eval at about a third of the cost
 // (scripts/eval-pathway-assistant.ts, 2026-10-25); Haiku 5.5 got stage-specific rules wrong.
@@ -260,6 +261,28 @@ function renderPassages(rows: ChunkRow[]): string {
 }
 
 /**
+ * Give each entry's vessel its sole watchkeeper periods, as the reports do, so
+ * isSoleWatchEntry matches by date. Left on the old flag if the table is missing.
+ */
+async function attachSoleWatchPeriods(db: Db, entries: any[]): Promise<void> {
+  const ids = [...new Set(entries.map((e) => e.vessel_id).filter(Boolean))];
+  if (!ids.length) return;
+  let rows: any[];
+  try {
+    rows = await db.select().from(schema.vessel_sole_watch_periods).where(inArray(schema.vessel_sole_watch_periods.vessel_id, ids));
+  } catch {
+    return;
+  }
+  const byVessel = new Map<string, Array<{ start_date: string | null; end_date: string | null }>>();
+  for (const r of rows) {
+    const list = byVessel.get(r.vessel_id) ?? [];
+    list.push({ start_date: toDay(r.start_date), end_date: toDay(r.end_date) });
+    byVessel.set(r.vessel_id, list);
+  }
+  for (const e of entries) if (e.vessel) e.vessel = { ...e.vessel, sole_watch_periods: byVessel.get(e.vessel_id) ?? [] };
+}
+
+/**
  * The user's own figures, counted the way /api/reports/summary counts them
  * (confirmed entries only, calendar days deduplicated), under the authority's own
  * day rules: MCA 4 hours per date with yard capped, USCG and AMSA an 8-hour day,
@@ -273,6 +296,7 @@ export async function buildUserContext(db: Db, user: any, authority: string, tar
       where: eq(schema.sea_time_entries.user_id, user.id),
     })
   ).filter((e: any) => e.status === 'confirmed');
+  await attachSoleWatchPeriods(db, entries);
 
   const vessels = new Map<string, any>();
   for (const e of entries) if (e.vessel) vessels.set(e.vessel.id, e.vessel);
@@ -346,7 +370,7 @@ function mcaLine(label: string, list: any[]): string {
     byType.set(type, [...(byType.get(type) ?? []), e]);
   }
   const types = [...byType.entries()].map(([t, es]) => `${t} ${countDistinctSeaDays(es)}`).join(', ');
-  return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days ${b.standby}. Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
+  return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days credited ${b.standby} of ${b.standby_logged} logged (MSN 1858: at most 14 in a row, never more than the voyage before). Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
 }
 
 function costUsd(model: string, u: { input: number; output: number; cacheRead: number; cacheWrite: number }) {

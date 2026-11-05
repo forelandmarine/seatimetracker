@@ -36,12 +36,18 @@ import { register as registerSeaTimeRoutes } from './routes/sea-time.js';
 import { register as registerSeaTimeBulkRoutes } from './routes/sea-time-bulk.js';
 import { register as registerAisRoutes } from './routes/ais.js';
 import { register as registerReportsRoutes } from './routes/reports.js';
+import { register as registerBoatmasterReportsRoutes } from './routes/boatmasterReports.js';
+import { register as registerWorkboatTestimonialRoutes } from './routes/workboatTestimonial.js';
+import { register as registerTestimonialRequestRoutes } from './routes/testimonialRequests.js';
+import { register as registerEntrySignatureRoutes } from './routes/entrySignatures.js';
+import { register as registerRyaReportsRoutes } from './routes/ryaReports.js';
 import { register as registerNotificationsRoutes } from './routes/notifications.js';
 import { register as registerSubscriptionRoutes } from './routes/subscription.js';
 import { register as registerUsersRoutes } from './routes/users.js';
 import { register as registerCertificatesRoutes } from './routes/certificates.js';
 import { register as registerReferralsRoutes } from './routes/referrals.js';
 import { register as registerLeavePeriodsRoutes } from './routes/leave-periods.js';
+import { register as registerSoleWatchRoutes } from './routes/sole-watch.js';
 import { register as registerOnBoardRoutes } from './routes/on-board.js';
 import { register as registerMarketingConsentRoutes } from './routes/marketing-consent.js';
 import { register as registerHistoryImportRoutes } from './routes/history-import.js';
@@ -49,6 +55,7 @@ import { register as registerFeedbackRoutes } from './routes/feedback.js';
 import { register as registerPublicRoutes } from './routes/public.js';
 import { register as registerPathwayAssistantRoutes } from './routes/pathway-assistant.js';
 import { register as registerTrainingRoutes } from './routes/training.js';
+import { register as registerSeaAreasRoutes } from './routes/sea-areas.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(combinedSchema);
@@ -82,6 +89,11 @@ registerSeaTimeRoutes(app, app.fastify);
 registerSeaTimeBulkRoutes(app, app.fastify);
 registerAisRoutes(app, app.fastify);
 registerReportsRoutes(app, app.fastify);
+registerBoatmasterReportsRoutes(app, app.fastify);
+registerWorkboatTestimonialRoutes(app, app.fastify);
+registerTestimonialRequestRoutes(app, app.fastify);
+registerEntrySignatureRoutes(app, app.fastify);
+registerRyaReportsRoutes(app, app.fastify);
 registerNotificationsRoutes(app, app.fastify);
 // /api/tracking/* (MyShipTracking proxy) is not registered: no sign-in check, unused by the app,
 // and it would spend API credits for anyone once a key is set.
@@ -90,6 +102,7 @@ registerUsersRoutes(app, app.fastify);
 registerCertificatesRoutes(app, app.fastify);
 registerReferralsRoutes(app, app.fastify);
 registerLeavePeriodsRoutes(app, app.fastify);
+registerSoleWatchRoutes(app, app.fastify);
 registerOnBoardRoutes(app, app.fastify);
 registerMarketingConsentRoutes(app, app.fastify);
 registerHistoryImportRoutes(app, app.fastify);
@@ -97,6 +110,7 @@ registerFeedbackRoutes(app, app.fastify);
 registerPublicRoutes(app, app.fastify);
 registerPathwayAssistantRoutes(app, app.fastify);
 registerTrainingRoutes(app, app.fastify);
+registerSeaAreasRoutes(app, app.fastify);
 
 // Health check — used by frontend warm-up ping (authRetry.ts) and monitoring
 app.fastify.get('/api/health', async () => ({ status: 'ok' }));

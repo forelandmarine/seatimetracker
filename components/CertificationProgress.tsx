@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { RoutePicker } from '@/components/RoutePicker';
@@ -15,6 +16,7 @@ import {
   getTargetDays,
 } from '@/constants/mcaRequirements';
 import { AMSA_STCW_IDS } from '@/constants/amsaRequirements';
+import { getRyaService } from '@/utils/seaTimeApi';
 
 export interface ServiceTypeDays {
   service_type: string;
@@ -105,6 +107,11 @@ export interface WorkboatServiceSummary {
   workboat_15m: number;
   recent_sea_service: number;
   workboats_without_length: number;
+  /** Days logged in a dual deck and engine capacity, counted at 50% (MGN 496 4.5). */
+  dual_capacity_days?: number;
+  /** Officer service on 15 m+ in the last 5 years toward revalidation (MGN 496 12.1). */
+  revalidation_officer_15m?: number;
+  revalidation_required?: number;
 }
 
 /** MCA engineering figures by propulsion power (MSN 1904, 1857, 1863), from the summary endpoint. */
@@ -146,6 +153,30 @@ export interface BoatmasterServiceSummary {
   unclassified_days: number;
   level2_months: number;
   level1_months: number;
+  /** Service after the licence, for its endorsements and the Port of London LKE. */
+  endorsements?: BmlEndorsementsSummary | null;
+}
+
+export interface BmlEndorsementCount {
+  days: number;
+  tidal_days: number;
+  non_tidal_days: number;
+  months: number;
+}
+
+/** Boatmasters' Licence endorsement and LKE figures (MSN 1853 Annex 5 Tables B and C). */
+export interface BmlEndorsementsSummary {
+  licence_issued: string | null;
+  passenger: BmlEndorsementCount;
+  towing: BmlEndorsementCount;
+  /** Deck service on high-speed craft (fast craft endorsement); missing from older backends. */
+  fast_craft?: BmlEndorsementCount;
+  lke_full: { days: number; months: number };
+  lke_lower: { days: number; months: number };
+  lke_upper: { days: number; months: number };
+  lke_night_days: number;
+  lke_upriver_days: number;
+  lke_downriver_days: number;
 }
 
 /**
@@ -205,7 +236,108 @@ interface ProgressRow {
   current: number;
   required: number;
   /** Maritime NZ states two certificates in hours rather than days; the BML qualifying period is in months. */
-  unit?: 'days' | 'hours' | 'months';
+  unit?: 'days' | 'hours' | 'months' | 'miles' | 'passages';
+}
+
+/** Sea time counted the RYA's way, from GET /api/reports/rya-service. */
+interface RyaDisciplineService {
+  days: number;
+  days_under_24m: number;
+  skipper_days_under_24m: number;
+  tidal_days_under_24m: number;
+  tidal_days: number;
+  miles: number;
+  miles_under_24m: number;
+  night_hours?: number;
+  passages: Array<{ overnight: boolean; as_skipper: boolean }>;
+  ocean_passages: Array<{ start: string; nm: number; hours: number; offshore_nm?: number | null }>;
+  /** Targets after reductions from the user's certificates (older backends leave this out). */
+  targets?: {
+    coastal: {
+      days_under_24m: number;
+      days_alt_500gt: number | null;
+      skipper_days_under_24m: number;
+      miles_under_24m: number;
+      miles_alt_500gt: number | null;
+      night_hours: number;
+      reduced_by: 'coastal_skipper_course' | 'yachtmaster_coastal' | null;
+    };
+    offshore: {
+      days: number;
+      skipper_days_under_24m: number;
+      miles: number;
+      passages: number;
+      overnight: number;
+      as_skipper: number;
+      tidal_days_under_24m: number;
+      reduced_by: 'yachtmaster_offshore' | null;
+    };
+  };
+}
+interface RyaServiceSummary {
+  sail: RyaDisciplineService;
+  power: RyaDisciplineService;
+  days_unknown_discipline: number;
+  days_commercial: number;
+}
+
+const OCEAN_OFFSHORE_NM = 200;
+
+/**
+ * Yachtmaster pre-exam sea time (RYA Yachtmaster Coastal and Offshore pages),
+ * against the targets the user's certificates allow. Where a reduced Coastal
+ * target can be met two ways (under 24 m, or on yachts under 500 GT), the bar
+ * shows whichever the user is further along. The halves in tidal waters are
+ * "should" in the RYA text, shown as bars too.
+ */
+function ryaRows(level: 'coastal' | 'offshore' | 'ocean', r: RyaDisciplineService): ProgressRow[] {
+  if (level === 'coastal') {
+    const t = r.targets?.coastal ?? {
+      days_under_24m: 30, days_alt_500gt: null, skipper_days_under_24m: 2, miles_under_24m: 800, miles_alt_500gt: null, night_hours: 12, reduced_by: null,
+    };
+    const days: ProgressRow = t.days_alt_500gt && r.days / t.days_alt_500gt > r.days_under_24m / t.days_under_24m
+      ? { label: 'Days at Sea, Yachts Under 500 GT', current: r.days, required: t.days_alt_500gt }
+      : { label: 'Days at Sea, Under 24m', current: r.days_under_24m, required: t.days_under_24m };
+    const miles: ProgressRow = t.miles_alt_500gt && r.miles / t.miles_alt_500gt > r.miles_under_24m / t.miles_under_24m
+      ? { label: 'Miles, Yachts Under 500 GT', current: r.miles, required: t.miles_alt_500gt, unit: 'miles' }
+      : { label: 'Miles, Under 24m', current: r.miles_under_24m, required: t.miles_under_24m, unit: 'miles' };
+    const rows: ProgressRow[] = [
+      days,
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: t.skipper_days_under_24m },
+      miles,
+      { label: 'Days in Tidal Waters', current: r.tidal_days, required: Math.ceil(days.required / 2) },
+    ];
+    if (r.night_hours != null) {
+      rows.push({ label: 'Night Hours Under Way', current: Math.floor(r.night_hours), required: t.night_hours, unit: 'hours' });
+    }
+    return rows;
+  }
+  if (level === 'offshore') {
+    const t = r.targets?.offshore ?? {
+      days: 50, skipper_days_under_24m: 5, miles: 2500, passages: 5, overnight: 2, as_skipper: 2, tidal_days_under_24m: 25, reduced_by: null,
+    };
+    return [
+      { label: 'Days at Sea, Yachts to 500 GT', current: r.days, required: t.days },
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: t.skipper_days_under_24m },
+      { label: 'Miles, Yachts to 500 GT', current: r.miles, required: t.miles, unit: 'miles' },
+      { label: 'Passages Over 60 Miles', current: r.passages.length, required: t.passages, unit: 'passages' },
+      { label: 'Of Which Overnight', current: r.passages.filter((p) => p.overnight).length, required: t.overnight, unit: 'passages' },
+      { label: 'Of Which as Skipper', current: r.passages.filter((p) => p.as_skipper).length, required: t.as_skipper, unit: 'passages' },
+      { label: 'Days in Tidal Waters, Under 24m', current: r.tidal_days_under_24m, required: t.tidal_days_under_24m },
+    ];
+  }
+  const rows: ProgressRow[] = [
+    { label: 'Possible Ocean Qualifying Passages', current: r.ocean_passages.length, required: 1, unit: 'passages' },
+  ];
+  if (r.ocean_passages.some((p) => p.offshore_nm != null)) {
+    rows.push({
+      label: 'Of Which 200 Miles Over 50 Miles Offshore',
+      current: r.ocean_passages.filter((p) => (p.offshore_nm ?? 0) >= OCEAN_OFFSHORE_NM).length,
+      required: 1,
+      unit: 'passages',
+    });
+  }
+  return rows;
 }
 
 export interface CertificationProgressProps {
@@ -338,6 +470,7 @@ export function CertificationProgress({
   isDark,
   onChangeTarget,
 }: CertificationProgressProps) {
+  const { t } = useTranslation();
   const dept: 'deck' | 'engineering' =
     department?.toLowerCase() === 'engineering' ? 'engineering' : 'deck';
   const resolvedAuthority: MaritimeAuthority = authority ?? 'mca';
@@ -357,6 +490,21 @@ export function CertificationProgress({
   const routes: CertRoute[] = useMemo(() => getRoutes(baseRequirement?.id), [baseRequirement]);
   const route = useMemo(() => pickRoute(baseRequirement?.id, routeId), [baseRequirement, routeId]);
   const requirement = useMemo(() => applyRoute(baseRequirement, route), [baseRequirement, route]);
+
+  // Yachtmaster targets: RYA-counted sea time, fetched only for these
+  const ryaLevel = resolvedAuthority === 'mca' ? requirement?.ryaRoute : undefined;
+  const [rya, setRya] = useState<RyaServiceSummary | null>(null);
+  const [ryaDiscipline, setRyaDiscipline] = useState<'sail' | 'power' | null>(null);
+  useEffect(() => {
+    if (!ryaLevel) return;
+    let live = true;
+    getRyaService()
+      .then((data: RyaServiceSummary) => { if (live && data?.sail) setRya(data); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [ryaLevel]);
+  // Show the discipline with more sea time unless the user picked one
+  const ryaShown: 'sail' | 'power' = ryaDiscipline ?? (rya && rya.power.days > rya.sail.days ? 'power' : 'sail');
 
   // A route that only counts service from its start date swaps every figure for
   // the dated ones once they have loaded. Until the date is set, all service counts.
@@ -438,6 +586,8 @@ export function CertificationProgress({
       ];
     }
 
+    if (ryaLevel) return rya ? ryaRows(ryaLevel, rya[ryaShown]) : [];
+
     if (resolvedAuthority === 'mca' && requirement?.workboatRoute) {
       // Without the workboat figures there is no honest bar to draw.
       if (!workboatService) return [];
@@ -491,6 +641,32 @@ export function CertificationProgress({
       // Without the boatmaster figures there is no honest bar to draw.
       if (!boatmasterService) return [];
       const route = requirement.boatmasterRoute;
+      if (route.endorsement || route.lke) {
+        const e = boatmasterService.endorsements;
+        if (!e) return [];
+        if (route.lke) {
+          const section = route.lke === 'lower' ? e.lke_lower : route.lke === 'upper' ? e.lke_upper : e.lke_full;
+          const area = route.lke === 'lower' ? 'Lower Area' : route.lke === 'upper' ? 'Upper Area' : 'LKE Area';
+          return [
+            { label: `Days in the ${area}`, current: section.days, required: route.days },
+            { label: 'First Day to Last Day', current: section.months, required: route.months, unit: 'months' },
+          ];
+        }
+        const { kind, water } = route.endorsement!;
+        const c = kind === 'passenger' ? e.passenger : kind === 'fast_craft' ? e.fast_craft : e.towing;
+        if (!c) return [];
+        const onLabel =
+          kind === 'passenger' ? 'On Passenger Vessels' : kind === 'fast_craft' ? 'On High-Speed Craft' : 'On Towing and Pushing Vessels';
+        return [
+          { label: onLabel, current: c.days, required: route.days },
+          {
+            label: water === 'tidal' ? 'Of Which in Tidal Waters' : 'Of Which in Non-Tidal Waters',
+            current: water === 'tidal' ? c.tidal_days : c.non_tidal_days,
+            required: Math.ceil(route.days / 2),
+          },
+          { label: 'Qualifying Period', current: c.months, required: route.months, unit: 'months' },
+        ];
+      }
       const level2 = route.level === 2;
       return [
         {
@@ -650,6 +826,9 @@ export function CertificationProgress({
     targetWatchkeeping,
     amsaNotUnderwayCounted,
     amsaUnderway,
+    ryaLevel,
+    rya,
+    ryaShown,
   ]);
 
   if (!requirement && rows.length === 0) return null;
@@ -724,6 +903,8 @@ export function CertificationProgress({
         <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
           {isUSCG && !uscgService
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
+            : ryaLevel && !rya
+              ? 'Your Yachtmaster sea time is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled the RYA way.'
             : requirement?.workboatRoute && !workboatService
               ? 'Your workboat day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 496.'
               : requirement?.tugRoute && !tugService
@@ -814,6 +995,38 @@ export function CertificationProgress({
         </View>
       )}
 
+      {ryaLevel && rya && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 8 }}>
+            {(['sail', 'power'] as const).map((d) => (
+              <TouchableOpacity key={d} onPress={() => setRyaDiscipline(d)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: ryaShown === d ? '700' : '400', color: ryaShown === d ? colors.primary : mutedColor }}>
+                  {d === 'sail' ? 'Sail' : 'Power'} ({rya[d].days} days)
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted the RYA way: a day is 8 consecutive hours on board, mostly at sea, and only one counts in any 24 hours.
+            Sea time is from the last 10 years, on yachts of the exam's discipline (from each vessel's type). Days as
+            skipper need the Master rank on the entry. A passage counts when it is over 60 miles in a straight line from
+            start to end, so a passage round a headland can be missed. Overnight is a passage under way through midnight
+            UTC; the RYA does not define it, so check your log.
+            {ryaLevel === 'coastal' ? ` Night hours are the hours under way between local sunset and sunrise at the vessel's AIS position. The RYA logbook counts only hours on watch or helping run the yacht, which AIS cannot show, so check them against your log.${
+              rya[ryaShown].targets?.coastal.reduced_by
+                ? ` Reduced targets apply because you hold ${rya[ryaShown].targets!.coastal.reduced_by === 'yachtmaster_coastal' ? 'Yachtmaster Coastal in the other discipline' : 'a Coastal Skipper course certificate'}: 12 days and 400 miles under 24m, or 30 days and 800 miles on yachts under 500 GT.`
+                : ' With a Coastal Skipper course certificate, or Yachtmaster Coastal in the other discipline (set Sail or Power on the certificate), the targets fall to 12 days and 400 miles.'
+            }` : ''}
+            {ryaLevel === 'offshore' ? (rya[ryaShown].targets?.offshore.reduced_by
+              ? ' Reduced targets apply because you hold Yachtmaster Offshore in the other discipline.'
+              : ' Holding Yachtmaster Offshore in the other discipline (set Sail or Power on the certificate) reduces the targets to 25 days, 3 as skipper, 1,250 miles and 3 passages.') : ''}
+            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or in charge of a watch. Miles more than 50 miles from land are measured from AIS fixes against the coastline, which does not show rigs or offshore lights, so check them on the chart. AIS cannot show sights: tick the sights and compass check in the Before your oral checklist.' : ''}
+            {rya.days_commercial > 0 ? ` ${rya.days_commercial} days on commercial vessels are left out: ask the RYA (training@rya.org.uk) whether they count.` : ''}
+            {rya.days_unknown_discipline > 0 ? ` ${rya.days_unknown_discipline} days are on vessels with no type set; set Motor or Sail on the vessel to count them.` : ''}
+          </Text>
+        </View>
+      )}
+
       {requirement?.workboatRoute && workboatService && (
         <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
           <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
@@ -825,6 +1038,31 @@ export function CertificationProgress({
             {workboatService.workboats_without_length > 0
               ? ` ${workboatService.workboats_without_length} ${workboatService.workboats_without_length === 1 ? 'workboat has' : 'workboats have'} no length recorded, so ${workboatService.workboats_without_length === 1 ? 'it is' : 'they are'} left out of the 15m figures. Add the length in the vessel's details.`
               : ''}
+          </Text>
+          {(workboatService.dual_capacity_days ?? 0) > 0 && (
+            <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17, marginTop: 6 }}>
+              {t('seaAreas.dualDays', { count: workboatService.dual_capacity_days })}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* MGN 496 12.1 revalidation: guidance from the full record, not the dated route figures */}
+      {requirement?.workboatRoute && allWorkboatService?.revalidation_required != null && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+            {t('seaAreas.revalTitle')}
+          </Text>
+          <Text style={{ fontSize: 13, color: textColor, lineHeight: 18 }}>
+            {(allWorkboatService.revalidation_officer_15m ?? 0) >= allWorkboatService.revalidation_required
+              ? t('seaAreas.revalMet')
+              : t('seaAreas.revalBody', {
+                  days: allWorkboatService.revalidation_officer_15m ?? 0,
+                  required: allWorkboatService.revalidation_required,
+                })}
+          </Text>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17, marginTop: 4 }}>
+            {t('seaAreas.revalAssumed')}
           </Text>
         </View>
       )}
@@ -849,7 +1087,21 @@ export function CertificationProgress({
         </View>
       )}
 
-      {requirement?.boatmasterRoute && boatmasterService && (
+      {requirement?.boatmasterRoute && (requirement.boatmasterRoute.endorsement || requirement.boatmasterRoute.lke) && boatmasterService?.endorsements && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            {boatmasterService.endorsements.licence_issued
+              ? `Counted from the day after your Boatmasters' Licence was issued (${boatmasterService.endorsements.licence_issued.split('-').reverse().join('/')}), within the last 5 years.`
+              : "Endorsement service must follow your licence service. No Boatmasters' Licence with an issue date is in your Certificates, so every day in the last 5 years is counted. Add it to count only later days."}
+            {requirement.boatmasterRoute.lke
+              ? ` A day counts when an AIS position that day was in the tidal Thames ${requirement.boatmasterRoute.lke === 'lower' ? 'between Margaretness and London Bridge' : requirement.boatmasterRoute.lke === 'upper' ? 'between London Bridge and Putney Bridge' : 'between Margaretness and Putney Bridge'}. The PLA also asks for varying conditions: ${boatmasterService.endorsements.lke_night_days} ${boatmasterService.endorsements.lke_night_days === 1 ? 'day has' : 'days have'} a position in darkness, ${boatmasterService.endorsements.lke_upriver_days} upriver and ${boatmasterService.endorsements.lke_downriver_days} downriver. Days on vessels without AIS cannot be placed, so they are not counted here.`
+              : ` Tidal and non-tidal days go by your AIS positions; days without them count in the total only. ${requirement.boatmasterRoute.endorsement?.kind === 'passenger' ? 'Mark passenger vessels on their vessel screen.' : 'Mark towing and pushing vessels with the Tug switch on their vessel screen.'}`}
+            {' '}Record the service in your BML Work Record (MSF 4366){requirement.boatmasterRoute.lke ? ' and the PLA Details of Service sheet' : ''}, both in Download Reports.
+          </Text>
+        </View>
+      )}
+
+      {requirement?.boatmasterRoute && !requirement.boatmasterRoute.endorsement && !requirement.boatmasterRoute.lke && boatmasterService && (
         <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
           <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
             Counted under MSN 1853: any day with logged deck service in the licence's waters, in the last 5
@@ -858,10 +1110,10 @@ export function CertificationProgress({
               ? ' Category C counts only where it is non-linked, which AIS cannot tell, so check those days.'
               : ' Limited coastal means no more than 15 miles from the departure point and 5 miles from land.'}
             {boatmasterService.declared_inland_days > 0 && requirement.boatmasterRoute.level === 2
-              ? ` ${boatmasterService.declared_inland_days} ${boatmasterService.declared_inland_days === 1 ? 'day has' : 'days have'} no placed AIS position and ${boatmasterService.declared_inland_days === 1 ? 'is' : 'are'} counted because you logged ${boatmasterService.declared_inland_days === 1 ? 'it' : 'them'} with the Inland trade area.`
+              ? ` ${boatmasterService.declared_inland_days} ${boatmasterService.declared_inland_days === 1 ? 'day has' : 'days have'} no placed AIS position and ${boatmasterService.declared_inland_days === 1 ? 'is' : 'are'} counted because ${boatmasterService.declared_inland_days === 1 ? 'it was' : 'they were'} logged as Inland, on the entry or as the vessel's default trade area.`
               : ''}
             {boatmasterService.unclassified_days > 0
-              ? ` ${boatmasterService.unclassified_days} ${boatmasterService.unclassified_days === 1 ? 'day has' : 'days have'} no AIS position the app can place in categorised waters (manual entries, docks, small rivers and lakes), so ${boatmasterService.unclassified_days === 1 ? 'it is' : 'they are'} left out. Set the trade area to Inland on those entries if they were on inland waters.`
+              ? ` ${boatmasterService.unclassified_days} ${boatmasterService.unclassified_days === 1 ? 'day has' : 'days have'} no AIS position the app can place in categorised waters (manual entries, docks, small rivers and lakes), so ${boatmasterService.unclassified_days === 1 ? 'it is' : 'they are'} left out. If they were on inland waters, set the trade area to Inland on those entries, or set the vessel's default trade area to Inland.`
               : ''}
             {boatmasterService.beyond_limited_coastal_days > 0
               ? ` ${boatmasterService.beyond_limited_coastal_days} ${boatmasterService.beyond_limited_coastal_days === 1 ? 'day went' : 'days went'} beyond limited coastal waters, so ${boatmasterService.beyond_limited_coastal_days === 1 ? 'it does' : 'they do'} not count.`

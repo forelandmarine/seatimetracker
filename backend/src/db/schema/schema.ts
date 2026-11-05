@@ -23,6 +23,8 @@ export const vessels = pgTable('vessels', {
   is_sole_watchkeeper: boolean('is_sole_watchkeeper'), // User says they are the only watchkeeper in their department on this vessel (e.g. sole engineer), so every sea day is also a watchkeeping day
   is_tug: boolean('is_tug'), // Marked by the user as a tug: MGN 495 tug service counts toward the tug deck CoCs
   tug_capacity: text('tug_capacity'), // 'rating' | 'officer' | 'cadet': the user's usual capacity on this tug, used for entries logged without a rank (AIS)
+  is_passenger: boolean('is_passenger'), // Marked by the user as a passenger vessel: deck service on it counts toward the BML passenger endorsement (MSN 1853 Annex 5 Table C)
+  default_trade_area: text('default_trade_area'), // Trade area for this vessel's entries logged without one, e.g. 'inland' for a river boat with no AIS (Boatmasters' Licence)
   is_high_speed: boolean('is_high_speed'), // Planing / high-speed craft mode
   sector: text('sector'), // 'yachting' | 'commercial'. Decides which certificates this vessel's service counts toward (MSN 1858 yacht CoCs need yacht service). null = legacy, treated as yachting.
   is_active: boolean('is_active').notNull().default(false),
@@ -87,7 +89,12 @@ export const sea_time_entries = pgTable('sea_time_entries', {
   from_port: text('from_port'),
   to_port: text('to_port'),
   cargo_type: text('cargo_type'),
-  signature_image: text('signature_image'), // Base64 PNG of user's signature for this entry's testimonial
+  signature_image: text('signature_image'), // data:image/png;base64 signature of the Master or responsible person for this entry (utils/entrySignature.ts)
+  signature_signer_name: text('signature_signer_name'),
+  signature_signer_capacity: text('signature_signer_capacity'), // 'master' | 'responsible_person'
+  signature_signed_at: timestamp('signature_signed_at', { withTimezone: true }),
+  signature_method: text('signature_method'), // 'in_person' | 'link'
+  signature_fingerprint: text('signature_fingerprint'), // vessel|start|end|service_type as signed; a mismatch means the signature no longer counts
   created_at: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('sea_time_entries_user_id_idx').on(table.user_id),
@@ -131,6 +138,28 @@ export const vesselsRelations = relations(vessels, ({ many }) => ({
   sea_time_entries: many(sea_time_entries),
   ais_checks: many(ais_checks),
   identity_changes: many(vessel_identity_changes),
+  sole_watch_periods: many(vessel_sole_watch_periods),
+}));
+
+// Dated periods when the user was the only watchkeeper in their department on a
+// vessel. An actual sea service entry whose date falls inside one also counts as
+// a watchkeeping day (MCA, MNZ, SAMSA). Replaces vessels.is_sole_watchkeeper,
+// which is kept in step for old app builds.
+export const vessel_sole_watch_periods = pgTable('vessel_sole_watch_periods', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vessel_id: uuid('vessel_id').notNull().references(() => vessels.id, { onDelete: 'cascade' }),
+  user_id: text('user_id'), // owner of the vessel, for sandboxing (nullable like vessels.user_id)
+  start_date: date('start_date'), // first day, inclusive. null = from the first entry on the vessel
+  end_date: date('end_date'), // last day, inclusive. null = ongoing
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('vessel_sole_watch_periods_vessel_id_idx').on(table.vessel_id),
+  index('vessel_sole_watch_periods_user_id_idx').on(table.user_id),
+]);
+
+export const vessel_sole_watch_periodsRelations = relations(vessel_sole_watch_periods, ({ one }) => ({
+  vessel: one(vessels, { fields: [vessel_sole_watch_periods.vessel_id], references: [vessels.id] }),
 }));
 
 // Dated history of a vessel's MMSI, name, flag and call sign. Reports use it to print
@@ -292,6 +321,10 @@ export const certificates = pgTable('certificates', {
   issued_date: date('issued_date'),
   expiry_date: date('expiry_date'),
   notes: text('notes'),
+  // 'sail' | 'power' for RYA Yachtmaster certificates, which are issued per
+  // discipline (utils/ryaService.ts reduced targets). Null for everything else.
+  // See manual-migration 2026-11-05_certificate_discipline.sql.
+  discipline: text('discipline'),
   // NOTE: the tracker stores only certificate metadata + expiry, never the
   // certificate itself. The old image_url column (which held base64 scans) is
   // removed; see manual-migration 2026-09-23_certificate_no_image.sql.

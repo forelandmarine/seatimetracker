@@ -3,6 +3,21 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { authFetch } from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
 import { OFFERED_COURSES } from '@/constants/offeredCourses';
+import { APPROVAL_LABELS, approvalLabel, type Provider } from '@/utils/providerSearch';
+
+export {
+  searchProviders,
+  haversineKm,
+  labelMatches,
+  providerCodesFor,
+  defaultApproval,
+  closerUnderOtherApprovals,
+  hiddenByApproval,
+  approvalLabel,
+  APPROVAL_LABELS,
+  searchHomeCountry,
+} from '@/utils/providerSearch';
+export type { Provider, ProviderFilters, ProviderHit } from '@/utils/providerSearch';
 
 /**
  * Training provider directory for "Find a course". The directory (built from
@@ -12,28 +27,6 @@ import { OFFERED_COURSES } from '@/constants/offeredCourses';
  * Course dates come from the backend where a provider publishes a calendar we
  * can read; everywhere else the app links to the provider's own dates page.
  */
-
-export interface Provider {
-  id: string;
-  name: string;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  country: string;
-  /** English country name, e.g. "United Kingdom". */
-  countryName: string;
-  region: string | null;
-  lat: number | null;
-  lng: number | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  approvals: string[];
-  sectors: string[];
-  courses: string[];
-  coursePages: Record<string, string>;
-  datesUrl: string | null;
-}
 
 export interface CourseDate {
   provider_id: string;
@@ -132,35 +125,6 @@ export function useProviders(): { providers: Provider[] | null; error: string | 
   return { providers: list, error, retry: load };
 }
 
-export const APPROVAL_LABELS: Record<string, string> = {
-  mca: 'MCA',
-  uscg: 'USCG',
-  amsa: 'AMSA',
-  mnz: 'Maritime NZ',
-  samsa: 'SAMSA',
-  mso_ireland: 'Ireland MSO',
-  transport_canada: 'Transport Canada',
-  transport_malta: 'Transport Malta',
-  nzqa: 'NZQA',
-  rya: 'RYA',
-  iyt: 'IYT',
-  gwo: 'GWO',
-  opito: 'OPITO',
-};
-
-// National administrations arrive as "other:<body>_<country>", e.g. other:dgmm_spain.
-const COUNTRY_WORDS = new Set(['spain', 'france', 'italy', 'india', 'singapore', 'croatia', 'portugal', 'netherlands', 'denmark', 'finland', 'cyprus', 'greece', 'malta', 'philippines', 'nigeria', 'kenya', 'brazil', 'chile', 'argentina', 'ireland', 'canada', 'kong', 'hong']);
-export const approvalLabel = (a: string): string => {
-  if (APPROVAL_LABELS[a]) return APPROVAL_LABELS[a];
-  if (!a.startsWith('other:')) return a.toUpperCase();
-  return a
-    .slice(6)
-    .trim()
-    .split(/[_\s]+/)
-    .map((w) => (COUNTRY_WORDS.has(w.toLowerCase()) ? w[0].toUpperCase() + w.slice(1) : w.length <= 5 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
-    .join(' ');
-};
-
 export const SECTOR_LABELS: Record<string, string> = {
   yacht: 'Yacht',
   commercial: 'Commercial',
@@ -170,80 +134,27 @@ export const SECTOR_LABELS: Record<string, string> = {
   towing: 'Towing',
 };
 
-export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
-  const R = 6371;
-  const dLat = ((bLat - aLat) * Math.PI) / 180;
-  const dLng = ((bLng - aLng) * Math.PI) / 180;
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(x));
-}
-
-/** Miles where the phone's region is the UK, US, Liberia or Myanmar; kilometres elsewhere. */
-export function usesMiles(): boolean {
+/** The phone's region code, e.g. "GB", or null when it can't be read. */
+export function phoneRegion(): string | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { getLocales } = require('expo-localization');
     const region = getLocales()?.[0]?.regionCode;
-    return ['GB', 'US', 'LR', 'MM'].includes(String(region).toUpperCase());
+    return region ? String(region).toUpperCase() : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Miles where the phone's region is the UK, US, Liberia or Myanmar; kilometres elsewhere. */
+export function usesMiles(): boolean {
+  return ['GB', 'US', 'LR', 'MM'].includes(phoneRegion() ?? '');
 }
 
 export function formatDistance(km: number, miles: boolean): string {
   const v = miles ? km / 1.609344 : km;
   const unit = miles ? 'mi' : 'km';
   return v < 10 ? `${v.toFixed(1)} ${unit}` : `${Math.round(v).toLocaleString()} ${unit}`;
-}
-
-export interface ProviderFilters {
-  query: string;
-  course: string | null;
-  sector: string | null;
-  approval: string | null;
-  origin: { lat: number; lng: number } | null;
-  radiusKm: number | null;
-}
-
-export interface ProviderHit {
-  provider: Provider;
-  distanceKm: number | null;
-}
-
-function matchesQuery(p: Provider, q: string): boolean {
-  if (!q) return true;
-  const hay = [p.name, p.city, p.region, p.country, p.countryName, p.postcode, ...p.courses.map(courseLabel)]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((word) => hay.includes(word));
-}
-
-export function searchProviders(list: Provider[], f: ProviderFilters): ProviderHit[] {
-  const hits: ProviderHit[] = [];
-  for (const p of list) {
-    if (f.course && !p.courses.includes(f.course)) continue;
-    if (f.sector && !p.sectors.includes(f.sector)) continue;
-    if (f.approval && !p.approvals.includes(f.approval)) continue;
-    if (!matchesQuery(p, f.query.trim())) continue;
-    const distanceKm =
-      f.origin && p.lat != null && p.lng != null ? haversineKm(f.origin.lat, f.origin.lng, p.lat, p.lng) : null;
-    if (f.origin && f.radiusKm != null && (distanceKm == null || distanceKm > f.radiusKm)) continue;
-    hits.push({ provider: p, distanceKm });
-  }
-  hits.sort((a, b) => {
-    if (a.distanceKm != null && b.distanceKm != null) return a.distanceKm - b.distanceKm;
-    if (a.distanceKm != null) return -1;
-    if (b.distanceKm != null) return 1;
-    return a.provider.country.localeCompare(b.provider.country) || a.provider.name.localeCompare(b.provider.name);
-  });
-  return hits;
 }
 
 /** Course codes that at least one provider offers, for the course picker. Ships with the app. */

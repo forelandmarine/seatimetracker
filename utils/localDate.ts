@@ -18,3 +18,14 @@ export function todayIso(now: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
+
+/** "2026-11-03" as "3 Nov 2026" in the app language (UK order for English). */
+export function formatDayShort(value: string, language?: string): string {
+  const locale = !language || language === 'en' ? 'en-GB' : language;
+  const d = localDate(value);
+  try {
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+}

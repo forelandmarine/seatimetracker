@@ -39,3 +39,4 @@ agent_activity/
 *.sqlite
 agent_chat_context.sqlite
 pc-service-account.json
+backend/scripts/harbour-areas/osm-cache/

@@ -63,15 +63,19 @@ export interface TugEntry {
 export interface ClassifiedFix {
   vessel_id: string;
   check_time: Date | string;
-  /** 'A' to 'D' inside UK categorised waters, null outside them or when not placed. */
+  /** 'A' to 'D' inside UK categorised waters, 'sea' at sea outside them, null when not placed (or at sea on older fixes). */
   area_category: string | null;
   /** Set for every fix the classifier placed; null with no category means it could not place it. */
   is_tidal?: boolean | null;
 }
 
-/** At sea outside UK categorised waters, as the classifier placed it. */
+/**
+ * At sea outside UK categorised waters, as the classifier placed it. Fixes from
+ * 2.5.0 on store 'sea' (tidal is then only set inside UK waters); older fixes
+ * have no category with tidal set.
+ */
 export const isAtSeaOutside = (f: { area_category: string | null; is_tidal?: boolean | null }) =>
-  f.area_category == null && f.is_tidal != null;
+  f.area_category === 'sea' || (f.area_category == null && f.is_tidal != null);
 
 export interface TugService {
   /** Tug service in any deck capacity. */

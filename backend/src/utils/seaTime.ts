@@ -89,23 +89,100 @@ function meetsHours(hours: number, threshold: number): boolean {
  */
 export const DECLARED_DAY_HOURS = 8;
 
-interface PeriodEntry {
+export interface PeriodEntry {
   start_time: Date | string;
   end_time: Date | string | null;
   sea_days?: number | null;
   status?: string | null;
   service_type?: string | null;
+  vessel_id?: string | null;
+}
+
+/**
+ * A dated period when the user was the only watchkeeper in their department on
+ * a vessel. Dates are YYYY-MM-DD and inclusive. A null start means from the
+ * first entry on the vessel; a null end means ongoing.
+ */
+export interface SoleWatchPeriod {
+  id?: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+/** The vessel fields isSoleWatchEntry reads. */
+export interface SoleWatchVessel {
+  is_sole_watchkeeper?: boolean | null;
+  /** Set by the backend when periods are loaded. When absent the old flag is used. */
+  sole_watch_periods?: SoleWatchPeriod[] | null;
+}
+
+/** True when a UTC calendar date (YYYY-MM-DD) falls inside any of the periods. */
+export function dayInSoleWatchPeriods(day: string, periods: SoleWatchPeriod[]): boolean {
+  return periods.some((p) => (p.start_date == null || day >= p.start_date) && (p.end_date == null || day <= p.end_date));
 }
 
 /**
  * True when an entry is actual sea service on a vessel where the user has said
- * they are the only watchkeeper in their department (a sole engineer, say).
- * Every such day at sea is also a day of watchkeeping, so it counts toward the
- * watchkeeping figures as well as sea service. Watchkeeping entries and
- * logged watch hours are unaffected.
+ * they are the only watchkeeper in their department (a sole engineer, say), on
+ * the entry's date. Every such day at sea is also a day of watchkeeping, so it
+ * counts toward the watchkeeping figures as well as sea service. Watchkeeping
+ * entries and logged watch hours are unaffected.
+ *
+ * The entry's date is the UTC date it starts on. When the vessel's periods have
+ * been loaded they decide it; otherwise the old per-vessel flag does (old data,
+ * or a backend running before the periods table exists).
  */
-export function isSoleWatchEntry(e: PeriodEntry & { vessel?: { is_sole_watchkeeper?: boolean | null } | null }): boolean {
-  return e.vessel?.is_sole_watchkeeper === true && (e.service_type || 'actual_sea_service') === 'actual_sea_service';
+export function isSoleWatchEntry(e: PeriodEntry & { vessel?: SoleWatchVessel | null }): boolean {
+  if ((e.service_type || 'actual_sea_service') !== 'actual_sea_service') return false;
+  const periods = e.vessel?.sole_watch_periods;
+  if (Array.isArray(periods)) return dayInSoleWatchPeriods(getCalendarDay(toDate(e.start_time)), periods);
+  return e.vessel?.is_sole_watchkeeper === true;
+}
+
+/**
+ * The entry cut to end on a period's last date (YYYY-MM-DD, inclusive): a
+ * passage that runs past it ends at midnight UTC after it, and a declared-day
+ * entry keeps only the days up to it. Entries already inside are returned as
+ * they are.
+ */
+export function clipToDay<E extends PeriodEntry>(e: E, lastDay: string): E {
+  const boundary = new Date(`${lastDay}T00:00:00Z`).getTime() + DAY_MS;
+  const start = toDate(e.start_time).getTime();
+  if (isDeclaredDayEntry(e)) {
+    const startDay = Date.parse(`${getCalendarDay(toDate(e.start_time))}T00:00:00Z`);
+    const room = Math.max(0, Math.round((boundary - startDay) / DAY_MS));
+    return room < (e.sea_days as number) ? { ...e, sea_days: room } : e;
+  }
+  if (e.end_time == null || toDate(e.end_time).getTime() <= boundary || start >= boundary) return e;
+  const cut = new Date(boundary);
+  return { ...e, end_time: e.end_time instanceof Date ? cut : cut.toISOString() };
+}
+
+/**
+ * The part of a sole-watch entry that counts as watchkeeping, or null when it
+ * is not a sole-watch entry. A passage that starts inside a period and runs
+ * past the period's end date only counts up to that date.
+ */
+export function soleWatchPart<E extends PeriodEntry & { vessel?: SoleWatchVessel | null }>(e: E): E | null {
+  if (!isSoleWatchEntry(e)) return null;
+  const periods = e.vessel?.sole_watch_periods;
+  if (!Array.isArray(periods)) return e;
+  const day = getCalendarDay(toDate(e.start_time));
+  const period = periods.find((p) => dayInSoleWatchPeriods(day, [p]));
+  return period?.end_date ? clipToDay(e, period.end_date) : e;
+}
+
+/** Watchkeeping entries as they are, plus the counted part of sole-watch entries. */
+export function watchkeepingParts<E extends PeriodEntry & { vessel?: SoleWatchVessel | null }>(entries: E[]): E[] {
+  const out: E[] = [];
+  for (const e of entries) {
+    if (e.service_type === 'watchkeeping_service') out.push(e);
+    else {
+      const part = soleWatchPart(e);
+      if (part) out.push(part);
+    }
+  }
+  return out;
 }
 
 /**
@@ -120,8 +197,9 @@ function watchkeepingDaysFromHours(entries: MNZEntry[], from: Date | null, dayHo
   for (const e of entries) {
     const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
     if (from && last.getTime() < from.getTime()) continue;
-    if (isSoleWatchEntry(e)) {
-      sole.push(e);
+    const part = soleWatchPart(e);
+    if (part) {
+      sole.push(part);
       continue;
     }
     watchHours +=
@@ -284,35 +362,92 @@ export function distinctSeaDates(entries: PeriodEntry[]): Set<string> {
  * headline sea-service total:
  * - Yard service counts up to a maximum of 90 days toward the requirement.
  * - Service in port is not part of sea service and does not count.
- *
- * The stand-by limits (total stand-by not exceeding total actual service, and
- * no more than 14 consecutive days) are certificate-structure rules an assessor
- * applies per application; they are deliberately NOT baked into this universal
- * total, so stand-by is counted in full here.
+ * - Stand-by service (creditedStandbyDates): the time immediately following a
+ *   voyage while the vessel prepares for the next. At most 14 consecutive days
+ *   count at one time, a period never counts for more than the voyage before
+ *   it, so total stand-by can never exceed actual sea service (MSN 1858
+ *   Amendment 2, section 3 and the definitions; MSN 1856 Annex says the same).
  */
 export const YARD_SERVICE_CAP_DAYS = 90;
+/** MSN 1858: a maximum of 14 consecutive days of stand-by may be counted at one time. */
+export const STANDBY_MAX_CONSECUTIVE_DAYS = 14;
+
+const dayNumber = (d: string) => Math.round(Date.parse(`${d}T00:00:00Z`) / DAY_MS);
+
+/**
+ * The stand-by dates MSN 1858 credits, worked out per vessel:
+ * - A voyage is a run of consecutive actual sea service days on the vessel.
+ * - A stand-by period is a run of consecutive stand-by days. It is credited
+ *   for at most 14 days and at most the length of the voyage before it on the
+ *   same vessel, counted from its first day. Each voyage backs one period: a
+ *   second stand-by period with no voyage in between gets nothing, because it
+ *   no longer follows a voyage. Stand-by with no voyage before it gets nothing.
+ * - Dates are the same 4-hour dates as every other MCA figure, and a date
+ *   worked as actual service on any vessel is never stand-by.
+ * - Overall, credited stand-by never exceeds actual sea service.
+ */
+export function creditedStandbyDates(entries: PeriodEntry[]): Set<string> {
+  const all = classifyCalendarDays(entries);
+  const byVessel = new Map<string, PeriodEntry[]>();
+  for (const e of entries) {
+    const k = e.vessel_id ?? '';
+    if (!byVessel.has(k)) byVessel.set(k, []);
+    byVessel.get(k)!.push(e);
+  }
+  const credited = new Set<string>();
+  for (const list of byVessel.values()) {
+    const c = classifyCalendarDays(list);
+    const days = [...new Set([...c.actual, ...c.standby])].sort();
+    let lastVoyage = 0; // length of the latest voyage not yet followed by stand-by
+    let i = 0;
+    while (i < days.length) {
+      const isActual = c.actual.has(days[i]);
+      let j = i + 1;
+      while (j < days.length && c.actual.has(days[j]) === isActual && dayNumber(days[j]) === dayNumber(days[j - 1]) + 1) j++;
+      const run = days.slice(i, j);
+      if (isActual) {
+        lastVoyage = run.length;
+      } else {
+        const n = Math.min(run.length, STANDBY_MAX_CONSECUTIVE_DAYS, lastVoyage);
+        for (const d of run.slice(0, n)) if (all.standby.has(d)) credited.add(d);
+        lastVoyage = 0;
+      }
+      i = j;
+    }
+  }
+  if (credited.size > all.actual.size) {
+    return new Set([...credited].sort().slice(0, all.actual.size));
+  }
+  return credited;
+}
+
+/** Credited stand-by days (creditedStandbyDates) as a count. */
+export function creditedStandbyDays(entries: PeriodEntry[]): number {
+  return creditedStandbyDates(entries).size;
+}
 
 export interface SeaServiceBreakdown {
   /** Distinct days of actual sea service (includes watchkeeping, which is a form of actual service). */
   actual: number;
-  /** Distinct stand-by days that don't fall on an actual-service day (counted in full). */
+  /** Stand-by days credited under MSN 1858 (14-day and previous-voyage limits). */
   standby: number;
+  /** Every distinct stand-by day logged that doesn't fall on an actual-service day. */
+  standby_logged: number;
   /** Distinct yard days that don't fall on an actual- or stand-by-service day. */
   yard: number;
   /** Distinct service-in-port days (informational only; not credited). */
   port: number;
   /** Yard days actually credited = min(yard, 90). */
   yard_credited: number;
-  /** Total qualifying sea service: actual + standby + yard_credited (port excluded). */
+  /** Total qualifying sea service: actual + credited standby + yard_credited (port excluded). */
   qualifying_total: number;
 }
 
 /**
- * Qualifying sea service across many confirmed entries. Applies the two
- * crediting rules that belong in a universal total: yard service is capped at
- * 90 days (MSN 1858), and service in port is excluded (it is not sea service).
- * Stand-by is counted in full here; its certificate-structure limits are left
- * to the assessor.
+ * Qualifying sea service across many confirmed entries. Applies the MSN 1858
+ * crediting rules: yard service is capped at 90 days, stand-by is credited
+ * within its 14-day and previous-voyage limits (creditedStandbyDates), and
+ * service in port is excluded (it is not sea service).
  *
  * Days are deduplicated across service types with priority actual > stand-by >
  * yard > port, so a single calendar date is only ever counted once and always
@@ -326,14 +461,15 @@ export interface SeaServiceBreakdown {
 export function qualifyingSeaDays(entries: PeriodEntry[]): SeaServiceBreakdown {
   const c = classifyCalendarDays(entries);
   const actual = c.actual.size;
-  const standby = c.standby.size;
+  const standby_logged = c.standby.size;
+  const standby = creditedStandbyDays(entries);
   const yard = c.yard.size;
   const port = c.port.size;
 
   const yard_credited = Math.min(yard, YARD_SERVICE_CAP_DAYS);
-  const qualifying_total = actual + standby + yard_credited; // port excluded, stand-by in full
+  const qualifying_total = actual + standby + yard_credited; // port excluded
 
-  return { actual, standby, yard, port, yard_credited, qualifying_total };
+  return { actual, standby, standby_logged, yard, port, yard_credited, qualifying_total };
 }
 
 /**
@@ -728,7 +864,7 @@ export interface MNZServiceBreakdown {
 }
 
 interface MNZEntry extends PeriodEntry {
-  vessel?: { is_sole_watchkeeper?: boolean | null } | null;
+  vessel?: SoleWatchVessel | null;
   bridge_watch_hours?: string | number | null;
   engine_watch_hours?: string | number | null;
   watchkeeping_hours?: string | number | null;
@@ -879,8 +1015,10 @@ export function entrySeaDays(
       return dates.length;
     }
     default: {
+      // One entry's own days: the MSN 1858 stand-by limits depend on the voyages
+      // around it, so they apply to totals (qualifyingSeaDays), not here.
       const q = qualifyingSeaDays([entry]);
-      return q.actual + q.standby + q.yard;
+      return q.actual + q.standby_logged + q.yard;
     }
   }
 }

@@ -351,6 +351,86 @@ export const updateVesselSoleWatchkeeper = async (vesselId: string, isSoleWatchk
   return normalizeVessel(await res.json());
 };
 
+// ── Sole watchkeeper periods (2.5.0) ─────────────────────────────────
+// Dated periods when the user was the only watchkeeper in their department on
+// a vessel. Dates are YYYY-MM-DD and inclusive: null start = from the first
+// entry on the vessel, null end = ongoing.
+export interface SoleWatchPeriod {
+  id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  /** Days of actual sea service inside the period. */
+  days: number;
+}
+
+export interface SoleWatchVessel {
+  vessel_id: string;
+  vessel_name: string;
+  is_active: boolean;
+  is_sole_watchkeeper: boolean;
+  first_entry_date: string | null;
+  total_days: number;
+  periods: SoleWatchPeriod[];
+  /** True when the user's authority has a watchkeeping figure (MCA, MNZ, SAMSA). */
+  applies?: boolean;
+  today?: string;
+}
+
+export type SoleWatchChange =
+  | { action: 'on'; from: 'all' | 'date' | 'today'; date?: string | null }
+  | { action: 'off'; at: 'today' | 'date' | 'never'; date?: string | null };
+
+export interface SoleWatchPreviewResult {
+  current_days: number;
+  proposed_days: number;
+  added: number;
+  removed: number;
+  from_date: string | null;
+}
+
+export const getAllSoleWatchPeriods = async (): Promise<{ applies: boolean; authority: string; today: string; available: boolean; vessels: SoleWatchVessel[] }> => {
+  const res = await authFetch('/api/sole-watch-periods');
+  return res.json();
+};
+
+export const getVesselSoleWatch = async (vesselId: string): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods`);
+  return res.json();
+};
+
+export const addSoleWatchPeriod = async (vesselId: string, period: { start_date: string | null; end_date: string | null }): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods`, { method: 'POST', body: period });
+  return res.json();
+};
+
+export const updateSoleWatchPeriod = async (
+  vesselId: string,
+  periodId: string,
+  period: { start_date: string | null; end_date: string | null }
+): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods/${periodId}`, { method: 'PUT', body: period });
+  return res.json();
+};
+
+export const deleteSoleWatchPeriod = async (vesselId: string, periodId: string): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch-periods/${periodId}`, { method: 'DELETE' });
+  return res.json();
+};
+
+/** Watchkeeping days each change would add or remove, in the same order. */
+export const previewSoleWatchChanges = async (
+  vesselId: string,
+  changes: SoleWatchChange[]
+): Promise<{ applies: boolean; today: string; first_entry_date: string | null; results: SoleWatchPreviewResult[] }> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch/preview`, { method: 'POST', body: { changes } });
+  return res.json();
+};
+
+export const applySoleWatchChange = async (vesselId: string, change: SoleWatchChange): Promise<SoleWatchVessel> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/sole-watch`, { method: 'POST', body: { change } });
+  return res.json();
+};
+
 // Mark a vessel as a tug. Deck service on it then counts as tug service toward
 // the MGN 495 tug ratings and tug officer CoCs.
 // `capacity` is the user's usual capacity on the tug, used for entries logged
@@ -649,15 +729,72 @@ export const updateSeaTimeEntry = async (
     shipyard_service_days?: number | null; watchkeeping_days?: number | null;
     leave_days?: number | null; duties_and_tasks?: string | null;
     area_cruised?: string | null; notes?: string | null;
+    from_port?: string | null; to_port?: string | null;
     status?: string; service_type?: string | null;
     sea_days?: number | null;
     start_latitude?: number | null;
     start_longitude?: number | null;
     end_latitude?: number | null;
     end_longitude?: number | null;
+    area_category?: SeaArea | null;
+    is_tidal?: boolean | null;
+    dual_capacity?: boolean | null;
   }
 ) => {
   const res = await authFetch(`/api/sea-time/${entryId}`, { method: 'PUT', body: updates });
+  return res.json();
+};
+
+/** Workboat sea area on an entry: MSN 1837 category A to D, or at sea. */
+export type SeaArea = 'A' | 'B' | 'C' | 'D' | 'sea';
+
+export interface SeaAreaBreakdown {
+  A: number; B: number; C: number; D: number; sea: number;
+  not_classified: number; tidal: number; non_tidal: number; total: number;
+}
+
+/** Days near coastal or unlimited from AIS (MSN 1856 s.5: 150 nm from a UK safe haven, 30 nm from Ireland). */
+export interface CoastalDays {
+  near_coastal: number;
+  unlimited: number;
+  not_measured: number;
+  total: number;
+}
+
+/** Days by sea area for commercial work (guidance only). */
+export const getSeaAreaBreakdown = async (
+  vesselId?: string,
+): Promise<{ commercial: boolean; breakdown: SeaAreaBreakdown; coastal?: CoastalDays | null }> => {
+  const res = await authFetch(vesselId ? `/api/sea-areas/breakdown?vesselId=${encodeURIComponent(vesselId)}` : '/api/sea-areas/breakdown');
+  return res.json();
+};
+
+export interface Wbc3Guidance {
+  band: 'cat_6_5' | 'cat_4_3' | 'cat_2' | 'cat_1' | 'cat_0' | 'categorised_only' | 'outside_uk' | 'no_fixes';
+  options: { category: number; conditions: ('favourable_weather' | 'daylight')[] }[];
+  category_without_conditions: number | null;
+  max_from_land_nm: number | null;
+  max_from_departure_or_categorised_nm: number | null;
+  max_from_safe_haven_nm: number | null;
+  fixes: number;
+}
+
+export interface AreaGuidance {
+  commercial: boolean;
+  area_category: SeaArea | null;
+  is_tidal: boolean | null;
+  is_categorised_water: boolean | null;
+  wbc3: Wbc3Guidance | null;
+  tickets: { id: string; note?: string; covers: number[]; held: boolean }[];
+  /** Near coastal or unlimited from this trip's AIS fixes (guidance). */
+  near_coastal?: { limit: 'near_coastal' | 'unlimited' | null; max_from_safe_haven_nm: number | null; fixes: number } | null;
+  /** On a high-speed craft: WBC3 Table A5.1 Note F (master needs Advanced Powerboat). */
+  high_speed?: { rule: string; as_master: boolean; powerboat_advanced_held: boolean } | null;
+}
+
+/** One trip's Workboat Code area category and the tickets that cover it (guidance only). */
+export const getAreaGuidance = async (entryId: string): Promise<AreaGuidance> => {
+  const res = await authFetch(`/api/sea-time/${entryId}/area-guidance`);
   return res.json();
 };
 
@@ -694,6 +831,8 @@ export const setMarketingConsent = async (
 export interface PasswordStatus {
   hasPassword: boolean;
   hasApple: boolean;
+  /** Missing from backends older than Google sign-in. */
+  hasGoogle?: boolean;
   email: string;
   privateRelay: boolean;
 }
@@ -703,7 +842,7 @@ export const getPasswordStatus = async (): Promise<PasswordStatus> => {
   return res.json();
 };
 
-/** Set a password (Apple accounts) or change it (needs the current one). */
+/** Set a password (Apple or Google accounts) or change it (needs the current one). */
 export const setPassword = async (newPassword: string, currentPassword?: string): Promise<void> => {
   await authFetch('/api/auth/password', {
     method: 'PUT',
@@ -1056,3 +1195,148 @@ export const loadActiveVesselCache = async (): Promise<ActiveVesselCache | null>
 
 // Export getAuthToken and getApiHeaders for use in other components
 export { getAuthToken, getApiHeaders };
+
+// Boatmasters' Licence settings for a vessel (MSN 1853). default_trade_area 'inland'
+// makes its entries logged without a trade area count as Inland (river boats with no
+// AIS); null clears it. is_passenger marks a passenger vessel for the passenger endorsement.
+/** Mark a vessel as a high-speed craft (WBC3 Table A5.1 Note F, BML fast craft endorsement). */
+export const updateVesselHighSpeed = async (vesselId: string, isHighSpeed: boolean) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/high-speed`, { method: 'PUT', body: { is_high_speed: isHighSpeed } });
+  return normalizeVessel(await res.json());
+};
+
+/** The certificate the user's high-speed workboats call for (WBC3 Table A5.1 Note F), or null. */
+export interface HighSpeedNeed {
+  certificate_type: 'course_powerboat_advanced';
+  rule: 'wbc3_table_a5_1_note_f';
+  vessels: { id: string; name: string }[];
+  served_as_master: boolean;
+  held: boolean;
+}
+
+export const getHighSpeedNeeds = async (): Promise<HighSpeedNeed | null> => {
+  const res = await authFetch('/api/certificates/high-speed');
+  return res.json();
+};
+
+export const updateVesselBoatmaster = async (
+  vesselId: string,
+  settings: { default_trade_area?: 'inland' | null; is_passenger?: boolean },
+) => {
+  const res = await authFetch(`/api/vessels/${vesselId}/boatmaster`, { method: 'PUT', body: settings });
+  return normalizeVessel(await res.json());
+};
+
+// Boatmasters' Licence paperwork as a PDF: 'msf4366' is the BML Work Record
+// (MSF 4366 layout), 'pla' the Port of London LKE Details of Service sheet.
+export const downloadBoatmasterReport = async (format: 'msf4366' | 'pla') => {
+  const res = await authFetch(`/api/reports/boatmaster?format=${format}`);
+  return res.blob();
+};
+
+// MGN 496 Annex C Deck (Workboat) Testimonial as a PDF, one per vessel, for the
+// Master or company to sign. vesselId limits it to that vessel.
+// format 'discharge' is the MGN 496 Annex B certificate of discharge instead.
+export const downloadWorkboatTestimonial = async (vesselId?: string, format: 'testimonial' | 'discharge' = 'testimonial') => {
+  const params = [vesselId ? `vesselId=${encodeURIComponent(vesselId)}` : '', format === 'discharge' ? 'format=discharge' : ''].filter(Boolean);
+  const res = await authFetch(`/api/reports/workboat-testimonial${params.length ? `?${params.join('&')}` : ''}`);
+  return res.blob();
+};
+
+export interface TestimonialRequest {
+  id: string;
+  vessel_id: string;
+  status: 'pending' | 'signed' | 'cancelled';
+  from: string | null;
+  to: string | null;
+  signer_name: string | null;
+  signed_at: string | null;
+  expires_at: string;
+  created_at: string;
+  expired: boolean;
+  /** Only on the response that creates the request. */
+  url?: string;
+}
+
+// A one-time link for the Master or company to complete and sign the testimonial
+export const createTestimonialRequest = async (vesselId: string): Promise<TestimonialRequest> => {
+  const res = await authFetch('/api/testimonial-requests', { method: 'POST', body: { vesselId } });
+  return res.json();
+};
+
+export const listTestimonialRequests = async (vesselId: string): Promise<TestimonialRequest[]> => {
+  const res = await authFetch(`/api/testimonial-requests?vesselId=${encodeURIComponent(vesselId)}`);
+  return res.json();
+};
+
+// Sea time toward the RYA Yachtmaster exams, counted the RYA's way (8-hour days, miles, 60-mile passages)
+export const getRyaService = async () => {
+  const res = await authFetch('/api/reports/rya-service');
+  return res.json();
+};
+
+export const cancelTestimonialRequest = async (id: string): Promise<void> => {
+  await authFetch(`/api/testimonial-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+};
+
+// Per-entry signatures: the Master or a responsible person signs one entry, on
+// this phone or from a one-time link the app shares (the server sends nothing).
+export type SignerCapacity = 'master' | 'responsible_person';
+
+export interface EntrySignature {
+  signer_name: string;
+  signer_capacity: SignerCapacity;
+  signed_at: string;
+  method: 'in_person' | 'link';
+}
+
+export interface EntrySignatureRequest {
+  id: string;
+  entry_id: string;
+  status: 'pending' | 'signed' | 'cancelled';
+  signer_name: string | null;
+  signed_at: string | null;
+  expires_at: string;
+  created_at: string;
+  expired: boolean;
+  /** Only on the response that creates the request. */
+  url?: string;
+}
+
+export interface EntrySignatureState {
+  signature: EntrySignature | null;
+  /** Why the entry cannot be signed yet, or null when it can. */
+  cannot_sign_reason: string | null;
+  /** MGN 496 5.3: the seafarer was Master, so a responsible person signs. */
+  served_as_master: boolean;
+  pending_link: EntrySignatureRequest | null;
+}
+
+export const getEntrySignature = async (entryId: string): Promise<EntrySignatureState> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`);
+  return res.json();
+};
+
+export const signEntryInPerson = async (
+  entryId: string,
+  body: { signer_name: string; signer_capacity: SignerCapacity; signature_image: string },
+): Promise<{ signature: EntrySignature | null }> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`, {
+    method: 'POST',
+    body: { ...body, confirm: true },
+  });
+  return res.json();
+};
+
+export const removeEntrySignature = async (entryId: string): Promise<void> => {
+  await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature`, { method: 'DELETE' });
+};
+
+export const createEntrySignatureRequest = async (entryId: string): Promise<EntrySignatureRequest> => {
+  const res = await authFetch(`/api/sea-time/${encodeURIComponent(entryId)}/signature-requests`, { method: 'POST' });
+  return res.json();
+};
+
+export const cancelEntrySignatureRequest = async (id: string): Promise<void> => {
+  await authFetch(`/api/entry-signature-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+};

@@ -13,6 +13,7 @@ import type { App } from '../index.js';
 import { calculateDurationHours, calculateSeaDays } from '../utils/seaTime.js';
 import { MANUAL_SHIFT_NOTE_PREFIX, SHIFT_MODE_WINDOW_DAYS, coveredByShift, isShiftNote } from '../utils/shifts.js';
 import { CHECKING_STATUS } from '../utils/passageRefinement.js';
+import { enrichEntryClassification } from '../utils/seaAreas/enrichEntry.js';
 
 const DAY_MS = 86_400_000;
 
@@ -99,6 +100,7 @@ export async function closeOpenAisPassages(app: App, userId: string, at: Date): 
         mca_compliant: duration >= 4,
       })
       .where(eq(schema.sea_time_entries.id, e.id));
+    await enrichEntryClassification(app, { ...e, end_time: end });
     closed++;
   }
   if (closed > 0) app.logger.info({ userId, closed }, 'Closed open AIS passages at shift clock-in');

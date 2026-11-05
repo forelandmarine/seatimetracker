@@ -3,6 +3,14 @@ import { eq, and, asc } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import {
+  REVALIDATION_RULE_BY_TYPE,
+  daysToExpiry,
+  inAnniversaryWindow,
+  revalidationProgress,
+} from "../utils/revalidation.js";
+import { highSpeedNeeds } from "../utils/highSpeed.js";
+import * as authSchema from "../db/auth-schema.js";
 
 /**
  * Maritime certificate types — used by frontend dropdowns and PDF reports.
@@ -32,6 +40,9 @@ export const CERTIFICATE_TYPES = [
   "occ_oow_3000gt",
   "occ_chief_engineer",
   "occ_second_engineer",
+  "coc_master_workboat_500",
+  "coc_bml_t2l1",
+  "coc_bml_t2l2",
   // USCG Documents
   "uscg_mmc",
   "uscg_twic",
@@ -151,7 +162,11 @@ interface CertificateBody {
   issued_date?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
+  /** 'sail' or 'power', for RYA Yachtmaster certificates (utils/ryaService.ts). */
+  discipline?: string | null;
 }
+
+const DISCIPLINES = new Set(["sail", "power"]);
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/certificates - List the user's certificates
@@ -185,6 +200,87 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.code(200).send(rows);
   });
 
+  // GET /api/certificates/revalidation - Revalidation progress for each CoC held
+  // (MSN 1861, MGN 496 12.1, MSN 1853 19.3; see utils/revalidation.ts)
+  fastify.get("/api/certificates/revalidation", {
+    schema: {
+      description: "Sea service toward revalidating each certificate of competency the user holds",
+      tags: ["certificates"],
+      response: {
+        200: { type: "array", items: { type: "object", additionalProperties: true } },
+        401: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const certs = (await app.db
+      .select()
+      .from(schema.certificates)
+      .where(eq(schema.certificates.user_id, userId)))
+      .filter((c) => REVALIDATION_RULE_BY_TYPE[c.certificate_type]);
+    if (certs.length === 0) return reply.code(200).send([]);
+
+    const entries = await app.db.query.sea_time_entries.findMany({
+      with: { vessel: true },
+      where: eq(schema.sea_time_entries.user_id, userId),
+    });
+    const now = new Date();
+    return reply.code(200).send(certs.map((c) => {
+      const progress = revalidationProgress(REVALIDATION_RULE_BY_TYPE[c.certificate_type], entries as any, now);
+      return {
+        certificate_id: c.id,
+        certificate_type: c.certificate_type,
+        expiry_date: c.expiry_date,
+        days_to_expiry: daysToExpiry(c.expiry_date, now),
+        keeps_anniversary: inAnniversaryWindow(c.expiry_date, now),
+        rule: progress.rule.id,
+        notice: progress.rule.notice,
+        counts: progress.rule.counts,
+        routes: progress.routes,
+        met: progress.met,
+      };
+    }));
+  });
+
+  // GET /api/certificates/high-speed - Workboat Code Ed. 3 Table A5.1 Note F: the
+  // master of a high-speed workboat needs the RYA/MCA Advanced Powerboat Certificate
+  fastify.get("/api/certificates/high-speed", {
+    schema: {
+      description: "Certificates the issuing rules tie to the user's high-speed craft (WBC3 Table A5.1 Note F). null when none of their vessels is a high-speed workboat",
+      tags: ["certificates"],
+      response: {
+        200: { type: ["object", "null"], additionalProperties: true },
+        401: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const vessels = await app.db.select().from(schema.vessels).where(eq(schema.vessels.user_id, userId));
+    if (!vessels.some((v) => v.is_high_speed === true)) return reply.code(200).send(null);
+    const [entries, certs, users] = await Promise.all([
+      app.db
+        .select({ vessel_id: schema.sea_time_entries.vessel_id, rank: schema.sea_time_entries.rank, status: schema.sea_time_entries.status })
+        .from(schema.sea_time_entries)
+        .where(eq(schema.sea_time_entries.user_id, userId)),
+      app.db
+        .select({ certificate_type: schema.certificates.certificate_type, expiry_date: schema.certificates.expiry_date })
+        .from(schema.certificates)
+        .where(eq(schema.certificates.user_id, userId)),
+      app.db
+        .select({ vessel_sector: authSchema.user.vessel_sector })
+        .from(authSchema.user)
+        .where(eq(authSchema.user.id, userId))
+        .limit(1),
+    ]);
+    return reply.code(200).send(highSpeedNeeds(vessels, entries, certs, users[0]?.vessel_sector ?? null));
+  });
+
   // POST /api/certificates - Create a new certificate
   fastify.post<{ Body: CertificateBody }>("/api/certificates", {
     schema: {
@@ -200,6 +296,7 @@ export function register(app: App, fastify: FastifyInstance) {
           issued_date: { type: ["string", "null"] },
           expiry_date: { type: ["string", "null"] },
           notes: { type: ["string", "null"] },
+          discipline: { type: ["string", "null"], enum: ["sail", "power", null] },
         },
       },
       response: {
@@ -234,6 +331,7 @@ export function register(app: App, fastify: FastifyInstance) {
         issued_date: body.issued_date || null,
         expiry_date: body.expiry_date || null,
         notes: body.notes || null,
+        discipline: body.discipline && DISCIPLINES.has(body.discipline) ? body.discipline : null,
       })
       .returning();
 
@@ -264,6 +362,7 @@ export function register(app: App, fastify: FastifyInstance) {
             issued_date: { type: ["string", "null"] },
             expiry_date: { type: ["string", "null"] },
             notes: { type: ["string", "null"] },
+            discipline: { type: ["string", "null"], enum: ["sail", "power", null] },
           },
         },
         response: {
@@ -307,6 +406,9 @@ export function register(app: App, fastify: FastifyInstance) {
       if (body.issued_date !== undefined) updateData.issued_date = body.issued_date;
       if (body.expiry_date !== undefined) updateData.expiry_date = body.expiry_date;
       if (body.notes !== undefined) updateData.notes = body.notes;
+      if (body.discipline !== undefined) {
+        updateData.discipline = body.discipline && DISCIPLINES.has(body.discipline) ? body.discipline : null;
+      }
 
       const [updated] = await app.db
         .update(schema.certificates)

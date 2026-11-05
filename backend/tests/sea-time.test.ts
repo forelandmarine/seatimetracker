@@ -188,13 +188,14 @@ describe("qualifyingSeaDays", () => {
     expect(r.qualifying_total).toBe(390); // 300 actual + 90 yard
   });
 
-  test("stand-by is counted in full (its structure limits are left to the assessor)", () => {
+  test("stand-by after a 10-day voyage counts at most 10 days (MSN 1858)", () => {
     const r = qualifyingSeaDays([
       ...days("2025-01-01", 10, "actual_sea_service"),
       ...days("2026-01-01", 20, "standby_service"),
     ]);
-    expect(r.standby).toBe(20);
-    expect(r.qualifying_total).toBe(30); // 10 actual + 20 standby, not capped
+    expect(r.standby_logged).toBe(20);
+    expect(r.standby).toBe(10);
+    expect(r.qualifying_total).toBe(20); // 10 actual + 10 credited stand-by
   });
 
   test("service in port is excluded from qualifying total", () => {
@@ -686,7 +687,8 @@ describe("declared day entries", () => {
 
   test("keep their service type", () => {
     const r = qualifyingSeaDays([declared("2026-09-14", { service_type: "standby_service" })]);
-    expect(r.standby).toBe(1);
+    expect(r.standby_logged).toBe(1);
+    expect(r.standby).toBe(0); // no voyage before it to back it (MSN 1858)
     expect(r.actual).toBe(0);
   });
 

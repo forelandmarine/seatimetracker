@@ -31,6 +31,10 @@ import { vesselSeaDays, ReportSummaryTotals } from '@/utils/seaDayTotals';
 import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { TugToggle } from '@/components/TugToggle';
+import { HighSpeedToggle } from '@/components/HighSpeedToggle';
+import { BoatmasterVesselCard } from '@/components/BoatmasterVesselCard';
+import { WorkboatTestimonialButton } from '@/components/WorkboatTestimonialButton';
+import { SeaAreaBreakdownCard } from '@/components/SeaAreaBreakdownCard';
 
 import { log, error as logError } from '@/utils/log';
 
@@ -52,6 +56,9 @@ interface Vessel {
   is_sole_watchkeeper?: boolean | null;
   is_tug?: boolean | null;
   tug_capacity?: string | null;
+  default_trade_area?: string | null;
+  is_passenger?: boolean | null;
+  is_high_speed?: boolean | null;
 }
 
 interface SeaTimeEntry {
@@ -637,6 +644,7 @@ export default function VesselDetailScreen() {
         {/* Sole watchkeeper: sea days also count as watchkeeping (MCA, MNZ, SAMSA) */}
         <SoleWatchToggle
           vesselId={vessel.id}
+          vesselName={vessel.vessel_name}
           isSoleWatchkeeper={vessel.is_sole_watchkeeper}
           onChange={(isSoleWatchkeeper) => {
             setVessel((v) => (v ? { ...v, is_sole_watchkeeper: isSoleWatchkeeper } : v));
@@ -656,6 +664,35 @@ export default function VesselDetailScreen() {
             triggerRefresh(); // Home totals and profile progress use these flags too
           }}
         />
+
+        {/* High-speed craft: WBC3 Note F (Advanced Powerboat for the master) and the BML fast craft endorsement */}
+        <HighSpeedToggle
+          vesselId={vessel.id}
+          isHighSpeed={vessel.is_high_speed}
+          onChange={(isHighSpeed) => {
+            setVessel((v) => (v ? { ...v, is_high_speed: isHighSpeed } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Profile progress uses this flag too
+          }}
+        />
+
+        {/* Boatmasters' Licence: Inland by default and passenger vessel (MSN 1853, MCA commercial) */}
+        <BoatmasterVesselCard
+          vesselId={vessel.id}
+          defaultTradeArea={vessel.default_trade_area}
+          isPassenger={vessel.is_passenger}
+          onChange={(settings) => {
+            setVessel((v) => (v ? { ...v, ...settings } : v));
+            seaTimeApi.getReportSummary().then(setSummary).catch(() => {});
+            triggerRefresh(); // Profile progress uses these settings too
+          }}
+        />
+
+        {/* Workboat sea areas: days by MSN 1837 category (commercial work, guidance only) */}
+        <SeaAreaBreakdownCard vesselId={vessel.id} refreshKey={seaTimeEntries} />
+
+        {/* MGN 496 Annex C testimonial for this vessel (MCA commercial crew) */}
+        <WorkboatTestimonialButton vesselId={vessel.id} />
 
         {/* AIS Data Card */}
         <View style={styles.card}>

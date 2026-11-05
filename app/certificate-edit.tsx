@@ -19,6 +19,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import {
   CERTIFICATE_TYPE_GROUPS,
   CERTIFICATE_TYPE_LABELS,
+  DISCIPLINE_CERT_TYPES,
   Certificate,
   certificateTypeMatches,
   createCertificate,
@@ -30,6 +31,7 @@ import {
   scheduleCertificateExpiryReminders,
   cancelCertificateExpiryReminders,
 } from '@/utils/notifications';
+import { cancelRevalidationReminders } from '@/utils/revalidationReminders';
 import { error as logError } from '@/utils/log';
 
 export default function CertificateEditScreen() {
@@ -75,6 +77,8 @@ export default function CertificateEditScreen() {
   const [issuedDate, setIssuedDate] = useState<Date | null>(null);
   const [expiryDate, setExpiryDate] = useState<Date | null>(null);
   const [notes, setNotes] = useState('');
+  const [discipline, setDiscipline] = useState<'sail' | 'power' | null>(null);
+  const hasDiscipline = DISCIPLINE_CERT_TYPES.has(type);
 
   useEffect(() => {
     if (!editId) return;
@@ -89,6 +93,7 @@ export default function CertificateEditScreen() {
           setIssuedDate(cert.issued_date ? new Date(cert.issued_date) : null);
           setExpiryDate(cert.expiry_date ? new Date(cert.expiry_date) : null);
           setNotes(cert.notes || '');
+          setDiscipline(cert.discipline ?? null);
         }
       } catch (e) {
         logError('[CertEdit] Failed to load:', e);
@@ -120,6 +125,7 @@ export default function CertificateEditScreen() {
         issued_date: issuedDate ? issuedDate.toISOString().split('T')[0] : null,
         expiry_date: expiryIso,
         notes: notes || null,
+        discipline: hasDiscipline ? discipline : null,
       };
 
       const label = CERTIFICATE_TYPE_LABELS[type] || type;
@@ -157,6 +163,7 @@ export default function CertificateEditScreen() {
             try {
               await deleteCertificate(editId);
               await cancelCertificateExpiryReminders(editId);
+              await cancelRevalidationReminders(editId);
               router.back();
             } catch (e: any) {
               Alert.alert('Error', e?.message || 'Failed to delete');
@@ -213,6 +220,28 @@ export default function CertificateEditScreen() {
             color={colors.textSecondary}
           />
         </TouchableOpacity>
+
+        {hasDiscipline && (
+          <>
+            <Text style={styles.label}>Discipline</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {(['sail', 'power'] as const).map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  style={[styles.selectButton, { flex: 1, justifyContent: 'center' }, discipline === d && { borderColor: colors.primary, borderWidth: 2 }]}
+                  onPress={() => setDiscipline(discipline === d ? null : d)}
+                >
+                  <Text style={[styles.selectButtonText, discipline === d && { color: colors.primary, fontWeight: '700' }]}>
+                    {d === 'sail' ? 'Sail' : 'Power'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.helper}>
+              Holding this in one discipline reduces the RYA sea time for the same Yachtmaster in the other.
+            </Text>
+          </>
+        )}
 
         <Text style={styles.label}>Certificate number</Text>
         <TextInput

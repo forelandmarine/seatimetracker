@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { SeaAreaChip, isCommercialVessel } from '@/components/SeaAreaChip';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { headlineSeaDays, vesselSeaDays, creditedDates, partDayLabel, ReportSummaryTotals } from '@/utils/seaDayTotals';
@@ -33,6 +34,9 @@ import { useTranslation } from 'react-i18next';
 
 interface Vessel {
   id: string;
+  sector?: string | null;
+  is_workboat?: boolean | null;
+  is_tug?: boolean | null;
   mmsi: string;
   vessel_name: string;
   is_active: boolean;
@@ -41,6 +45,9 @@ interface Vessel {
 
 interface SeaTimeEntry {
   id: string;
+  vessel_id?: string;
+  area_category?: string | null;
+  is_tidal?: boolean | null;
   vessel: Vessel | null;
   start_time: string;
   end_time: string | null;
@@ -54,6 +61,9 @@ interface SeaTimeEntry {
   end_latitude?: number | string | null;
   end_longitude?: number | string | null;
   service_type?: string | null;
+  /** Inside a sole watchkeeper period, so it also counts as watchkeeping. */
+  is_sole_watch?: boolean;
+  signature?: { signer_name: string; signed_at: string } | null;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -609,6 +619,10 @@ export default function LogbookScreen() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [summary, setSummary] = useState<ReportSummaryTotals | null>(null);
   const [authority, setAuthority] = useState<string | null>(null);
+  const [userSector, setUserSector] = useState<string | null>(null);
+  // Workboat sea areas show only on commercial work
+  const showSeaArea = (entry: SeaTimeEntry) =>
+    isCommercialVessel(vessels.find((v) => v.id === entry.vessel_id) ?? (entry.vessel as any), userSector);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -631,6 +645,7 @@ export default function LogbookScreen() {
       setVessels(vesselsData);
       setSummary(summaryData);
       setAuthority(profileData?.maritime_authority ?? null);
+      setUserSector(profileData?.vessel_sector ?? null);
     } catch (error) {
       logError('[LogbookScreen iOS] Error loading data:', error);
       Alert.alert('Error', 'Failed to load logbook data');
@@ -1008,6 +1023,37 @@ export default function LogbookScreen() {
                           </Text>
                         )}
 
+                        {entry.is_sole_watch && (
+                          <View style={styles.entryRow}>
+                            <IconSymbol
+                              ios_icon_name="binoculars"
+                              android_material_icon_name="visibility"
+                              size={16}
+                              color={colors.primary}
+                              style={styles.entryIcon}
+                            />
+                            <Text style={[styles.entryText, { color: colors.primary }]}>{t('soleWatch.badge')}</Text>
+                          </View>
+                        )}
+
+                        {entry.signature && (
+                          <View style={styles.entryRow}>
+                            <IconSymbol
+                              ios_icon_name="checkmark.seal.fill"
+                              android_material_icon_name="verified"
+                              size={16}
+                              color={colors.success}
+                              style={styles.entryIcon}
+                            />
+                            <Text style={styles.entryText}>
+                              Signed by {entry.signature.signer_name}, {entry.signature.signed_at.slice(0, 10).split('-').reverse().join('/')}
+                            </Text>
+                          </View>
+                        )}
+
+                        {showSeaArea(entry) && (
+                          <SeaAreaChip areaCategory={entry.area_category} isTidal={entry.is_tidal} />
+                        )}
                         {entry.notes && (
                           <View style={styles.entryRow}>
                             <IconSymbol
@@ -1180,6 +1226,37 @@ export default function LogbookScreen() {
                                 </Text>
                               )}
 
+                              {entry.is_sole_watch && (
+                                <View style={styles.entryRow}>
+                                  <IconSymbol
+                                    ios_icon_name="binoculars"
+                                    android_material_icon_name="visibility"
+                                    size={16}
+                                    color={colors.primary}
+                                    style={styles.entryIcon}
+                                  />
+                                  <Text style={[styles.entryText, { color: colors.primary }]}>{t('soleWatch.badge')}</Text>
+                                </View>
+                              )}
+
+                              {entry.signature && (
+                                <View style={styles.entryRow}>
+                                  <IconSymbol
+                                    ios_icon_name="checkmark.seal.fill"
+                                    android_material_icon_name="verified"
+                                    size={16}
+                                    color={colors.success}
+                                    style={styles.entryIcon}
+                                  />
+                                  <Text style={styles.entryText}>
+                                    Signed by {entry.signature.signer_name}, {entry.signature.signed_at.slice(0, 10).split('-').reverse().join('/')}
+                                  </Text>
+                                </View>
+                              )}
+
+                              {showSeaArea(entry) && (
+                                <SeaAreaChip areaCategory={entry.area_category} isTidal={entry.is_tidal} />
+                              )}
                               {entry.notes && (
                                 <View style={styles.entryRow}>
                                   <IconSymbol

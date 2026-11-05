@@ -19,7 +19,8 @@
  *     narrow rivers, docks and lakes its coarse coastline treats as land) are
  *     taken as inland water alongside categorised fixes on the same day. A day
  *     made up only of those, or with no fixes at all, counts toward Level 2
- *     only when its entry was logged with the Inland trade area; otherwise it is
+ *     only when its entry was logged with the Inland trade area (or has none
+ *     and its vessel defaults to Inland); otherwise it is
  *     reported as unclassified and left out. Neither counts toward Level 1,
  *     which needs non-tidal waters the app can confirm.
  * - Window (reg 20(1)(a)): service within the 5 years before applying.
@@ -41,7 +42,13 @@ export interface BoatmasterEntry {
   service_type?: string | null;
   rank?: string | null;
   trade_area?: string | null;
+  /** The vessel's default trade area, used when the entry has none. */
+  vessel?: { default_trade_area?: string | null } | null;
 }
+
+/** The entry's trade area, or its vessel's default when the entry was logged without one. */
+export const effectiveTradeArea = (e: BoatmasterEntry): string | null =>
+  e.trade_area || e.vessel?.default_trade_area || null;
 
 export interface BoatmasterFix {
   vessel_id: string;
@@ -103,7 +110,7 @@ export function boatmasterService(
     (e) => (e.service_type || 'actual_sea_service') !== 'yard_service' && !ENGINE_RANKS.has(e.rank ?? ''),
   );
   const dates = [...serviceDatesAnyHours(eligible as any)].filter((d) => d >= cutoffDay).sort();
-  const inlandDates = serviceDatesAnyHours(eligible.filter((e) => e.trade_area === 'inland') as any);
+  const inlandDates = serviceDatesAnyHours(eligible.filter((e) => effectiveTradeArea(e) === 'inland') as any);
 
   const vesselIds = new Set(eligible.map((e) => e.vessel_id).filter(Boolean) as string[]);
   const fixesByDate = new Map<string, BoatmasterFix[]>();
