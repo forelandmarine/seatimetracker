@@ -315,6 +315,17 @@ export class AreaClassifier {
   }
 
   /**
+   * More than nm from any coastline in the land layer (worldwide at Natural Earth
+   * 1:10m). Cheaper than distanceFromLandNm far offshore, since polygons whose
+   * bounding box is already further than nm are skipped. A point on land is never
+   * far from land.
+   */
+  isFartherFromLandThan(p: LatLon, nm: number): boolean {
+    const pt = ll(p);
+    return !this.landLayer.contains(pt) && !this.landLayer.findNearestWithin(pt, nm);
+  }
+
+  /**
    * Distance to the edge of the nearest categorised water (0 inside it). Used as
    * the seaward edge of categorised waters and as the safe-haven distance, so it
    * counts the WFD estuaries and the hand-drawn coastal harbours, but not the

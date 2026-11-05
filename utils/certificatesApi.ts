@@ -9,6 +9,8 @@ export interface Certificate {
   issued_date: string | null;
   expiry_date: string | null;
   notes: string | null;
+  /** 'sail' or 'power' on RYA Yachtmaster certificates; null otherwise or on older backends. */
+  discipline?: 'sail' | 'power' | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,7 +22,11 @@ export interface CertificateInput {
   issued_date?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
+  discipline?: 'sail' | 'power' | null;
 }
+
+/** RYA Yachtmaster certificates are issued per discipline (backend utils/ryaService.ts). */
+export const DISCIPLINE_CERT_TYPES = new Set(['occ_yachtmaster_offshore', 'course_ym_coastal']);
 
 export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   stcw_basic_safety: "STCW Basic Safety Training",

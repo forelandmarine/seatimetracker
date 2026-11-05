@@ -37,3 +37,27 @@ export function getSeaAreaClassifier(): AreaClassifier | null {
   }
   return classifier;
 }
+
+let ungated: AreaClassifier | null = null;
+let ungatedTried = false;
+
+/**
+ * The classifier regardless of COMMERCIAL_PATHWAYS_ENABLED, for features that
+ * are not commercial (the RYA Yachtmaster Ocean distance-from-land check, which
+ * hobby sailors take too). Shares the gated instance when that is loaded. Null
+ * only if the GeoJSON layers cannot be read; never throws.
+ */
+export function getCoastlineClassifier(): AreaClassifier | null {
+  const gated = getSeaAreaClassifier();
+  if (gated) return gated;
+  if (!ungatedTried) {
+    ungatedTried = true;
+    try {
+      ungated = new AreaClassifier(loadLayers());
+    } catch (err) {
+      ungated = null;
+      console.error('[seaAreas] coastline failed to load:', err);
+    }
+  }
+  return ungated;
+}
