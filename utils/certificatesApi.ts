@@ -139,6 +139,13 @@ const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
   stcw_proficiency_security: ['psa', 'proficiency in security awareness'],
   personal_survival_techniques: ['pst'],
   radar_arpa: ['arpa'],
+  course_gwo_winda_id: ['winda'],
+  course_wbc3_nav_radar: ['ssnr', 'workboat code'],
+  course_wbc3_ecs_bridge: ['ssnr', 'workboat code', 'electronic chart'],
+  course_wbc3_radar_met: ['ssnr', 'workboat code'],
+  course_wbc3_stability: ['workboat code'],
+  course_food_hygiene: ['food safety'],
+  course_rya_commercial_endorsement: ['ce'],
 };
 
 /** Lower-cases and drops spaces and punctuation, so "ENG-1" and "eng 1" both read "eng1". */
