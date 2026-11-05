@@ -11,6 +11,7 @@ export {
   labelMatches,
   providerCodesFor,
   defaultApproval,
+  closerUnderOtherApprovals,
   approvalLabel,
   APPROVAL_LABELS,
 } from '@/utils/providerSearch';

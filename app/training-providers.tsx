@@ -31,6 +31,7 @@ import {
   usesMiles,
   phoneRegion,
   defaultApproval,
+  closerUnderOtherApprovals,
   courseDatesFor,
   useProviders,
   type CourseDate,
@@ -102,6 +103,15 @@ export default function TrainingProvidersScreen() {
         ? searchProviders(directory, { query, course, sector, approval: null, origin, radiusKm: origin ? radiusKm : null, homeCountry }).length
         : 0,
     [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
+  );
+  // When it doesn't leave nothing but sends the nearest one far away (PSCRB on the
+  // Riviera for an MCA user), say how many closer providers run it under other approvals.
+  const closer = useMemo(
+    () =>
+      approval && origin && hits.length > 0
+        ? closerUnderOtherApprovals(directory, { query, course, sector, approval, origin, radiusKm: null, homeCountry })
+        : { count: 0, nearestKm: null },
+    [directory, query, course, sector, approval, origin, homeCountry, hits.length],
   );
 
   // Dates for the chosen course, across every provider (one request per course).
@@ -275,6 +285,18 @@ export default function TrainingProvidersScreen() {
           </TouchableOpacity>
         </View>
       )}
+      {providers && closer.count > 0 && approval && closer.nearestKm != null && (
+        <View style={styles.hint}>
+          <Text style={styles.hintText}>
+            Nearest {approvalLabel(approval)} approved provider is {formatDistance(closer.nearestKm, miles)} away. {closer.count}{' '}
+            {closer.count === 1 ? 'provider runs' : 'providers run'} it closer under another approval. Check {approvalLabel(approval)} accepts the
+            certificate before you book.
+          </Text>
+          <TouchableOpacity onPress={() => setApproval(null)}>
+            <Text style={styles.link}>Show all approvals</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       {showMap && providers && <ProviderMap hits={hits} origin={origin} onOpen={(id) => router.push({ pathname: '/training-provider/[id]', params: { id, course: course ?? '' } } as any)} />}
     </View>
   );
@@ -422,6 +444,8 @@ function createStyles(isDark: boolean) {
     chipTextOn: { color: colors.white, fontWeight: '600' },
     resultsBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 18, marginTop: 14, marginBottom: 4 },
     count: { fontSize: 13, color: muted },
+    hint: { marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: card, gap: 6 },
+    hintText: { fontSize: 14, color: muted },
     link: { fontSize: 15, color: colors.primary, fontWeight: '600' },
     card: { backgroundColor: card, borderColor: border, borderWidth: 1, borderRadius: 12, marginHorizontal: 16, marginTop: 8, padding: 12 },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },

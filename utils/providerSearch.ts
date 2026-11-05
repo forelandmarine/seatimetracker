@@ -169,15 +169,15 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   lrc: 'gmdss radio',
   rya_diesel_engine: 'marine',
   is_basic_marine_engine: 'diesel',
-  yacht_rating: 'deckhand deck hand superyacht crew',
-  iyt_superyacht_deck_crew: 'deckhand',
-  iyt_superyacht_crew: 'deckhand',
-  iyt_international_crew: 'deckhand',
+  yacht_rating: 'deckhand deck hand superyacht crew greencrew greendeckhand',
+  iyt_superyacht_deck_crew: 'deckhand greencrew greendeckhand',
+  iyt_superyacht_crew: 'deckhand greencrew greendeckhand greenstew',
+  iyt_international_crew: 'deckhand greencrew greendeckhand',
   amsa_gph: 'deckhand deck hand',
   mt_general_purpose_hand: 'gph',
-  guest: 'stew stewardess steward interior superyacht crew',
-  yacht_interior: 'stew stewardess steward interior superyacht crew',
-  junior_steward: 'stew stewardess interior superyacht crew',
+  guest: 'stew stewardess steward interior superyacht crew hospitality greenstew',
+  yacht_interior: 'stew stewardess steward interior superyacht crew hospitality greenstew',
+  junior_steward: 'stew stewardess interior superyacht crew hospitality greenstew',
   iyt_superyacht_hospitality: 'stew stewardess steward interior',
   iyt_superyacht_chef: 'chef cook',
   ship_cook: 'chef cook yacht superyacht',
@@ -402,7 +402,16 @@ const ABBREVIATIONS: Record<string, string[][]> = {
   cel: [['celestial']],
 };
 
-const PHRASES = new Set(['ctv deckhand', 'ctv crew', 'ctv skipper', 'ctv master', 'ctv engineer']);
+const PHRASES = new Set([
+  'ctv deckhand',
+  'ctv crew',
+  'ctv skipper',
+  'ctv master',
+  'ctv engineer',
+  'green crew',
+  'green deckhand',
+  'green stew',
+]);
 const PHRASE_TOKENS = new Set(Array.from(PHRASES, (p) => p.replace(' ', '')));
 
 // "eng one", "powerboat level two".
@@ -423,6 +432,8 @@ const EXTRA_PLACES: Record<string, [number, number]> = {
   menorca: [39.89, 4.26],
   riviera: [43.58, 7.12],
   'french riviera': [43.58, 7.12],
+  'south of france': [43.58, 7.12],
+  sof: [43.58, 7.12],
   'cote d azur': [43.58, 7.12],
   solent: [50.85, -1.3],
   florida: [26.12, -80.14],
@@ -988,9 +999,13 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
   if (scored.filter((h) => h.tier >= 1).length < 3 && relax()) scored = run();
   // A typed place: something that answers the query within 1,000 km beats an exact
   // match on the far side of the world ("sea survival refresher St Maarten").
-  if (place && scored.some((h) => h.tier > 0 && h.distanceKm != null && h.distanceKm <= 1000))
+  // Far results drop below the best nearby kind of match but keep their own order.
+  const nearBest = place
+    ? Math.max(0, ...scored.filter((h) => h.tier > 0 && h.distanceKm != null && h.distanceKm <= 1000).map((h) => h.tier))
+    : 0;
+  if (nearBest > 0)
     scored.forEach((h) => {
-      if (h.distanceKm == null || h.distanceKm > 1000) h.tier = Math.max(0, h.tier - 2);
+      if (h.distanceKm == null || h.distanceKm > 1000) h.tier = Math.min(h.tier, nearBest - 0.5 + h.tier / 10);
     });
   // Only a place was typed ("Palma"): keep what's around it.
   let hits = scored;
@@ -1046,4 +1061,22 @@ export function defaultApproval(list: Provider[], course: string | null, authori
   if (!runs.some((p) => p.approvals.includes(authority))) return null;
   const scheme = SCHEME_BODIES.some((b) => b !== authority && runs.filter((p) => p.approvals.includes(b)).length >= runs.length * 0.6);
   return scheme ? null : authority;
+}
+
+/**
+ * When the approval filter puts the nearest provider far away, how many run the
+ * course under other approvals closer than that (PSCRB on the Riviera for an MCA
+ * user, STCW in Antibes for a SAMSA user). 0 when the filter costs little.
+ */
+export function closerUnderOtherApprovals(list: Provider[], f: ProviderFilters): { count: number; nearestKm: number | null } {
+  if (!f.approval || !f.origin) return { count: 0, nearestKm: null };
+  const own = searchProviders(list, { ...f, radiusKm: null });
+  const ownKm = own[0]?.distanceKm ?? null;
+  const all = searchProviders(list, { ...f, approval: null, radiusKm: null });
+  const allKm = all[0]?.distanceKm ?? null;
+  if (allKm == null || (ownKm != null && ownKm <= Math.max(allKm * 3, allKm + 100))) return { count: 0, nearestKm: ownKm };
+  const count = all.filter(
+    (h) => h.distanceKm != null && (ownKm == null || h.distanceKm < ownKm) && !h.provider.approvals.includes(f.approval!),
+  ).length;
+  return { count, nearestKm: ownKm };
 }
