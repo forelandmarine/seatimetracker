@@ -816,6 +816,8 @@ export const setMarketingConsent = async (
 export interface PasswordStatus {
   hasPassword: boolean;
   hasApple: boolean;
+  /** Missing from backends older than Google sign-in. */
+  hasGoogle?: boolean;
   email: string;
   privateRelay: boolean;
 }
@@ -825,7 +827,7 @@ export const getPasswordStatus = async (): Promise<PasswordStatus> => {
   return res.json();
 };
 
-/** Set a password (Apple accounts) or change it (needs the current one). */
+/** Set a password (Apple or Google accounts) or change it (needs the current one). */
 export const setPassword = async (newPassword: string, currentPassword?: string): Promise<void> => {
   await authFetch('/api/auth/password', {
     method: 'PUT',

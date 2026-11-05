@@ -34,6 +34,8 @@ import { RETRYABLE_CODES } from '@/utils/errorCodes';
 import ErrorModal from '@/components/ErrorModal';
 import { trackEvent } from '@/utils/appEvents';
 import { createAuthStyles } from '@/styles/authStyles';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
+import { googleSignInAvailable, getGoogleIdToken } from '@/utils/googleSignIn';
 
 const TERMS_URL = 'https://www.forelandmarine.com/tools/seatime-tracker/terms';
 const PRIVACY_URL = 'https://forelandmarine.com/privacy-policy';
@@ -65,7 +67,9 @@ export default function AuthScreen() {
   const [returningDevice, setReturningDevice] = useState(false);
   const [errorAction, setErrorAction] = useState<{ label: string; run: () => void } | null>(null);
   const passwordRef = React.useRef<any>(null);
-  const { user, signIn, signUp, signInWithApple, checkAuth } = useAuth();
+  // Android only, and only once the build and the backend both have Google set up.
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  const { user, signIn, signUp, signInWithApple, signInWithGoogle, checkAuth } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -82,6 +86,7 @@ export default function AuthScreen() {
       });
     // Fire warm-up ping immediately so server is ready when user taps Sign In
     warmUpServer();
+    googleSignInAvailable().then(setGoogleAvailable);
   }, []);
 
   const checkBiometricAvailability = async () => {
@@ -394,6 +399,55 @@ export default function AuthScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const result = await getGoogleIdToken();
+      if (result.type === 'cancelled') return;
+      if (result.type === 'error') {
+        if (result.code === 'in_progress') return;
+        logError('[AuthScreen] Google sign in failed before server:', result.code, result.message);
+        trackEvent('auth_failed', `google_${result.code}`);
+        if (result.code === 'no_play_services') {
+          showError("Google sign-in needs Google Play services, which this phone doesn't have or needs to update. You can create an account with your email and password instead.");
+        } else {
+          showError("Google sign-in didn't work this time. Please try again, or use your email and password.", () => handleGoogleSignIn());
+        }
+        return;
+      }
+
+      // Same account rules as Apple: a Google email that matches an existing
+      // SeaTime account (email and password) signs in to that account.
+      const created = await signInWithGoogle(result.idToken);
+      trackEvent(created ? 'account_created' : 'signed_in', 'google');
+      markSignedInBefore();
+      // Only a new account takes the sign-up opt-in box (see Apple above).
+      if (isSignUp && created) recordSignUpConsent();
+
+      log('[AuthScreen] Google sign in successful, navigating to index');
+      setTimeout(() => router.replace('/'), 100);
+    } catch (error: any) {
+      logError('[AuthScreen] Google sign in failed:', error.message);
+      const msg: string = error.message || '';
+      trackEvent('auth_failed', 'google');
+
+      if (/not verified/i.test(msg) && /email and password/i.test(msg) && /your account/i.test(msg)) {
+        showErrorWithAction(msg, 'Sign in', () => switchMode(false, true));
+      } else if (/Google authentication failed/i.test(msg)) {
+        showError('Google sign-in could not be verified. Please try again.', () => handleGoogleSignIn());
+      } else if (/Having trouble connecting|Cannot connect|Network|timed out/i.test(msg)) {
+        showError('Cannot reach the server. Please check your internet connection and try again.', () => handleGoogleSignIn());
+      } else if (/Server error|service error|temporarily unavailable|starting up/i.test(msg)) {
+        showError('Our servers are temporarily unavailable. Please try again in a moment.', () => handleGoogleSignIn());
+      } else {
+        showError(msg || 'Google sign-in failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const styles = createAuthStyles(isDark);
 
   return (
@@ -436,6 +490,18 @@ export default function AuthScreen() {
               onPress={handleAppleSignIn}
             />
             {legalText('By continuing with Apple')}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{isSignUp ? 'OR WITH EMAIL' : 'OR'}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </View>
+        )}
+
+        {Platform.OS === 'android' && googleAvailable && (
+          <View>
+            <GoogleSignInButton onPress={handleGoogleSignIn} disabled={loading} isDark={isDark} />
+            {legalText('By continuing with Google')}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>{isSignUp ? 'OR WITH EMAIL' : 'OR'}</Text>

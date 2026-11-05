@@ -94,7 +94,9 @@ export default function PasswordScreen() {
         <Text style={styles.description}>
           {status.hasPassword
             ? 'Choose a new password for signing in with your email.'
-            : 'You signed up with Apple. Add a password so you can also sign in with your email, for example on an Android phone or if you change Apple ID. Your sea time stays with your account either way.'}
+            : status.hasGoogle && !status.hasApple
+              ? 'You signed up with Google. Add a password so you can also sign in with your email, for example on an iPhone or if you stop using this Google account. Your sea time stays with your account either way.'
+              : 'You signed up with Apple. Add a password so you can also sign in with your email, for example on an Android phone or if you change Apple ID. Your sea time stays with your account either way.'}
         </Text>
 
         <View style={styles.card}>
