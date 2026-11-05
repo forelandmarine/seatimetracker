@@ -45,7 +45,7 @@ export function courseLabel(code: string): string {
   return COURSE_CATALOG[code]?.label ?? EXTRA_COURSE_LABELS[code] ?? code.replace(/_/g, ' ');
 }
 
-const YEARS: Record<string, number> = { '5y_update': 5, '3y': 3, '1y': 1, '2y': 2 };
+const YEARS: Record<string, number> = { '5y_update': 5, '5y': 5, '3y': 3, '1y': 1, '2y': 2 };
 
 // Date-only arithmetic, so the result doesn't move with the phone's time zone.
 // 29 Feb plus a non-leap number of years lands on 28 Feb.

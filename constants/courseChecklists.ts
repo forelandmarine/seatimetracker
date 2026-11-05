@@ -2318,7 +2318,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2458,7 +2458,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2547,7 +2547,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {
@@ -2692,7 +2692,7 @@ export const CHECKLISTS: Record<string, Checklist> = {
         "code": "workboat_ops",
         "label": "Workboat Operations (Master Workboats) module and exam",
         "type": "module_exam",
-        "validity": "other: pass valid 5 years (MGN 496 7.2)",
+        "validity": "5y",
         "note": "Pass must be in date when the CoC is issued. Stability and Seamanship modules recommended first."
       },
       {

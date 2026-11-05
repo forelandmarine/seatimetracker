@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/styles/commonStyles';
@@ -16,6 +16,7 @@ import {
   getTargetDays,
 } from '@/constants/mcaRequirements';
 import { AMSA_STCW_IDS } from '@/constants/amsaRequirements';
+import { getRyaService } from '@/utils/seaTimeApi';
 
 export interface ServiceTypeDays {
   service_type: string;
@@ -233,7 +234,53 @@ interface ProgressRow {
   current: number;
   required: number;
   /** Maritime NZ states two certificates in hours rather than days; the BML qualifying period is in months. */
-  unit?: 'days' | 'hours' | 'months';
+  unit?: 'days' | 'hours' | 'months' | 'miles' | 'passages';
+}
+
+/** Sea time counted the RYA's way, from GET /api/reports/rya-service. */
+interface RyaDisciplineService {
+  days: number;
+  days_under_24m: number;
+  skipper_days_under_24m: number;
+  tidal_days_under_24m: number;
+  tidal_days: number;
+  miles: number;
+  miles_under_24m: number;
+  passages: Array<{ overnight: boolean; as_skipper: boolean }>;
+  ocean_passages: Array<{ start: string; nm: number; hours: number }>;
+}
+interface RyaServiceSummary {
+  sail: RyaDisciplineService;
+  power: RyaDisciplineService;
+  days_unknown_discipline: number;
+  days_commercial: number;
+}
+
+/**
+ * Yachtmaster pre-exam sea time (RYA Yachtmaster Coastal and Offshore pages).
+ * The halves in tidal waters are "should" in the RYA text, shown as bars too.
+ */
+function ryaRows(level: 'coastal' | 'offshore' | 'ocean', r: RyaDisciplineService): ProgressRow[] {
+  if (level === 'coastal') {
+    return [
+      { label: 'Days at Sea, Under 24m', current: r.days_under_24m, required: 30 },
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: 2 },
+      { label: 'Miles, Under 24m', current: r.miles_under_24m, required: 800, unit: 'miles' },
+      { label: 'Days in Tidal Waters', current: r.tidal_days, required: 15 },
+    ];
+  }
+  if (level === 'offshore') {
+    return [
+      { label: 'Days at Sea, Yachts to 500 GT', current: r.days, required: 50 },
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: 5 },
+      { label: 'Miles, Yachts to 500 GT', current: r.miles, required: 2500, unit: 'miles' },
+      { label: 'Passages Over 60 Miles', current: r.passages.length, required: 5, unit: 'passages' },
+      { label: 'Of Which Overnight', current: r.passages.filter((p) => p.overnight).length, required: 2, unit: 'passages' },
+      { label: 'Of Which as Skipper', current: r.passages.filter((p) => p.as_skipper).length, required: 2, unit: 'passages' },
+      { label: 'Days in Tidal Waters, Under 24m', current: r.tidal_days_under_24m, required: 25 },
+    ];
+  }
+  return [{ label: 'Possible Ocean Qualifying Passages', current: r.ocean_passages.length, required: 1, unit: 'passages' }];
 }
 
 export interface CertificationProgressProps {
@@ -387,6 +434,21 @@ export function CertificationProgress({
   const route = useMemo(() => pickRoute(baseRequirement?.id, routeId), [baseRequirement, routeId]);
   const requirement = useMemo(() => applyRoute(baseRequirement, route), [baseRequirement, route]);
 
+  // Yachtmaster targets: RYA-counted sea time, fetched only for these
+  const ryaLevel = resolvedAuthority === 'mca' ? requirement?.ryaRoute : undefined;
+  const [rya, setRya] = useState<RyaServiceSummary | null>(null);
+  const [ryaDiscipline, setRyaDiscipline] = useState<'sail' | 'power' | null>(null);
+  useEffect(() => {
+    if (!ryaLevel) return;
+    let live = true;
+    getRyaService()
+      .then((data: RyaServiceSummary) => { if (live && data?.sail) setRya(data); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [ryaLevel]);
+  // Show the discipline with more sea time unless the user picked one
+  const ryaShown: 'sail' | 'power' = ryaDiscipline ?? (rya && rya.power.days > rya.sail.days ? 'power' : 'sail');
+
   // A route that only counts service from its start date swaps every figure for
   // the dated ones once they have loaded. Until the date is set, all service counts.
   const dated = route?.startDate && routeStartDate && sinceStart ? sinceStart : null;
@@ -466,6 +528,8 @@ export function CertificationProgress({
         },
       ];
     }
+
+    if (ryaLevel) return rya ? ryaRows(ryaLevel, rya[ryaShown]) : [];
 
     if (resolvedAuthority === 'mca' && requirement?.workboatRoute) {
       // Without the workboat figures there is no honest bar to draw.
@@ -702,6 +766,9 @@ export function CertificationProgress({
     targetWatchkeeping,
     amsaNotUnderwayCounted,
     amsaUnderway,
+    ryaLevel,
+    rya,
+    ryaShown,
   ]);
 
   if (!requirement && rows.length === 0) return null;
@@ -776,6 +843,8 @@ export function CertificationProgress({
         <Text style={{ fontSize: 13, color: mutedColor, lineHeight: 18 }}>
           {isUSCG && !uscgService
             ? 'Your USCG day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under the Coast Guard rules.'
+            : ryaLevel && !rya
+              ? 'Your Yachtmaster sea time is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled the RYA way.'
             : requirement?.workboatRoute && !workboatService
               ? 'Your workboat day count is not available yet. Pull to refresh, and if it stays missing your sea time is still recorded, just not totalled under MGN 496.'
               : requirement?.tugRoute && !tugService
@@ -862,6 +931,32 @@ export function CertificationProgress({
               : isAMSA
                 ? 'These depend on the certificate you held and the vessels you served on, so AMSA assesses them from your sea service records rather than from this total.'
                 : 'These depend on the certificate you held and the vessels you served on, so Maritime NZ assesses them from your sea service records rather than from this total.'}
+          </Text>
+        </View>
+      )}
+
+      {ryaLevel && rya && (
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: trackColor }}>
+          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 8 }}>
+            {(['sail', 'power'] as const).map((d) => (
+              <TouchableOpacity key={d} onPress={() => setRyaDiscipline(d)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: ryaShown === d ? '700' : '400', color: ryaShown === d ? colors.primary : mutedColor }}>
+                  {d === 'sail' ? 'Sail' : 'Power'} ({rya[d].days} days)
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={{ fontSize: 12, color: mutedColor, lineHeight: 17 }}>
+            Counted the RYA way: a day is 8 consecutive hours on board, mostly at sea, and only one counts in any 24 hours.
+            Sea time is from the last 10 years, on yachts of the exam's discipline (from each vessel's type). Days as
+            skipper need the Master rank on the entry. A passage counts when it is over 60 miles in a straight line from
+            start to end, so a passage round a headland can be missed. Overnight is a passage under way through midnight
+            UTC; the RYA does not define it, so check your log.
+            {ryaLevel === 'coastal' ? ' The 12 night hours are not tracked. With a Coastal Skipper course certificate the targets fall to 12 days and 400 miles.' : ''}
+            {ryaLevel === 'offshore' ? ' Holding Yachtmaster Offshore in the other discipline halves the targets (25 days, 3 as skipper, 1,250 miles, 3 passages).' : ''}
+            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or mate. The 200 miles more than 50 miles from land and the astro sights are not checked.' : ''}
+            {rya.days_commercial > 0 ? ` ${rya.days_commercial} days on commercial vessels are left out: ask the RYA (training@rya.org.uk) whether they count.` : ''}
+            {rya.days_unknown_discipline > 0 ? ` ${rya.days_unknown_discipline} days are on vessels with no type set; set Motor or Sail on the vessel to count them.` : ''}
           </Text>
         </View>
       )}

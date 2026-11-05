@@ -15,13 +15,15 @@ import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
 import { boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
-import { amsaCreditableDays, countDistinctSeaDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
 import { entriesWithSoleWatch } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
+import { trackDistances } from '../services/trackDistance.js';
+import { mcaReportFigures } from '../utils/reportTotals.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -175,53 +177,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // straight line. This captures continuous / short-leg operations (e.g. a CTV
     // working turbine to turbine in a wind farm), which point-to-point understates.
     // Entries without fixes fall back to the point-to-point distance below.
-    const trackDistanceByEntry = new Map<string, number>();
-    if (entries.length > 0) {
-      const vesselIds = [...new Set(entries.map((e) => e.vessel_id).filter(Boolean))] as string[];
-      const times = entries.flatMap((e) => [
-        new Date(e.start_time).getTime(),
-        e.end_time ? new Date(e.end_time).getTime() : new Date(e.start_time).getTime(),
-      ]);
-      if (vesselIds.length > 0 && times.length > 0) {
-        const windowStart = new Date(Math.min(...times));
-        const windowEnd = new Date(Math.max(...times));
-        const fixes = await app.db
-          .select({
-            vessel_id: schema.ais_checks.vessel_id,
-            latitude: schema.ais_checks.latitude,
-            longitude: schema.ais_checks.longitude,
-            check_time: schema.ais_checks.check_time,
-          })
-          .from(schema.ais_checks)
-          .where(
-            and(
-              eq(schema.ais_checks.user_id, userId),
-              inArray(schema.ais_checks.vessel_id, vesselIds),
-              gte(schema.ais_checks.check_time, windowStart),
-              lte(schema.ais_checks.check_time, windowEnd),
-            ),
-          );
-        const byVessel = new Map<string, TrackFix[]>();
-        for (const f of fixes) {
-          if (!f.vessel_id) continue;
-          const arr = byVessel.get(f.vessel_id) ?? [];
-          arr.push(f as TrackFix);
-          byVessel.set(f.vessel_id, arr);
-        }
-        for (const e of entries) {
-          if (!e.vessel_id || !e.end_time) continue;
-          const vf = byVessel.get(e.vessel_id);
-          if (!vf) continue;
-          const s = new Date(e.start_time).getTime();
-          const en = new Date(e.end_time).getTime();
-          const inWindow = vf.filter((f) => {
-            const t = f.check_time instanceof Date ? f.check_time.getTime() : new Date(f.check_time).getTime();
-            return t >= s && t <= en;
-          });
-          if (inWindow.length >= 2) trackDistanceByEntry.set(e.id, cumulativeTrackDistanceNm(inWindow));
-        }
-      }
-    }
+    const trackDistanceByEntry = await trackDistances(app, userId, entries);
 
     // Workboat sea area columns for commercial users (guidance only)
     const csvCommercial =
@@ -500,6 +456,7 @@ export function register(app: App, fastify: FastifyInstance) {
               properties: {
                 actual: { type: 'number' },
                 standby: { type: 'number' },
+                standby_logged: { type: 'number' },
                 yard: { type: 'number' },
                 port: { type: 'number' },
                 yard_credited: { type: 'number' },
@@ -725,9 +682,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ count: entries.length }, 'Filtered confirmed entries for summary');
 
-    // Total qualifying sea service: yard service capped at 90 days (MSN 1858)
-    // and service in port excluded (not sea service). Stand-by is counted in
-    // full; its certificate-structure limits are left to the assessor. Days are
+    // Total qualifying sea service: yard service capped at 90 days, stand-by
+    // credited within its 14-day and previous-voyage limits (MSN 1858), and
+    // service in port excluded (not sea service). Days are
     // deduplicated across service types so a calendar date is only counted once.
     // `total_days` is this figure; `sea_service` exposes the breakdown behind it.
     const breakdown = qualifyingSeaDays(entries as any);
@@ -785,10 +742,12 @@ export function register(app: App, fastify: FastifyInstance) {
       if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
     });
 
+    // Stand-by is credited within the MSN 1858 limits (14 consecutive days, no
+    // more than the voyage before), so the yacht bars match the qualifying total.
     const entries_by_service_type = Object.entries(serviceTypeGroups)
       .map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(entries as any) : countDistinctSeaDays(group as any),
       }))
       .sort((a, b) => b.total_days - a.total_days); // Sort by days descending
 
@@ -798,8 +757,8 @@ export function register(app: App, fastify: FastifyInstance) {
     // over for the certificate being tracked. Untagged vessels count as yachts.
     const commercialEntries = entries.filter((entry) => entry.vessel?.sector === 'commercial');
     const yachtTypeGroups: { [key: string]: any[] } = {};
-    entries
-      .filter((entry) => entry.vessel?.sector !== 'commercial')
+    const yachtEntries = entries.filter((entry) => entry.vessel?.sector !== 'commercial');
+    yachtEntries
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
@@ -810,7 +769,7 @@ export function register(app: App, fastify: FastifyInstance) {
       vessels: [...new Set(commercialEntries.map((entry) => entry.vessel?.vessel_name || 'Unknown'))],
       yacht_entries_by_service_type: Object.entries(yachtTypeGroups).map(([service_type, group]) => ({
         service_type,
-        total_days: countDistinctSeaDays(group as any),
+        total_days: service_type === 'standby_service' ? creditedStandbyDays(yachtEntries as any) : countDistinctSeaDays(group as any),
       })),
     };
 
@@ -1245,6 +1204,16 @@ export function register(app: App, fastify: FastifyInstance) {
         entriesByVessel[key].push(entry);
       });
 
+    // MCA: the total and each vessel's stand-by follow the MSN 1858 limits (yard
+    // capped at 90 days, stand-by at most 14 in a row and never more than the
+    // voyage before), so the report matches the qualifying total in the app.
+    const isMcaTemplate = template === 'mca';
+    const mcaFigures = isMcaTemplate
+      ? mcaReportFigures(confirmedEntries as any, Object.values(entriesByVessel) as any)
+      : null;
+    const blockIndex = new Map(Object.keys(entriesByVessel).map((k, i) => [k, i]));
+    if (mcaFigures) totalDays = mcaFigures.total;
+
     // --- Foreland Marine brand palette ---
     const STEEL_BLUE = '#5386B6';
     const DEEP_NAVY = '#040D1A';
@@ -1372,6 +1341,14 @@ export function register(app: App, fastify: FastifyInstance) {
 
     doc.font('NunitoSans-Light').fontSize(22).fillColor(DEEP_NAVY);
     doc.text(`${totalDays} days`, ML + 15, summaryY + 22);
+    if (mcaFigures && (mcaFigures.standby_not_credited > 0 || mcaFigures.yard_over_cap > 0)) {
+      const left = [
+        mcaFigures.standby_not_credited > 0 ? `${mcaFigures.standby_not_credited} stand-by days` : '',
+        mcaFigures.yard_over_cap > 0 ? `${mcaFigures.yard_over_cap} yard days over the 90-day limit` : '',
+      ].filter(Boolean).join(' and ');
+      doc.font('NunitoSans').fontSize(7.5).fillColor(TEXT_BODY);
+      doc.text(`Qualifying service under MSN 1858. Not counted: ${left}.`, ML + 150, summaryY + 30, { width: CW - 165 });
+    }
 
     doc.y = summaryY + 58;
     doc.moveDown(0.3);
@@ -1437,6 +1414,13 @@ export function register(app: App, fastify: FastifyInstance) {
           if (!vesselServiceTypes[st]) vesselServiceTypes[st] = 0;
           if (entry.sea_days) vesselServiceTypes[st] += entry.sea_days;
         });
+        // MCA: stand-by shows the days credited under MSN 1858, with the rest noted
+        let standbyLeftOut = 0;
+        if (mcaFigures && vesselServiceTypes['standby_service'] != null) {
+          const credited = mcaFigures.block_standby_credited[blockIndex.get(vesselKey) ?? -1] ?? 0;
+          standbyLeftOut = Math.max(0, vesselServiceTypes['standby_service'] - credited);
+          vesselServiceTypes['standby_service'] = credited;
+        }
 
         const particularsRows = Math.ceil(particulars.length / 2);
         const serviceRows = Object.keys(vesselServiceTypes).length + (soleEntries.length ? 1 : 0);
@@ -1491,6 +1475,12 @@ export function register(app: App, fastify: FastifyInstance) {
           doc.text(`${days}d`, 0, rowY, { width: PW - MR, align: 'right' });
           doc.y = rowY + 16;
         });
+        if (standbyLeftOut > 0) {
+          const rowY = Math.round(doc.y);
+          doc.font('NunitoSans').fontSize(8).fillColor(TEXT_BODY);
+          doc.text(`${standbyLeftOut} more stand-by days logged, not credited (MSN 1858: at most 14 in a row, never more than the voyage before)`, ML + 10, rowY, { width: CW - 10 });
+          doc.y = rowY + 14;
+        }
         if (soleEntries.length) {
           const rowY = Math.round(doc.y);
           doc.font('NunitoSans').fontSize(9).fillColor(DEEP_NAVY);
@@ -1561,6 +1551,7 @@ export function register(app: App, fastify: FastifyInstance) {
         doc.y += 3;
         let vesselDays = 0;
         vesselEntries.forEach((entry) => { if (entry.sea_days) vesselDays += entry.sea_days; });
+        vesselDays -= standbyLeftOut;
 
         const subY = Math.round(doc.y);
         doc.fillColor(STEEL_BLUE).rect(ML, subY, 3, 24).fill();
@@ -1593,7 +1584,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const serviceTypeDefinitions = [
       { type: 'Actual Sea Service', desc: 'Sea service performed while the vessel is underway, engaged in trading or on passage.' },
       { type: 'Watchkeeping Service', desc: 'Time spent on bridge watch or engine room watch while at sea.' },
-      { type: 'Stand-by Service', desc: 'Service performed during periods of standby while the vessel is at sea.' },
+      { type: 'Stand-by Service', desc: 'The time immediately following a voyage while the vessel is prepared for the next one. For MCA certificates at most 14 consecutive days count at one time, and never more than the voyage before (MSN 1858).' },
       { type: 'Service in Port', desc: 'Service performed while the vessel is in port, including maintenance and cargo operations.' },
       { type: 'Yard Service', desc: 'Service performed during shipyard periods, including new building or major repairs.' },
     ];

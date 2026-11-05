@@ -1198,3 +1198,48 @@ export const downloadBoatmasterReport = async (format: 'msf4366' | 'pla') => {
   const res = await authFetch(`/api/reports/boatmaster?format=${format}`);
   return res.blob();
 };
+
+// MGN 496 Annex C Deck (Workboat) Testimonial as a PDF, one per vessel, for the
+// Master or company to sign. vesselId limits it to that vessel.
+// format 'discharge' is the MGN 496 Annex B certificate of discharge instead.
+export const downloadWorkboatTestimonial = async (vesselId?: string, format: 'testimonial' | 'discharge' = 'testimonial') => {
+  const params = [vesselId ? `vesselId=${encodeURIComponent(vesselId)}` : '', format === 'discharge' ? 'format=discharge' : ''].filter(Boolean);
+  const res = await authFetch(`/api/reports/workboat-testimonial${params.length ? `?${params.join('&')}` : ''}`);
+  return res.blob();
+};
+
+export interface TestimonialRequest {
+  id: string;
+  vessel_id: string;
+  status: 'pending' | 'signed' | 'cancelled';
+  from: string | null;
+  to: string | null;
+  signer_name: string | null;
+  signed_at: string | null;
+  expires_at: string;
+  created_at: string;
+  expired: boolean;
+  /** Only on the response that creates the request. */
+  url?: string;
+}
+
+// A one-time link for the Master or company to complete and sign the testimonial
+export const createTestimonialRequest = async (vesselId: string): Promise<TestimonialRequest> => {
+  const res = await authFetch('/api/testimonial-requests', { method: 'POST', body: { vesselId } });
+  return res.json();
+};
+
+export const listTestimonialRequests = async (vesselId: string): Promise<TestimonialRequest[]> => {
+  const res = await authFetch(`/api/testimonial-requests?vesselId=${encodeURIComponent(vesselId)}`);
+  return res.json();
+};
+
+// Sea time toward the RYA Yachtmaster exams, counted the RYA's way (8-hour days, miles, 60-mile passages)
+export const getRyaService = async () => {
+  const res = await authFetch('/api/reports/rya-service');
+  return res.json();
+};
+
+export const cancelTestimonialRequest = async (id: string): Promise<void> => {
+  await authFetch(`/api/testimonial-requests/${encodeURIComponent(id)}`, { method: 'DELETE' });
+};

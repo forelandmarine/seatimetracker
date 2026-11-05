@@ -56,6 +56,7 @@ function statusLine(s: ItemState, t: TFunction): string | null {
     case 'done_no_date':
       return 'Add the issue or expiry date to track it';
     case 'todo':
+      if (s.item.validity === '5y') return 'Pass valid 5 years';
       if (s.item.validity === '3y') return 'Pass valid 3 years';
       if (s.item.validity === '1y') return 'Pass valid 1 year';
       if (s.item.type === 'manual') return t('certChecker.tickWhenComplete');

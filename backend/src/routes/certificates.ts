@@ -3,6 +3,12 @@ import { eq, and, asc } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import {
+  REVALIDATION_RULE_BY_TYPE,
+  daysToExpiry,
+  inAnniversaryWindow,
+  revalidationProgress,
+} from "../utils/revalidation.js";
 
 /**
  * Maritime certificate types — used by frontend dropdowns and PDF reports.
@@ -32,6 +38,7 @@ export const CERTIFICATE_TYPES = [
   "occ_oow_3000gt",
   "occ_chief_engineer",
   "occ_second_engineer",
+  "coc_master_workboat_500",
   // USCG Documents
   "uscg_mmc",
   "uscg_twic",
@@ -183,6 +190,51 @@ export function register(app: App, fastify: FastifyInstance) {
       .orderBy(asc(schema.certificates.expiry_date));
 
     return reply.code(200).send(rows);
+  });
+
+  // GET /api/certificates/revalidation - Revalidation progress for each CoC held
+  // (MSN 1861, MGN 496 12.1, MSN 1853 19.3; see utils/revalidation.ts)
+  fastify.get("/api/certificates/revalidation", {
+    schema: {
+      description: "Sea service toward revalidating each certificate of competency the user holds",
+      tags: ["certificates"],
+      response: {
+        200: { type: "array", items: { type: "object", additionalProperties: true } },
+        401: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = await extractUserIdFromRequest(request, app);
+    if (!userId) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const certs = (await app.db
+      .select()
+      .from(schema.certificates)
+      .where(eq(schema.certificates.user_id, userId)))
+      .filter((c) => REVALIDATION_RULE_BY_TYPE[c.certificate_type]);
+    if (certs.length === 0) return reply.code(200).send([]);
+
+    const entries = await app.db.query.sea_time_entries.findMany({
+      with: { vessel: true },
+      where: eq(schema.sea_time_entries.user_id, userId),
+    });
+    const now = new Date();
+    return reply.code(200).send(certs.map((c) => {
+      const progress = revalidationProgress(REVALIDATION_RULE_BY_TYPE[c.certificate_type], entries as any, now);
+      return {
+        certificate_id: c.id,
+        certificate_type: c.certificate_type,
+        expiry_date: c.expiry_date,
+        days_to_expiry: daysToExpiry(c.expiry_date, now),
+        keeps_anniversary: inAnniversaryWindow(c.expiry_date, now),
+        rule: progress.rule.id,
+        notice: progress.rule.notice,
+        counts: progress.rule.counts,
+        routes: progress.routes,
+        met: progress.met,
+      };
+    }));
   });
 
   // POST /api/certificates - Create a new certificate

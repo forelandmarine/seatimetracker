@@ -163,6 +163,11 @@ export interface MCARequirement {
      */
     lke?: 'full' | 'lower' | 'upper';
   };
+  /**
+   * RYA/MCA Yachtmaster pre-exam sea time, counted the RYA's way (8-hour days,
+   * miles, 60-mile passages) by GET /api/reports/rya-service.
+   */
+  ryaRoute?: 'coastal' | 'offshore' | 'ocean';
   requirements: {
     label: string;
     value: string;
@@ -305,12 +310,46 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
   },
   {
+    id: 'yachtmaster-coastal',
+    title: 'RYA/MCA Yachtmaster Coastal',
+    regulation: 'RYA CoC',
+    category: 'Yachtmaster',
+    description: 'Skipper on coastal passages; the step before Yachtmaster Offshore',
+    commercialService: 'yacht_only',
+    ryaRoute: 'coastal',
+    requirements: [
+      {
+        label: 'Sea Time',
+        value: '30 days',
+        details: [
+          'On vessels under 24m LOA, in the last 10 years',
+          '2 days as skipper, on vessels under 24m LOA',
+          'At least half in tidal waters',
+          'All in the same discipline as the exam (sail or power)',
+        ],
+      },
+      {
+        label: 'Distance',
+        value: '800 miles',
+        details: ['12 night hours'],
+      },
+    ],
+    notes: [
+      'RYA counts a day as 8 consecutive hours living on board, mostly at sea, with only one counted in any 24 hours',
+      'With a Coastal Skipper Practical course certificate, or Yachtmaster Coastal in the other discipline: 12 days and 400 miles on vessels under 24m (or 30 days and 800 miles on yachts under 500 GT)',
+      'Night hours are not tracked by the app; keep your own record',
+      'Sea time on yachts over 24m and 500 GT: contact the RYA (training@rya.org.uk)',
+      'Needs a VHF SRC or higher and a valid first aid certificate',
+    ],
+  },
+  {
     id: 'yachtmaster-offshore',
     title: 'RYA/MCA Yachtmaster Offshore (Commercially Endorsed)',
     regulation: 'RYA CoC',
     category: 'Yachtmaster',
     description: 'Skipper up to 200 GT (or Mate to 500 GT), up to 150 miles from a safe haven',
     commercialService: 'yacht_only',
+    ryaRoute: 'offshore',
     requirements: [
       {
         label: 'Sea Time',
@@ -331,8 +370,8 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       },
     ],
     notes: [
-      'RYA counts a day as 8 consecutive hours living on board, mostly at sea. This differs from the MCA 4-hour day the app uses, so check short days',
-      'Mileage and passages are not tracked by the app; keep your own record',
+      'RYA counts a day as 8 consecutive hours living on board, mostly at sea, with only one counted in any 24 hours. The progress bars count it that way',
+      'Miles come from the AIS track; passages over 60 miles are found from the track, so keep your own log too',
       'Holders of Yachtmaster Offshore in the other discipline: 25 days, 3 as skipper, 1,250 miles, 3 passages',
       'Sea time on yachts over 24m and 500 GT: contact the RYA (training@rya.org.uk)',
       'Commercial endorsement needs a sea survival course and medical fitness certificate',
@@ -345,6 +384,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     category: 'Yachtmaster',
     description: 'Ocean qualifying passage; needed for Chief Mate (Yachts)',
     commercialService: 'yacht_only',
+    ryaRoute: 'ocean',
     requirements: [
       {
         label: 'Prior Certificate',
@@ -367,7 +407,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
     ],
     notes: [
       'Candidates must show astro navigation worked at sea',
-      'The app does not track passage distance; keep your own passage record',
+      'The app lists passages of 600 miles over 96 hours as skipper or mate; the 200 miles more than 50 miles from land and the astro sights are for you to show',
     ],
   },
   {
@@ -922,7 +962,7 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
       'MCA onboard practical and oral assessment, or the MSQ underpinning knowledge units in place of the oral',
       'The generic licence allows up to 12 passengers. Passenger, towing and pushing, and other operations need an endorsement, with its own service after the licence service (towing and pushing in tidal waters: 120 days over 12 months, age 21)',
       'Some areas also need a Local Knowledge Endorsement, such as the Port of London, Medway and Portsmouth. The app counts the Port of London LKE (60 days) as its own target',
-      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience',
+      'Tier 2 licences, for named areas only, have no set service time; the MCA assesses your experience. The Tier 2 targets show its guideline figures',
     ],
   },
   {
@@ -955,6 +995,60 @@ export const MCA_REQUIREMENTS: MCARequirement[] = [
 
   // Boatmasters' Licence endorsements (MSN 1853 Annex 5 Table C) and the Port of
   // London Local Knowledge Endorsement (Table B). Service must follow the licence service.
+  // Tier 2 (MSN 1853 11.8, Annex 6): no set qualifying service. The figures are
+  // the MCA's guideline for the generic licence, so the bar is guidance only.
+  {
+    id: 'bml-tier2-level2',
+    title: "Boatmasters' Licence Tier 2 Level 2 (guideline)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Restricted licence for named areas of category A to D waters and a limited coastal area (MSN 1853, Annex 6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 2, days: 40, months: 6 },
+    requirements: [
+      {
+        label: 'Guideline Qualifying Service',
+        value: '40 days',
+        details: [
+          'In a deck capacity, over at least 6 months',
+          'No set service time: the MCA assesses your experience for the area and operation (MSN 1853 11.8)',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18. Not available for the Thames below Teddington',
+      'Guideline for operations (Annex 6): passengers up to 100, 40 days in 6 months; 101 to 250 passengers (age 20), 80 days in 6 months; towing, 80 days in 12 months; cargo, dredging, fast craft and Ro-Ro, 60 days in 9 months',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book as far as it applies',
+      'Revalidation: 50 days of qualifying service in the 5 years before (MSN 1853 19.3)',
+    ],
+  },
+  {
+    id: 'bml-tier2-level1',
+    title: "Boatmasters' Licence Tier 2 Level 1 (guideline)",
+    regulation: 'MSN 1853',
+    category: "Boatmasters' Licence",
+    description: 'Restricted licence for category A canals and named areas of category A, B or non-linked C waters (MSN 1853, Annex 6)',
+    sectors: ['commercial'],
+    commercialService: 'counts',
+    boatmasterRoute: { level: 1, days: 40, months: 6 },
+    requirements: [
+      {
+        label: 'Guideline Qualifying Service',
+        value: '40 days',
+        details: [
+          'In a deck capacity, in non-tidal waters, over at least 6 months',
+          'No set service time: the MCA assesses your experience for the area and operation (MSN 1853 11.8)',
+        ],
+      },
+    ],
+    notes: [
+      'Minimum age 18; 20 for 101 to 250 passengers and 21 for more than 250',
+      'Guideline for every operation (Annex 6): 40 days in a minimum of 6 months',
+      'Record the service in the BML Work Record (MSF 4366) and complete the BML Training Record Book as far as it applies',
+      'Revalidation: 50 days of qualifying service in the 5 years before (MSN 1853 19.3)',
+    ],
+  },
   {
     id: 'bml-passenger-tidal',
     title: "BML Passenger Endorsement (Tidal)",

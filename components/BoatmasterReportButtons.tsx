@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { downloadBoatmasterReport, getUserProfile } from '@/utils/seaTimeApi';
 import { log, error as logError } from '@/utils/log';
+import { sharePdfBlob } from '@/utils/sharePdf';
 
 type Format = 'msf4366' | 'pla';
 
@@ -40,32 +39,7 @@ export function BoatmasterReportButtons() {
     try {
       const blob = await downloadBoatmasterReport(format);
       const fileName = `${FILE_NAMES[format]}_${new Date().toISOString().split('T')[0]}.pdf`;
-      if (Platform.OS === 'web') {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        return;
-      }
-      const base64data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('Failed to read PDF data'));
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(fileUri, base64data.split(',')[1], {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: 'Save or Share PDF', UTI: 'com.adobe.pdf' });
-      } else {
-        Alert.alert('Saved', `PDF saved to:\n${fileUri}`);
-      }
+      await sharePdfBlob(blob, fileName);
     } catch (e: any) {
       logError('[BoatmasterReportButtons] Download failed:', e?.message || e);
       Alert.alert('Download Failed', `Unable to create the PDF. ${e?.message || 'Please try again.'}`);

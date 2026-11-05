@@ -3,7 +3,7 @@
  * Validity is the default rule; a checklist item can override it.
  */
 
-export type Validity = 'none' | '5y_update' | '3y' | '2y' | '1y' | 'as_dated';
+export type Validity = 'none' | '5y_update' | '5y' | '3y' | '2y' | '1y' | 'as_dated';
 
 export interface CourseDef {
   label: string;
@@ -65,6 +65,8 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   edh: { label: 'Efficient Deck Hand', group: 'Yacht deck', validity: 'none' },
   yacht_rating: { label: 'Yacht Rating course', group: 'Yacht deck', validity: 'none' },
   powerboat_l2: { label: 'RYA Powerboat Level 2', group: 'Yacht deck', validity: 'none' },
+  powerboat_advanced: { label: 'RYA Advanced Powerboat', group: 'Yacht deck', validity: 'none' },
+  rya_commercial_endorsement: { label: 'RYA Commercial Endorsement', group: 'Yacht deck', validity: '5y_update' },
   yacht_trb: { label: 'Yacht Training Record Book', group: 'Yacht deck', validity: 'none' },
   oow_yachts_nav_radar: { label: 'Navigation and Radar (OOW Yachts) module and exam', group: 'Yacht modules', validity: '3y' },
   oow_yachts_gsk: { label: 'General Ship Knowledge (OOW Yachts) module and exam', group: 'Yacht modules', validity: '3y' },
@@ -73,11 +75,27 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   master_yachts_business_law: { label: 'Business and Law (Master Yachts)', group: 'Yacht modules', validity: '3y' },
   master_yachts_celestial: { label: 'Celestial Navigation', group: 'Yacht modules', validity: '1y' },
   master_yachts_nav: { label: 'Advanced Navigation (Master Yachts)', group: 'Yacht modules', validity: '3y' },
-  workboat_ops: { label: 'Workboat Operations module and exam', group: 'Workboat and offshore', validity: '3y' },
+  workboat_ops: { label: 'Workboat Operations module and exam', group: 'Workboat and offshore', validity: '5y' },
   boatmaster: { label: "Boatmasters' Licence", group: 'Workboat and offshore', validity: 'as_dated' },
   gwo_bst: { label: 'GWO Basic Safety Training', group: 'Workboat and offshore', validity: '2y' },
   gwo_sea_survival: { label: 'GWO Sea Survival', group: 'Workboat and offshore', validity: '2y' },
   gwo_bst_refresher: { label: 'GWO BST refresher', group: 'Workboat and offshore', validity: '2y' },
+  // GWO BST modules, each valid 2 years (GWO Basic Safety Training standard)
+  gwo_first_aid: { label: 'GWO First Aid', group: 'Workboat and offshore', validity: '2y' },
+  gwo_manual_handling: { label: 'GWO Manual Handling', group: 'Workboat and offshore', validity: '2y' },
+  gwo_fire_awareness: { label: 'GWO Fire Awareness', group: 'Workboat and offshore', validity: '2y' },
+  gwo_working_at_heights: { label: 'GWO Working at Height', group: 'Workboat and offshore', validity: '2y' },
+  gwo_sea_survival_refresher: { label: 'GWO Sea Survival refresher', group: 'Workboat and offshore', validity: '2y' },
+  // The GWO Slinger Signaller standard sets no refresher period
+  gwo_slinger_signaller: { label: 'GWO Slinger Signaller', group: 'Workboat and offshore', validity: 'none' },
+  // Not a course: the certificate number field holds the WINDA ID
+  gwo_winda_id: { label: 'GWO WINDA ID', group: 'Workboat and offshore', validity: 'none' },
+  // Workboat Code Edition 3: MGN 691 Small Ships Navigation and Radar, either module
+  // or the full course. MGN 691 sets no expiry.
+  wbc3_nav_radar: { label: 'Small Ships Navigation and Radar (full course, MGN 691)', group: 'Workboat and offshore', validity: 'none' },
+  wbc3_ecs_bridge: { label: 'Small Ships ECS and Bridge Watchkeeping (module 1, MGN 691)', group: 'Workboat and offshore', validity: 'none' },
+  wbc3_radar_met: { label: 'Small Ships Radar and Meteorology (module 2, MGN 691)', group: 'Workboat and offshore', validity: 'none' },
+  wbc3_stability: { label: 'Small vessel stability course (Workboat Code Ed. 3)', group: 'Workboat and offshore', validity: 'none' },
   opito_bosiet: { label: 'OPITO BOSIET', group: 'Workboat and offshore', validity: '2y' },
   opito_foet: { label: 'OPITO FOET', group: 'Workboat and offshore', validity: '2y' },
   huet: { label: 'HUET', group: 'Workboat and offshore', validity: '2y' },
@@ -85,6 +103,6 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   aec2: { label: 'Approved Engine Course 2', group: 'Engineering', validity: 'none' },
   meol_sv: { label: 'Marine Engine Operator Licence (Small Vessel) course', group: 'Engineering', validity: 'none' },
   pssr_vh_module: { label: 'PSSR violence and harassment module (MGN 718)', group: 'Other', validity: 'none' },
-  food_hygiene: { label: 'Food hygiene', group: 'Other', validity: 'none' },
+  food_hygiene: { label: 'Food hygiene (Level 2 food safety)', group: 'Other', validity: 'none' },
   ship_cook: { label: "Ship's cook", group: 'Other', validity: 'none' },
 };

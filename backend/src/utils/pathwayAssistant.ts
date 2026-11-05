@@ -370,7 +370,7 @@ function mcaLine(label: string, list: any[]): string {
     byType.set(type, [...(byType.get(type) ?? []), e]);
   }
   const types = [...byType.entries()].map(([t, es]) => `${t} ${countDistinctSeaDays(es)}`).join(', ');
-  return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days ${b.standby}. Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
+  return `${label}: actual seagoing days ${b.actual} (use this for any seagoing service requirement). Stand-by days credited ${b.standby} of ${b.standby_logged} logged (MSN 1858: at most 14 in a row, never more than the voyage before). Yard days ${b.yard}, of which ${b.yard_credited} credited. In port ${b.port}, not counted. Combined sea + stand-by + credited yard: ${b.qualifying_total} (this is not seagoing service). By logged service type: ${types || 'none'}.`;
 }
 
 function costUsd(model: string, u: { input: number; output: number; cacheRead: number; cacheWrite: number }) {
