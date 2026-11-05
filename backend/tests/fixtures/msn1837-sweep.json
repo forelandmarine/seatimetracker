@@ -640,6 +640,30 @@
   "source": "chart position"
  },
  {
+  "area": "Fionn Loch, south-east end by the Dubh Loch causeway",
+  "expect": "C",
+  "season": "any",
+  "lat": 57.735,
+  "lon": -5.415,
+  "source": "chart position"
+ },
+ {
+  "area": "Dubh Loch, beyond the Fionn Loch causeway (not listed)",
+  "expect": "unclassified",
+  "season": "any",
+  "lat": 57.7282,
+  "lon": -5.3881,
+  "source": "chart position"
+ },
+ {
+  "area": "Fionn Loch, Inverpolly (not the Annex 1 Loch Fionn)",
+  "expect": "unclassified",
+  "season": "any",
+  "lat": 58.1065,
+  "lon": -5.1758,
+  "source": "chart position"
+ },
+ {
   "area": "Loch Gairloch (summer D)",
   "expect": "D",
   "season": "summer",
@@ -2144,6 +2168,38 @@
   "source": "chart position"
  },
  {
+  "area": "Papa Sound, off the Papa Stronsay pier",
+  "expect": "D",
+  "season": "any",
+  "lat": 59.1455,
+  "lon": -2.592,
+  "source": "chart position"
+ },
+ {
+  "area": "Papa Sound, the inlet inside the Graand",
+  "expect": "D",
+  "season": "any",
+  "lat": 59.149,
+  "lon": -2.595,
+  "source": "chart position"
+ },
+ {
+  "area": "Papa Sound west of the 225 degree line from Point of the Graand (not listed)",
+  "expect": "none",
+  "season": "any",
+  "lat": 59.1465,
+  "lon": -2.612,
+  "source": "chart position"
+ },
+ {
+  "area": "Papa Sound east of the 180 degree line from the cairn (not listed)",
+  "expect": "none",
+  "season": "any",
+  "lat": 59.1445,
+  "lon": -2.576,
+  "source": "chart position"
+ },
+ {
   "area": "Cromarty Firth / Inverness D (inside North Sutor to Nairn)",
   "expect": "D",
   "season": "any",
@@ -2189,6 +2245,38 @@
   "season": "any",
   "lat": 51.23,
   "lon": -3.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater, within the bar off Burnham (D)",
+  "expect": "D",
+  "season": "any",
+  "lat": 51.235,
+  "lon": -3.012,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater, seaward of the bar (not listed)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.252,
+  "lon": -3.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater, Berrow Flats (not listed; WFD Parrett was C)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.28,
+  "lon": -3.03,
+  "source": "chart position"
+ },
+ {
+  "area": "Bridgwater, Stert Flats west of the channel (not listed)",
+  "expect": "none",
+  "season": "any",
+  "lat": 51.23,
+  "lon": -3.07,
   "source": "chart position"
  },
  {
@@ -2456,12 +2544,44 @@
   "source": "osm waterway:River Tawe@51.632,-3.935"
  },
  {
-  "area": "River Wear at Durham (B)",
+  "area": "River Wear at Durham, Elvet Bridge (B)",
   "expect": "B",
   "season": "any",
-  "lat": 54.77409,
-  "lon": -1.57849,
-  "source": "osm waterway:River Wear@54.774,-1.578"
+  "lat": 54.77599,
+  "lon": -1.57334,
+  "source": "osm waterway:River Wear@54.776,-1.5734"
+ },
+ {
+  "area": "River Wear at Durham, below the old Elvet railway bridge (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.77268,
+  "lon": -1.55753,
+  "source": "osm waterway:River Wear@54.7726,-1.5575"
+ },
+ {
+  "area": "River Wear at Durham, above Prebends Bridge (B)",
+  "expect": "B",
+  "season": "any",
+  "lat": 54.76976,
+  "lon": -1.57741,
+  "source": "osm waterway:River Wear@54.7705,-1.5775"
+ },
+ {
+  "area": "River Wear at Durham, Maiden Castle above the old railway bridge (not listed)",
+  "expect": "unclassified",
+  "season": "any",
+  "lat": 54.76928,
+  "lon": -1.55909,
+  "source": "osm waterway:River Wear@54.7692,-1.5591"
+ },
+ {
+  "area": "River Wear at Durham, Framwellgate below Prebends Bridge (not listed)",
+  "expect": "unclassified",
+  "season": "any",
+  "lat": 54.77616,
+  "lon": -1.57769,
+  "source": "osm waterway:River Wear@54.7765,-1.5776"
  },
  {
   "area": "River Nene above Dog-in-a-Doublet (A)",
