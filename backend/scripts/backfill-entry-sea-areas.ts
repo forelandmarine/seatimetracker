@@ -4,7 +4,8 @@
 // the commercial sector) since 2026-10-20, when the classifier went live:
 //   1. Re-classify the AIS fixes with the 2.5.0 classifier (tidal only in UK waters,
 //      'sea' for fixes at sea, harbour-edge snapping, Barrow/Leith/Ardrossan areas,
-//      Morecambe Bay summer-only).
+//      Morecambe Bay summer-only, and the Annex 1 harbour, inland and WFD fixes in
+//      harbour-overrides.geojson).
 //   2. Roll each entry's fixes up onto sea_time_entries.area_category, is_tidal and
 //      is_categorised_water (most exposed wins: sea > D > C > B > A).
 // Confirmed entries that already have values (a user correction) are left alone.
@@ -30,12 +31,16 @@ if (!url) {
 const sql = postgres(url, { prepare: false, max: 1 });
 const classifier = createClassifierFromFiles();
 
-const COMMERCIAL = sql`(v.sector = 'commercial' or v.is_workboat = true or v.is_tug = true or u.vessel_sector = 'commercial')`;
 
+// Everything runs in one transaction. A dry run's is READ ONLY (Supabase's transaction pooler
+// drops session settings, so it has to be per transaction), so it cannot write even by mistake.
 try {
+  await sql.begin(APPLY ? 'read write' : 'read only', async (tx) => {
   console.log(`${APPLY ? 'APPLY' : 'DRY RUN'}: commercial work since ${since}`);
+  const COMMERCIAL = tx`(v.sector = 'commercial' or v.is_workboat = true or v.is_tug = true or u.vessel_sector = 'commercial')`;
+  if (!APPLY) console.log('transaction read only:', (await tx`show transaction_read_only`)[0].transaction_read_only);
 
-  const entries = await sql<{
+  const entries = await tx<{
     id: string; vessel_id: string; start_time: Date; end_time: Date | null; status: string;
     area_category: string | null; is_tidal: boolean | null; is_categorised_water: boolean | null;
   }[]>`
@@ -47,13 +52,13 @@ try {
     order by e.start_time`;
   const vesselIds = [...new Set(entries.map((e) => e.vessel_id))];
   console.log(`entries: ${entries.length} on ${vesselIds.length} vessels`);
-  if (entries.length === 0) process.exit(0);
+  if (entries.length === 0) return;
 
   // 1. Re-classify fixes
-  const fixes = await sql<{ id: string; vessel_id: string; check_time: Date; latitude: string | null; longitude: string | null; area_category: string | null; is_tidal: boolean | null; season: string | null }[]>`
+  const fixes = await tx<{ id: string; vessel_id: string; check_time: Date; latitude: string | null; longitude: string | null; area_category: string | null; is_tidal: boolean | null; season: string | null }[]>`
     select id, vessel_id, check_time, latitude, longitude, area_category, is_tidal, season
     from ais_checks
-    where vessel_id in ${sql(vesselIds)} and check_time >= ${since}::date
+    where vessel_id in ${tx(vesselIds)} and check_time >= ${since}::date
       and latitude is not null and longitude is not null`;
   const fixChanges: { id: string; area_category: string | null; is_tidal: boolean | null; season: string }[] = [];
   const byVessel = new Map<string, typeof fixes>();
@@ -103,16 +108,15 @@ try {
   if (!APPLY) {
     console.log('Dry run: nothing written. Re-run with --apply to write.');
   } else {
-    await sql.begin(async (tx) => {
-      for (const c of fixChanges) {
-        await tx`update ais_checks set area_category = ${c.area_category}, is_tidal = ${c.is_tidal}, season = ${c.season} where id = ${c.id}`;
-      }
-      for (const c of entryChanges) {
-        await tx`update sea_time_entries set area_category = ${c.area_category}, is_tidal = ${c.is_tidal}, is_categorised_water = ${c.is_categorised_water} where id = ${c.id}`;
-      }
-    });
+    for (const c of fixChanges) {
+      await tx`update ais_checks set area_category = ${c.area_category}, is_tidal = ${c.is_tidal}, season = ${c.season} where id = ${c.id}`;
+    }
+    for (const c of entryChanges) {
+      await tx`update sea_time_entries set area_category = ${c.area_category}, is_tidal = ${c.is_tidal}, is_categorised_water = ${c.is_categorised_water} where id = ${c.id}`;
+    }
     console.log(`Written: ${fixChanges.length} fixes, ${entryChanges.length} entries.`);
   }
+  });
 } finally {
   await sql.end();
 }
