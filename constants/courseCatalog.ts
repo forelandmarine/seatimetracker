@@ -76,7 +76,7 @@ export const COURSE_CATALOG: Record<string, CourseDef> = {
   master_yachts_celestial: { label: 'Celestial Navigation', group: 'Yacht modules', validity: '1y' },
   master_yachts_nav: { label: 'Advanced Navigation (Master Yachts)', group: 'Yacht modules', validity: '3y' },
   workboat_ops: { label: 'Workboat Operations module and exam', group: 'Workboat and offshore', validity: '5y' },
-  boatmaster: { label: "Boatmasters' Licence", group: 'Workboat and offshore', validity: 'as_dated' },
+  boatmaster: { label: "Tier 1 Boatmasters' Licence", group: 'Workboat and offshore', validity: 'as_dated' },
   gwo_bst: { label: 'GWO Basic Safety Training', group: 'Workboat and offshore', validity: '2y' },
   gwo_sea_survival: { label: 'GWO Sea Survival', group: 'Workboat and offshore', validity: '2y' },
   gwo_bst_refresher: { label: 'GWO BST refresher', group: 'Workboat and offshore', validity: '2y' },

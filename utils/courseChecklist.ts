@@ -93,11 +93,16 @@ export function courseCodeForType(type: string): string | null {
   return Object.keys(LEGACY_CERT_TYPES).find((code) => LEGACY_CERT_TYPES[code].includes(type)) ?? null;
 }
 
+/** Codes that are only ever a tick (record books, sign-offs, sights taken at sea). */
+const MANUAL_CODES = new Set(
+  Object.values(CHECKLISTS).flatMap((list) => list.items.filter((i) => i.type === 'manual').map((i) => i.code)),
+);
+
 /** Course certificates that still need a number or a date (the Home reminder). */
 export function certificatesNeedingDetails(certificates: Certificate[]): Certificate[] {
   return certificates.filter((c) => {
     const code = courseCodeForType(c.certificate_type);
-    if (!code) return false;
+    if (!code || MANUAL_CODES.has(code)) return false;
     return certificateMissingDetails(c, COURSE_CATALOG[code]?.validity ?? 'none');
   });
 }

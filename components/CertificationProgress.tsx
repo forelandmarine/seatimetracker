@@ -1020,7 +1020,7 @@ export function CertificationProgress({
             {ryaLevel === 'offshore' ? (rya[ryaShown].targets?.offshore.reduced_by
               ? ' Reduced targets apply because you hold Yachtmaster Offshore in the other discipline.'
               : ' Holding Yachtmaster Offshore in the other discipline (set Sail or Power on the certificate) reduces the targets to 25 days, 3 as skipper, 1,250 miles and 3 passages.') : ''}
-            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or in charge of a watch. Miles more than 50 miles from land are measured from AIS fixes against the coastline, which does not show rigs or offshore lights, so check them on the chart. The astro sights are not checked.' : ''}
+            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or in charge of a watch. Miles more than 50 miles from land are measured from AIS fixes against the coastline, which does not show rigs or offshore lights, so check them on the chart. AIS cannot show sights: tick the sights and compass check in the Before your oral checklist.' : ''}
             {rya.days_commercial > 0 ? ` ${rya.days_commercial} days on commercial vessels are left out: ask the RYA (training@rya.org.uk) whether they count.` : ''}
             {rya.days_unknown_discipline > 0 ? ` ${rya.days_unknown_discipline} days are on vessels with no type set; set Motor or Sail on the vessel to count them.` : ''}
           </Text>
