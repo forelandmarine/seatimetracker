@@ -13,9 +13,21 @@ import { cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 export async function trackDistances(
   app: App,
   userId: string,
-  entries: Array<{ id: string; vessel_id: string | null; start_time: Date | string; end_time: Date | string | null }>,
+  entries: TrackEntry[],
 ): Promise<Map<string, number>> {
   const trackDistanceByEntry = new Map<string, number>();
+  for (const [id, fixes] of await entryFixes(app, userId, entries)) {
+    trackDistanceByEntry.set(id, cumulativeTrackDistanceNm(fixes));
+  }
+  return trackDistanceByEntry;
+}
+
+type TrackEntry = { id: string; vessel_id: string | null; start_time: Date | string; end_time: Date | string | null };
+export type EntryFix = TrackFix & { is_moving: boolean | null };
+
+/** The AIS fixes inside each entry, for entries with at least two. */
+export async function entryFixes(app: App, userId: string, entries: TrackEntry[]): Promise<Map<string, EntryFix[]>> {
+  const byEntry = new Map<string, EntryFix[]>();
   if (entries.length > 0) {
     const vesselIds = [...new Set(entries.map((e) => e.vessel_id).filter(Boolean))] as string[];
     const times = entries.flatMap((e) => [
@@ -31,6 +43,7 @@ export async function trackDistances(
           latitude: schema.ais_checks.latitude,
           longitude: schema.ais_checks.longitude,
           check_time: schema.ais_checks.check_time,
+          is_moving: schema.ais_checks.is_moving,
         })
         .from(schema.ais_checks)
         .where(
@@ -41,11 +54,11 @@ export async function trackDistances(
             lte(schema.ais_checks.check_time, windowEnd),
           ),
         );
-      const byVessel = new Map<string, TrackFix[]>();
+      const byVessel = new Map<string, EntryFix[]>();
       for (const f of fixes) {
         if (!f.vessel_id) continue;
         const arr = byVessel.get(f.vessel_id) ?? [];
-        arr.push(f as TrackFix);
+        arr.push(f as EntryFix);
         byVessel.set(f.vessel_id, arr);
       }
       for (const e of entries) {
@@ -58,9 +71,9 @@ export async function trackDistances(
           const t = f.check_time instanceof Date ? f.check_time.getTime() : new Date(f.check_time).getTime();
           return t >= s && t <= en;
         });
-        if (inWindow.length >= 2) trackDistanceByEntry.set(e.id, cumulativeTrackDistanceNm(inWindow));
+        if (inWindow.length >= 2) byEntry.set(e.id, inWindow);
       }
     }
   }
-  return trackDistanceByEntry;
+  return byEntry;
 }

@@ -316,6 +316,10 @@ export const certificates = pgTable('certificates', {
   issued_date: date('issued_date'),
   expiry_date: date('expiry_date'),
   notes: text('notes'),
+  // 'sail' | 'power' for RYA Yachtmaster certificates, which are issued per
+  // discipline (utils/ryaService.ts reduced targets). Null for everything else.
+  // See manual-migration 2026-11-05_certificate_discipline.sql.
+  discipline: text('discipline'),
   // NOTE: the tracker stores only certificate metadata + expiry, never the
   // certificate itself. The old image_url column (which held base64 scans) is
   // removed; see manual-migration 2026-09-23_certificate_no_image.sql.

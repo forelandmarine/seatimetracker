@@ -158,7 +158,11 @@ interface CertificateBody {
   issued_date?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
+  /** 'sail' or 'power', for RYA Yachtmaster certificates (utils/ryaService.ts). */
+  discipline?: string | null;
 }
+
+const DISCIPLINES = new Set(["sail", "power"]);
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/certificates - List the user's certificates
@@ -252,6 +256,7 @@ export function register(app: App, fastify: FastifyInstance) {
           issued_date: { type: ["string", "null"] },
           expiry_date: { type: ["string", "null"] },
           notes: { type: ["string", "null"] },
+          discipline: { type: ["string", "null"], enum: ["sail", "power", null] },
         },
       },
       response: {
@@ -286,6 +291,7 @@ export function register(app: App, fastify: FastifyInstance) {
         issued_date: body.issued_date || null,
         expiry_date: body.expiry_date || null,
         notes: body.notes || null,
+        discipline: body.discipline && DISCIPLINES.has(body.discipline) ? body.discipline : null,
       })
       .returning();
 
@@ -316,6 +322,7 @@ export function register(app: App, fastify: FastifyInstance) {
             issued_date: { type: ["string", "null"] },
             expiry_date: { type: ["string", "null"] },
             notes: { type: ["string", "null"] },
+            discipline: { type: ["string", "null"], enum: ["sail", "power", null] },
           },
         },
         response: {
@@ -359,6 +366,9 @@ export function register(app: App, fastify: FastifyInstance) {
       if (body.issued_date !== undefined) updateData.issued_date = body.issued_date;
       if (body.expiry_date !== undefined) updateData.expiry_date = body.expiry_date;
       if (body.notes !== undefined) updateData.notes = body.notes;
+      if (body.discipline !== undefined) {
+        updateData.discipline = body.discipline && DISCIPLINES.has(body.discipline) ? body.discipline : null;
+      }
 
       const [updated] = await app.db
         .update(schema.certificates)

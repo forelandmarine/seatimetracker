@@ -252,6 +252,17 @@ export class AreaClassifier {
     return this.landLayer.nearestDistanceNm(ll(p));
   }
 
+  /**
+   * More than nm from any coastline in the land layer (worldwide at Natural Earth
+   * 1:10m). Cheaper than distanceFromLandNm far offshore, since polygons whose
+   * bounding box is already further than nm are skipped. A point on land is never
+   * far from land.
+   */
+  isFartherFromLandThan(p: LatLon, nm: number): boolean {
+    const pt = ll(p);
+    return !this.landLayer.contains(pt) && !this.landLayer.findNearestWithin(pt, nm);
+  }
+
   /** Distance to the edge of the nearest categorised water (0 inside it). */
   distanceFromCategorisedNm(p: LatLon, opts?: ClassifyOptions): number {
     if (this.categorisedWatersForPoint(p, opts)) return 0;

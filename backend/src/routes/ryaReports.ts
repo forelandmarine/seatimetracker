@@ -3,13 +3,16 @@ import { eq } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { trackDistances } from "../services/trackDistance.js";
-import { ryaService } from "../utils/ryaService.js";
+import { entryFixes } from "../services/trackDistance.js";
+import { cumulativeTrackDistanceNm } from "../utils/seaTime.js";
+import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
+import { OCEAN_OFFSHORE_FROM_LAND_NM, ryaHeldFrom, ryaService } from "../utils/ryaService.js";
 
 /**
  * RYA Yachtmaster sea time (utils/ryaService.ts): days, skipper days, miles,
- * tidal days and qualifying passages per discipline. Asked for on its own by the
- * Yachtmaster progress card, because the mileage reads every AIS fix in range.
+ * tidal days, night hours and qualifying passages per discipline, against the
+ * targets the user's certificates allow. Asked for on its own by the Yachtmaster
+ * progress card, because the mileage reads every AIS fix in range.
  */
 export function register(app: App, fastify: FastifyInstance) {
   fastify.get("/api/reports/rya-service", {
@@ -23,7 +26,20 @@ export function register(app: App, fastify: FastifyInstance) {
       with: { vessel: true },
       where: eq(schema.sea_time_entries.user_id, userId),
     })).filter((e) => e.status === "confirmed" && new Date(e.start_time) >= cutoff && e.vessel?.sector !== "commercial");
-    const track = await trackDistances(app, userId, entries);
-    return reply.code(200).send(ryaService(entries as any, track));
+    const certs = await app.db
+      .select({ certificate_type: schema.certificates.certificate_type, discipline: schema.certificates.discipline })
+      .from(schema.certificates)
+      .where(eq(schema.certificates.user_id, userId));
+    const fixes = await entryFixes(app, userId, entries);
+    // Same mileage as services/trackDistance.ts trackDistances, from the one read
+    const track = new Map([...fixes].map(([id, f]) => [id, cumulativeTrackDistanceNm(f)] as const));
+    const classifier = getSeaAreaClassifier();
+    return reply.code(200).send(ryaService(entries as any, track, new Date(), {
+      fixes,
+      held: ryaHeldFrom(certs),
+      farFromLand: classifier
+        ? (lat, lon) => classifier.isFartherFromLandThan({ lat, lon }, OCEAN_OFFSHORE_FROM_LAND_NM)
+        : null,
+    }));
   });
 }

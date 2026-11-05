@@ -246,8 +246,31 @@ interface RyaDisciplineService {
   tidal_days: number;
   miles: number;
   miles_under_24m: number;
+  night_hours?: number;
   passages: Array<{ overnight: boolean; as_skipper: boolean }>;
-  ocean_passages: Array<{ start: string; nm: number; hours: number }>;
+  ocean_passages: Array<{ start: string; nm: number; hours: number; offshore_nm?: number | null }>;
+  /** Targets after reductions from the user's certificates (older backends leave this out). */
+  targets?: {
+    coastal: {
+      days_under_24m: number;
+      days_alt_500gt: number | null;
+      skipper_days_under_24m: number;
+      miles_under_24m: number;
+      miles_alt_500gt: number | null;
+      night_hours: number;
+      reduced_by: 'coastal_skipper_course' | 'yachtmaster_coastal' | null;
+    };
+    offshore: {
+      days: number;
+      skipper_days_under_24m: number;
+      miles: number;
+      passages: number;
+      overnight: number;
+      as_skipper: number;
+      tidal_days_under_24m: number;
+      reduced_by: 'yachtmaster_offshore' | null;
+    };
+  };
 }
 interface RyaServiceSummary {
   sail: RyaDisciplineService;
@@ -256,31 +279,63 @@ interface RyaServiceSummary {
   days_commercial: number;
 }
 
+const OCEAN_OFFSHORE_NM = 200;
+
 /**
- * Yachtmaster pre-exam sea time (RYA Yachtmaster Coastal and Offshore pages).
- * The halves in tidal waters are "should" in the RYA text, shown as bars too.
+ * Yachtmaster pre-exam sea time (RYA Yachtmaster Coastal and Offshore pages),
+ * against the targets the user's certificates allow. Where a reduced Coastal
+ * target can be met two ways (under 24 m, or on yachts under 500 GT), the bar
+ * shows whichever the user is further along. The halves in tidal waters are
+ * "should" in the RYA text, shown as bars too.
  */
 function ryaRows(level: 'coastal' | 'offshore' | 'ocean', r: RyaDisciplineService): ProgressRow[] {
   if (level === 'coastal') {
-    return [
-      { label: 'Days at Sea, Under 24m', current: r.days_under_24m, required: 30 },
-      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: 2 },
-      { label: 'Miles, Under 24m', current: r.miles_under_24m, required: 800, unit: 'miles' },
-      { label: 'Days in Tidal Waters', current: r.tidal_days, required: 15 },
+    const t = r.targets?.coastal ?? {
+      days_under_24m: 30, days_alt_500gt: null, skipper_days_under_24m: 2, miles_under_24m: 800, miles_alt_500gt: null, night_hours: 12, reduced_by: null,
+    };
+    const days: ProgressRow = t.days_alt_500gt && r.days / t.days_alt_500gt > r.days_under_24m / t.days_under_24m
+      ? { label: 'Days at Sea, Yachts Under 500 GT', current: r.days, required: t.days_alt_500gt }
+      : { label: 'Days at Sea, Under 24m', current: r.days_under_24m, required: t.days_under_24m };
+    const miles: ProgressRow = t.miles_alt_500gt && r.miles / t.miles_alt_500gt > r.miles_under_24m / t.miles_under_24m
+      ? { label: 'Miles, Yachts Under 500 GT', current: r.miles, required: t.miles_alt_500gt, unit: 'miles' }
+      : { label: 'Miles, Under 24m', current: r.miles_under_24m, required: t.miles_under_24m, unit: 'miles' };
+    const rows: ProgressRow[] = [
+      days,
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: t.skipper_days_under_24m },
+      miles,
+      { label: 'Days in Tidal Waters', current: r.tidal_days, required: Math.ceil(days.required / 2) },
     ];
+    if (r.night_hours != null) {
+      rows.push({ label: 'Night Hours Under Way', current: Math.floor(r.night_hours), required: t.night_hours, unit: 'hours' });
+    }
+    return rows;
   }
   if (level === 'offshore') {
+    const t = r.targets?.offshore ?? {
+      days: 50, skipper_days_under_24m: 5, miles: 2500, passages: 5, overnight: 2, as_skipper: 2, tidal_days_under_24m: 25, reduced_by: null,
+    };
     return [
-      { label: 'Days at Sea, Yachts to 500 GT', current: r.days, required: 50 },
-      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: 5 },
-      { label: 'Miles, Yachts to 500 GT', current: r.miles, required: 2500, unit: 'miles' },
-      { label: 'Passages Over 60 Miles', current: r.passages.length, required: 5, unit: 'passages' },
-      { label: 'Of Which Overnight', current: r.passages.filter((p) => p.overnight).length, required: 2, unit: 'passages' },
-      { label: 'Of Which as Skipper', current: r.passages.filter((p) => p.as_skipper).length, required: 2, unit: 'passages' },
-      { label: 'Days in Tidal Waters, Under 24m', current: r.tidal_days_under_24m, required: 25 },
+      { label: 'Days at Sea, Yachts to 500 GT', current: r.days, required: t.days },
+      { label: 'Days as Skipper, Under 24m', current: r.skipper_days_under_24m, required: t.skipper_days_under_24m },
+      { label: 'Miles, Yachts to 500 GT', current: r.miles, required: t.miles, unit: 'miles' },
+      { label: 'Passages Over 60 Miles', current: r.passages.length, required: t.passages, unit: 'passages' },
+      { label: 'Of Which Overnight', current: r.passages.filter((p) => p.overnight).length, required: t.overnight, unit: 'passages' },
+      { label: 'Of Which as Skipper', current: r.passages.filter((p) => p.as_skipper).length, required: t.as_skipper, unit: 'passages' },
+      { label: 'Days in Tidal Waters, Under 24m', current: r.tidal_days_under_24m, required: t.tidal_days_under_24m },
     ];
   }
-  return [{ label: 'Possible Ocean Qualifying Passages', current: r.ocean_passages.length, required: 1, unit: 'passages' }];
+  const rows: ProgressRow[] = [
+    { label: 'Possible Ocean Qualifying Passages', current: r.ocean_passages.length, required: 1, unit: 'passages' },
+  ];
+  if (r.ocean_passages.some((p) => p.offshore_nm != null)) {
+    rows.push({
+      label: 'Of Which 200 Miles Over 50 Miles Offshore',
+      current: r.ocean_passages.filter((p) => (p.offshore_nm ?? 0) >= OCEAN_OFFSHORE_NM).length,
+      required: 1,
+      unit: 'passages',
+    });
+  }
+  return rows;
 }
 
 export interface CertificationProgressProps {
@@ -952,9 +1007,15 @@ export function CertificationProgress({
             skipper need the Master rank on the entry. A passage counts when it is over 60 miles in a straight line from
             start to end, so a passage round a headland can be missed. Overnight is a passage under way through midnight
             UTC; the RYA does not define it, so check your log.
-            {ryaLevel === 'coastal' ? ' The 12 night hours are not tracked. With a Coastal Skipper course certificate the targets fall to 12 days and 400 miles.' : ''}
-            {ryaLevel === 'offshore' ? ' Holding Yachtmaster Offshore in the other discipline halves the targets (25 days, 3 as skipper, 1,250 miles, 3 passages).' : ''}
-            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or mate. The 200 miles more than 50 miles from land and the astro sights are not checked.' : ''}
+            {ryaLevel === 'coastal' ? ` Night hours are the hours under way between local sunset and sunrise at the vessel's AIS position. The RYA logbook counts only hours on watch or helping run the yacht, which AIS cannot show, so check them against your log.${
+              rya[ryaShown].targets?.coastal.reduced_by
+                ? ` Reduced targets apply because you hold ${rya[ryaShown].targets!.coastal.reduced_by === 'yachtmaster_coastal' ? 'Yachtmaster Coastal in the other discipline' : 'a Coastal Skipper course certificate'}: 12 days and 400 miles under 24m, or 30 days and 800 miles on yachts under 500 GT.`
+                : ' With a Coastal Skipper course certificate, or Yachtmaster Coastal in the other discipline (set Sail or Power on the certificate), the targets fall to 12 days and 400 miles.'
+            }` : ''}
+            {ryaLevel === 'offshore' ? (rya[ryaShown].targets?.offshore.reduced_by
+              ? ' Reduced targets apply because you hold Yachtmaster Offshore in the other discipline.'
+              : ' Holding Yachtmaster Offshore in the other discipline (set Sail or Power on the certificate) reduces the targets to 25 days, 3 as skipper, 1,250 miles and 3 passages.') : ''}
+            {ryaLevel === 'ocean' ? ' A possible qualifying passage is 600 miles over 96 hours as skipper or in charge of a watch. Miles more than 50 miles from land are measured from AIS fixes against the coastline, which does not show rigs or offshore lights, so check them on the chart. The astro sights are not checked.' : ''}
             {rya.days_commercial > 0 ? ` ${rya.days_commercial} days on commercial vessels are left out: ask the RYA (training@rya.org.uk) whether they count.` : ''}
             {rya.days_unknown_discipline > 0 ? ` ${rya.days_unknown_discipline} days are on vessels with no type set; set Motor or Sail on the vessel to count them.` : ''}
           </Text>
