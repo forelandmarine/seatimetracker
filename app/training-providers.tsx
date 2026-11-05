@@ -91,6 +91,14 @@ export default function TrainingProvidersScreen() {
     () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }),
     [directory, query, course, sector, approval, origin, radiusKm, homeCountry],
   );
+  // When the authority filter leaves nothing, say how many other providers match.
+  const otherApprovals = useMemo(
+    () =>
+      approval && hits.length === 0
+        ? searchProviders(directory, { query, course, sector, approval: null, origin, radiusKm: origin ? radiusKm : null, homeCountry }).length
+        : 0,
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
+  );
 
   // Dates for the chosen course, across every provider (one request per course).
   useEffect(() => {
@@ -328,7 +336,20 @@ export default function TrainingProvidersScreen() {
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No providers match</Text>
-              <Text style={styles.emptyText}>Try a wider distance, another course, or clear a filter.</Text>
+              {otherApprovals > 0 && approval ? (
+                <>
+                  <Text style={styles.emptyText}>
+                    No {approvalLabel(approval)} approved providers{origin ? ' in this distance' : ''}. {otherApprovals}{' '}
+                    {otherApprovals === 1 ? 'provider runs' : 'providers run'} it under another approval. Check {approvalLabel(approval)} accepts
+                    the certificate before you book.
+                  </Text>
+                  <TouchableOpacity onPress={() => setApproval(null)} style={{ marginTop: 10 }}>
+                    <Text style={styles.link}>Show all approvals</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>Try a wider distance, another course, or clear a filter.</Text>
+              )}
             </View>
           )
         }

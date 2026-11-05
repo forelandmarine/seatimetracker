@@ -3,9 +3,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { authFetch } from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
 import { OFFERED_COURSES } from '@/constants/offeredCourses';
-import type { Provider } from '@/utils/providerSearch';
+import { APPROVAL_LABELS, approvalLabel, type Provider } from '@/utils/providerSearch';
 
-export { searchProviders, haversineKm, labelMatches } from '@/utils/providerSearch';
+export { searchProviders, haversineKm, labelMatches, providerCodesFor, approvalLabel, APPROVAL_LABELS } from '@/utils/providerSearch';
 export type { Provider, ProviderFilters, ProviderHit } from '@/utils/providerSearch';
 
 /**
@@ -113,35 +113,6 @@ export function useProviders(): { providers: Provider[] | null; error: string | 
   }, [list, load]);
   return { providers: list, error, retry: load };
 }
-
-export const APPROVAL_LABELS: Record<string, string> = {
-  mca: 'MCA',
-  uscg: 'USCG',
-  amsa: 'AMSA',
-  mnz: 'Maritime NZ',
-  samsa: 'SAMSA',
-  mso_ireland: 'Ireland MSO',
-  transport_canada: 'Transport Canada',
-  transport_malta: 'Transport Malta',
-  nzqa: 'NZQA',
-  rya: 'RYA',
-  iyt: 'IYT',
-  gwo: 'GWO',
-  opito: 'OPITO',
-};
-
-// National administrations arrive as "other:<body>_<country>", e.g. other:dgmm_spain.
-const COUNTRY_WORDS = new Set(['spain', 'france', 'italy', 'india', 'singapore', 'croatia', 'portugal', 'netherlands', 'denmark', 'finland', 'cyprus', 'greece', 'malta', 'philippines', 'nigeria', 'kenya', 'brazil', 'chile', 'argentina', 'ireland', 'canada', 'kong', 'hong']);
-export const approvalLabel = (a: string): string => {
-  if (APPROVAL_LABELS[a]) return APPROVAL_LABELS[a];
-  if (!a.startsWith('other:')) return a.toUpperCase();
-  return a
-    .slice(6)
-    .trim()
-    .split(/[_\s]+/)
-    .map((w) => (COUNTRY_WORDS.has(w.toLowerCase()) ? w[0].toUpperCase() + w.slice(1) : w.length <= 5 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
-    .join(' ');
-};
 
 export const SECTOR_LABELS: Record<string, string> = {
   yacht: 'Yacht',
