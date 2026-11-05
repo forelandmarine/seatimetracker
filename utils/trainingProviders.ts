@@ -12,6 +12,7 @@ export {
   providerCodesFor,
   defaultApproval,
   closerUnderOtherApprovals,
+  hiddenByApproval,
   approvalLabel,
   APPROVAL_LABELS,
 } from '@/utils/providerSearch';

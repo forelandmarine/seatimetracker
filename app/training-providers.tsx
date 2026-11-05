@@ -32,6 +32,7 @@ import {
   phoneRegion,
   defaultApproval,
   closerUnderOtherApprovals,
+  hiddenByApproval,
   courseDatesFor,
   useProviders,
   type CourseDate,
@@ -104,11 +105,16 @@ export default function TrainingProvidersScreen() {
         : 0,
     [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
   );
+  // The approval filter starts on by itself, so say what it hides from a search.
+  const hidden = useMemo(
+    () => (hits.length > 0 ? hiddenByApproval(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }) : 0),
+    [directory, query, course, sector, approval, origin, radiusKm, homeCountry, hits.length],
+  );
   // When it doesn't leave nothing but sends the nearest one far away (PSCRB on the
   // Riviera for an MCA user), say how many closer providers run it under other approvals.
   const closer = useMemo(
     () =>
-      approval && origin && hits.length > 0
+      approval && hits.length > 0
         ? closerUnderOtherApprovals(directory, { query, course, sector, approval, origin, radiusKm: null, homeCountry })
         : { count: 0, nearestKm: null },
     [directory, query, course, sector, approval, origin, homeCountry, hits.length],
@@ -279,6 +285,7 @@ export default function TrainingProvidersScreen() {
           <Text style={styles.count}>
             {hits.length} {hits.length === 1 ? 'provider' : 'providers'}
             {origin ? ' · nearest first' : ''}
+            {hidden > 0 && approval ? ` · ${hidden} more not ${approvalLabel(approval)} approved` : ''}
           </Text>
           <TouchableOpacity onPress={() => setShowMap(!showMap)}>
             <Text style={styles.link}>{showMap ? 'Show list' : 'Show on map'}</Text>

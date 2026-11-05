@@ -275,10 +275,10 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   uscg_master_100: 'captain captains license licence 100 ton tons',
   uscg_master_200: 'captain captains license licence ton tons',
   uscg_master_limited: 'captain captains license licence',
-  amsa_coxswain_g1: 'cox1 cox',
+  amsa_coxswain_g1: 'cox1 cox skipper',
   amsa_coxswain_g2: 'cox2 cox',
   amsa_coxswain_g3: 'cox3 cox',
-  amsa_master_24m: '24m',
+  amsa_master_24m: '24m skipper',
   amsa_master_45m: '45m',
   mnz_me6: 'mec6 mec',
   mnz_me5: 'mec5 mec',
@@ -375,6 +375,11 @@ const OPTIONAL = new Set([
   'online',
   'lvl',
   'week',
+  // Every school in this directory is marine, maritime or about boats: those words rank, not filter.
+  'marine',
+  'maritime',
+  'boat',
+  'boats',
   'weeks',
   'intensive',
 ]);
@@ -1069,7 +1074,8 @@ export function defaultApproval(list: Provider[], course: string | null, authori
  * user, STCW in Antibes for a SAMSA user). 0 when the filter costs little.
  */
 export function closerUnderOtherApprovals(list: Provider[], f: ProviderFilters): { count: number; nearestKm: number | null } {
-  if (!f.approval || !f.origin) return { count: 0, nearestKm: null };
+  // Distances come from "near me" or a place typed in the search; without either there is nothing to compare.
+  if (!f.approval) return { count: 0, nearestKm: null };
   const own = searchProviders(list, { ...f, radiusKm: null });
   const ownKm = own[0]?.distanceKm ?? null;
   const all = searchProviders(list, { ...f, approval: null, radiusKm: null });
@@ -1079,4 +1085,11 @@ export function closerUnderOtherApprovals(list: Provider[], f: ProviderFilters):
     (h) => h.distanceKm != null && (ownKm == null || h.distanceKm < ownKm) && !h.provider.approvals.includes(f.approval!),
   ).length;
   return { count, nearestKm: ownKm };
+}
+
+/** How many providers the approval filter is hiding for this search or course (0 when there is no query or course). */
+export function hiddenByApproval(list: Provider[], f: ProviderFilters): number {
+  if (!f.approval || (!f.query.trim() && !f.course)) return 0;
+  const shown = searchProviders(list, f).length;
+  return searchProviders(list, { ...f, approval: null }).length - shown;
 }
