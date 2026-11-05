@@ -89,7 +89,7 @@ function meetsHours(hours: number, threshold: number): boolean {
  */
 export const DECLARED_DAY_HOURS = 8;
 
-interface PeriodEntry {
+export interface PeriodEntry {
   start_time: Date | string;
   end_time: Date | string | null;
   sea_days?: number | null;
@@ -140,6 +140,52 @@ export function isSoleWatchEntry(e: PeriodEntry & { vessel?: SoleWatchVessel | n
 }
 
 /**
+ * The entry cut to end on a period's last date (YYYY-MM-DD, inclusive): a
+ * passage that runs past it ends at midnight UTC after it, and a declared-day
+ * entry keeps only the days up to it. Entries already inside are returned as
+ * they are.
+ */
+export function clipToDay<E extends PeriodEntry>(e: E, lastDay: string): E {
+  const boundary = new Date(`${lastDay}T00:00:00Z`).getTime() + DAY_MS;
+  const start = toDate(e.start_time).getTime();
+  if (isDeclaredDayEntry(e)) {
+    const startDay = Date.parse(`${getCalendarDay(toDate(e.start_time))}T00:00:00Z`);
+    const room = Math.max(0, Math.round((boundary - startDay) / DAY_MS));
+    return room < (e.sea_days as number) ? { ...e, sea_days: room } : e;
+  }
+  if (e.end_time == null || toDate(e.end_time).getTime() <= boundary || start >= boundary) return e;
+  const cut = new Date(boundary);
+  return { ...e, end_time: e.end_time instanceof Date ? cut : cut.toISOString() };
+}
+
+/**
+ * The part of a sole-watch entry that counts as watchkeeping, or null when it
+ * is not a sole-watch entry. A passage that starts inside a period and runs
+ * past the period's end date only counts up to that date.
+ */
+export function soleWatchPart<E extends PeriodEntry & { vessel?: SoleWatchVessel | null }>(e: E): E | null {
+  if (!isSoleWatchEntry(e)) return null;
+  const periods = e.vessel?.sole_watch_periods;
+  if (!Array.isArray(periods)) return e;
+  const day = getCalendarDay(toDate(e.start_time));
+  const period = periods.find((p) => dayInSoleWatchPeriods(day, [p]));
+  return period?.end_date ? clipToDay(e, period.end_date) : e;
+}
+
+/** Watchkeeping entries as they are, plus the counted part of sole-watch entries. */
+export function watchkeepingParts<E extends PeriodEntry & { vessel?: SoleWatchVessel | null }>(entries: E[]): E[] {
+  const out: E[] = [];
+  for (const e of entries) {
+    if (e.service_type === 'watchkeeping_service') out.push(e);
+    else {
+      const part = soleWatchPart(e);
+      if (part) out.push(part);
+    }
+  }
+  return out;
+}
+
+/**
  * Watchkeeping days for the authorities that measure it in logged watch hours
  * at 8 to the day (MNZ, SAMSA). Sea days on a sole-watchkeeper vessel count as
  * whole watchkeeping days instead of their hours, so the two are never added
@@ -151,8 +197,9 @@ function watchkeepingDaysFromHours(entries: MNZEntry[], from: Date | null, dayHo
   for (const e of entries) {
     const last = e.end_time != null ? toDate(e.end_time) : toDate(e.start_time);
     if (from && last.getTime() < from.getTime()) continue;
-    if (isSoleWatchEntry(e)) {
-      sole.push(e);
+    const part = soleWatchPart(e);
+    if (part) {
+      sole.push(part);
       continue;
     }
     watchHours +=

@@ -25,7 +25,7 @@
  * Engine-rank entries are left out: this is the deck testimonial.
  */
 
-import { distinctSeaDates, getCalendarDay, isSoleWatchEntry } from './seaTime.js';
+import { distinctSeaDates, getCalendarDay, watchkeepingParts } from './seaTime.js';
 import { ENGINE_RANKS } from './tugService.js';
 import { countWorkboatDays, DAYS_PER_MONTH, type WorkboatEntry } from './workboat.js';
 
@@ -139,9 +139,7 @@ export function buildWorkboatTestimonial(
   const capacitySet = new Set(entries.map((e) => annexCCapacity(e.rank)).filter((c): c is AnnexCCapacity => c != null));
   const seaDays = countWorkboatDays(entries);
   const months = Math.floor(seaDays / DAYS_PER_MONTH);
-  const watch = entries.filter(
-    (e) => isOfficer(e) && (e.service_type === 'watchkeeping_service' || isSoleWatchEntry(e as any)),
-  );
+  const watch = watchkeepingParts(entries.filter((e) => isOfficer(e)) as any[]) as typeof entries;
 
   const leave = leavePeriods
     .filter((l) => l.start_date <= to && l.end_date >= from)

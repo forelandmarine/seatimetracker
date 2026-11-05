@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { isSoleWatchEntry, mnzCreditableDays, dayInSoleWatchPeriods } from "../src/utils/seaTime";
+import { isSoleWatchEntry, mnzCreditableDays, dayInSoleWatchPeriods, soleWatchPart } from "../src/utils/seaTime";
 import {
   applySoleWatchChange,
   findOverlap,
@@ -221,5 +221,42 @@ describe("preview and day counts", () => {
     expect(periodDays(entries, "v1", { start_date: "2025-03-02", end_date: null }, "mca")).toBe(2);
     expect(firstEntryDay(entries, "v1")).toBe("2025-03-01");
     expect(firstEntryDay(entries, "none")).toBeNull();
+  });
+});
+
+describe("passages past the period end (Dan, 2026-11-05)", () => {
+  const period = [{ start_date: "2025-03-01", end_date: "2025-03-10" }];
+  // Departs inside the period on the 9th, arrives on the 12th: 9th to 12th at sea.
+  const passage = {
+    vessel_id: "v1",
+    start_time: "2025-03-09T06:00:00Z",
+    end_time: "2025-03-12T18:00:00Z",
+    status: "confirmed",
+    service_type: "actual_sea_service",
+    ...onVessel(period),
+  };
+
+  test("only the dates up to the end date count as watchkeeping", () => {
+    expect(watchkeepingDays([passage], "mca")).toBe(2);
+    expect(mnzCreditableDays([passage] as any).watchkeeping).toBe(2);
+  });
+
+  test("the passage still counts in full as sea service", () => {
+    expect(soleWatchPart(passage as any)?.end_time).toBe("2025-03-11T00:00:00.000Z");
+    expect(passage.end_time).toBe("2025-03-12T18:00:00Z");
+  });
+
+  test("an open period or one ending after arrival counts the whole passage", () => {
+    expect(watchkeepingDays([{ ...passage, ...onVessel([{ start_date: "2025-03-01", end_date: null }]) }], "mca")).toBe(4);
+    expect(watchkeepingDays([{ ...passage, ...onVessel([{ start_date: "2025-03-01", end_date: "2025-03-31" }]) }], "mca")).toBe(4);
+  });
+
+  test("declared-day entries keep only the days up to the end date", () => {
+    const declared = { ...passage, start_time: "2025-03-08T00:00:00Z", end_time: null, sea_days: 5 };
+    expect(soleWatchPart(declared as any)?.sea_days).toBe(3);
+  });
+
+  test("the period's day figure stops at the end date", () => {
+    expect(periodDays([passage], "v1", period[0], "mca")).toBe(2);
   });
 });

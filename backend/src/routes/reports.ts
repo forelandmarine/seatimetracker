@@ -17,7 +17,7 @@ import { tugService } from "../utils/tugService.js";
 import { boatmasterService } from "../utils/boatmasterService.js";
 import { boatmasterEndorsements } from "../utils/boatmasterEndorsements.js";
 import { getSeaAreaClassifier } from "../utils/seaAreas/singleton.js";
-import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, isSoleWatchEntry, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
+import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, soleWatchPart, mnzCreditableDays, samsaCreditableDays, qualifyingSeaDays, uscgCreditableDays, cumulativeTrackDistanceNm, type TrackFix } from "../utils/seaTime.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -770,7 +770,8 @@ export function register(app: App, fastify: FastifyInstance) {
       const service_type = entry.service_type || 'actual_sea_service';
       (serviceTypeGroups[service_type] ||= []).push(entry);
       // A sole watchkeeper's sea days are watchkeeping days too (days stay distinct)
-      if (isSoleWatchEntry(entry as any)) (serviceTypeGroups['watchkeeping_service'] ||= []).push(entry);
+      const solePart = soleWatchPart(entry as any);
+      if (solePart) (serviceTypeGroups['watchkeeping_service'] ||= []).push(solePart);
     });
 
     // Stand-by is credited within the MSN 1858 limits (14 consecutive days, no
@@ -793,7 +794,8 @@ export function register(app: App, fastify: FastifyInstance) {
       .forEach((entry) => {
         const service_type = entry.service_type || 'actual_sea_service';
         (yachtTypeGroups[service_type] ||= []).push(entry);
-        if (isSoleWatchEntry(entry as any)) (yachtTypeGroups['watchkeeping_service'] ||= []).push(entry);
+        const solePart = soleWatchPart(entry as any);
+        if (solePart) (yachtTypeGroups['watchkeeping_service'] ||= []).push(solePart);
       });
     const commercial_service = {
       qualifying_total: qualifyingSeaDays(commercialEntries as any).qualifying_total,

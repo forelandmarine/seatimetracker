@@ -3,7 +3,8 @@
  *
  * A period is the dates the user was the only watchkeeper in their department
  * on a vessel. An actual sea service entry whose UTC start date falls inside a
- * period also counts as a watchkeeping day (see isSoleWatchEntry). Rules are
+ * period also counts as a watchkeeping day (see isSoleWatchEntry), up to the
+ * period's end date: a passage running past it is cut there (soleWatchPart). Rules are
  * unchanged from the old per-vessel flag: MCA, MNZ and SAMSA only, actual sea
  * service only, and days stay distinct.
  */
@@ -11,10 +12,11 @@ import {
   countDistinctSeaDays,
   dayInSoleWatchPeriods,
   getCalendarDay,
-  isSoleWatchEntry,
   mnzCreditableDays,
   samsaCreditableDays,
   serviceDatesAnyHours,
+  clipToDay,
+  watchkeepingParts,
   type SoleWatchPeriod,
 } from './seaTime.js';
 
@@ -183,7 +185,7 @@ export function watchkeepingDays(entries: WatchEntry[], authority: string | null
   const a = authority || 'mca';
   const confirmed = entries.filter((e) => e.status == null || e.status === 'confirmed');
   if (a === 'mca') {
-    return countDistinctSeaDays(confirmed.filter((e) => e.service_type === 'watchkeeping_service' || isSoleWatchEntry(e)) as any);
+    return countDistinctSeaDays(watchkeepingParts(confirmed as any));
   }
   if (a === 'mnz') return mnzCreditableDays(confirmed as any, now).watchkeeping;
   if (a === 'samsa') return samsaCreditableDays(confirmed as any, now).watchkeeping;
@@ -230,7 +232,7 @@ export function periodDays(entries: WatchEntry[], vesselId: string, period: Sole
       (e.status == null || e.status === 'confirmed') &&
       (e.service_type || 'actual_sea_service') === 'actual_sea_service' &&
       periodCovers(period, getCalendarDay(new Date(e.start_time)))
-  );
+  ).map((e) => (period.end_date ? clipToDay(e as any, period.end_date) : e));
   if (authority === 'samsa') return serviceDatesAnyHours(inside as any).size;
   return countDistinctSeaDays(inside as any);
 }

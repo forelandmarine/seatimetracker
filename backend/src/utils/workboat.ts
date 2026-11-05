@@ -30,7 +30,7 @@
  * tidal classification, and AIS records as evidence in place of testimonials.
  */
 
-import { distinctSeaDates, isSoleWatchEntry } from './seaTime.js';
+import { distinctSeaDates, isSoleWatchEntry, watchkeepingParts } from './seaTime.js';
 import { DECK_OFFICER_RANKS } from './tugService.js';
 
 export const WORKBOAT_MIN_LENGTH_M = 15;
@@ -106,7 +106,7 @@ export function workboatService(entries: WorkboatEntry[], now: Date = new Date()
   return {
     sea_service: countWorkboatDays(sea),
     sea_service_15m: countWorkboatDays(over15),
-    watchkeeping_15m: countWorkboatDays(over15.filter((e) => e.service_type === 'watchkeeping_service' || isSoleWatchEntry(e))),
+    watchkeeping_15m: countWorkboatDays(watchkeepingParts(over15)),
     workboat_15m: countWorkboatDays(over15.filter((e) => e.vessel?.is_workboat === true)),
     recent_sea_service: countWorkboatDays(recent),
     workboats_without_length: unsized.size,
