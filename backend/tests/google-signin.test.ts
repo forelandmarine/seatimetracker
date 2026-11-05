@@ -43,7 +43,7 @@ describe("token verification", () => {
   test("a good token gives the identity, email lower-cased", async () => {
     const { privateKey, jwks } = await keys();
     const id = await verifyGoogleIdToken(await token(privateKey), [WEB], jwks);
-    expect(id).toEqual({ googleUserId: "1234567890", email: "crew@example.com", emailVerified: true, name: "Sam Crew", picture: null });
+    expect(id).toEqual({ googleUserId: "1234567890", email: "crew@example.com", emailVerified: true, name: "Sam Crew" });
   });
 
   test("the short issuer form is accepted", async () => {

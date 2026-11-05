@@ -990,7 +990,6 @@ export function register(app: App, fastify: FastifyInstance) {
               email: plan.email,
               name: identity.name || 'Google User',
               emailVerified: true,
-              image: identity.picture,
               subscription_status: 'inactive',
             })
             .returning();

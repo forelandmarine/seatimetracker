@@ -24,7 +24,6 @@ export interface GoogleIdentity {
   email: string | null;
   emailVerified: boolean;
   name: string | null;
-  picture: string | null;
 }
 
 export class GoogleTokenError extends Error {}
@@ -60,7 +59,6 @@ export async function verifyGoogleIdToken(
     email,
     emailVerified: payload.email_verified === true || payload.email_verified === "true",
     name,
-    picture: typeof payload.picture === "string" ? payload.picture : null,
   };
 }
 
