@@ -42,8 +42,31 @@ export interface ProviderFilters {
   approval: string | null;
   origin: { lat: number; lng: number } | null;
   radiusKm: number | null;
-  /** The phone's country; without a location its providers come first. */
+  /**
+   * The user's home country (see searchHomeCountry): a town named in the query
+   * is taken as the one in this country, and without a location its providers
+   * come first.
+   */
   homeCountry?: string | null;
+}
+
+/** The country each maritime authority issues for, as an ISO region code. */
+export const AUTHORITY_COUNTRY: Record<string, string> = {
+  mca: 'GB',
+  uscg: 'US',
+  amsa: 'AU',
+  mnz: 'NZ',
+  samsa: 'ZA',
+};
+
+/**
+ * The home country for a search: the user's maritime authority's country when
+ * they have one (an MCA seafarer on a US phone still means Falmouth, Cornwall),
+ * otherwise the phone's region.
+ */
+export function searchHomeCountry(authority: string | null | undefined, deviceRegion: string | null | undefined): string | null {
+  const fromAuthority = authority ? AUTHORITY_COUNTRY[authority.toLowerCase()] : undefined;
+  return fromAuthority ?? (deviceRegion ? deviceRegion.toUpperCase() : null);
 }
 
 export interface ProviderHit {

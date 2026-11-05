@@ -30,6 +30,7 @@ import {
   formatDistance,
   usesMiles,
   phoneRegion,
+  searchHomeCountry,
   defaultApproval,
   closerUnderOtherApprovals,
   hiddenByApproval,
@@ -59,7 +60,11 @@ export default function TrainingProvidersScreen() {
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
   const miles = usesMiles();
-  const homeCountry = useMemo(() => phoneRegion(), []);
+  // The user's maritime authority's country (MCA = GB) picks which Falmouth a
+  // query means; the phone's region until the profile loads, or with no authority.
+  const deviceRegion = useMemo(() => phoneRegion(), []);
+  const [authority, setAuthority] = useState<string | null>(null);
+  const homeCountry = useMemo(() => searchHomeCountry(authority, deviceRegion), [authority, deviceRegion]);
 
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState<string | null>(typeof params.course === 'string' ? params.course : null);
@@ -86,6 +91,7 @@ export default function TrainingProvidersScreen() {
     seaTimeApi
       .getUserProfile()
       .then((p) => {
+        setAuthority(p?.maritime_authority ?? null);
         const start = defaultApproval(providers, initialCourse, p?.maritime_authority ?? null);
         if (start) setApproval(start);
       })
