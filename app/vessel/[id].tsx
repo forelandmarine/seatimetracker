@@ -29,6 +29,7 @@ import { TwoWatchToggle } from '@/components/TwoWatchToggle';
 import { SoleWatchToggle } from '@/components/SoleWatchToggle';
 import { TugToggle } from '@/components/TugToggle';
 import { BoatmasterVesselCard } from '@/components/BoatmasterVesselCard';
+import { WorkboatTestimonialButton } from '@/components/WorkboatTestimonialButton';
 import { SeaAreaBreakdownCard } from '@/components/SeaAreaBreakdownCard';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 
@@ -770,6 +771,9 @@ export default function VesselDetailScreen() {
 
         {/* Workboat sea areas: days by MSN 1837 category (commercial work, guidance only) */}
         <SeaAreaBreakdownCard vesselId={vessel.id} refreshKey={seaTimeEntries} />
+
+        {/* MGN 496 Annex C testimonial for this vessel (MCA commercial crew) */}
+        <WorkboatTestimonialButton vesselId={vessel.id} />
 
         {/* AIS Data Card */}
         <View style={styles.card}>

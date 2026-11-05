@@ -1201,3 +1201,11 @@ export const downloadBoatmasterReport = async (format: 'msf4366' | 'pla') => {
   const res = await authFetch(`/api/reports/boatmaster?format=${format}`);
   return res.blob();
 };
+
+// MGN 496 Annex C Deck (Workboat) Testimonial as a PDF, one per vessel, for the
+// Master or company to sign. vesselId limits it to that vessel.
+export const downloadWorkboatTestimonial = async (vesselId?: string) => {
+  const q = vesselId ? `?vesselId=${encodeURIComponent(vesselId)}` : '';
+  const res = await authFetch(`/api/reports/workboat-testimonial${q}`);
+  return res.blob();
+};

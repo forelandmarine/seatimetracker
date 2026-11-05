@@ -4,6 +4,7 @@ import { useCertRoute } from '@/hooks/useCertRoute';
 import { CertificationProgress, BmlEndorsementsSummary, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { BoatmasterReportButtons } from '@/components/BoatmasterReportButtons';
+import { WorkboatTestimonialButton } from '@/components/WorkboatTestimonialButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
 import type { MaritimeAuthority } from '@/constants/mcaRequirements';
 import {
@@ -1216,6 +1217,9 @@ export default function ProfileScreen() {
 
                 {/* Boatmasters' Licence paperwork (MCA commercial crew) */}
                 <BoatmasterReportButtons />
+
+                {/* MGN 496 Annex C workboat testimonial, one per vessel */}
+                <WorkboatTestimonialButton />
 
                 <TouchableOpacity
                   style={styles.reportButton}

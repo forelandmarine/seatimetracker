@@ -37,6 +37,7 @@ import { register as registerSeaTimeBulkRoutes } from './routes/sea-time-bulk.js
 import { register as registerAisRoutes } from './routes/ais.js';
 import { register as registerReportsRoutes } from './routes/reports.js';
 import { register as registerBoatmasterReportsRoutes } from './routes/boatmasterReports.js';
+import { register as registerWorkboatTestimonialRoutes } from './routes/workboatTestimonial.js';
 import { register as registerNotificationsRoutes } from './routes/notifications.js';
 import { register as registerTrackingRoutes } from './routes/tracking.js';
 import { register as registerSubscriptionRoutes } from './routes/subscription.js';
@@ -87,6 +88,7 @@ registerSeaTimeBulkRoutes(app, app.fastify);
 registerAisRoutes(app, app.fastify);
 registerReportsRoutes(app, app.fastify);
 registerBoatmasterReportsRoutes(app, app.fastify);
+registerWorkboatTestimonialRoutes(app, app.fastify);
 registerNotificationsRoutes(app, app.fastify);
 registerTrackingRoutes(app, app.fastify);
 registerSubscriptionRoutes(app, app.fastify);
