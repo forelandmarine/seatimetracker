@@ -138,7 +138,10 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   fpff: `${STCW_BASIC} firefighting`,
   efa: `${STCW_BASIC}`,
   pssr: `${STCW_BASIC}`,
-  stcw_basic_refresher: `${STCW_BASIC} update updating revalidation`,
+  stcw_basic_refresher: `${STCW_BASIC} update updating revalidation firefighting fire fighting sea survival`,
+  amsa_continued_competence: 'stcw refresher update revalidation',
+  chief_second_eng_unlimited: 'class1 class2 class 1 2 chief second engineer unlimited ekg engineering knowledge motor management iii',
+  oew_unlimited: 'class4 class 4 eoow',
   pst_refresher: 'stcw refresher update sea survival',
   fpff_refresher: 'stcw refresher update firefighting',
   uscg_basic_training: `${STCW_BASIC}`,
@@ -205,12 +208,12 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   wbc3_stability: 'workboat',
   aec1: 'aec yacht engineer y4',
   aec2: 'aec yacht engineer meol y4',
-  sv_eng_marine_diesel: 'small vessel sv engineer engineering meol y4 y3',
-  sv_eng_op_procedures: 'small vessel sv engineer engineering meol y4 y3',
+  sv_eng_marine_diesel: 'small vessel sv engineer engineering meol y4 y3 eoow',
+  sv_eng_op_procedures: 'small vessel sv engineer engineering meol y4 y3 eoow',
   sv_eng_applied_me: 'small vessel sv engineer engineering y2 y1',
-  sv_eng_aux1: 'small vessel sv engineer engineering y3',
+  sv_eng_aux1: 'small vessel sv engineer engineering y3 eoow',
   sv_eng_aux2: 'small vessel sv engineer engineering y2 y1',
-  sv_eng_aux_equipment_1: 'small vessel sv engineer engineering y3',
+  sv_eng_aux_equipment_1: 'small vessel sv engineer engineering y3 eoow',
   sv_eng_chief_stat_ops: 'small vessel sv engineer engineering y2 y1',
   sv_eng_ges: 'small vessel sv engineer engineering y2 y1',
   sv_eng_workshop_skills: 'small vessel sv engineer engineering y4 y3',
@@ -234,7 +237,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   workboat_ops: 'code ctv crew transfer vessel',
   gwo_bst: 'ctv crew transfer vessel wind basic safety',
   gwo_bst_onshore: 'basic safety',
-  helm_op: 'human element leadership management',
+  helm_op: 'human element leadership operational',
   helm_mgmt: 'human element leadership management',
   ecdis: 'electronic chart display information system',
   passenger_ship_training: 'crowd crisis management',
@@ -370,6 +373,7 @@ const OPTIONAL = new Set([
 // Shorthand for words the labels spell out.
 const ABBREVIATIONS: Record<string, string[][]> = {
   nav: [['navigation']],
+  aux: [['auxiliary']],
   navs: [['navigation']],
   mgmt: [['management']],
   mgt: [['management']],
@@ -432,6 +436,27 @@ const EXTRA_PLACES: Record<string, [number, number]> = {
   'st maarten': [18.03, -63.05],
   'sint maarten': [18.03, -63.05],
   newport: [41.49, -71.31],
+  nz: [-36.85, 174.76],
+  uk: [52.5, -1.5],
+  usa: [26.12, -80.14],
+  uae: [25.08, 55.14],
+  aus: [-27.97, 153.4],
+  oz: [-27.97, 153.4],
+  hampshire: [50.95, -1.3],
+  dorset: [50.72, -2.1],
+  devon: [50.5, -3.8],
+  cornwall: [50.3, -5.0],
+  kent: [51.2, 1.0],
+  essex: [51.75, 0.6],
+  norfolk: [52.65, 1.3],
+  suffolk: [52.2, 1.2],
+  yorkshire: [53.9, -1.3],
+  sussex: [50.85, -0.2],
+  'isle of wight': [50.69, -1.3],
+  queensland: [-27.47, 153.03],
+  'new south wales': [-33.87, 151.21],
+  'western australia': [-32.05, 115.75],
+  brisbane: [-27.47, 153.03],
   palma: [39.57, 2.65],
   'palma de mallorca': [39.57, 2.65],
   antibes: [43.58, 7.12],
@@ -481,12 +506,20 @@ export function providerCodesFor(code: string): string[] {
 interface Doc {
   words: Set<string>;
   compact: string;
+  /** Normalised words with single spaces, for word-order checks. */
+  text: string;
 }
+// "General Engineering Science I and II" answers "GES 1 and 2".
+const ROMAN: Record<string, string> = { i: '1', ii: '2', iii: '3', iv: '4' };
 const doc = (text: string): Doc => {
-  const n = normaliseSearch(text);
+  const n = normaliseSearch(text)
+    .split(' ')
+    .map((w) => ROMAN[w] ?? w)
+    .join(' ');
   return {
     words: new Set(n.split(' ').filter(Boolean)),
     compact: n.replace(/ /g, ''),
+    text: ` ${n} `,
   };
 };
 
@@ -663,14 +696,19 @@ function wordQuality(token: string, vocab: string[]): Map<string, number> {
   return q;
 }
 
+const stemOf = (w: string) => w.replace(/(ings|ing|ers|er|ies|es|s|ed|ion|ions)$/, '');
+
 function computeQuality(token: string, vocab: string[]): Map<string, number> {
   const q = new Map<string, number>([[token, 1]]);
   // Short tokens (PER, SRL, AB) only match whole words, or they match half the directory.
   if (token.length < 4) return q;
   const maxEdits = token.length >= 9 ? 2 : token.length >= 5 ? 1 : 0;
+  const stem = stemOf(token);
   for (const w of vocab) {
     if (w === token) continue;
     if (w.startsWith(token)) q.set(w, 0.9);
+    // "engineering" finds "engineer", "certificates" finds "certificate".
+    else if (stem.length >= 4 && (stem === w || stemOf(w) === stem || stemOf(w) === token)) q.set(w, 0.85);
     else if (maxEdits && editDistance(token, w, maxEdits) <= maxEdits) q.set(w, 0.7);
   }
   return q;
@@ -681,7 +719,9 @@ export function queryWords(q: string): string[] {
   const raw = normaliseSearch(q)
     .split(' ')
     .filter(Boolean)
-    .map((w, i, all) => (NUMBER_WORDS[w] && !(w === 'six' && all[i + 1] === 'pack') ? NUMBER_WORDS[w] : w));
+    .map((w, i, all) =>
+      NUMBER_WORDS[w] && !(w === 'six' && all[i + 1] === 'pack') ? NUMBER_WORDS[w] : ROMAN[w] && w !== 'i' ? ROMAN[w] : w,
+    );
   const joined: string[] = [];
   for (const w of raw) {
     const prev = joined[joined.length - 1];
@@ -800,6 +840,8 @@ function scoreEntry(e: Entry, terms: Term[]): { score: number; tier: number } | 
       score += terms[i].optional ? q * 0.1 : q;
       // Typing the course's own code ("EFA", "AEC1") beats it appearing inside another code.
       if (terms[i].forms.some((f) => f.map((x) => x.text).join('') === code)) score += 1.5;
+      // Words in the order typed: "master yachts" is Master (Yachts), not Yachtmaster's "yacht master".
+      if (i > 0 && d.text.includes(` ${terms[i - 1].forms[0][0].text} ${terms[i].forms[0][0].text} `)) score += 1;
     }
     if (!missing) {
       consider(score, inCourse === required ? 2 : 1);
@@ -880,6 +922,12 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
   };
   let scored = run();
   if (scored.filter((h) => h.tier >= 1).length < 3 && relax()) scored = run();
+  // A typed place: something that answers the query within 1,000 km beats an exact
+  // match on the far side of the world ("sea survival refresher St Maarten").
+  if (place && scored.some((h) => h.tier > 0 && h.distanceKm != null && h.distanceKm <= 1000))
+    scored.forEach((h) => {
+      if (h.distanceKm == null || h.distanceKm > 1000) h.tier = Math.max(0, h.tier - 2);
+    });
   // Only a place was typed ("Palma"): keep what's around it.
   let hits = scored;
   if (place && !terms.length) {
