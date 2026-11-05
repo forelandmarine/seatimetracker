@@ -9,6 +9,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ensureUserNotificationSchedule } from "./notifications.js";
 import { sendWelcomeEmail } from "../utils/welcomeEmail.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { googleClientIds, verifyGoogleIdToken, planGoogleSignIn, socialOnlyHint, GoogleTokenError } from "../utils/googleSignIn.js";
 
 /**
  * Hash password using PBKDF2 with SHA-256
@@ -163,10 +164,10 @@ export function register(app: App, fastify: FastifyInstance) {
             return reply.code(409).send({
               error: 'An account with this email already exists. Please sign in instead.',
             });
-          } else if (existingAccounts.some(acc => acc.providerId === 'apple')) {
-            // They only have an Apple account
+          } else if (socialOnlyHint(existingAccounts.map(acc => acc.providerId))) {
+            // They only have Apple and/or Google sign-in
             return reply.code(409).send({
-              error: 'This email is linked to an Apple account. Please sign in with Apple instead.',
+              error: socialOnlyHint(existingAccounts.map(acc => acc.providerId))!,
             });
           } else {
             // They have other social accounts
@@ -422,10 +423,9 @@ export function register(app: App, fastify: FastifyInstance) {
 
           if (allAccounts.length > 0) {
             const providers = allAccounts.map(acc => acc.providerId);
-            if (providers.includes('apple')) {
-              return reply.code(401).send({
-                error: 'This email is linked to an Apple account. Please sign in with Apple instead.',
-              });
+            const hint = socialOnlyHint(providers);
+            if (hint) {
+              return reply.code(401).send({ error: hint });
             } else {
               const providerList = providers.join(', ');
               return reply.code(401).send({
@@ -909,6 +909,149 @@ export function register(app: App, fastify: FastifyInstance) {
         return reply.code(500).send({
           error: 'Authentication service error',
         });
+      }
+    }
+  );
+
+  // GET /api/auth/providers - Which optional sign-in methods this backend has set
+  // up, so the app only shows a button that will work. Old builds never call it.
+  fastify.get('/api/auth/providers', {
+    schema: { description: 'Optional sign-in methods that are configured', tags: ['auth'] },
+  }, async () => ({ google: googleClientIds().length > 0 }));
+
+  // POST /api/auth/sign-in/google - Sign in with a Google ID token from the native
+  // Google sign-in sheet. Same account rules as Apple: a known Google ID signs in,
+  // a verified matching email links to the existing account, otherwise a new account.
+  fastify.post<{ Body: { idToken: string } }>(
+    '/api/auth/sign-in/google',
+    {
+      schema: {
+        description: 'Sign in with Google ID token',
+        tags: ['auth'],
+        body: {
+          type: 'object',
+          required: ['idToken'],
+          properties: { idToken: { type: 'string' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const clientIds = googleClientIds();
+      if (clientIds.length === 0) {
+        return reply.code(503).send({ error: 'Google sign-in is not available yet. Please use email and password.' });
+      }
+
+      const clientIp = request.ip || 'unknown';
+      if (!checkRateLimit(`signin:google:${clientIp}`, 100, 15 * 60 * 1000).allowed) {
+        return reply.code(429).send({ error: 'Too many sign-in attempts. Please try again later.' });
+      }
+
+      let identity;
+      try {
+        identity = await verifyGoogleIdToken(request.body.idToken, clientIds);
+      } catch (err) {
+        app.logger.warn({ err: (err as Error).message }, 'Google token verification failed');
+        if (err instanceof GoogleTokenError && err.message === 'Invalid token format') {
+          return reply.code(400).send({ error: 'Invalid token format' });
+        }
+        return reply.code(401).send({ error: 'Google authentication failed. Please try again.' });
+      }
+      const { googleUserId } = identity;
+
+      try {
+        const [googleAccount] = await app.db
+          .select()
+          .from(authSchema.account)
+          .where(and(eq(authSchema.account.providerId, 'google'), eq(authSchema.account.accountId, googleUserId)))
+          .limit(1);
+        const [userByEmail] = googleAccount || !identity.email ? [] : await app.db
+          .select()
+          .from(authSchema.user)
+          .where(eq(authSchema.user.email, identity.email))
+          .limit(1);
+
+        const plan = planGoogleSignIn(identity, {
+          googleAccountUserId: googleAccount?.userId ?? null,
+          userIdByEmail: userByEmail?.id ?? null,
+        });
+        if (plan.action === 'reject') {
+          app.logger.warn({ googleUserId, hasEmail: !!identity.email }, 'Google sign-in refused: ' + plan.error);
+          return reply.code(plan.status).send({ error: plan.error });
+        }
+
+        let user;
+        const isNewUser = plan.action === 'create';
+        if (plan.action === 'create') {
+          const userId = crypto.randomUUID();
+          [user] = await app.db
+            .insert(authSchema.user)
+            .values({
+              id: userId,
+              email: plan.email,
+              name: identity.name || 'Google User',
+              emailVerified: true,
+              subscription_status: 'inactive',
+            })
+            .returning();
+        } else {
+          [user] = await app.db.select().from(authSchema.user).where(eq(authSchema.user.id, plan.userId)).limit(1);
+          if (!user) {
+            app.logger.error({ userId: plan.userId, googleUserId }, 'Google account exists but user not found');
+            return reply.code(500).send({ error: 'Account data is inconsistent' });
+          }
+        }
+
+        if (plan.action !== 'sign-in') {
+          await app.db.insert(authSchema.account).values({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            providerId: 'google',
+            accountId: googleUserId,
+          });
+          app.logger.info({ userId: user.id, googleUserId, linked: plan.action === 'link' }, 'Google account record created');
+        }
+
+        const [session] = await app.db
+          .insert(authSchema.session)
+          .values({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            token: crypto.randomBytes(32).toString('hex'),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          })
+          .returning();
+
+        app.logger.info({ userId: user.id, isNewUser, action: plan.action, googleUserId }, 'Google authentication successful');
+
+        reply.code(200).send({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            emailVerified: user.emailVerified,
+            image: user.image,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+          session: {
+            id: session.id,
+            token: session.token,
+            expiresAt: session.expiresAt.toISOString(),
+          },
+          isNewUser,
+        });
+
+        ensureUserNotificationSchedule(app, user.id).catch(err => {
+          app.logger.warn({ userId: user.id, err }, 'Failed to ensure notification schedule during Google sign-in (non-critical)');
+        });
+        if (isNewUser && user.email) {
+          sendWelcomeEmail({ email: user.email, name: user.name || undefined }, app.logger).catch((err) => {
+            app.logger.warn({ userId: user.id, err }, 'Failed to send welcome email for Google signup (non-critical)');
+          });
+        }
+      } catch (error) {
+        app.logger.error({ err: error, googleUserId }, 'Database error during Google Sign-In');
+        return reply.code(500).send({ error: 'Authentication service error' });
       }
     }
   );
@@ -1746,6 +1889,7 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.send({
       hasPassword: accounts.some(a => a.providerId === 'credential' && !!a.password),
       hasApple: accounts.some(a => a.providerId === 'apple'),
+      hasGoogle: accounts.some(a => a.providerId === 'google'),
       email: user.email,
       privateRelay: /@privaterelay\.appleid\.com$/i.test(user.email || ''),
     });

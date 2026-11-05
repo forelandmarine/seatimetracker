@@ -14,7 +14,8 @@
       "android": {},
       "channel": "preview",
       "env": {
-        "APP_VARIANT": "preview"
+        "APP_VARIANT": "preview",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "733279083565-7u6jqm83v3vamer4d2kkuge9q787ajh5.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -26,7 +27,8 @@
       },
       "channel": "production",
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "733279083565-7u6jqm83v3vamer4d2kkuge9q787ajh5.apps.googleusercontent.com"
       }
     },
     "ios-simulator": {

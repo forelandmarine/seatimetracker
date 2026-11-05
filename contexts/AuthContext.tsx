@@ -30,7 +30,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   /** Resolves true when the Apple sign-in created a new account. */
   signInWithApple: (identityToken: string, appleUser?: any) => Promise<boolean>;
-  signInWithGoogle: () => Promise<void>;
+  /** Resolves true when the Google sign-in created a new account. */
+  signInWithGoogle: (idToken: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
   refreshTrigger: number;
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ref to track in-flight auth operations.
   // Using a ref (not state) prevents stale-closure false-positives.
   const authInFlight = useRef(false);
-  // Set by authenticateWith from the server reply, read by signInWithApple.
+  // Set by authenticateWith from the server reply, read by signInWithApple/Google.
   const lastAuthCreatedUser = useRef(false);
 
   // Ref to track whether checkAuth is currently running so signIn/signUp
@@ -301,7 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await response.json();
-        // Apple sign-in reports whether this call created the account.
+        // Apple and Google sign-in report whether this call created the account.
         lastAuthCreatedUser.current = !!data.isNewUser;
 
         if (!data.session?.token) {
@@ -409,13 +410,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return lastAuthCreatedUser.current;
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    if (!idToken) throw new Error('Invalid identity token');
+
     await authenticateWith({
       endpoint: '/api/auth/sign-in/google',
-      body: {},
+      body: { idToken },
       label: 'Google sign in',
       persist: true,
     });
+    return lastAuthCreatedUser.current;
   }, []);
 
   const signOut = useCallback(async () => {
