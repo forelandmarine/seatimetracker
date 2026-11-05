@@ -132,7 +132,8 @@ function parsePage(kind, html, sourceUrl) {
         city,
         postcode,
         country,
-        region: region ?? (kind === 'uk' && !/^other/i.test(heading) ? heading || null : null),
+        // The area heading is often the town itself ("Aberdeen"); don't show it twice.
+        region: [region ?? (kind === 'uk' && !/^other/i.test(heading) ? heading : null)].find((r) => r && r.toLowerCase() !== city?.toLowerCase()) ?? null,
         phone: phones[i] ?? phones[0] ?? null,
         email,
         website: website ? href(website) : null,
