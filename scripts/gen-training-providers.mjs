@@ -146,6 +146,45 @@ for (const p of merged.values()) {
   });
   if (++n % 50 === 0) console.log('geocoded', n, '/', merged.size);
 }
+// A pin on the wrong continent (a town name that exists elsewhere, "Channel
+// Isles" in Florida) is worse than no pin: it puts the provider first for "near
+// me" in the wrong place. Check each pin against its country's own position,
+// retry the town inside the country, and drop the pin if that still lands far away.
+const R = (d) => (d * Math.PI) / 180;
+const kmBetween = (a, b, c, d) => 12742 * Math.asin(Math.sqrt(Math.sin(R(c - a) / 2) ** 2 + Math.cos(R(a)) * Math.cos(R(c)) * Math.sin(R(d - b) / 2) ** 2));
+// How far from the country's middle a provider can fairly be.
+const SPREAD_KM = { US: 6500, AU: 4000, CA: 5000, BR: 4000, CN: 4000, RU: 7000, IN: 3000, AR: 3500, CL: 4000, ID: 5000, NZ: 1500, ZA: 1500, FR: 1500, ES: 2200, PT: 1800, NO: 2000, GB: 1300, IT: 1300, GR: 1300, DK: 1500, MY: 1600, SA: 1500, JP: 1600, PH: 1500, MX: 2500, NL: 900, DE: 900, TR: 1300, EC: 1500, KE: 900, NG: 1000, VN: 1500, TH: 1200, CO: 1500, PE: 1500 };
+async function nominatim(key, params) {
+  if (!(key in cache)) {
+    await new Promise((r) => setTimeout(r, 1100));
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&${params}`, { headers: { 'user-agent': 'SeaTimeTracker provider directory build (dan@forelandmarine.com)' } });
+      const j = await res.json();
+      cache[key] = j[0] ? [Number(Number(j[0].lat).toFixed(5)), Number(Number(j[0].lon).toFixed(5))] : null;
+    } catch {
+      cache[key] = null;
+    }
+    fs.writeFileSync(cacheFile, JSON.stringify(cache));
+  }
+  return cache[key];
+}
+for (const cc of Array.from(new Set(out.map((p) => p.country)))) {
+  const lc = cc.toLowerCase();
+  const mid = await nominatim(`centre:${cc}`, `countrycodes=${lc}&q=${encodeURIComponent(countryName(cc))}`);
+  if (!mid) continue;
+  const limit = SPREAD_KM[cc] ?? 900;
+  for (const p of out.filter((x) => x.country === cc && x.lat != null)) {
+    if (kmBetween(mid[0], mid[1], p.lat, p.lng) <= limit) continue;
+    const text = [p.postcode, p.city].map(clean).filter(Boolean).join(', ') || countryName(cc);
+    let fix = await nominatim(`cc:${cc}:${text}`, `countrycodes=${lc}&q=${encodeURIComponent(text)}`);
+    if (fix && kmBetween(mid[0], mid[1], fix[0], fix[1]) > limit) fix = null;
+    // Last resort: the country itself (small places like Jersey or Gibraltar).
+    if (!fix && limit <= 900) fix = mid;
+    console.log(`pin off for ${p.name} (${cc}): ${fix ? 'moved inside the country' : 'removed'}`);
+    [p.lat, p.lng] = fix ?? [null, null];
+  }
+}
+
 out.sort((a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name));
 
 const app = { v: 1, built: new Date().toISOString().slice(0, 10), providers: out.map(({ _datesFormat, ...p }) => p) };

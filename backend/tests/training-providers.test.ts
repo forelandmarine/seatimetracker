@@ -38,6 +38,12 @@ describe('Find a course directory', () => {
     expect(eng1.every((p) => p.lat != null && p.lng != null)).toBe(true);
   });
 
+  it('puts every pin inside its own country (no "Channel Isles" in Florida)', () => {
+    const near = (p: Provider, lat: number, lng: number, limit: number) => p.lat == null || km(lat, lng, p.lat, p.lng!) <= limit;
+    for (const p of directory.providers.filter((x) => x.country === 'JE' || x.country === 'GG')) expect({ id: p.id, ok: near(p, 49.35, -2.4, 120) }).toEqual({ id: p.id, ok: true });
+    for (const p of directory.providers.filter((x) => x.country === 'GI' || x.country === 'MT')) expect({ id: p.id, ok: near(p, 36.0, -5.35, 80) || near(p, 35.9, 14.45, 80) }).toEqual({ id: p.id, ok: true });
+  });
+
   it('has an ENG1 doctor within 40 km of the main yacht and workboat ports', () => {
     const ports: [string, number, number][] = [
       ['Southampton', 50.9, -1.4],
