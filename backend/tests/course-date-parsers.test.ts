@@ -176,6 +176,8 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('GWO Working at Heights Refresher')).toBeNull();
     expect(matchCourseCode('GWO Basic Safety Training Refresher (BSTR)')).toBe('gwo_bst_refresher');
     expect(matchCourseCode('GWO BST Refresher')).toBe('gwo_bst_refresher');
+    expect(matchCourseCode('Aggiornamento Ship Security Officer')).toBeNull();
+    expect(matchCourseCode('RYA Level 2 Powerboat Handling')).toBe('powerboat_l2');
   });
   it('leaves skipper refreshers and mile builders unmapped', () => {
     expect(matchCourseCode('5 DAY SKIPPER REFRESHER COURSE')).toBeNull();

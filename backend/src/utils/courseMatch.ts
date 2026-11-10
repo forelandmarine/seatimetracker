@@ -13,7 +13,7 @@ const RULES: [RegExp, string | null][] = [
   [/(refresher|updat(?:ed?|ing)|revalidation)\b.*(fire prevention.*personal survival|personal survival.*fire prevention)/i, 'stcw_basic_refresher'],
   // Any other refresher (PST, MFA, a single GWO module) has no app course of its own:
   // don't let it fall through to the full course below.
-  [/\b(refresher|updating|revalidation)\b|\bupdated? (proficiency|training)/i, null],
+  [/\b(refresher|updating|revalidation|aggiornamento|recyclage|actualizaci[oó]n)\b|\bupdated? (proficiency|training)/i, null],
   [/(pscrb|survival craft).*(other than lifeboat|otl)|pscrb.?otl/i, 'pscrb_otl'],
   [/pscrb|survival craft and rescue boat|cop\s*sc\s*&?\s*rb/i, 'pscrb'],
   [/fast rescue boat/i, 'frb'],
@@ -50,7 +50,7 @@ const RULES: [RegExp, string | null][] = [
   [/coastal skipper/i, 'coastal_skipper'],
   [/day skipper/i, 'day_skipper'],
   [/competent crew/i, 'competent_crew'],
-  [/powerboat.*(level 2|l2)/i, 'powerboat_l2'],
+  [/powerboat.*(level 2|l2)|(level 2|l2)[^|]*powerboat/i, 'powerboat_l2'],
   [/general ship knowledge|\bgsk\b/i, 'oow_yachts_gsk'],
   // Small Ships Navigation & Radar is a fishing/workboat course, not OOW (Yacht) Nav & Radar.
   [/small ships?[^|]*nav/i, null],
