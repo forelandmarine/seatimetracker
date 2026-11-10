@@ -5,16 +5,16 @@ const RULES: [RegExp, string | null][] = [
   // Restricted PSCRB is a narrower certificate than PSCRB or PSCRB (other than lifeboats).
   [/(pscrb|survival craft)[^|]*restricted|restricted[^|]*(pscrb|survival craft)/i, null],
   [/(pscrb|survival craft).*(refresher|update)|(refresher|updated?|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],
-  [/advanced fire.*(refresher|update)|(refresher|updated?|revalidation)\b.*advanced fire/i, 'aff_refresher'],
+  [/advanced? fire ?fighting.*(refresher|update|revalidation)|(refresher|updated?|revalidation)\b.*advanced? fire ?fighting|advanced fire.*(refresher|update)/i, 'aff_refresher'],
   [/gwo.*(refresher|bstr)/i, 'gwo_bst_refresher'],
   [/medical care.*(refresher|update)|(refresher|updated?|revalidation)\b.*medical care/i, 'medical_care_refresher'],
-  [/(basic|bst).*(refresher|update)|(refresher|update).*basic/i, 'stcw_basic_refresher'],
+  [/(basic|bst).*(refresher|update|revalidation)|(refresher|update|revalidation).*basic/i, 'stcw_basic_refresher'],
   // "Updated proficiency in fire prevention and fire fighting and personal survival techniques"
   [/(refresher|updated?|revalidation)\b.*(fire prevention.*personal survival|personal survival.*fire prevention)/i, 'stcw_basic_refresher'],
   [/(pscrb|survival craft).*(other than lifeboat|otl)|pscrb.?otl/i, 'pscrb_otl'],
   [/pscrb|survival craft and rescue boat|cop\s*sc\s*&?\s*rb/i, 'pscrb'],
   [/fast rescue boat/i, 'frb'],
-  [/advanced fire/i, 'aff'],
+  [/advanced fire|advance fire ?fighting|\baff\b/i, 'aff'],
   [/personal survival techniques|\bpst\b/i, 'pst'],
   [/fire prevention|\bfpff\b/i, 'fpff'],
   [/elementary first aid|\befa\b/i, 'efa'],
@@ -49,6 +49,8 @@ const RULES: [RegExp, string | null][] = [
   [/competent crew/i, 'competent_crew'],
   [/powerboat.*(level 2|l2)/i, 'powerboat_l2'],
   [/general ship knowledge|\bgsk\b/i, 'oow_yachts_gsk'],
+  // Small Ships Navigation & Radar is a fishing/workboat course, not OOW (Yacht) Nav & Radar.
+  [/small ships?[^|]*nav/i, null],
   [/navigation and radar|nav(igation)? ?& ?radar/i, 'oow_yachts_nav_radar'],
   [/celestial/i, 'master_yachts_celestial'],
   [/naras|navigation,? radar and arpa simulator/i, 'master_yachts_nav'],

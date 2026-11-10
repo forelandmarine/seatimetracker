@@ -160,6 +160,13 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('GWO BASIC TECHNICAL TRAINING(BTT)')).toBeNull();
     expect(matchCourseCode('GWO ENHANCED FIRST AID')).toBeNull();
   });
+  it('reads US revalidation titles and keeps small-ship nav apart', () => {
+    expect(matchCourseCode('Advance Firefighting REVALIDATION (JAX)')).toBe('aff_refresher');
+    expect(matchCourseCode('Basic Training REVALIDATION (JAX)')).toBe('stcw_basic_refresher');
+    expect(matchCourseCode('Advance Firefighting (AFF) (JAX)')).toBe('aff');
+    expect(matchCourseCode('Small Ships Navigation & Radar')).toBeNull();
+    expect(matchCourseCode('Navigation & Radar (OOW) Yacht')).toBe('oow_yachts_nav_radar');
+  });
   it('leaves skipper refreshers and mile builders unmapped', () => {
     expect(matchCourseCode('5 DAY SKIPPER REFRESHER COURSE')).toBeNull();
     expect(matchCourseCode('Coastal Skipper Mile Builder')).toBeNull();
