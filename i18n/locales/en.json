@@ -429,5 +429,43 @@
     "highSpeedBody": "On a high-speed craft the master needs at least the RYA/MCA Advanced Powerboat Certificate, taken in a high-speed vessel.",
     "highSpeedHeld": "Advanced Powerboat is on file.",
     "highSpeedMissing": "No Advanced Powerboat certificate on file."
+  },
+  "medicalAlt": {
+    "sectionTitle": "Also accepted instead of ENG1",
+    "authorityTitle": "Medical for {{authority}}",
+    "leadIntro": "No MCA approved doctor is listed in {{country}}. You can use this instead of an ENG1.",
+    "doctorsTitle": "ENG1 doctors (MCA approved)",
+    "neededFor": "Needed for {{authority}} certificates.",
+    "acceptedMca": "Accepted by the MCA for UK-flag vessels. Check your flag state.",
+    "flags": "Cayman, Marshall Islands and Isle of Man ships also accept STCW medicals from other countries.",
+    "source": "Source: {{source}}",
+    "findDoctor": "Find a doctor",
+    "allCountries": "See all 43 countries the MCA accepts",
+    "names": {
+      "national": "{{country}} seafarer medical certificate",
+      "amsa": "AMSA Certificate of Medical Fitness (Form 303)",
+      "mnz": "Maritime NZ Certificate of Medical Fitness",
+      "samsa": "SAMSA seafarer medical certificate",
+      "tc": "Transport Canada Marine Medical Certificate",
+      "ml5": "ML5 medical (MSF 4112)",
+      "uscg": "USCG Medical Certificate"
+    },
+    "how": {
+      "national": "Done by a doctor approved by the {{country}} maritime authority. Ask them for the list.",
+      "amsa": "Done by an AMSA approved medical inspector. Your first one must be done in Australia.",
+      "mnz": "Done by a Maritime NZ approved medical practitioner for STCW. Valid for 2 years.",
+      "samsa": "Done by a SAMSA approved medical practitioner.",
+      "tc": "Done by a Transport Canada Marine Medical Examiner. You need a Candidate Document Number first.",
+      "ml5": "Any GMC registered doctor can do it. You don't need an approved doctor.",
+      "uscg": "Exam by a US licensed MD, DO, PA or NP on form CG-719K. The National Maritime Center issues it."
+    },
+    "notes": {
+      "malta": "Only if the exam was in Malta, by a doctor licensed by the Malta Medical Council.",
+      "bermuda": "Only if issued by a doctor nominated by Carnival Corporation.",
+      "norway": "Norway has approved doctors in some other countries. You get a Norwegian certificate, not an ENG1.",
+      "netherlands": "The Netherlands has approved doctors in some other countries. You get a Dutch certificate, not an ENG1.",
+      "ml5": "For UK small commercial vessels under 24 m up to 60 miles from a safe haven, and some domestic and fishing work. Not valid under STCW or MLC. Lasts up to 5 years.",
+      "uscg": "Needed for USCG credentials. Not on the MCA list, so not accepted instead of an ENG1."
+    }
   }
 }

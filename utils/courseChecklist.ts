@@ -31,6 +31,15 @@ export interface ItemState {
 
 const SOON_DAYS = 90;
 
+/**
+ * Certificate types that count for a checklist code but that the generated
+ * checklists don't know about. The MCA asks for "an ENG1 (or equivalent)" for a
+ * UK CoC and accepts the STCW seafarer medicals of the MSN 1815 countries instead.
+ */
+const ACCEPTED_INSTEAD: Record<string, string[]> = {
+  eng1: ['accepted_seafarer_medical'],
+};
+
 /** Certificate type a new record for this course is saved under. */
 export function certificateTypeFor(code: string): string {
   return ADD_AS_TYPE[code] ?? `course_${code}`;
@@ -38,7 +47,7 @@ export function certificateTypeFor(code: string): string {
 
 /** Every certificate type that counts as holding this course. */
 export function typesSatisfying(code: string): string[] {
-  return Array.from(new Set([`course_${code}`, ...(LEGACY_CERT_TYPES[code] ?? [])]));
+  return Array.from(new Set([`course_${code}`, ...(LEGACY_CERT_TYPES[code] ?? []), ...(ACCEPTED_INSTEAD[code] ?? [])]));
 }
 
 export function courseLabel(code: string): string {
@@ -90,7 +99,11 @@ export function courseCodeForType(type: string): string | null {
   if (type.startsWith('course_')) return type.slice('course_'.length);
   const added = Object.keys(ADD_AS_TYPE).find((code) => ADD_AS_TYPE[code] === type);
   if (added) return added;
-  return Object.keys(LEGACY_CERT_TYPES).find((code) => LEGACY_CERT_TYPES[code].includes(type)) ?? null;
+  return (
+    Object.keys(LEGACY_CERT_TYPES).find((code) => LEGACY_CERT_TYPES[code].includes(type)) ??
+    Object.keys(ACCEPTED_INSTEAD).find((code) => ACCEPTED_INSTEAD[code].includes(type)) ??
+    null
+  );
 }
 
 /** Codes that are only ever a tick (record books, sign-offs, sights taken at sea). */

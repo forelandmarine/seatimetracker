@@ -24,6 +24,7 @@ export const CERTIFICATE_TYPES = [
   "stcw_proficiency_security",
   // Health
   "eng1_medical",
+  "accepted_seafarer_medical",
   // Communications
   "gmdss_goc",
   "gmdss_roc",
