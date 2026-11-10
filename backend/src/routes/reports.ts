@@ -21,8 +21,9 @@ import { amsaCreditableDays, countDistinctSeaDays, creditedStandbyDays, soleWatc
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { entriesWithIdentity, identityChanges } from '../services/vesselIdentity.js';
-import { entriesWithSoleWatch } from '../services/soleWatch.js';
+import { identityChanges, identityChangesForUserEntries, attachIdentity } from '../services/vesselIdentity.js';
+import { entriesWithIdentityAndSoleWatch } from '../services/entryContext.js';
+import { attachSoleWatch, loadSoleWatchPeriodsForUserEntries } from '../services/soleWatch.js';
 import { identityAsOf } from '../utils/vesselIdentity.js';
 import { trackDistances } from '../services/trackDistance.js';
 import { mcaReportFigures } from '../utils/reportTotals.js';
@@ -34,6 +35,67 @@ const __dirname = path.dirname(__filename);
 const ASSETS_DIR = fs.existsSync(path.join(__dirname, "..", "assets"))
   ? path.join(__dirname, "..", "assets")
   : path.join(__dirname, "assets");
+
+/**
+ * Confirmed entries inside categorised waters: every AIS fix the sea-area
+ * classifier saw during the entry was in a category A to D area (season is only
+ * set on classified fixes). Empty when the lookup fails.
+ */
+async function loadCategorisedEntryIds(app: App, userId: string): Promise<Set<string>> {
+  try {
+    const rows = await app.db.execute(sql`
+      select e.id
+      from sea_time_entries e
+      join ais_checks a on a.vessel_id = e.vessel_id
+        and a.check_time >= e.start_time
+        and a.check_time <= coalesce(e.end_time, e.start_time)
+      where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+      group by e.id
+      having bool_and(a.area_category in ('A', 'B', 'C', 'D'))
+    `);
+    return new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
+  } catch (err) {
+    app.logger.warn({ err }, 'Categorised-water lookup failed; engine figures exclude it');
+    return new Set<string>();
+  }
+}
+
+/**
+ * Classified AIS fixes inside the user's confirmed entries on commercial,
+ * workboat and tug vessels. Empty when the lookup fails.
+ */
+async function loadAreaFixes(app: App, userId: string): Promise<any[]> {
+  try {
+    const rows = await app.db.execute(sql`
+      select distinct a.vessel_id, a.check_time, a.area_category, a.is_tidal, a.latitude, a.longitude
+      from sea_time_entries e
+      join vessels v on v.id = e.vessel_id
+      join ais_checks a on a.vessel_id = e.vessel_id
+        and a.check_time >= e.start_time
+        and a.check_time <= coalesce(e.end_time, e.start_time)
+      where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
+        and (v.is_tug = true or v.is_workboat = true or v.sector = 'commercial')
+    `);
+    return ((rows as any).rows ?? rows).map((r: any) => ({ ...r, vessel_id: String(r.vessel_id) }));
+  } catch (err) {
+    app.logger.warn({ err }, 'Sea-area fix lookup failed; tug and BML figures exclude it');
+    return [];
+  }
+}
+
+/** Earliest Boatmasters' Licence issue date on file, or null (also when the lookup fails). */
+async function loadBmlLicenceIssued(app: App, userId: string): Promise<string | null> {
+  try {
+    const rows = await app.db.execute(sql`
+      select min(issued_date)::text as issued from certificates
+      where user_id = ${userId} and certificate_type in (${sql.join(BML_LICENCE_TYPES.map((t) => sql`${t}`), sql`, `)}) and issued_date is not null
+    `);
+    return (((rows as any).rows ?? rows)[0]?.issued as string | null) ?? null;
+  } catch (err) {
+    app.logger.warn({ err }, 'Boatmasters licence lookup failed; endorsements count from 5 years back');
+    return null;
+  }
+}
 
 export function register(app: App, fastify: FastifyInstance) {
   // GET /api/reports/csv - Generate CSV file of sea time entries with date filtering
@@ -148,10 +210,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
-    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
-    entries = await entriesWithIdentity(app, entries);
-    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
-    entries = await entriesWithSoleWatch(app, entries);
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags),
+    // and sole watchkeeper periods so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithIdentityAndSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -684,16 +745,24 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId, startDate, endDate }, 'Generating summary report for user');
 
-    let entries = await app.db.query.sea_time_entries.findMany({
-      with: {
-        vessel: true,
-      },
-      where: eq(schema.sea_time_entries.user_id, userId),
-    });
-    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
-    entries = await entriesWithIdentity(app, entries);
-    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
-    entries = await entriesWithSoleWatch(app, entries);
+    // Every read below depends only on the user, so they all go to the database
+    // at once: one round trip instead of six in a row.
+    const categorisedPromise = loadCategorisedEntryIds(app, userId);
+    const areaFixesPromise = loadAreaFixes(app, userId);
+    const licencePromise = loadBmlLicenceIssued(app, userId);
+    const [loadedEntries, identity, soleWatchPeriods] = await Promise.all([
+      app.db.query.sea_time_entries.findMany({
+        with: {
+          vessel: true,
+        },
+        where: eq(schema.sea_time_entries.user_id, userId),
+      }),
+      identityChangesForUserEntries(app, userId),
+      loadSoleWatchPeriodsForUserEntries(app, userId),
+    ]);
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags),
+    // and sole watchkeeper periods so isSoleWatchEntry matches each entry by date
+    let entries = attachSoleWatch(attachIdentity(loadedEntries, identity), soleWatchPeriods);
 
     // Filter by date if provided
     if (startDate || endDate) {
@@ -812,22 +881,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // Engine-department gates by propulsion power (MSN 1904, 1857, 1863). An entry
     // is inside categorised waters when every AIS fix the sea-area classifier saw
     // during it was in a category A to D area (season is only set on classified fixes).
-    let categorisedIds = new Set<string>();
-    try {
-      const rows = await app.db.execute(sql`
-        select e.id
-        from sea_time_entries e
-        join ais_checks a on a.vessel_id = e.vessel_id
-          and a.check_time >= e.start_time
-          and a.check_time <= coalesce(e.end_time, e.start_time)
-        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
-        group by e.id
-        having bool_and(a.area_category in ('A', 'B', 'C', 'D'))
-      `);
-      categorisedIds = new Set(((rows as any).rows ?? rows).map((r: any) => String(r.id)));
-    } catch (err) {
-      app.logger.warn({ err }, 'Categorised-water lookup failed; engine figures exclude it');
-    }
+    const categorisedIds = await categorisedPromise;
     const engine_service = engineService(entries as any, categorisedIds);
 
     // Every distinct day aboard in any service type, for routes that state
@@ -840,22 +894,7 @@ export function register(app: App, fastify: FastifyInstance) {
     // Tug deck CoCs (MGN 495) and the Tier 1 Boatmasters' Licence (MSN 1853) need
     // the sea area of each day, from the classified AIS fixes inside the user's
     // confirmed entries. Only commercial, workboat and tug vessels are read.
-    let areaFixes: any[] = [];
-    try {
-      const rows = await app.db.execute(sql`
-        select distinct a.vessel_id, a.check_time, a.area_category, a.is_tidal, a.latitude, a.longitude
-        from sea_time_entries e
-        join vessels v on v.id = e.vessel_id
-        join ais_checks a on a.vessel_id = e.vessel_id
-          and a.check_time >= e.start_time
-          and a.check_time <= coalesce(e.end_time, e.start_time)
-        where e.user_id = ${userId} and e.status = 'confirmed' and a.season is not null
-          and (v.is_tug = true or v.is_workboat = true or v.sector = 'commercial')
-      `);
-      areaFixes = ((rows as any).rows ?? rows).map((r: any) => ({ ...r, vessel_id: String(r.vessel_id) }));
-    } catch (err) {
-      app.logger.warn({ err }, 'Sea-area fix lookup failed; tug and BML figures exclude it');
-    }
+    const areaFixes = await areaFixesPromise;
     const tug_service = tugService(entries as any, areaFixes);
     const classifier = getSeaAreaClassifier();
     const boatmaster_service = boatmasterService(
@@ -866,16 +905,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     // Boatmasters' Licence endorsements and the Port of London LKE count service
     // after the licence, so read the earliest licence the user has on file.
-    let licenceIssued: string | null = null;
-    try {
-      const rows = await app.db.execute(sql`
-        select min(issued_date)::text as issued from certificates
-        where user_id = ${userId} and certificate_type in (${sql.join(BML_LICENCE_TYPES.map((t) => sql`${t}`), sql`, `)}) and issued_date is not null
-      `);
-      licenceIssued = (((rows as any).rows ?? rows)[0]?.issued as string | null) ?? null;
-    } catch (err) {
-      app.logger.warn({ err }, 'Boatmasters licence lookup failed; endorsements count from 5 years back');
-    }
+    const licenceIssued = await licencePromise;
     const bml_endorsements = boatmasterEndorsements(entries as any, areaFixes, licenceIssued);
 
     // Near coastal or unlimited days (MSN 1856 s.5) from the same classified fixes, commercial vessels only
@@ -964,9 +994,9 @@ export function register(app: App, fastify: FastifyInstance) {
       with: { vessel: true },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
-    entries = await entriesWithIdentity(app, entries);
-    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
-    entries = await entriesWithSoleWatch(app, entries);
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags),
+    // and sole watchkeeper periods so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithIdentityAndSoleWatch(app, entries);
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
@@ -1177,10 +1207,9 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       where: eq(schema.sea_time_entries.user_id, userId),
     });
-    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags)
-    entries = await entriesWithIdentity(app, entries);
-    // Sole watchkeeper periods, so isSoleWatchEntry matches each entry by date
-    entries = await entriesWithSoleWatch(app, entries);
+    // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags),
+    // and sole watchkeeper periods so isSoleWatchEntry matches each entry by date
+    entries = await entriesWithIdentityAndSoleWatch(app, entries);
 
     // Filter by date if provided
     if (startDate || endDate) {

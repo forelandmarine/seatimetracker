@@ -246,11 +246,21 @@ export interface Availability {
   latest_import: ReturnType<typeof importSummary> | null;
 }
 
+/**
+ * Both results, read at the same time. If either fails, the first one's error
+ * is thrown, as it would have been reading them one after the other.
+ */
+async function inOrder<A, B>(a: Promise<A>, b: Promise<B>): Promise<[A, B]> {
+  const [ra, rb] = await Promise.allSettled([a, b]);
+  if (ra.status === 'rejected') throw ra.reason;
+  if (rb.status === 'rejected') throw rb.reason;
+  return [ra.value, rb.value];
+}
+
 export async function availability(app: App, userId: string, vesselId: string): Promise<Availability> {
-  const user = await activeUser(app, userId);
-  const vessel = await ownedVessel(app, userId, vesselId);
-  const start = await trackingStartDay(app, vessel);
-  const latest = await latestImport(app, userId, vesselId);
+  // Read in two round trips rather than four; a missing user still wins over a missing vessel
+  const [user, vessel] = await inOrder(activeUser(app, userId), ownedVessel(app, userId, vesselId));
+  const [start, latest] = await Promise.all([trackingStartDay(app, vessel), latestImport(app, userId, vesselId)]);
 
   const probeDays = PROBE_MONTHS.map((m) => monthsBefore(start, m));
   const cache = await cachedDays(app, vessel.mmsi, probeDays[0], start);

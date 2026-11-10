@@ -3,7 +3,7 @@ import { eq, and, isNull, isNotNull, desc, lte, gte, notInArray, inArray, or } f
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
-import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { extractUserIdFromRequest, findSession } from '../middleware/auth.js';
 import { CHECKING_CONFIRM_ERROR, CHECKING_STATUS, HIDDEN_ENTRY_STATUSES } from "../utils/passageRefinement.js";
 import {
   calculateDurationHours,
@@ -19,7 +19,7 @@ import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } f
 import { formatHoursMinutes } from "../utils/duration.js";
 import { enrichEntryClassification } from "../utils/seaAreas/enrichEntry.js";
 import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift, shiftDistanceNm, shiftMileageTotals } from "../services/shifts.js";
-import { entriesWithSoleWatch } from "../services/soleWatch.js";
+import { attachSoleWatch, loadSoleWatchPeriods, loadSoleWatchPeriodsForUserEntries } from "../services/soleWatch.js";
 import { SIGNATURE_CLEARED, changesSignedFields, entrySignatureView } from "../utils/entrySignature.js";
 
 // Validate certificate belongs to the authenticated user
@@ -306,20 +306,24 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId }, 'Retrieving sea time entries for user');
 
-    const entries = await app.db.query.sea_time_entries.findMany({
-      with: {
-        vessel: true,
-      },
-      // Passages logged while the user was off board stay hidden until claimed
-      where: and(
-        eq(schema.sea_time_entries.user_id, userId),
-        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
-      ),
-      orderBy: desc(schema.sea_time_entries.start_time),
-    });
+    // Entries and their vessels' sole watchkeeper periods in one round trip
+    const [entries, soleWatchPeriods] = await Promise.all([
+      app.db.query.sea_time_entries.findMany({
+        with: {
+          vessel: true,
+        },
+        // Passages logged while the user was off board stay hidden until claimed
+        where: and(
+          eq(schema.sea_time_entries.user_id, userId),
+          notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
+        ),
+        orderBy: desc(schema.sea_time_entries.start_time),
+      }),
+      loadSoleWatchPeriodsForUserEntries(app, userId),
+    ]);
 
     app.logger.info({ userId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send(attachSoleWatch(entries, soleWatchPeriods).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/:id - Get a single sea time entry by ID
@@ -513,10 +517,26 @@ export function register(app: App, fastify: FastifyInstance) {
     app.logger.info({ userId, vesselId }, 'Fetching sea time entries for vessel');
 
     // Verify vessel exists and belongs to user
-    const vessel = await app.db
-      .select()
-      .from(schema.vessels)
-      .where(eq(schema.vessels.id, vesselId));
+    // The vessel, its entries and its sole watchkeeper periods in one round trip;
+    // the entries are only sent once the vessel is confirmed to be the user's.
+    const [vessel, entries, soleWatchPeriods] = await Promise.all([
+      app.db
+        .select()
+        .from(schema.vessels)
+        .where(eq(schema.vessels.id, vesselId)),
+      // Get all sea time entries for the vessel, ordered by most recent first
+      app.db.query.sea_time_entries.findMany({
+        where: and(
+          eq(schema.sea_time_entries.vessel_id, vesselId),
+          notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
+        ),
+        with: {
+          vessel: true,
+        },
+        orderBy: desc(schema.sea_time_entries.start_time),
+      }),
+      loadSoleWatchPeriods(app, [vesselId]),
+    ]);
 
     if (vessel.length === 0) {
       app.logger.warn({ userId, vesselId }, 'Vessel not found');
@@ -529,20 +549,8 @@ export function register(app: App, fastify: FastifyInstance) {
       return reply.code(403).send({ error: 'Not authorized to access this vessel' });
     }
 
-    // Get all sea time entries for the vessel, ordered by most recent first
-    const entries = await app.db.query.sea_time_entries.findMany({
-      where: and(
-        eq(schema.sea_time_entries.vessel_id, vesselId),
-        notInArray(schema.sea_time_entries.status, HIDDEN_ENTRY_STATUSES)
-      ),
-      with: {
-        vessel: true,
-      },
-      orderBy: desc(schema.sea_time_entries.start_time),
-    });
-
     app.logger.info({ userId, vesselId, count: entries.length }, 'Sea time entries retrieved');
-    return reply.code(200).send((await entriesWithSoleWatch(app, entries)).map(transformSeaTimeEntryForResponse));
+    return reply.code(200).send(attachSoleWatch(entries, soleWatchPeriods).map(transformSeaTimeEntryForResponse));
   });
 
   // GET /api/sea-time/pending - Return pending entries awaiting confirmation
@@ -1475,17 +1483,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find user session
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({}, 'Invalid token for generate samples');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {
@@ -1950,17 +1955,14 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     // Find user session
-    const sessions = await app.db
-      .select()
-      .from(authSchema.session)
-      .where(eq(authSchema.session.token, token));
+    const foundSession = await findSession(app, token);
 
-    if (sessions.length === 0) {
+    if (!foundSession) {
       app.logger.warn({}, 'Invalid token for manual entry creation');
       return reply.code(401).send({ error: 'Invalid or expired token' });
     }
 
-    const session = sessions[0];
+    const session = foundSession;
 
     // Check if session is expired
     if (session.expiresAt < new Date()) {
