@@ -167,6 +167,14 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('Small Ships Navigation & Radar')).toBeNull();
     expect(matchCourseCode('Navigation & Radar (OOW) Yacht')).toBe('oow_yachts_nav_radar');
   });
+  it('never maps a refresher to the full course', () => {
+    expect(matchCourseCode('Refresher Training For Medical First Aid [RMFA]')).toBeNull();
+    expect(matchCourseCode('Refresher Training For Proficiency In PST [RPST]')).toBeNull();
+    expect(matchCourseCode('Updating Proficiency in Survival Craft and Rescue Boats (RPSCRB)')).toBe('pscrb_refresher');
+    expect(matchCourseCode('GWO Working at Heights Refresher')).toBeNull();
+    expect(matchCourseCode('GWO Basic Safety Training Refresher (BSTR)')).toBe('gwo_bst_refresher');
+    expect(matchCourseCode('GWO BST Refresher')).toBe('gwo_bst_refresher');
+  });
   it('leaves skipper refreshers and mile builders unmapped', () => {
     expect(matchCourseCode('5 DAY SKIPPER REFRESHER COURSE')).toBeNull();
     expect(matchCourseCode('Coastal Skipper Mile Builder')).toBeNull();

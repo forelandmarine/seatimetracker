@@ -4,13 +4,16 @@
 const RULES: [RegExp, string | null][] = [
   // Restricted PSCRB is a narrower certificate than PSCRB or PSCRB (other than lifeboats).
   [/(pscrb|survival craft)[^|]*restricted|restricted[^|]*(pscrb|survival craft)/i, null],
-  [/(pscrb|survival craft).*(refresher|update)|(refresher|updated?|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],
-  [/advanced? fire ?fighting.*(refresher|update|revalidation)|(refresher|updated?|revalidation)\b.*advanced? fire ?fighting|advanced fire.*(refresher|update)/i, 'aff_refresher'],
-  [/gwo.*(refresher|bstr)/i, 'gwo_bst_refresher'],
-  [/medical care.*(refresher|update)|(refresher|updated?|revalidation)\b.*medical care/i, 'medical_care_refresher'],
+  [/(pscrb|survival craft).*(refresher|update)|(refresher|updat(?:ed?|ing)|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],
+  [/advanced? fire ?fighting.*(refresher|update|revalidation)|(refresher|updat(?:ed?|ing)|revalidation)\b.*advanced? fire ?fighting|advanced fire.*(refresher|update)/i, 'aff_refresher'],
+  [/gwo[^|]*(basic safety[^|]*refresher|\bbstr\b|\bbst\b[^|]*refresher)/i, 'gwo_bst_refresher'],
+  [/medical care.*(refresher|update)|(refresher|updat(?:ed?|ing)|revalidation)\b.*medical care/i, 'medical_care_refresher'],
   [/(basic|bst).*(refresher|update|revalidation)|(refresher|update|revalidation).*basic/i, 'stcw_basic_refresher'],
   // "Updated proficiency in fire prevention and fire fighting and personal survival techniques"
-  [/(refresher|updated?|revalidation)\b.*(fire prevention.*personal survival|personal survival.*fire prevention)/i, 'stcw_basic_refresher'],
+  [/(refresher|updat(?:ed?|ing)|revalidation)\b.*(fire prevention.*personal survival|personal survival.*fire prevention)/i, 'stcw_basic_refresher'],
+  // Any other refresher (PST, MFA, a single GWO module) has no app course of its own:
+  // don't let it fall through to the full course below.
+  [/\b(refresher|updating|revalidation)\b|\bupdated? (proficiency|training)/i, null],
   [/(pscrb|survival craft).*(other than lifeboat|otl)|pscrb.?otl/i, 'pscrb_otl'],
   [/pscrb|survival craft and rescue boat|cop\s*sc\s*&?\s*rb/i, 'pscrb'],
   [/fast rescue boat/i, 'frb'],
