@@ -233,7 +233,7 @@ const COURSE_SEARCH_WORDS: Record<string, string> = {
   oow_yachts_gsk: 'oow 3000 oow3000 yacht gsk',
   oow_yachts_nav_radar: 'oow 3000 oow3000 yacht nav',
   oow_yachts_oral_prep: 'oow 3000 oow3000 yacht',
-  wbc3_nav_radar: 'nav workboat ctvskipper ctvmaster',
+  wbc3_nav_radar: 'nav workboat code ctvskipper ctvmaster',
   wbc3_stability: 'workboat ctvskipper ctvmaster',
   aec1: 'aec yacht engineer y4 meol small vessel sv ctvengineer workboat',
   aec2: 'aec yacht engineer y4 meol small vessel sv ctvengineer workboat',
