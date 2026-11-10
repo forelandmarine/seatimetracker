@@ -18,6 +18,9 @@ import * as Location from 'expo-location';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import ProviderMap from '@/components/ProviderMap';
+import MedicalAlternativesCard from '@/components/MedicalAlternativesCard';
+import { useTranslation } from 'react-i18next';
+import { medicalAlternatives, queryWithout } from '@/utils/medicalAlternatives';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
 import { localDate, todayIso } from '@/utils/localDate';
@@ -58,6 +61,7 @@ export default function TrainingProvidersScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ course?: string }>();
   const isDark = useColorScheme() === 'dark';
+  const { t } = useTranslation();
   const styles = createStyles(isDark);
   const miles = usesMiles();
   // The user's maritime authority's country (MCA = GB) picks which Falmouth a
@@ -99,10 +103,26 @@ export default function TrainingProvidersScreen() {
   }, [providers, initialCourse]);
 
   const radiusKm = RADII_KM[radiusIdx];
-  const hits = useMemo(
-    () => searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry }),
-    [directory, query, course, sector, approval, origin, radiusKm, homeCountry],
+  // A medical search ("eng1", "seafarer medical Norway") also shows the medicals
+  // accepted instead of an ENG1 there, and the one the user's own authority asks for.
+  const medical = useMemo(
+    () => (providers ? medicalAlternatives(directory, { query, course, authority, origin, homeCountry }) : null),
+    [providers, directory, query, course, authority, origin, homeCountry],
   );
+  const hits = useMemo(() => {
+    const found = searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry });
+    // A country with no providers at all ("eng1 Iceland"): list the ENG1 doctors elsewhere.
+    if (found.length || !medical?.countryWords.length) return found;
+    return searchProviders(directory, {
+      query: queryWithout(query, medical.countryWords),
+      course,
+      sector,
+      approval,
+      origin,
+      radiusKm: origin ? radiusKm : null,
+      homeCountry,
+    });
+  }, [directory, query, course, sector, approval, origin, radiusKm, homeCountry, medical]);
   // When the authority filter leaves nothing, say how many other providers match.
   const otherApprovals = useMemo(
     () =>
@@ -310,6 +330,12 @@ export default function TrainingProvidersScreen() {
           </TouchableOpacity>
         </View>
       )}
+      {medical?.lead && !showMap && (
+        <>
+          <MedicalAlternativesCard data={medical} authority={authority} />
+          {hits.length > 0 && <Text style={styles.section}>{t('medicalAlt.doctorsTitle')}</Text>}
+        </>
+      )}
       {showMap && providers && <ProviderMap hits={hits} origin={origin} onOpen={(id) => router.push({ pathname: '/training-provider/[id]', params: { id, course: course ?? '' } } as any)} />}
     </View>
   );
@@ -344,6 +370,7 @@ export default function TrainingProvidersScreen() {
                   {withoutDates.map((h) => <View key={h.provider.id}>{renderHit({ item: h })}</View>)}
                 </>
               )}
+              {medical && !medical.lead && <MedicalAlternativesCard data={medical} authority={authority} />}
               <Text style={styles.footnote}>
                 {directory.length.toLocaleString()} providers listed from MCA, USCG, AMSA, Maritime NZ, SAMSA, RYA, IYT, GWO and OPITO
                 registers and providers' own sites. Check approval and dates with the provider before booking.

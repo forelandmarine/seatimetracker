@@ -535,6 +535,8 @@ const EXTRA_PLACES: Record<string, [number, number]> = {
   'great yarmouth': [52.6, 1.73],
   hull: [53.74, -0.33],
   aberdeen: [57.15, -2.1],
+  genoa: [44.41, 8.93],
+  genova: [44.41, 8.93],
 };
 
 // Pathway checklists and the provider directory came from separate research and
@@ -830,6 +832,8 @@ interface Parsed {
   place: { lat: number; lng: number } | null;
   /** The words taken as the place, kept so "Warsash" still finds Warsash Maritime School. */
   placeWords: string[];
+  /** Country of that place ('' for a crew place such as "Solent"). */
+  placeCountry: string;
   /** Makes very common words optional; false when there were none to relax. */
   relax: () => boolean;
 }
@@ -845,6 +849,7 @@ function parseQuery(q: string, ix: Index, homeCountry: string | null | undefined
   });
   let place: Parsed['place'] = null;
   let placeWords: string[] = [];
+  let placeCountry = '';
   const meaningful = tokens.filter((t) => !FILLER.has(t)).length;
   outer: for (let n = 3; n >= 1; n--) {
     for (let i = 0; i + n <= tokens.length; i++) {
@@ -857,6 +862,7 @@ function parseQuery(q: string, ix: Index, homeCountry: string | null | undefined
       const home = hits.find((h) => h.country && h.country === homeCountry?.toUpperCase());
       const best = home ?? hits.reduce((a, b) => (b.n > a.n ? b : a));
       place = { lat: best.lat, lng: best.lng };
+      placeCountry = best.country;
       placeWords = tokens.slice(i, i + n);
       tokens = [...tokens.slice(0, i), ...tokens.slice(i + n)];
       break outer;
@@ -878,8 +884,38 @@ function parseQuery(q: string, ix: Index, homeCountry: string | null | undefined
     terms: tokens.length && !words.length ? [] : terms,
     place,
     placeWords,
+    placeCountry,
     relax,
   };
+}
+
+/** The country whose providers sit nearest a point, by the middle of each country's providers. */
+export function nearestCountry(list: Provider[], at: { lat: number; lng: number }): string | null {
+  const ix = indexFor(list);
+  let best: string | null = null;
+  let bestKm = Infinity;
+  for (const p of list) {
+    if (p.lat == null || p.lng == null) continue;
+    const km = haversineKm(at.lat, at.lng, p.lat, p.lng);
+    if (km < bestKm) [best, bestKm] = [p.country, km];
+  }
+  // A point far from every provider (mid ocean) says nothing about a country.
+  return best && bestKm <= 500 && ix.centres.has(best) ? best : null;
+}
+
+/**
+ * The town, region or country typed in a search, as a country code, and the
+ * words taken as it. Null when the query names no place.
+ */
+export function queryPlaceCountry(
+  list: Provider[],
+  query: string,
+  homeCountry?: string | null,
+): { country: string | null; words: string[] } | null {
+  const ix = indexFor(list);
+  const { place, placeWords, placeCountry } = parseQuery(query, ix, homeCountry);
+  if (!place) return null;
+  return { country: placeCountry || nearestCountry(list, place), words: placeWords };
 }
 
 function termInDoc(t: Term, d: Doc): number {

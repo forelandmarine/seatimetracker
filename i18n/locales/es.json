@@ -427,5 +427,43 @@
     "highSpeedBody": "En una embarcación de alta velocidad el capitán necesita al menos el RYA/MCA Advanced Powerboat Certificate, obtenido en una embarcación de alta velocidad.",
     "highSpeedHeld": "Advanced Powerboat registrado.",
     "highSpeedMissing": "No hay certificado Advanced Powerboat registrado."
+  },
+  "medicalAlt": {
+    "sectionTitle": "También aceptado en lugar del ENG1",
+    "authorityTitle": "Reconocimiento médico para {{authority}}",
+    "leadIntro": "No hay ningún médico aprobado por la MCA en {{country}}. Puedes usar esto en lugar de un ENG1.",
+    "doctorsTitle": "Médicos ENG1 (aprobados por la MCA)",
+    "neededFor": "Necesario para los certificados de {{authority}}.",
+    "acceptedMca": "Aceptado por la MCA en buques con bandera del Reino Unido. Consulta con tu Estado de abanderamiento.",
+    "flags": "Los buques de Caimán, Islas Marshall e Isla de Man también aceptan certificados médicos STCW de otros países.",
+    "source": "Fuente: {{source}}",
+    "findDoctor": "Buscar un médico",
+    "allCountries": "Ver los 43 países que acepta la MCA",
+    "names": {
+      "national": "Certificado médico de gente de mar de {{country}}",
+      "amsa": "Certificado de aptitud médica de AMSA (formulario 303)",
+      "mnz": "Certificado de aptitud médica de Maritime NZ",
+      "samsa": "Certificado médico de gente de mar de SAMSA",
+      "tc": "Certificado médico marítimo de Transport Canada",
+      "ml5": "Reconocimiento ML5 (MSF 4112)",
+      "uscg": "Certificado médico de la USCG"
+    },
+    "how": {
+      "national": "Lo hace un médico aprobado por la autoridad marítima de {{country}}. Pídeles la lista.",
+      "amsa": "Lo hace un inspector médico aprobado por AMSA. El primero debe hacerse en Australia.",
+      "mnz": "Lo hace un médico aprobado por Maritime NZ para STCW. Válido 2 años.",
+      "samsa": "Lo hace un médico aprobado por SAMSA.",
+      "tc": "Lo hace un examinador médico marítimo de Transport Canada. Antes necesitas un Candidate Document Number.",
+      "ml5": "Puede hacerlo cualquier médico registrado en el GMC. No hace falta un médico aprobado.",
+      "uscg": "Examen por un MD, DO, PA o NP con licencia en EE. UU. en el formulario CG-719K. Lo emite el National Maritime Center."
+    },
+    "notes": {
+      "malta": "Solo si el examen se hizo en Malta, con un médico con licencia del Malta Medical Council.",
+      "bermuda": "Solo si lo emite un médico designado por Carnival Corporation.",
+      "norway": "Noruega tiene médicos aprobados en otros países. Recibes un certificado noruego, no un ENG1.",
+      "netherlands": "Países Bajos tiene médicos aprobados en otros países. Recibes un certificado neerlandés, no un ENG1.",
+      "ml5": "Para pequeños buques comerciales del Reino Unido de menos de 24 m, hasta 60 millas de un refugio, y algunos trabajos nacionales y de pesca. No es válido según STCW ni MLC. Dura hasta 5 años.",
+      "uscg": "Necesario para las credenciales de la USCG. No está en la lista de la MCA, así que no sustituye al ENG1."
+    }
   }
 }
