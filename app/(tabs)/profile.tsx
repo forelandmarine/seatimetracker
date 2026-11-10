@@ -12,7 +12,7 @@ import {
   getServiceDefinitionsHeading,
   RECORD_BOOK_LABELS,
 } from '@/constants/mcaRequirements';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { authorityUsesRecordBook, getRecordBookFlag, setRecordBookFlag } from '@/utils/recordBook';
@@ -592,6 +592,8 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
+  // Whether the profile and summary are on screen (saved copy or fresh)
+  const shownRef = useRef({ profile: false, summary: false });
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [reportTemplate, setReportTemplate] = useState<'mca' | 'uscg' | 'mnz' | 'amsa' | 'generic'>('mca');
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -651,6 +653,7 @@ export default function ProfileScreen() {
     try {
       const data = await seaTimeApi.getUserProfile();
       log('User profile loaded successfully:', data?.email);
+      shownRef.current.profile = true;
       setProfile(data);
       // A server value wins; otherwise the setting falls back to this device.
       setHasRecordBook(await getRecordBookFlag((data as any)?.has_record_book));
@@ -685,6 +688,7 @@ export default function ProfileScreen() {
     try {
       const data = await seaTimeApi.getReportSummary();
       log('Sea time summary loaded successfully');
+      shownRef.current.summary = true;
       setSummary(data);
       setSummaryVersion((v) => v + 1);
       setLoadingSummary(false);
@@ -723,11 +727,37 @@ export default function ProfileScreen() {
     }
   }, []);
 
+  // First open: draw the copies saved last time while the fresh ones load
+  const showSavedCopies = useCallback(async () => {
+    const [savedProfile, savedSummary, savedVessels] = await Promise.all([
+      seaTimeApi.getCachedForScreen<UserProfile>('profile'),
+      seaTimeApi.getCachedForScreen<SeaTimeSummary>('summary'),
+      seaTimeApi.getCachedForScreen<Vessel[]>('vessels'),
+    ]).catch(() => [null, null, null] as const);
+    if (savedProfile && !shownRef.current.profile) {
+      shownRef.current.profile = true;
+      setProfile(savedProfile);
+      setLoading(false);
+      if (savedVessels) setVessels((current) => (current.length ? current : savedVessels));
+    }
+    if (savedSummary && !shownRef.current.summary) {
+      shownRef.current.summary = true;
+      setSummary(savedSummary);
+      setSummaryVersion((v) => v + 1);
+      setLoadingSummary(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       log('ProfileScreen: Screen focused, loading data in parallel');
-      setLoading(true);
-      setLoadingSummary(true);
+      // Spinners only until there is something to show; after that the
+      // screen stays as it is and updates when the fresh data arrives
+      if (!shownRef.current.profile) {
+        setLoading(true);
+        void showSavedCopies();
+      }
+      if (!shownRef.current.summary) setLoadingSummary(true);
       Promise.all([
         loadProfile(),
         loadSummary(),
@@ -736,7 +766,7 @@ export default function ProfileScreen() {
       ]).catch(error => {
         logError('Failed to load profile data:', error);
       });
-    }, [loadProfile, loadSummary, loadVessels, checkBiometricStatus])
+    }, [loadProfile, loadSummary, loadVessels, checkBiometricStatus, showSavedCopies])
   );
 
   useEffect(() => {

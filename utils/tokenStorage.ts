@@ -12,6 +12,7 @@
 import { Platform } from 'react-native';
 
 import { error as logError } from '@/utils/log';
+import { clearScreenCache } from '@/utils/screenCache';
 
 const TOKEN_KEY = 'seatime_auth_token';
 
@@ -19,6 +20,10 @@ const TOKEN_KEY = 'seatime_auth_token';
 // In-memory token (used when rememberMe=false)
 // ---------------------------------------------------------------------------
 let inMemoryToken: string | null = null;
+
+// Copy of the saved token after the first read, so each API call doesn't go back
+// to the keychain / keystore (undefined = not read yet this launch)
+let savedTokenCopy: string | null | undefined = undefined;
 
 // ---------------------------------------------------------------------------
 // 401 callback — registered by AuthContext so API utils can trigger sign-out
@@ -56,8 +61,11 @@ export async function getToken(): Promise<string | null> {
       return localStorage.getItem(TOKEN_KEY);
     }
 
+    if (savedTokenCopy !== undefined) return savedTokenCopy;
     const SecureStore = await import('expo-secure-store');
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    savedTokenCopy = token;
+    return token;
   } catch (error) {
     logError('[tokenStorage] Error getting token:', error);
     return null;
@@ -82,8 +90,11 @@ export async function setToken(token: string, persist: boolean = true): Promise<
       return;
     }
 
+    // Forget the old copy first, so a failed write can't leave a stale token in use
+    savedTokenCopy = undefined;
     const SecureStore = await import('expo-secure-store');
     await SecureStore.setItemAsync(TOKEN_KEY, token);
+    savedTokenCopy = token;
   } catch (error) {
     logError('[tokenStorage] Error storing token:', error);
     throw error;
@@ -93,6 +104,9 @@ export async function setToken(token: string, persist: boolean = true): Promise<
 export async function removeToken(): Promise<void> {
   // Always clear in-memory token
   inMemoryToken = null;
+  savedTokenCopy = null;
+  // The last account's lists, kept for instant display, go with the sign-in
+  void clearScreenCache();
 
   try {
     if (Platform.OS === 'web') {

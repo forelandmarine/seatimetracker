@@ -9,8 +9,7 @@ import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
-import { entriesWithIdentity } from "../services/vesselIdentity.js";
-import { entriesWithSoleWatch } from "../services/soleWatch.js";
+import { entriesWithIdentityAndSoleWatch } from "../services/entryContext.js";
 import { withCurrentSignatures } from "../utils/entrySignature.js";
 import {
   ANNEX_C_CAPACITIES,
@@ -546,8 +545,9 @@ export async function loadTestimonialBlocks(app: App, userId: string, vesselId?:
   });
   if (vesselId) entries = entries.filter((e) => e.vessel_id === vesselId);
   // Name and flag as they were on each entry's day; sole watchkeeper periods by date
-  entries = await entriesWithIdentity(app, entries);
-  entries = await entriesWithSoleWatch(app, entries);
+  // Name, flag, MMSI and call sign as they were on each entry's day (renames, reflags),
+  // and sole watchkeeper periods so isSoleWatchEntry matches each entry by date
+  entries = await entriesWithIdentityAndSoleWatch(app, entries);
   // Only signatures that still match their entry go on the testimonial
   entries = withCurrentSignatures(entries);
 

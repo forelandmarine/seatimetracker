@@ -3,7 +3,7 @@ import { eq, inArray, desc, and } from "drizzle-orm";
 import * as schema from "../db/schema.js";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
-import { extractUserIdFromRequest, verifyVesselOwnership } from "../middleware/auth.js";
+import { extractUserIdFromRequest, verifyVesselOwnership, findSession } from '../middleware/auth.js';
 import { fetchVesselAISDataWithFallback, fetchVesselSpecs, fetchVesselAISDataByImo, applyMmsiChange } from "./ais.js";
 import { VesselIdentityError, answerPendingName, renameFromDetails } from "../services/vesselIdentity.js";
 import { lookupPort } from "../utils/portDatabase.js";
@@ -1608,17 +1608,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find user session
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({ vesselId: id }, 'Invalid token for vessel particulars update');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {

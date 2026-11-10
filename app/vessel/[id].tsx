@@ -147,10 +147,13 @@ export default function VesselDetailScreen() {
         seaTimeApi.getReportSummary().catch(() => null),
       ]);
       setSummary(summaryData);
+      setSeaTimeEntries(seaTimeData);
 
       const currentVessel = vesselsData.find((v: Vessel) => v.id === vesselId);
       if (currentVessel) {
         setVessel(currentVessel);
+        // Show the vessel and its entries now; the AIS position fills in behind them
+        setLoading(false);
         
         // Only fetch AIS location if vessel is active
         if (currentVessel.is_active) {
@@ -209,7 +212,6 @@ export default function VesselDetailScreen() {
         }
       }
 
-      setSeaTimeEntries(seaTimeData);
       log('[VesselDetail] Data loaded successfully');
     } catch (error: any) {
       logError('[VesselDetail] Failed to load data:', error);

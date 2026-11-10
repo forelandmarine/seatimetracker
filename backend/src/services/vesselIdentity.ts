@@ -11,7 +11,7 @@
  * never against what the user typed, so "SY Lionheart" vs "LIONHEART" is not a change.
  */
 
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { sendPushToUser } from '../utils/push.js';
@@ -166,10 +166,31 @@ export async function renameFromDetails(app: App, vessel: Vessel, newName: strin
 
 export async function identityChanges(app: App, vesselIds: string[]) {
   if (!vesselIds.length) return new Map<string, IdentityChange[]>();
+  return readChanges(app, inArray(schema.vessel_identity_changes.vessel_id, vesselIds));
+}
+
+/**
+ * identityChanges for every vessel the user has entries on, without waiting for
+ * the entries first, so a route can read both in one round trip.
+ */
+export async function identityChangesForUserEntries(app: App, userId: string) {
+  return readChanges(
+    app,
+    inArray(
+      schema.vessel_identity_changes.vessel_id,
+      app.db
+        .selectDistinct({ id: schema.sea_time_entries.vessel_id })
+        .from(schema.sea_time_entries)
+        .where(eq(schema.sea_time_entries.user_id, userId))
+    )
+  );
+}
+
+async function readChanges(app: App, where: SQL) {
   const rows = await app.db
     .select()
     .from(schema.vessel_identity_changes)
-    .where(inArray(schema.vessel_identity_changes.vessel_id, vesselIds))
+    .where(where)
     .orderBy(asc(schema.vessel_identity_changes.effective_date));
   const out = new Map<string, IdentityChange[]>();
   for (const r of rows) {
@@ -188,7 +209,14 @@ export async function entriesWithIdentity<E extends { vessel_id: string; start_t
   app: App,
   entries: E[]
 ): Promise<(E & { identity_period: string })[]> {
-  const changes = await identityChanges(app, [...new Set(entries.map((e) => e.vessel_id))]);
+  return attachIdentity(entries, await identityChanges(app, [...new Set(entries.map((e) => e.vessel_id))]));
+}
+
+/** entriesWithIdentity with the vessels' identity changes already loaded. */
+export function attachIdentity<E extends { vessel_id: string; start_time: Date | string; vessel?: any }>(
+  entries: E[],
+  changes: Map<string, IdentityChange[]>
+): (E & { identity_period: string })[] {
   return entries.map((e) => {
     const list = changes.get(e.vessel_id) ?? [];
     const on = new Date(e.start_time).toISOString().slice(0, 10);

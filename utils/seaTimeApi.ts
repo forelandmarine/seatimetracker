@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { getToken, notifyUnauthorized } from '@/utils/tokenStorage';
+import { readScreenCache, writeScreenCache, type ScreenCacheKey } from '@/utils/screenCache';
 import { log, error } from '@/utils/log';
 
 export const API_BASE_URL =
@@ -142,6 +143,11 @@ export const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): 
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true });
 
+  // A change on the server means a GET already on its way may be out of date,
+  // so later reads must not join it (see shareInFlight)
+  const isRead = method === 'GET' || method === 'HEAD';
+  if (!isRead) inFlight.clear();
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method,
@@ -151,6 +157,7 @@ export const authFetch = async (endpoint: string, opts: AuthFetchOptions = {}): 
     });
 
     clearTimeout(timeoutId);
+    if (!isRead) inFlight.clear();
 
     if (response.status === 401) {
       notifyUnauthorized();
@@ -184,13 +191,54 @@ const getFetchOptions = async (method: string = 'GET') => ({ method, headers: aw
 const check401 = (response: Response) => { if (response.status === 401) notifyUnauthorized(); };
 
 // ---------------------------------------------------------------------------
+// Shared reads for the main screens
+// ---------------------------------------------------------------------------
+
+// Identical GETs already on their way (several tabs refreshing at once after a
+// change) share one request. Later callers get their own copy of a list.
+const inFlight = new Map<string, Promise<any>>();
+
+function shareInFlight<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const running = inFlight.get(key);
+  if (running) return running.then((d) => (Array.isArray(d) ? ([...d] as unknown as T) : d));
+  const p = load().finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+/** Fetch, then keep a copy on the phone for the next time the screen opens. */
+async function loadAndRemember<T>(key: ScreenCacheKey, load: () => Promise<T>): Promise<T> {
+  const data = await shareInFlight(key, load);
+  writeScreenCache(key, await getToken(), data);
+  return data;
+}
+
+/**
+ * The last copy of a main list saved for this sign-in, or null. Screens draw it
+ * at once on first open, then replace it with the fresh copy.
+ */
+export const getCachedForScreen = async <T = any>(key: ScreenCacheKey): Promise<T | null> =>
+  readScreenCache<T>(key, await getToken());
+
+// Returning to Home asks AIS for a fresh position, but not again within this
+// time of the last one (pull to refresh and the refresh button always do).
+const AIS_FOCUS_REFRESH_MS = 10 * 60 * 1000;
+
+/** True when this vessel had a fresh AIS check from this phone in the last few minutes. */
+export const recentlyCheckedAIS = async (vesselId: string): Promise<boolean> => {
+  const last = await getLastQueryTime(vesselId);
+  return !!last && Date.now() - last.getTime() < AIS_FOCUS_REFRESH_MS;
+};
+
+// ---------------------------------------------------------------------------
 // API functions — all use authFetch for consistent auth + error handling
 // ---------------------------------------------------------------------------
 
-export const getUserProfile = async () => {
-  const res = await authFetch('/api/profile');
-  return res.json();
-};
+export const getUserProfile = async () =>
+  loadAndRemember('profile', async () => {
+    const res = await authFetch('/api/profile');
+    return res.json();
+  });
 
 export const updateUserProfile = async (updates: {
   name?: string;
@@ -228,11 +276,12 @@ export const uploadProfileImage = async (imageUri: string) => {
   return res.json();
 };
 
-export const getVessels = async () => {
-  const res = await authFetch('/api/vessels');
-  const data = await res.json();
-  return data.map(normalizeVessel);
-};
+export const getVessels = async () =>
+  loadAndRemember('vessels', async () => {
+    const res = await authFetch('/api/vessels');
+    const data = await res.json();
+    return data.map(normalizeVessel);
+  });
 
 // MMSI = Maritime Mobile Service Identity, always exactly 9 digits. A short
 // MMSI (e.g. 8 digits with a dropped trailing zero) is never found on AIS, so
@@ -686,11 +735,12 @@ export const getAISDebugLogs = async (vesselId: string) => {
   return res.json();
 };
 
-export const getSeaTimeEntries = async () => {
-  const res = await authFetch('/api/sea-time');
-  const data = await res.json();
-  return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
-};
+export const getSeaTimeEntries = async () =>
+  loadAndRemember('sea-time', async () => {
+    const res = await authFetch('/api/sea-time');
+    const data = await res.json();
+    return data.map((entry: any) => ({ ...entry, vessel: normalizeVessel(entry.vessel) }));
+  });
 
 /**
  * Entries awaiting review. With includeChecking, also live passages still being
@@ -1057,8 +1107,12 @@ export const getUnredeemedHistoryPurchases = async (): Promise<{
 /** Summary of confirmed sea time; `startDate` (YYYY-MM-DD) counts only entries from that day. */
 export const getReportSummary = async (params?: { startDate?: string }) => {
   const query = params?.startDate ? `?startDate=${encodeURIComponent(params.startDate)}` : '';
-  const res = await authFetch(`/api/reports/summary${query}`);
-  return res.json();
+  const load = async () => {
+    const res = await authFetch(`/api/reports/summary${query}`);
+    return res.json();
+  };
+  // Only the all-time summary is shared and kept for instant display
+  return query ? load() : loadAndRemember('summary', load);
 };
 
 export const downloadCSVReport = async () => {

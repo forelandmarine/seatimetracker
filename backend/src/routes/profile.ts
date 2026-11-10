@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import type { App } from "../index.js";
 import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
-import { extractUserIdFromRequest } from "../middleware/auth.js";
+import { extractUserIdFromRequest, findSession } from '../middleware/auth.js';
 import { isDeletableProfileImage, isOwnProfileImage } from "../utils/profileImage.js";
 
 export function register(app: App, fastify: FastifyInstance) {
@@ -64,17 +64,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find session by token
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({}, 'Invalid token for profile request');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {
@@ -241,17 +238,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find session by token
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({}, 'Invalid token for profile update');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {
@@ -547,17 +541,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find session by token
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({}, 'Invalid token for department update');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {
@@ -665,17 +656,14 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       // Find session by token
-      const sessions = await app.db
-        .select()
-        .from(authSchema.session)
-        .where(eq(authSchema.session.token, token));
+      const foundSession = await findSession(app, token);
 
-      if (sessions.length === 0) {
+      if (!foundSession) {
         app.logger.warn({}, 'Invalid token for profile image upload');
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
 
-      const session = sessions[0];
+      const session = foundSession;
 
       // Check if session is expired
       if (session.expiresAt < new Date()) {

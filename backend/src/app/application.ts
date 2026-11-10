@@ -11,6 +11,8 @@ import Fastify, { FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import postgres from 'postgres';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -19,6 +21,10 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { bearer } from 'better-auth/plugins';
 
 const DATABASE_URL = process.env.DATABASE_URL;
+
+const gzipAsync = promisify(gzip);
+// Below this a gzip header costs about what it saves
+const GZIP_MIN_BYTES = 1024;
 
 // Profile images are re-signed on every profile fetch, so a day is plenty.
 const SIGNED_URL_TTL_SECONDS = 24 * 60 * 60;
@@ -260,6 +266,26 @@ export class Application<TSchema extends Record<string, unknown> = Record<string
       const origin = request.headers.origin || '*';
       reply.header('Access-Control-Allow-Origin', origin);
       reply.header('Access-Control-Allow-Credentials', 'true');
+    });
+
+    // Gzip JSON and text responses. Entry lists and the course directory are
+    // 100 to 300 kB of repetitive JSON, which shrinks by about 90%, so phones on
+    // ship Wi-Fi or a weak mobile signal get them several times faster. Both
+    // platforms' HTTP stacks (OkHttp, NSURLSession) ask for gzip and unpack it.
+    fastify.addHook('onSend', async (request, reply, payload) => {
+      if (request.method === 'HEAD') return payload;
+      if (typeof payload !== 'string' && !Buffer.isBuffer(payload)) return payload;
+      if (Buffer.byteLength(payload as string | Buffer) < GZIP_MIN_BYTES) return payload;
+      if (reply.getHeader('content-encoding')) return payload;
+      const accept = String(request.headers['accept-encoding'] ?? '');
+      if (!/\bgzip\b/i.test(accept)) return payload;
+      const type = String(reply.getHeader('content-type') ?? '');
+      if (!/json|text|javascript|xml|csv/i.test(type)) return payload;
+      const zipped = await gzipAsync(payload as string | Buffer, { level: 6 });
+      reply.header('content-encoding', 'gzip');
+      reply.header('vary', 'Accept-Encoding');
+      reply.removeHeader('content-length');
+      return zipped;
     });
 
     // Plugins

@@ -1697,11 +1697,34 @@ export function register(app: App, fastify: FastifyInstance) {
 
     app.logger.info({ userId, vesselId }, 'Fetching AIS status for vessel');
 
-    // Verify vessel exists and belongs to user
-    const vessel = await app.db
-      .select()
-      .from(schema.vessels)
-      .where(eq(schema.vessels.id, vesselId));
+    // The vessel and its checks in one round trip; the checks are only sent once
+    // the vessel is confirmed to be the user's.
+    const twenty_four_hours_ago = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [vessel, latest_check, recent_checks] = await Promise.all([
+      app.db
+        .select()
+        .from(schema.vessels)
+        .where(eq(schema.vessels.id, vesselId)),
+      // Get latest check
+      app.db
+        .select()
+        .from(schema.ais_checks)
+        .where(eq(schema.ais_checks.vessel_id, vesselId))
+        .orderBy(desc(schema.ais_checks.check_time))
+        .limit(1),
+      // Get recent checks (last 24 hours, max 50)
+      app.db
+        .select()
+        .from(schema.ais_checks)
+        .where(
+          and(
+            eq(schema.ais_checks.vessel_id, vesselId),
+            gte(schema.ais_checks.check_time, twenty_four_hours_ago)
+          )
+        )
+        .orderBy(desc(schema.ais_checks.check_time))
+        .limit(50),
+    ]);
 
     if (vessel.length === 0) {
       app.logger.warn({ userId, vesselId }, 'Vessel not found for AIS status');
@@ -1713,28 +1736,6 @@ export function register(app: App, fastify: FastifyInstance) {
       app.logger.warn({ userId, vesselId }, 'Unauthorized AIS status access attempt');
       return reply.code(403).send({ error: 'Not authorized to access this vessel' });
     }
-
-    // Get latest check
-    const latest_check = await app.db
-      .select()
-      .from(schema.ais_checks)
-      .where(eq(schema.ais_checks.vessel_id, vesselId))
-      .orderBy(desc(schema.ais_checks.check_time))
-      .limit(1);
-
-    // Get recent checks (last 24 hours, max 50)
-    const twenty_four_hours_ago = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recent_checks = await app.db
-      .select()
-      .from(schema.ais_checks)
-      .where(
-        and(
-          eq(schema.ais_checks.vessel_id, vesselId),
-          gte(schema.ais_checks.check_time, twenty_four_hours_ago)
-        )
-      )
-      .orderBy(desc(schema.ais_checks.check_time))
-      .limit(50);
 
     app.logger.info({ userId, vesselId, checksCount: recent_checks.length }, 'AIS status retrieved');
 

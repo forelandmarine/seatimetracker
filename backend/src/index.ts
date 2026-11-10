@@ -4,6 +4,7 @@ import { logger } from './app/logger.js';
 import * as schema from './db/schema.js';
 import * as authSchema from './db/auth-schema.js';
 import { initSentry } from './utils/sentry.js';
+import { registerSessionCacheInvalidation } from './middleware/auth.js';
 
 // Initialize Sentry as early as possible. Safe no-op when not configured.
 initSentry();
@@ -74,6 +75,9 @@ if (process.env.AWS_S3_BUCKET || process.env.STORAGE_API_BASE_URL) {
 }
 
 app.withAuth();
+
+// Cached session lookups are dropped after sign out, password changes and account deletion
+registerSessionCacheInvalidation(app.fastify);
 
 // Export App type for use in route files
 export type App = typeof app;

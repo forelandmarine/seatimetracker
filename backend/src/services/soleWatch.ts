@@ -8,7 +8,7 @@
  * If the periods table is missing (backend deployed before the manual SQL),
  * loading returns null and the old flag keeps working as before.
  */
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { getCalendarDay, isSoleWatchEntry } from '../utils/seaTime.js';
@@ -25,14 +25,36 @@ export function todayUtc(now: Date = new Date()): string {
 
 /** Periods per vessel id, or null when the table cannot be read. */
 export async function loadSoleWatchPeriods(app: App, vesselIds: string[]): Promise<Map<string, StoredSoleWatchPeriod[]> | null> {
-  const out = new Map<string, StoredSoleWatchPeriod[]>();
   const ids = [...new Set(vesselIds.filter(Boolean))];
-  if (!ids.length) return out;
+  if (!ids.length) return new Map<string, StoredSoleWatchPeriod[]>();
+  return readPeriods(app, inArray(schema.vessel_sole_watch_periods.vessel_id, ids));
+}
+
+/**
+ * Periods for every vessel the user has entries on, without waiting for the
+ * entries first, so a route can read both in one round trip. Covers the same
+ * vessels as loadSoleWatchPeriods(app, entries.map((e) => e.vessel_id)).
+ */
+export async function loadSoleWatchPeriodsForUserEntries(app: App, userId: string): Promise<Map<string, StoredSoleWatchPeriod[]> | null> {
+  return readPeriods(
+    app,
+    inArray(
+      schema.vessel_sole_watch_periods.vessel_id,
+      app.db
+        .selectDistinct({ id: schema.sea_time_entries.vessel_id })
+        .from(schema.sea_time_entries)
+        .where(eq(schema.sea_time_entries.user_id, userId))
+    )
+  );
+}
+
+async function readPeriods(app: App, where: SQL | undefined): Promise<Map<string, StoredSoleWatchPeriod[]> | null> {
+  const out = new Map<string, StoredSoleWatchPeriod[]>();
   try {
     const rows = await app.db
       .select()
       .from(schema.vessel_sole_watch_periods)
-      .where(inArray(schema.vessel_sole_watch_periods.vessel_id, ids))
+      .where(where)
       .orderBy(asc(schema.vessel_sole_watch_periods.start_date));
     for (const r of rows) {
       const list = out.get(r.vessel_id) ?? [];
@@ -55,7 +77,14 @@ export async function entriesWithSoleWatch<E extends { vessel_id: string; start_
   app: App,
   entries: E[]
 ): Promise<(E & { is_sole_watch: boolean })[]> {
-  const periods = await loadSoleWatchPeriods(app, entries.map((e) => e.vessel_id));
+  return attachSoleWatch(entries, await loadSoleWatchPeriods(app, entries.map((e) => e.vessel_id)));
+}
+
+/** entriesWithSoleWatch with periods already loaded (null: table unreadable, use the vessel flag). */
+export function attachSoleWatch<E extends { vessel_id: string; start_time: Date | string; service_type?: string | null; vessel?: any }>(
+  entries: E[],
+  periods: Map<string, StoredSoleWatchPeriod[]> | null
+): (E & { is_sole_watch: boolean })[] {
   return entries.map((e) => {
     const vessel = periods && e.vessel ? { ...e.vessel, sole_watch_periods: periods.get(e.vessel_id) ?? [] } : e.vessel;
     const withPeriods = { ...e, vessel };
