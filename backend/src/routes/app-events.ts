@@ -19,6 +19,9 @@ export const APP_EVENTS = new Set([
   "vessel_lookup",      // detail: number of matches (0-5) or error
   "vessel_confirmed",   // picked a lookup match
   "vessel_added",       // detail: lookup | manual
+  "history_offer_shown", // AIS history import offered (detail: home | profile)
+  "history_opened",     // history import screen opened (detail: entry point)
+  "history_purchased",  // detail: <entry point>:<6m|12m>
 ]);
 
 const perIp = new Map<string, { at: number; n: number }>();
