@@ -1,11 +1,16 @@
 // Maps a provider's course title to the app's course codes (constants/courseCatalog.ts
 // in the app). Order matters: refreshers and specific courses before the general ones.
-const RULES: [RegExp, string][] = [
-  [/(pscrb|survival craft).*(refresher|update)/i, 'pscrb_refresher'],
-  [/advanced fire.*(refresher|update)/i, 'aff_refresher'],
+// A null code means "deliberately not mapped": no app course matches it closely enough.
+const RULES: [RegExp, string | null][] = [
+  // Restricted PSCRB is a narrower certificate than PSCRB or PSCRB (other than lifeboats).
+  [/(pscrb|survival craft)[^|]*restricted|restricted[^|]*(pscrb|survival craft)/i, null],
+  [/(pscrb|survival craft).*(refresher|update)|(refresher|updated?|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],
+  [/advanced fire.*(refresher|update)|(refresher|updated?|revalidation)\b.*advanced fire/i, 'aff_refresher'],
   [/gwo.*(refresher|bstr)/i, 'gwo_bst_refresher'],
-  [/medical care.*(refresher|update)/i, 'medical_care_refresher'],
+  [/medical care.*(refresher|update)|(refresher|updated?|revalidation)\b.*medical care/i, 'medical_care_refresher'],
   [/(basic|bst).*(refresher|update)|(refresher|update).*basic/i, 'stcw_basic_refresher'],
+  // "Updated proficiency in fire prevention and fire fighting and personal survival techniques"
+  [/(refresher|updated?|revalidation)\b.*(fire prevention.*personal survival|personal survival.*fire prevention)/i, 'stcw_basic_refresher'],
   [/(pscrb|survival craft).*(other than lifeboat|otl)|pscrb.?otl/i, 'pscrb_otl'],
   [/pscrb|survival craft and rescue boat|cop\s*sc\s*&?\s*rb/i, 'pscrb'],
   [/fast rescue boat/i, 'frb'],
@@ -20,6 +25,9 @@ const RULES: [RegExp, string][] = [
   [/ship security officer|\bsso\b/i, 'sso'],
   [/security awareness|\bpsa\b/i, 'psa'],
   [/ecdis/i, 'ecdis'],
+  // "Human Element Leadership & Management (Operational Level) - HELM (O)": the level decides.
+  [/helm\s*\(m\)|human element[^|]*management level/i, 'helm_mgmt'],
+  [/helm\s*\(o\)|human element[^|]*operational level/i, 'helm_op'],
   [/helm.*manag/i, 'helm_mgmt'],
   [/helm.*oper|\bhelm\b/i, 'helm_op'],
   [/naest.*manag/i, 'naest_mgmt'],

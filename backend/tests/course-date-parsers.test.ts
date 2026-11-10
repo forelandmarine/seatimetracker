@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'bun:test';
+import { matchCourseCode } from '../src/utils/courseMatch.js';
 import { firstDateSpan, parseHtml, parseIcs, parseTribe, tribeNextPage, priceInText, availabilityInText, htmlText } from '../src/services/courseDateParsers.js';
 
 describe('firstDateSpan', () => {
@@ -128,5 +129,20 @@ describe('parseHtml', () => {
     ]);
     const titled = '<div class="ev">Venue: PST House | Course: Advanced Fire Fighting | 9 Jun 2099</div>';
     expect(parseHtml(titled, 'https://x.test', { block: '<div class="ev"', title: 'Course: ([^|]+)' })[0].course_code).toBe('aff');
+  });
+});
+
+describe('matchCourseCode 2.5.0 additions', () => {
+  it('reads "Updated proficiency in ..." as the matching refresher', () => {
+    expect(matchCourseCode('Updated Proficiency In Fire Prevention And Fire Fighting And Personal Survival Techniques')).toBe('stcw_basic_refresher');
+    expect(matchCourseCode('Updated Proficiency In Advanced Fire Fighting')).toBe('aff_refresher');
+    expect(matchCourseCode('Updated Proficiency In Medical Care')).toBe('medical_care_refresher');
+    expect(matchCourseCode('Updated Proficiency In Survival Craft And Rescue Boats Other Than Fast Rescue Boats')).toBe('pscrb_refresher');
+  });
+  it('keeps restricted PSCRB unmapped and reads HELM levels', () => {
+    expect(matchCourseCode('Proficiency In Survival Craft And Rescue Boats Other Than Fast Rescue Boats (Restricted)')).toBeNull();
+    expect(matchCourseCode('HUMAN ELEMENT LEADERSHIP & MANAGEMENT (Management Level) - HELM (M)')).toBe('helm_mgmt');
+    expect(matchCourseCode('HUMAN ELEMENT LEADERSHIP & MANAGEMENT (Operational Level) - HELM (O)')).toBe('helm_op');
+    expect(matchCourseCode('Proficiency in Survival Craft and Rescue Boats')).toBe('pscrb');
   });
 });
