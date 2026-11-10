@@ -31,7 +31,7 @@ import {
 import * as Sharing from 'expo-sharing';
 import { colors } from '@/styles/commonStyles';
 import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as seaTimeApi from '@/utils/seaTimeApi';
@@ -480,6 +480,8 @@ export default function ProfileScreen() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
+  // Whether the profile and summary are on screen (saved copy or fresh)
+  const shownRef = useRef({ profile: false, summary: false });
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -502,6 +504,7 @@ export default function ProfileScreen() {
     try {
       const data = await seaTimeApi.getUserProfile();
       log('User profile loaded successfully:', data?.email);
+      shownRef.current.profile = true;
       setProfile(data);
       // A server value wins; otherwise the setting falls back to this device.
       setHasRecordBook(await getRecordBookFlag((data as any)?.has_record_book));
@@ -534,6 +537,7 @@ export default function ProfileScreen() {
     try {
       const data = await seaTimeApi.getReportSummary();
       log('Sea time summary loaded successfully');
+      shownRef.current.summary = true;
       setSummary(data);
       setSummaryVersion((v) => v + 1);
       setLoadingSummary(false);
@@ -581,11 +585,33 @@ export default function ProfileScreen() {
     }
   }, []);
 
+  // First open: draw the copies saved last time while the fresh ones load
+  const showSavedCopies = useCallback(async () => {
+    const [savedProfile, savedSummary, savedVessels] = await Promise.all([
+      seaTimeApi.getCachedForScreen<UserProfile>('profile'),
+      seaTimeApi.getCachedForScreen<SeaTimeSummary>('summary'),
+      seaTimeApi.getCachedForScreen<Vessel[]>('vessels'),
+    ]).catch(() => [null, null, null] as const);
+    if (savedProfile && !shownRef.current.profile) {
+      shownRef.current.profile = true;
+      setProfile(savedProfile);
+      setLoading(false);
+      if (savedVessels) setVessels((current) => (current.length ? current : savedVessels));
+    }
+    if (savedSummary && !shownRef.current.summary) {
+      shownRef.current.summary = true;
+      setSummary(savedSummary);
+      setSummaryVersion((v) => v + 1);
+      setLoadingSummary(false);
+    }
+  }, []);
+
   // Reload on focus as Android does, so a target or route changed on the
   // requirements screen shows here without a pull to refresh.
   useFocusEffect(
     useCallback(() => {
       log('ProfileScreen (iOS): Screen focused, loading data in parallel');
+      if (!shownRef.current.profile) void showSavedCopies();
       Promise.all([
         loadProfile(),
         loadSummary(),
@@ -594,7 +620,7 @@ export default function ProfileScreen() {
       ]).catch(error => {
         logError('Failed to load profile data:', error);
       });
-    }, [loadProfile, loadSummary, loadVessels, loadCertificates])
+    }, [loadProfile, loadSummary, loadVessels, loadCertificates, showSavedCopies])
   );
 
   useEffect(() => {

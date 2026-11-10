@@ -111,6 +111,8 @@ export default function SeaTimeScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const isMountedRef = React.useRef(true);
+  // Set once the first fresh vessel list has arrived
+  const hasLoadedRef = React.useRef(false);
   React.useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -185,43 +187,52 @@ export default function SeaTimeScreen() {
       setLoadError(null);
       // Revalidation sea service reminders, resynced at most once a day
       void syncRevalidationRemindersDaily();
-      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
+      const freshVessels: Promise<Vessel[]> = seaTimeApi.getVessels();
+      freshVessels.catch(() => {}); // handled by the await below
+      // First open: draw the vessels saved last time while the fresh list loads
+      if (!hasLoadedRef.current) {
+        const saved = await seaTimeApi.getCachedForScreen<Vessel[]>('vessels').catch(() => null);
+        if (saved && !hasLoadedRef.current && isMountedRef.current) {
+          setVessels(saved);
+          setLoading(false);
+        }
+      }
+      const vesselsData: Vessel[] = await freshVessels;
+      hasLoadedRef.current = true;
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
       
       setVessels(vesselsData || []);
       log('[Home] Vessels loaded - Active:', vesselsData.filter(v => v.is_active).length, 'Historic:', vesselsData.filter(v => !v.is_active).length);
+      // Show the vessels now; the position loads behind them
+      setLoading(false);
       
       // Persist active vessel to AsyncStorage for survival across app restarts
       const newActiveVessel = vesselsData.find(v => v.is_active);
       if (newActiveVessel) {
-        try {
-          await AsyncStorage.setItem(ACTIVE_VESSEL_CACHE_KEY, JSON.stringify({
-            vesselId: newActiveVessel.id,
-            vesselName: newActiveVessel.vessel_name,
-            mmsi: newActiveVessel.mmsi,
-            isActive: true,
-            lastUpdated: new Date().toISOString(),
-          }));
-          log('[Home] Active vessel persisted to AsyncStorage:', newActiveVessel.vessel_name);
-        } catch (cacheError) {
-          logError('[Home] Failed to persist active vessel cache:', cacheError);
-        }
+        AsyncStorage.setItem(ACTIVE_VESSEL_CACHE_KEY, JSON.stringify({
+          vesselId: newActiveVessel.id,
+          vesselName: newActiveVessel.vessel_name,
+          mmsi: newActiveVessel.mmsi,
+          isActive: true,
+          lastUpdated: new Date().toISOString(),
+        }))
+          .then(() => log('[Home] Active vessel persisted to AsyncStorage:', newActiveVessel.vessel_name))
+          .catch((cacheError) => logError('[Home] Failed to persist active vessel cache:', cacheError));
 
-        log('[Home] Found active vessel, loading location with FORCE refresh:', newActiveVessel.vessel_name);
-        try {
-          await loadActiveVesselLocation(newActiveVessel.id, true);
-        } catch (locationError: any) {
+        // A fresh AIS check takes a few seconds, so only ask for one when this
+        // phone hasn't had one in the last few minutes
+        const forceRefresh = !(await seaTimeApi.recentlyCheckedAIS(newActiveVessel.id));
+        log('[Home] Found active vessel, loading location in background:', newActiveVessel.vessel_name, 'forceRefresh:', forceRefresh);
+        loadActiveVesselLocation(newActiveVessel.id, forceRefresh).catch((locationError: any) => {
           logError('[Home] Failed to load vessel location (non-critical):', locationError);
           setActiveVesselLocation(null);
-        }
+        });
       } else {
         log('[Home] No active vessel found, clearing location and cache');
         setActiveVesselLocation(null);
-        try {
-          await AsyncStorage.removeItem(ACTIVE_VESSEL_CACHE_KEY);
-        } catch (cacheError) {
+        AsyncStorage.removeItem(ACTIVE_VESSEL_CACHE_KEY).catch((cacheError) => {
           logError('[Home] Failed to clear active vessel cache:', cacheError);
-        }
+        });
       }
     } catch (error: any) {
       logError('[Home] Failed to load data:', error);

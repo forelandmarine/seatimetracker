@@ -1,6 +1,6 @@
 
 import { formatEntryNotes } from '@/utils/entryNotes';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -634,9 +634,28 @@ export default function LogbookScreen() {
     setErrorModal({ visible: true, message });
   };
 
+  // First open: draw the copies saved last time while the fresh ones load
+  const hasLoadedRef = useRef(false);
+  const showSavedCopies = useCallback(async () => {
+    const [savedEntries, savedVessels, savedSummary, savedProfile] = await Promise.all([
+      seaTimeApi.getCachedForScreen<SeaTimeEntry[]>('sea-time'),
+      seaTimeApi.getCachedForScreen<Vessel[]>('vessels'),
+      seaTimeApi.getCachedForScreen<ReportSummaryTotals>('summary'),
+      seaTimeApi.getCachedForScreen<any>('profile'),
+    ]).catch(() => [null, null, null, null] as const);
+    if (hasLoadedRef.current || !savedEntries || !savedVessels) return;
+    setEntries(savedEntries);
+    setVessels(savedVessels);
+    setSummary(savedSummary ?? null);
+    setAuthority(savedProfile?.maritime_authority ?? null);
+    setUserSector(savedProfile?.vessel_sector ?? null);
+    setLoading(false);
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       log('[LogbookScreen] Fetching sea time entries and vessels');
+      if (!hasLoadedRef.current) void showSavedCopies();
       const [entriesData, vesselsData, summaryData, profileData] = await Promise.all([
         seaTimeApi.getSeaTimeEntries(),
         seaTimeApi.getVessels(),
@@ -646,6 +665,7 @@ export default function LogbookScreen() {
       ]);
       log('[LogbookScreen] Received entries:', entriesData.length, 'vessels:', vesselsData.length);
       
+      hasLoadedRef.current = true;
       setEntries(entriesData);
       setVessels(vesselsData);
       setSummary(summaryData);
@@ -658,13 +678,9 @@ export default function LogbookScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [showSavedCopies]);
 
-  useEffect(() => {
-    log('[LogbookScreen] Component mounted, loading data');
-    loadData();
-  }, [loadData]);
-
+  // useFocusEffect also runs on first mount, so it is the only load trigger
   useFocusEffect(
     useCallback(() => {
       log('[LogbookScreen] Screen focused, refreshing data');

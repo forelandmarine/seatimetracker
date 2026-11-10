@@ -115,6 +115,8 @@ export default function SeaTimeScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [nextExpiringCert, setNextExpiringCert] = useState<Certificate | null>(null);
   const isMountedRef = React.useRef(true);
+  // Set once the first fresh vessel list has arrived
+  const hasLoadedRef = React.useRef(false);
   React.useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -203,7 +205,18 @@ export default function SeaTimeScreen() {
       void loadCertificates();
       // Revalidation sea service reminders, resynced at most once a day
       void syncRevalidationRemindersDaily();
-      const vesselsData: Vessel[] = await seaTimeApi.getVessels();
+      const freshVessels: Promise<Vessel[]> = seaTimeApi.getVessels();
+      freshVessels.catch(() => {}); // handled by the await below
+      // First open: draw the vessels saved last time while the fresh list loads
+      if (!hasLoadedRef.current) {
+        const saved = await seaTimeApi.getCachedForScreen<Vessel[]>('vessels').catch(() => null);
+        if (saved && !hasLoadedRef.current && isMountedRef.current) {
+          setVessels(saved);
+          setLoading(false);
+        }
+      }
+      const vesselsData: Vessel[] = await freshVessels;
+      hasLoadedRef.current = true;
       log('[Home] Vessels data received:', vesselsData?.length || 0, 'vessels');
 
       setVessels(vesselsData || []);
@@ -221,8 +234,11 @@ export default function SeaTimeScreen() {
           lastUpdated: new Date().toISOString(),
         })).catch((cacheError) => logError('[Home] Failed to persist active vessel cache:', cacheError));
 
-        log('[Home] Found active vessel, loading location in background:', newActiveVessel.vessel_name);
-        loadActiveVesselLocation(newActiveVessel.id, true).catch((locationError: any) => {
+        // A fresh AIS check takes a few seconds, so only ask for one when this
+        // phone hasn't had one in the last few minutes
+        const forceRefresh = !(await seaTimeApi.recentlyCheckedAIS(newActiveVessel.id));
+        log('[Home] Found active vessel, loading location in background:', newActiveVessel.vessel_name, 'forceRefresh:', forceRefresh);
+        loadActiveVesselLocation(newActiveVessel.id, forceRefresh).catch((locationError: any) => {
           logError('[Home] Failed to load vessel location (non-critical):', locationError);
           setActiveVesselLocation(null);
         });
