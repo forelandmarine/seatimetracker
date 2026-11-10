@@ -63,10 +63,17 @@ export async function readSource(src: DateSource): Promise<ParsedDate[]> {
   }
 }
 
-async function refreshOne(app: App, src: DateSource): Promise<void> {
+// Several providers share one page (a school's sites, an Arlo account): one fetch per run.
+type RunCache = Map<string, Promise<ParsedDate[]>>;
+const sourceKey = (s: DateSource) => `${s.parser}|${s.dates_url}|${JSON.stringify(s.config ?? null)}`;
+
+async function refreshOne(app: App, src: DateSource, cache: RunCache): Promise<boolean> {
   const now = new Date();
+  const key = sourceKey(src);
+  const fetched = !cache.has(key);
+  if (fetched) cache.set(key, readSource(src));
   try {
-    const dates = await readSource(src);
+    const dates = await cache.get(key)!;
     await app.db.transaction(async (tx) => {
       await tx.delete(schema.training_course_dates).where(eq(schema.training_course_dates.provider_id, src.provider_id));
       if (dates.length) {
@@ -80,6 +87,7 @@ async function refreshOne(app: App, src: DateSource): Promise<void> {
     await upsertSource(app, src, { last_run_at: now, last_error: String(err?.message ?? err).slice(0, 300) });
     app.logger.warn({ provider: src.provider_id, err: err?.message }, 'course dates refresh failed');
   }
+  return fetched;
 }
 
 async function upsertSource(app: App, src: DateSource, fields: Partial<typeof schema.training_date_sources.$inferInsert>) {
@@ -101,8 +109,10 @@ export async function refreshDueCourseDates(app: App): Promise<number> {
     .where(inArray(schema.training_date_sources.provider_id, sources.map((s) => s.provider_id)));
   const lastRun = new Map(state.map((s) => [s.provider_id, s.last_run_at?.getTime() ?? 0]));
   const due = sources.filter((s) => Date.now() - (lastRun.get(s.provider_id) ?? 0) > WEEK_MS);
+  const cache: RunCache = new Map();
   for (const src of due) {
-    await refreshOne(app, src);
+    const fetched = await refreshOne(app, src, cache);
+    if (!fetched) continue;
     await new Promise((r) => setTimeout(r, 3000));
   }
   return due.length;
