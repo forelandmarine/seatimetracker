@@ -48,6 +48,11 @@ export interface ProviderFilters {
    * come first.
    */
   homeCountry?: string | null;
+  /**
+   * Providers with an upcoming published date for the chosen course. They rank
+   * a little higher: ahead of equal matches, or as if 25 km closer by distance.
+   */
+  dated?: Set<string> | null;
 }
 
 /** The country each maritime authority issues for, as an ISO region code. */
@@ -983,6 +988,9 @@ export function labelMatches(label: string, code: string, q: string): boolean {
 // The Channel Islands and Isle of Man count as home for UK phones.
 const HOME_GROUPS: Record<string, string[]> = { GB: ['GB', 'JE', 'GG', 'IM'] };
 
+// How much closer a provider with published dates for the course counts as.
+const DATED_KM = 25;
+
 export function searchProviders(list: Provider[], f: ProviderFilters): ProviderHit[] {
   const ix = indexFor(list);
   const hc = f.homeCountry?.toUpperCase();
@@ -1002,6 +1010,7 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
   const { terms, place, placeWords, relax } = parseQuery(f.query, ix, hc);
   const placeAsName = placeWords.length ? placeWords.map((w) => termFor(w, ix.vocab)) : null;
   const courseCodes = f.course ? [f.course, ...(PROVIDER_CODES[f.course] ?? [])] : null;
+  const dated = f.course && f.dated?.size ? f.dated : null;
   // A place typed in the search box wins over the phone's location for ordering.
   const from = place ?? f.origin;
   const run = () => {
@@ -1056,8 +1065,8 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
     if (from) {
       // Distance, with each point of match quality worth 40 km: a full STCW centre
       // 20 km away beats a tanker school next door for "STCW Sydney".
-      const da = a.distanceKm != null ? a.distanceKm - a.score * 40 : null;
-      const db = b.distanceKm != null ? b.distanceKm - b.score * 40 : null;
+      const da = a.distanceKm != null ? a.distanceKm - a.score * 40 - (dated?.has(a.provider.id) ? DATED_KM : 0) : null;
+      const db = b.distanceKm != null ? b.distanceKm - b.score * 40 - (dated?.has(b.provider.id) ? DATED_KM : 0) : null;
       if (da != null && db != null && Math.abs(da - db) >= 1) return da - db;
       if (a.distanceKm != null && b.distanceKm == null) return -1;
       if (b.distanceKm != null && a.distanceKm == null) return 1;
@@ -1066,6 +1075,7 @@ export function searchProviders(list: Provider[], f: ProviderFilters): ProviderH
     return (
       Math.floor(b.score) - Math.floor(a.score) ||
       Number(!home.has(a.provider.country)) - Number(!home.has(b.provider.country)) ||
+      Number(!dated?.has(a.provider.id)) - Number(!dated?.has(b.provider.id)) ||
       b.score - a.score ||
       // Other countries nearest to the user's own first (a UK user sees Ireland before Australia).
       awayFromHome(a.provider) - awayFromHome(b.provider) ||

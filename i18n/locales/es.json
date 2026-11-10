@@ -427,5 +427,9 @@
     "highSpeedBody": "En una embarcación de alta velocidad el capitán necesita al menos el RYA/MCA Advanced Powerboat Certificate, obtenido en una embarcación de alta velocidad.",
     "highSpeedHeld": "Advanced Powerboat registrado.",
     "highSpeedMissing": "No hay certificado Advanced Powerboat registrado."
+  },
+  "findCourse": {
+    "withDates_one": "{{count}} con fechas",
+    "withDates_other": "{{count}} con fechas"
   }
 }

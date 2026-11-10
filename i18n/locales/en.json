@@ -429,5 +429,9 @@
     "highSpeedBody": "On a high-speed craft the master needs at least the RYA/MCA Advanced Powerboat Certificate, taken in a high-speed vessel.",
     "highSpeedHeld": "Advanced Powerboat is on file.",
     "highSpeedMissing": "No Advanced Powerboat certificate on file."
+  },
+  "findCourse": {
+    "withDates_one": "{{count}} with dates",
+    "withDates_other": "{{count}} with dates"
   }
 }
