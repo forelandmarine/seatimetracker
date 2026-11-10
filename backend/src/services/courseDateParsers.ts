@@ -278,42 +278,58 @@ function icsDay(v: string | undefined): string | null {
   return m ? ymd(Number(m[1]), Number(m[2]), Number(m[3])) : null;
 }
 
-/** iCal feed: one ParsedDate per VEVENT whose SUMMARY maps to a course. */
+/** iCal feed: a ParsedDate per run (DTSTART plus any RDATEs) of each VEVENT whose SUMMARY maps to a course. RRULE isn't expanded. */
 export function parseIcs(ics: string, feedUrl: string, course?: string): ParsedDate[] {
   const lines = ics.replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
   const out: ParsedDate[] = [];
   let ev: Record<string, { params: string; value: string }> | null = null;
+  let extra: string[] = [];
+  let skipped = new Set<string>();
   const unescape = (s: string) => s.replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1');
+  const days = (v: string) => v.split(',').map(icsDay).filter((d): d is string => !!d);
+  const shift = (day: string, n: number) => {
+    const d = new Date(`${day}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
   for (const line of lines) {
-    if (line === 'BEGIN:VEVENT') ev = {};
-    else if (line === 'END:VEVENT' && ev) {
+    if (line === 'BEGIN:VEVENT') {
+      ev = {};
+      extra = [];
+      skipped = new Set();
+    } else if (line === 'END:VEVENT' && ev) {
       const summary = unescape(ev.SUMMARY?.value ?? '');
       const code = course ?? matchCourseCode(summary);
       const start = icsDay(ev.DTSTART?.value);
       let end = icsDay(ev.DTEND?.value);
       // An all-day DTEND is exclusive: a course on the 12th to 15th ends DTEND 16th.
-      if (end && (/VALUE=DATE(?!-)/.test(ev.DTEND?.params ?? '') || /^\d{8}$/.test(ev.DTEND?.value ?? ''))) {
-        const d = new Date(`${end}T00:00:00Z`);
-        d.setUTCDate(d.getUTCDate() - 1);
-        end = d.toISOString().slice(0, 10);
-      }
+      if (end && (/VALUE=DATE(?!-)/.test(ev.DTEND?.params ?? '') || /^\d{8}$/.test(ev.DTEND?.value ?? ''))) end = shift(end, -1);
       if (code && start && !/CANCELLED/i.test(ev.STATUS?.value ?? '')) {
         const desc = unescape(ev.DESCRIPTION?.value ?? '');
-        out.push({
-          course_code: code,
-          start_date: start,
-          end_date: end && end !== start ? end : null,
-          price_text: priceInText(desc),
-          availability_text: availabilityInText(summary),
-          booking_url: httpUrl(ev.URL?.value, feedUrl),
-        });
+        const length = end && end > start ? Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) : 0;
+        // RDATE lists further runs of the same course (Event Organiser feeds); EXDATE removes runs.
+        for (const day of [start, ...extra]) {
+          if (skipped.has(day)) continue;
+          out.push({
+            course_code: code,
+            start_date: day,
+            end_date: length ? shift(day, length) : null,
+            price_text: priceInText(desc),
+            availability_text: availabilityInText(summary),
+            booking_url: httpUrl(ev.URL?.value, feedUrl),
+          });
+        }
       }
       ev = null;
     } else if (ev) {
       const m = line.match(/^([A-Z-]+)((?:;[^:]*)?):(.*)$/);
-      if (m && !ev[m[1]]) ev[m[1]] = { params: m[2], value: m[3] };
+      if (!m) continue;
+      if (m[1] === 'RDATE') extra.push(...days(m[3]));
+      else if (m[1] === 'EXDATE') days(m[3]).forEach((d) => skipped.add(d));
+      else if (!ev[m[1]]) ev[m[1]] = { params: m[2], value: m[3] };
     }
   }
+  out.sort((a, b) => a.start_date.localeCompare(b.start_date));
   return upcoming(out);
 }
 

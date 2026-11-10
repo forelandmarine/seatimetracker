@@ -89,6 +89,13 @@ describe('parseIcs', () => {
     expect(d[0]).toMatchObject({ course_code: 'pst', start_date: `${Y}-01-12`, end_date: `${Y}-01-13`, price_text: '£295', booking_url: 'https://example.com/pst' });
     expect(d[1]).toMatchObject({ course_code: 'pscrb', start_date: `${Y}-01-20`, end_date: `${Y}-01-23` });
   });
+  it('adds RDATE runs and drops EXDATE runs', () => {
+    const feed = ['BEGIN:VEVENT', 'SUMMARY: RYA Level 2 Powerboat', 'DTSTART;VALUE=DATE:20010110', 'DTEND;VALUE=DATE:20010112',
+      `RDATE;VALUE=DATE:20010301,${Y}0105,${Y}0210`, `EXDATE;VALUE=DATE:${Y}0210`, `RDATE;VALUE=DATE:${Y}0320`, 'END:VEVENT'].join('\r\n');
+    const d = parseIcs(feed, 'https://x.test/feed/eo-events/');
+    expect(d.map((x) => [x.start_date, x.end_date])).toEqual([[`${Y}-01-05`, `${Y}-01-06`], [`${Y}-03-20`, `${Y}-03-21`]]);
+    expect(d[0].course_code).toBe('powerboat_l2');
+  });
   it('unfolds long lines', () => {
     const folded = `BEGIN:VEVENT\r\nSUMMARY:STCW Elementary\r\n  First Aid\r\nDTSTART:${Y}0301T080000Z\r\nEND:VEVENT`;
     expect(parseIcs(folded, 'https://x.test/f.ics')[0]).toMatchObject({ course_code: 'efa', start_date: `${Y}-03-01` });
