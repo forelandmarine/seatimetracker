@@ -4,13 +4,18 @@ import { router } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import * as seaTimeApi from '@/utils/seaTimeApi';
+import { trackEvent } from '@/utils/appEvents';
 
-function openHistoryImport(vesselId: string, vesselName?: string) {
-  router.push({ pathname: '/history-import', params: { vesselId, vesselName: vesselName ?? '' } } as any);
+/** Where the user opened the import from, for the purchase funnel. */
+export type HistorySource = 'home' | 'profile' | 'settings' | 'vessel' | 'after_add' | 'profile_menu';
+
+export function openHistoryImport(vesselId: string, vesselName?: string, source: HistorySource = 'vessel') {
+  trackEvent('history_opened', source);
+  router.push({ pathname: '/history-import', params: { vesselId, vesselName: vesselName ?? '', source } } as any);
 }
 
 /** Settings/Profile entry point: opens the import for the active vessel (or the only one). */
-export async function openHistoryImportForActiveVessel() {
+export async function openHistoryImportForActiveVessel(source: HistorySource = 'settings') {
   try {
     const vessels: any[] = (await seaTimeApi.getVessels()) || [];
     const vessel = vessels.find((v) => v.is_active) ?? (vessels.length === 1 ? vessels[0] : null);
@@ -23,7 +28,7 @@ export async function openHistoryImportForActiveVessel() {
       );
       return;
     }
-    openHistoryImport(vessel.id, vessel.vessel_name);
+    openHistoryImport(vessel.id, vessel.vessel_name, source);
   } catch {
     Alert.alert('Import past sea time', 'Could not load your vessels. Please try again.');
   }
@@ -36,7 +41,7 @@ export function promptHistoryImport(vesselId: string, vesselName: string, intro?
     `${intro ? intro + '\n\n' : ''}Tracking starts now. We can also look up ${vesselName}'s AIS history and add passages from before today for you to review.`,
     [
       { text: 'Not now', style: 'cancel' },
-      { text: 'See what we can find', onPress: () => openHistoryImport(vesselId, vesselName) },
+      { text: 'See what we can find', onPress: () => openHistoryImport(vesselId, vesselName, 'after_add') },
     ]
   );
 }
@@ -67,9 +72,9 @@ export function HistoryImportRow({ vesselId, vesselName }: { vesselId: string; v
         style={{ marginRight: 10 }}
       />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Import past sea time</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Recover past sea time</Text>
         <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-          Add passages from this vessel's AIS history before you started tracking
+          Add passages from this vessel's AIS history before you started tracking. One-off purchase.
         </Text>
       </View>
       <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={18} color={colors.textSecondary} />

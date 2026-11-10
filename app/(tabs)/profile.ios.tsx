@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useCertRoute } from '@/hooks/useCertRoute';
+import { HistoryImportNudge } from '@/components/HistoryImportOffer';
 import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
@@ -1187,6 +1188,11 @@ export default function ProfileScreen() {
                     })
                   }
                 />
+
+                {(() => {
+                  const offerVessel = vessels.find((v) => v.is_active) ?? (vessels.length === 1 ? vessels[0] : null);
+                  return offerVessel ? <HistoryImportNudge vesselId={offerVessel.id} vesselName={offerVessel.vessel_name} /> : null;
+                })()}
 
                 <AskPathwayButton authority={profile.maritime_authority} isDark={isDark} />
                 <PathwayLinks isDark={isDark} />

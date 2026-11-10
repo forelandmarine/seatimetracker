@@ -52,6 +52,7 @@ import { countryName } from '@/utils/countryCodes';
 
 import { log, error as logError } from '@/utils/log';
 import { promptHistoryImport } from '@/components/HistoryImportRow';
+import { HistoryImportCard } from '@/components/HistoryImportOffer';
 
 const ACTIVE_VESSEL_CACHE_KEY = 'seatime_active_vessel_cache';
 
@@ -595,6 +596,9 @@ export default function SeaTimeScreen() {
         <VesselRenameBanner vessels={vessels} onAnswered={loadData} />
         {/* On/off board switch (rotational crew and leave) */}
         <OnBoardCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
+
+        {/* AIS history import offer (only when history exists and nothing imported yet) */}
+        <HistoryImportCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />
 
         {/* Manual shift clock-in (commercial / CTV crews; self-gates on sector) */}
         <ShiftClockCard vesselId={activeVessel?.id} vesselName={activeVessel?.vessel_name} />

@@ -1,6 +1,7 @@
 
 import { IconSymbol } from '@/components/IconSymbol';
 import { useCertRoute } from '@/hooks/useCertRoute';
+import { HistoryImportNudge } from '@/components/HistoryImportOffer';
 import { CertificationProgress, BoatmasterServiceSummary, CommercialServiceSummary, EngineServiceSummary, TugServiceSummary, WorkboatServiceSummary } from '@/components/CertificationProgress';
 import { AskPathwayButton } from '@/components/AskPathwayButton';
 import { PathwayLinks } from '@/components/PathwayLinks';
@@ -1361,6 +1362,11 @@ export default function ProfileScreen() {
                   }
                 />
 
+                {(() => {
+                  const offerVessel = vessels.find((v) => v.is_active) ?? (vessels.length === 1 ? vessels[0] : null);
+                  return offerVessel ? <HistoryImportNudge vesselId={offerVessel.id} vesselName={offerVessel.vessel_name} /> : null;
+                })()}
+
                 <AskPathwayButton authority={profile.maritime_authority} isDark={isDark} />
                 <PathwayLinks isDark={isDark} />
 
@@ -1625,7 +1631,7 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={openHistoryImportForActiveVessel}
+                onPress={() => openHistoryImportForActiveVessel('profile_menu')}
               >
                 <IconSymbol
                   ios_icon_name="clock.arrow.circlepath"
@@ -1634,7 +1640,7 @@ export default function ProfileScreen() {
                   color={colors.primary}
                   style={styles.menuItemIcon}
                 />
-                <Text style={styles.menuItemText}>Import past sea time</Text>
+                <Text style={styles.menuItemText}>Recover past sea time</Text>
                 <IconSymbol
                   ios_icon_name="chevron.right"
                   android_material_icon_name="arrow-forward"
