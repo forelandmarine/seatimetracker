@@ -190,3 +190,23 @@ describe('parseHtml title and date patterns', () => {
     expect(d).toEqual([expect.objectContaining({ course_code: 'gmdss_roc', start_date: `${Y}-12-15` })]);
   });
 });
+
+describe('parseHtml dates from markup', () => {
+  it('reads Bookwhen agenda rows from data-event', () => {
+    const page = `<tr class="month_title"><td>November</td></tr>
+      <tr data-hook="agenda_list_item" data-event="ev-s34rp-${Y}1101000000"><td class="dom">1</td><td class="summary"><button>RYA Marine Radio VHF - SRC Course</button></td></tr>
+      <tr data-hook="agenda_list_item" data-event="ev-s8p21-${Y}1115090000"><td class="dom">15</td><td class="summary"><button>RYA Sea Survival</button></td></tr>`;
+    const d = parseHtml(page, 'https://bookwhen.com/x', {
+      block: '<tr data-hook="agenda_list_item"',
+      title: 'class="summary">\\s*<button[^>]*>([^<]+)',
+      titleHtml: true,
+      date: 'data-event="ev-[a-z0-9]+-(\\d{4})(\\d{2})(\\d{2})',
+      dateHtml: true,
+    });
+    expect(d).toEqual([expect.objectContaining({ course_code: 'src', start_date: `${Y}-11-01` })]);
+    const cfg = { block: '<tr\\b', skip: 'online' };
+    expect(parseHtml(`<tr><td>SRC (Online Course)</td><td>1 Nov ${Y}</td></tr><tr><td>SRC</td><td>2 Nov ${Y}</td></tr>`, 'https://x.test', cfg)).toEqual([
+      expect.objectContaining({ start_date: `${Y}-11-02` }),
+    ]);
+  });
+});

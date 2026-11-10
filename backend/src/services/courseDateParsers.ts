@@ -21,10 +21,17 @@ export interface HtmlConfig {
   titleHtml?: boolean;
   /** Regex source whose group 1 holds the row's date text (e.g. 'Starts \\| ([^|]+)'); else the whole row. */
   date?: string;
+  /**
+   * Match config.date against the row's raw HTML. With three groups it reads them
+   * as year, month, day (Bookwhen's data-event="ev-xxxx-20261115090000").
+   */
+  dateHtml?: boolean;
   /** Every row is this course (a page per course); skips title matching. */
   course?: string;
   /** Only rows whose text matches this regex source (a venue on a multi-site page). */
   venue?: string;
+  /** Skip rows whose text matches this regex source (e.g. 'online' for rolling e-learning). */
+  skip?: string;
   /** How numeric dates read: 12/01/2027 is 12 Jan (dmy, default) or Dec 1 (mdy). */
   dateOrder?: 'dmy' | 'mdy';
 }
@@ -366,14 +373,16 @@ export function parseHtml(html: string, pageUrl: string, config: HtmlConfig): Pa
   const titleRe = config.title ? new RegExp(config.title, 'i') : null;
   const dateRe = config.date ? new RegExp(config.date, 'i') : null;
   const venueRe = config.venue ? new RegExp(config.venue, 'i') : null;
+  const skipRe = config.skip ? new RegExp(config.skip, 'i') : null;
   const out: ParsedDate[] = [];
   for (const part of parts) {
     const text = htmlText(part).replace(/\n/g, ' | ');
-    if (venueRe && !venueRe.test(text)) continue;
+    if ((venueRe && !venueRe.test(text)) || (skipRe && skipRe.test(text))) continue;
     const title = titleRe ? decodeEntities(titleRe.exec(config.titleHtml ? part : text)?.[1] ?? '') : text;
     const code = config.course ?? (title ? matchCourseCode(title) : null);
     if (!code) continue;
-    const dateText = dateRe ? dateRe.exec(text)?.[1] ?? '' : text;
+    const dm = dateRe ? dateRe.exec(config.dateHtml ? part : text) : null;
+    const dateText = !dateRe ? text : dm?.[3] ? `${dm[1]}-${dm[2]}-${dm[3]}` : dm?.[1] ?? '';
     const span = dateText ? firstDateSpan(dateText, config.dateOrder ?? 'dmy') : null;
     if (!span) continue;
     const href = part.match(/<a\b[^>]*href=["']([^"'#][^"']*)["']/i)?.[1];
