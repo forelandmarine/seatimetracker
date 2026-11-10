@@ -166,6 +166,15 @@ export function register(app: App, fastify: FastifyInstance) {
         }
       }
 
+      // Days abroad stays and settings (2.5.0). After the commit and outside the
+      // transaction, so a database without these tables yet cannot block a deletion.
+      try {
+        await app.db.delete(schema.presence_stays).where(eq(schema.presence_stays.user_id, userId));
+        await app.db.delete(schema.presence_settings).where(eq(schema.presence_settings.user_id, userId));
+      } catch (error) {
+        app.logger.warn({ userId, err: error }, 'Failed to delete days abroad data after account deletion');
+      }
+
       app.logger.info({ userId }, 'Account deletion completed successfully');
       return reply.code(204).send();
     } catch (error) {
