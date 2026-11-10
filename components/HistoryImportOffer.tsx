@@ -22,6 +22,11 @@ const SNOOZE_MS = 21 * 86_400_000;
 const MAX_DISMISSALS = 2;
 const MIN_GAP_DAYS = 14;
 
+// Brand blue is too dim for small text on dark cards (about 3.3:1); this lighter
+// blue reads at about 5.6:1 on cardBackground.
+const DARK_TEXT_BLUE = '#2E9BE0';
+const textBlue = (isDark: boolean) => (isDark ? DARK_TEXT_BLUE : colors.primary);
+
 const offerKey = (vesselId: string) => `history_offer_v1_${vesselId}`;
 const dismissKey = (vesselId: string) => `history_offer_dismiss_v1_${vesselId}`;
 
@@ -115,7 +120,8 @@ interface Props {
 
 /** Home screen card for the active vessel. "Not now" hides it for 21 days, twice at most. */
 export function HistoryImportCard({ vesselId, vesselName }: Props) {
-  const styles = createStyles(useColorScheme() === 'dark');
+  const isDark = useColorScheme() === 'dark';
+  const styles = createStyles(isDark);
   const offer = useHistoryOffer(vesselId);
   const [hidden, setHidden] = useState(true);
   const [price, setPrice] = useState<string | null>(null);
@@ -161,7 +167,7 @@ export function HistoryImportCard({ vesselId, vesselName }: Props) {
     <View style={styles.card}>
       <View style={styles.row}>
         <View style={styles.iconWrap}>
-          <IconSymbol ios_icon_name="clock.arrow.circlepath" android_material_icon_name="history" size={22} color={colors.primary} />
+          <IconSymbol ios_icon_name="clock.arrow.circlepath" android_material_icon_name="history" size={22} color={textBlue(isDark)} />
         </View>
         <View style={styles.textCol}>
           <Text style={styles.title}>Recover sea time from before you started tracking</Text>
@@ -190,7 +196,8 @@ export function HistoryImportCard({ vesselId, vesselName }: Props) {
 
 /** One line under Certification Progress, while the offer stands. */
 export function HistoryImportNudge({ vesselId, vesselName }: Props) {
-  const styles = createStyles(useColorScheme() === 'dark');
+  const isDark = useColorScheme() === 'dark';
+  const styles = createStyles(isDark);
   const offer = useHistoryOffer(vesselId);
 
   useEffect(() => {
@@ -205,7 +212,7 @@ export function HistoryImportNudge({ vesselId, vesselName }: Props) {
       activeOpacity={0.7}
       accessibilityRole="button"
     >
-      <IconSymbol ios_icon_name="clock.arrow.circlepath" android_material_icon_name="history" size={20} color={colors.primary} />
+      <IconSymbol ios_icon_name="clock.arrow.circlepath" android_material_icon_name="history" size={20} color={textBlue(isDark)} />
       <View style={styles.textCol}>
         <Text style={styles.nudgeTitle}>Short on days? Recover sea time from before {dayMonth(offer.trackingStartDay)}</Text>
         <Text style={styles.nudgeBody}>
@@ -235,15 +242,15 @@ const createStyles = (isDark: boolean) =>
       borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary + '18',
+      backgroundColor: colors.primary + (isDark ? '30' : '18'),
     },
     textCol: { flex: 1 },
     title: { fontSize: 16, fontWeight: '700', color: isDark ? colors.text : colors.textLight },
     body: { fontSize: 13, lineHeight: 18, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 4 },
-    price: { fontSize: 13, fontWeight: '600', color: colors.primary, marginTop: 6 },
+    price: { fontSize: 13, fontWeight: '600', color: textBlue(isDark), marginTop: 6 },
     buttons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 },
     ghost: { paddingVertical: 8, paddingHorizontal: 12 },
-    ghostText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+    ghostText: { fontSize: 14, fontWeight: '600', color: textBlue(isDark) },
     primary: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, backgroundColor: colors.primary },
     primaryText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
     nudge: {
@@ -253,10 +260,10 @@ const createStyles = (isDark: boolean) =>
       marginTop: 12,
       padding: 12,
       borderRadius: 10,
-      backgroundColor: colors.primary + '12',
+      backgroundColor: colors.primary + (isDark ? '1F' : '12'),
       borderWidth: 1,
-      borderColor: colors.primary + '30',
+      borderColor: colors.primary + (isDark ? '55' : '30'),
     },
-    nudgeTitle: { fontSize: 14, fontWeight: '600', color: colors.primary },
+    nudgeTitle: { fontSize: 14, fontWeight: '600', color: textBlue(isDark) },
     nudgeBody: { fontSize: 12, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginTop: 2 },
   });
