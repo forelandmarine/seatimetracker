@@ -18,7 +18,7 @@ import {
 import { MANUAL_SHIFT_NOTE_PREFIX, MAX_SHIFT_HOURS, UUID_RE, resolveShiftEnd } from "../utils/shifts.js";
 import { formatHoursMinutes } from "../utils/duration.js";
 import { enrichEntryClassification } from "../utils/seaAreas/enrichEntry.js";
-import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift } from "../services/shifts.js";
+import { closeOpenAisPassages, dedupeOpenShifts, findOpenShift, rejectAisPassagesCoveredByShift, shiftDistanceNm, shiftMileageTotals } from "../services/shifts.js";
 import { entriesWithSoleWatch } from "../services/soleWatch.js";
 import { SIGNATURE_CLEARED, changesSignedFields, entrySignatureView } from "../utils/entrySignature.js";
 
@@ -2205,6 +2205,7 @@ export function register(app: App, fastify: FastifyInstance) {
     status: e.status,
     start_latitude: e.start_latitude,
     start_longitude: e.start_longitude,
+    distance_nm: e.distance_nm != null ? Number(e.distance_nm) : null,
   });
 
   // Current open shift for the user, or null.
@@ -2212,7 +2213,16 @@ export function register(app: App, fastify: FastifyInstance) {
     const userId = await extractUserIdFromRequest(request, app);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
     const active = await findOpenShift(app, userId);
-    return reply.code(200).send({ shift: active ? shiftResponse(active) : null, max_shift_hours: MAX_SHIFT_HOURS });
+    // Miles so far on the open shift (AIS track since clock-in) and over all logged shifts.
+    const [milesSoFar, totals] = await Promise.all([
+      active ? shiftDistanceNm(app, userId, active, new Date(), 0) : Promise.resolve(null),
+      shiftMileageTotals(app, userId),
+    ]);
+    return reply.code(200).send({
+      shift: active ? { ...shiftResponse(active), distance_nm: milesSoFar } : null,
+      max_shift_hours: MAX_SHIFT_HOURS,
+      mileage: totals,
+    });
   });
 
   // Clock in: start a shift. Idempotent: returns the existing open shift if one exists.
@@ -2312,15 +2322,17 @@ export function register(app: App, fastify: FastifyInstance) {
       const endLon = backDated ? null : longitude;
 
       const durationHours = calculateDurationHours(active.start_time, end);
-      let distanceNm = 0;
+      let straightNm = 0;
       if (active.start_latitude != null && active.start_longitude != null && endLat != null && endLon != null) {
-        distanceNm = calculateDistanceNauticalMiles(
+        straightNm = calculateDistanceNauticalMiles(
           parseFloat(String(active.start_latitude)),
           parseFloat(String(active.start_longitude)),
           Number(endLat),
           Number(endLon),
         );
       }
+      // The vessel's AIS track while clocked in, not just clock-in to clock-out.
+      const distanceNm = await shiftDistanceNm(app, userId, active, end, straightNm);
       const [updated] = await app.db
         .update(schema.sea_time_entries)
         .set({
@@ -2342,7 +2354,7 @@ export function register(app: App, fastify: FastifyInstance) {
       await enrichEntryClassification(app, updated);
       const rejected = await rejectAisPassagesCoveredByShift(app, userId, active.start_time, end);
       app.logger.info({ userId, entryId: active.id, durationHours, rejectedAisPassages: rejected }, 'Shift clock-out');
-      return reply.code(200).send({ shift: shiftResponse(updated), durationHours, sea_days: updated.sea_days });
+      return reply.code(200).send({ shift: shiftResponse(updated), durationHours, distanceNm, sea_days: updated.sea_days });
     },
   );
 }

@@ -11,7 +11,8 @@ import { eq, and, gte, inArray, isNull, isNotNull, like, or, asc } from 'drizzle
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 import { calculateDurationHours, calculateSeaDays } from '../utils/seaTime.js';
-import { MANUAL_SHIFT_NOTE_PREFIX, SHIFT_MODE_WINDOW_DAYS, coveredByShift, isShiftNote } from '../utils/shifts.js';
+import { MANUAL_SHIFT_NOTE_PREFIX, SHIFT_MODE_WINDOW_DAYS, coveredByShift, isShiftNote, shiftMiles, totalShiftMiles } from '../utils/shifts.js';
+import { trackDistances } from './trackDistance.js';
 import { CHECKING_STATUS } from '../utils/passageRefinement.js';
 import { enrichEntryClassification } from '../utils/seaAreas/enrichEntry.js';
 
@@ -136,4 +137,44 @@ export async function rejectAisPassagesCoveredByShift(app: App, userId: string, 
     .where(inArray(schema.sea_time_entries.id, ids));
   app.logger.info({ userId, rejected: ids }, 'Rejected AIS passages covered by a manual shift');
   return ids.length;
+}
+
+/**
+ * Miles for a shift from clock-in to `end`: the vessel's AIS track in that window
+ * (the scheduler keeps recording fixes in shift mode), or the straight line
+ * between the clock-in and clock-out positions when there are under two fixes.
+ */
+export async function shiftDistanceNm(
+  app: App,
+  userId: string,
+  shift: { id: string; vessel_id: string | null; start_time: Date },
+  end: Date,
+  straightNm: number,
+): Promise<number> {
+  const track = await trackDistances(app, userId, [{ id: shift.id, vessel_id: shift.vessel_id, start_time: shift.start_time, end_time: end }]);
+  return shiftMiles(track.get(shift.id), straightNm);
+}
+
+/** Running total of miles over the user's logged (confirmed) shifts. */
+export async function shiftMileageTotals(app: App, userId: string): Promise<{ total_nm: number; shifts: number }> {
+  const shifts = await app.db
+    .select({
+      id: schema.sea_time_entries.id,
+      vessel_id: schema.sea_time_entries.vessel_id,
+      start_time: schema.sea_time_entries.start_time,
+      end_time: schema.sea_time_entries.end_time,
+      distance_nm: schema.sea_time_entries.distance_nm,
+    })
+    .from(schema.sea_time_entries)
+    .where(
+      and(
+        eq(schema.sea_time_entries.user_id, userId),
+        eq(schema.sea_time_entries.status, 'confirmed'),
+        isNotNull(schema.sea_time_entries.end_time),
+        like(schema.sea_time_entries.notes, `${MANUAL_SHIFT_NOTE_PREFIX}%`),
+      ),
+    );
+  if (shifts.length === 0) return { total_nm: 0, shifts: 0 };
+  const track = await trackDistances(app, userId, shifts);
+  return { total_nm: totalShiftMiles(shifts, track), shifts: shifts.length };
 }

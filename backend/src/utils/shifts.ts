@@ -90,3 +90,26 @@ export function coveredByShift(
     && entry.start_time.getTime() >= shiftStart.getTime()
     && entry.end_time.getTime() <= shiftEnd.getTime();
 }
+
+/**
+ * Miles for one shift. A CTV that clocks in and out alongside its SOV has a
+ * straight line of almost nothing between the two positions, while the AIS track
+ * in between can be 40+ nm of turbine-to-turbine running. So the track wins when
+ * there is one; the larger figure is kept because the real path is at least as
+ * long as either.
+ */
+export function shiftMiles(trackNm: number | undefined | null, straightNm: number | null | undefined): number {
+  const straight = Number.isFinite(Number(straightNm)) ? Number(straightNm) : 0;
+  const track = trackNm != null && Number.isFinite(trackNm) ? trackNm : 0;
+  return Math.round(Math.max(track, straight) * 100) / 100;
+}
+
+/** Total miles over the user's logged shifts, with each shift's AIS track where we have it. */
+export function totalShiftMiles(
+  shifts: Array<{ id: string; distance_nm: string | number | null }>,
+  trackByEntry: Map<string, number>,
+): number {
+  let total = 0;
+  for (const s of shifts) total += shiftMiles(trackByEntry.get(s.id), s.distance_nm == null ? 0 : Number(s.distance_nm));
+  return Math.round(total * 100) / 100;
+}

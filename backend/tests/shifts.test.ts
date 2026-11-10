@@ -5,6 +5,8 @@ import {
   coveredByShift,
   isShiftNote,
   resolveShiftEnd,
+  shiftMiles,
+  totalShiftMiles,
 } from "../src/utils/shifts";
 
 const H = 3_600_000;
@@ -83,5 +85,31 @@ describe("shift helpers", () => {
     expect(UUID_RE.test("3f2b8c1e-9a4d-4c1b-8f2e-1a2b3c4d5e6f")).toBe(true);
     expect(UUID_RE.test("not-a-uuid")).toBe(false);
     expect(UUID_RE.test("")).toBe(false);
+  });
+});
+
+describe("shiftMiles", () => {
+  test("a CTV back at its SOV: the AIS track wins over a near-zero straight line", () => {
+    expect(shiftMiles(44.6, 0.03)).toBe(44.6);
+  });
+  test("no track (under two fixes) falls back to the straight line", () => {
+    expect(shiftMiles(undefined, 12.345)).toBe(12.35);
+    expect(shiftMiles(null, null)).toBe(0);
+  });
+  test("keeps the longer figure when sparse fixes understate the line", () => {
+    expect(shiftMiles(3, 5)).toBe(5);
+  });
+});
+
+describe("totalShiftMiles", () => {
+  test("sums each shift, track first, stored distance otherwise", () => {
+    const track = new Map([["a", 40.5], ["b", 2]]);
+    const shifts = [
+      { id: "a", distance_nm: "0.10" },
+      { id: "b", distance_nm: 6 },
+      { id: "c", distance_nm: null },
+      { id: "d", distance_nm: "7.25" },
+    ];
+    expect(totalShiftMiles(shifts, track)).toBe(53.75);
   });
 });

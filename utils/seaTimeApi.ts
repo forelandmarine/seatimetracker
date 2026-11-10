@@ -511,12 +511,27 @@ export interface ActiveShift {
   status: string;
   start_latitude: string | null;
   start_longitude: string | null;
+  /** Miles on this shift: AIS track so far while open, final figure once logged. */
+  distance_nm?: number | null;
+}
+
+/** Miles over all logged shifts, each counted along the vessel's AIS track where recorded. */
+export interface ShiftMileage {
+  total_nm: number;
+  shifts: number;
 }
 
 export const getActiveShift = async (): Promise<ActiveShift | null> => {
   const res = await authFetch('/api/sea-time/shift/active');
   const data = await res.json();
   return data.shift ?? null;
+};
+
+/** The open shift (if any) plus the running mileage total over logged shifts. */
+export const getShiftStatus = async (): Promise<{ shift: ActiveShift | null; mileage: ShiftMileage | null }> => {
+  const res = await authFetch('/api/sea-time/shift/active');
+  const data = await res.json();
+  return { shift: data.shift ?? null, mileage: data.mileage ?? null };
 };
 
 export const startShift = async (
@@ -540,7 +555,7 @@ export const stopShift = async (
   latitude?: number | null,
   longitude?: number | null,
   endTime?: Date | null,
-): Promise<{ shift: ActiveShift; durationHours: number; sea_days: number }> => {
+): Promise<{ shift: ActiveShift; durationHours: number; distanceNm?: number; sea_days: number }> => {
   const res = await authFetch('/api/sea-time/shift/stop', {
     method: 'POST',
     body: { latitude: latitude ?? null, longitude: longitude ?? null, end_time: endTime ? endTime.toISOString() : null },

@@ -17,7 +17,8 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
   getUserProfile,
-  getActiveShift,
+  getShiftStatus,
+  type ShiftMileage,
   startShift,
   stopShift,
   getVesselAISLocation,
@@ -44,6 +45,11 @@ const POSITION_TIMEOUT_MS = 8_000;
 interface Props {
   vesselId?: string | null;
   vesselName?: string | null;
+}
+
+/** Nautical miles for display, e.g. "44.6 nm". */
+function fmtNm(nm: number): string {
+  return `${nm >= 100 ? Math.round(nm) : Math.round(nm * 10) / 10} nm`;
 }
 
 function haversineNm(aLat: number, aLon: number, bLat: number, bLon: number): number {
@@ -82,6 +88,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
   const [busy, setBusy] = useState(false);
   const [shift, setShift] = useState<ActiveShift | null>(null);
   const [, setTick] = useState(0); // re-render the elapsed timer
+  const [mileage, setMileage] = useState<ShiftMileage | null>(null);
   const [endSheet, setEndSheet] = useState(false);
   const [pickedEnd, setPickedEnd] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -96,8 +103,9 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
       const isCommercial = profile?.vessel_sector === 'commercial';
       setCommercial(isCommercial);
       // An open shift is always shown, whatever the sector, so it can be closed.
-      const s = await getActiveShift();
+      const { shift: s, mileage: m } = await getShiftStatus();
       setShift(s);
+      setMileage(m);
       if (s) scheduleShiftReminder(new Date(s.start_time), vesselName);
     } catch (e) {
       logError('[ShiftClock] refresh failed:', e);
@@ -186,7 +194,9 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
       cancelShiftReminder();
       lastReminder.current = { onboard: 0, disembark: 0 };
       triggerRefresh(); // the sea-days total and logbook now include this shift
-      Alert.alert('Shift logged', `${formatHoursMinutes(res.durationHours)} recorded as sea time.`);
+      const miles = res.distanceNm != null && res.distanceNm > 0 ? ` ${fmtNm(res.distanceNm)} travelled.` : '';
+      Alert.alert('Shift logged', `${formatHoursMinutes(res.durationHours)} recorded as sea time.${miles}`);
+      refresh(); // pick up the new mileage total
     } catch (e: any) {
       if (apiErrorCode(e) === 'needs_end_time') {
         openEndSheet();
@@ -316,6 +326,7 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
           <Text style={styles.detail}>
             Clocked in at {startedAt!.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {elapsedLabel} on duty
             {vesselId && shift.vessel_id !== vesselId ? ' (on another vessel)' : ''}
+            {shift.distance_nm != null && shift.distance_nm > 0 ? ` · ${fmtNm(shift.distance_nm)} so far` : ''}
           </Text>
           {(overCap || !on_board) && (
             <Text style={styles.warning}>
@@ -334,6 +345,11 @@ export function ShiftClockCard({ vesselId, vesselName }: Props) {
             Start tracking when you board and stop when you disembark, to log your own shift hours. While you use the
             shift clock, AIS passages are not logged to you.
           </Text>
+          {mileage && mileage.shifts > 0 && (
+            <Text style={styles.mileage}>
+              {fmtNm(mileage.total_nm)} logged over {mileage.shifts} {mileage.shifts === 1 ? 'shift' : 'shifts'}
+            </Text>
+          )}
           <TouchableOpacity style={[styles.button, busy && styles.buttonBusy]} onPress={handleClockIn} disabled={busy}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Clock in</Text>}
           </TouchableOpacity>
@@ -403,6 +419,7 @@ const createStyles = (isDark: boolean) =>
     title: { fontSize: 17, fontWeight: '700', color: isDark ? colors.text : colors.textLight },
     liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success, marginLeft: 2 },
     detail: { fontSize: 14, color: isDark ? colors.textSecondary : colors.textSecondaryLight, marginBottom: 14, lineHeight: 20 },
+    mileage: { fontSize: 14, fontWeight: '600', color: isDark ? colors.text : colors.textLight, marginTop: -6, marginBottom: 14 },
     warning: { fontSize: 14, color: colors.error, marginTop: -6, marginBottom: 14, lineHeight: 20 },
     button: { backgroundColor: colors.primary, borderRadius: 12, padding: 15, alignItems: 'center' },
     buttonStop: { backgroundColor: colors.error },
