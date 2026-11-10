@@ -55,13 +55,15 @@ const isoDay = (v: unknown): string | null => {
   return m ? m[1] : null;
 };
 
-/** Drops past dates and repeats of the same course on the same day. */
+/** Drops past and far-future dates and repeats of the same course on the same day. */
 function upcoming(out: ParsedDate[]): ParsedDate[] {
   const today = new Date().toISOString().slice(0, 10);
+  // Nobody publishes real course dates years ahead; 2096 is a placeholder row.
+  const horizon = new Date(Date.now() + 2 * 365 * 86_400_000).toISOString().slice(0, 10);
   const seen = new Set<string>();
   return out.filter((d) => {
     const k = `${d.course_code}|${d.start_date}`;
-    if (d.start_date < today || seen.has(k)) return false;
+    if (d.start_date < today || d.start_date > horizon || seen.has(k)) return false;
     seen.add(k);
     if (d.end_date && d.end_date < d.start_date) d.end_date = null;
     return true;

@@ -42,6 +42,8 @@ const RULES: [RegExp, string | null][] = [
   [/yachtmaster ocean/i, 'ym_ocean'],
   [/yachtmaster offshore/i, 'ym_offshore'],
   [/yachtmaster coastal/i, 'ym_coastal'],
+  // A skipper refresher or mile builder isn't the RYA certificate course.
+  [/skipper[^|]*(refresher|mile ?builder)/i, null],
   [/coastal skipper/i, 'coastal_skipper'],
   [/day skipper/i, 'day_skipper'],
   [/competent crew/i, 'competent_crew'],
@@ -55,7 +57,9 @@ const RULES: [RegExp, string | null][] = [
   [/seamanship and met/i, 'master_yachts_seamanship'],
   [/workboat operations/i, 'workboat_ops'],
   [/gwo.*sea survival/i, 'gwo_sea_survival'],
-  [/gwo|global wind/i, 'gwo_bst'],
+  [/(gwo|global wind)[^|]*(basic safety|\bbst\b)/i, 'gwo_bst'],
+  // Other GWO standards (ART, BTT, Enhanced First Aid, Slinger Signaller) aren't BST.
+  [/gwo|global wind/i, null],
   [/bosiet/i, 'opito_bosiet'],
   [/foet/i, 'opito_foet'],
   [/huet/i, 'huet'],
