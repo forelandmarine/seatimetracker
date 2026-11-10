@@ -41,6 +41,8 @@ describe('text helpers', () => {
     expect(priceInText('&euro; 1.049,00 3 spots')).toBeNull();
     expect(priceInText('€ 1.049,00 3 spots')).toBe('€1,049');
     expect(priceInText('€ 806,50')).toBe('€806.5');
+    expect(priceInText('Enge-Sande | 595 € | ANMELDEN')).toBe('€595');
+    expect(availabilityInText('Available From: 23 Nov')).toBeNull();
     expect(availabilityInText('FULLY BOOKED')).toBe('Full');
     expect(availabilityInText('Only 2 places left')).toBe('Few places left');
     expect(availabilityInText('Places available')).toBe('Available');

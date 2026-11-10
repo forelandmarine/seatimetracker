@@ -120,8 +120,9 @@ export function priceInText(text: string): string | null {
   const NUM = '(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+(?:[.,]\\d{2})?)';
   const m = text.match(new RegExp(`([£€$])\\s?${NUM}`));
   if (m) return money(amount(m[2]), m[1] === '£' ? 'GBP' : m[1] === '€' ? 'EUR' : 'USD');
-  const m2 = text.match(new RegExp(`${NUM}\\s?(GBP|EUR|USD|AUD|NZD|ZAR)\\b`));
-  return m2 ? money(amount(m2[1]), m2[2]) : null;
+  const m2 = text.match(new RegExp(`${NUM}\\s?(GBP|EUR|USD|AUD|NZD|ZAR|€|£)(?![\\w])`));
+  if (!m2) return null;
+  return money(amount(m2[1]), m2[2] === '€' ? 'EUR' : m2[2] === '£' ? 'GBP' : m2[2]);
 }
 
 /** Availability from the words a row uses; null when it says nothing clear. */
@@ -129,7 +130,7 @@ export function availabilityInText(text: string): string | null {
   if (/cancel+ed/i.test(text)) return 'Cancelled';
   if (/fully booked|sold out|\bfull\b|no (places|spaces) (left|available)|waiting list/i.test(text)) return 'Full';
   if (/(few|limited|last|only \d+) (places|spaces|seats)|limited availability|almost full/i.test(text)) return 'Few places left';
-  if (/(places|spaces|seats) (available|left|remaining)|\bavailable\b|book now/i.test(text)) return 'Available';
+  if (/(places|spaces|seats) (available|left|remaining)|\bavailable\b(?! from)|book now/i.test(text)) return 'Available';
   return null;
 }
 
