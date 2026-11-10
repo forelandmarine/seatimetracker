@@ -1328,6 +1328,27 @@ export default function ProfileScreen() {
           <View style={styles.section}>
             <View style={styles.card}>
               <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/days-abroad' as any)}
+                activeOpacity={0.6}
+              >
+                <IconSymbol
+                  ios_icon_name="globe.europe.africa"
+                  android_material_icon_name="public"
+                  size={24}
+                  color={colors.primary}
+                  style={styles.menuItemIcon}
+                />
+                <Text style={styles.menuItemText}>{t('settings.daysAbroad')}</Text>
+                <IconSymbol
+                  ios_icon_name="chevron.right"
+                  android_material_icon_name="arrow-forward"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.menuItemChevron}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[styles.menuItem, styles.menuItemLast]}
                 onPress={() => router.push('/settings')}
                 activeOpacity={0.6}

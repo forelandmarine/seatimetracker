@@ -128,7 +128,8 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>{t('settings.seaService')}</Text>
         <View style={styles.card}>
-          <SettingsRow icon="binoculars" androidIcon="visibility" label={t('settings.soleWatchkeeping')} onPress={() => router.push('/sole-watchkeeping' as any)} isLast isDark={isDark} />
+          <SettingsRow icon="binoculars" androidIcon="visibility" label={t('settings.soleWatchkeeping')} onPress={() => router.push('/sole-watchkeeping' as any)} isDark={isDark} />
+          <SettingsRow icon="globe.europe.africa" androidIcon="public" label={t('settings.daysAbroad')} onPress={() => router.push('/days-abroad' as any)} isLast isDark={isDark} />
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.tracking')}</Text>

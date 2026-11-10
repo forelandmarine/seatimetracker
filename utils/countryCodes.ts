@@ -55,6 +55,14 @@ const COUNTRIES: Record<string, string> = {
   EE: "Estonia",
   LV: "Latvia",
   LT: "Lithuania",
+  CZ: "Czechia",
+  SK: "Slovakia",
+  HU: "Hungary",
+  LI: "Liechtenstein",
+  AD: "Andorra",
+  SM: "San Marino",
+  VA: "Vatican City",
+  AL: "Albania",
 
   // Americas
   US: "United States",
@@ -139,4 +147,11 @@ export function countryName(code: string | null | undefined): string | null {
   if (!code) return null;
   const upper = code.trim().toUpperCase();
   return COUNTRIES[upper] || upper;
+}
+
+/** Every country in the table as { code, name }, sorted by name. */
+export function countryList(): Array<{ code: string; name: string }> {
+  return Object.entries(COUNTRIES)
+    .map(([code, name]) => ({ code, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
