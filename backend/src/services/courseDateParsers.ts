@@ -17,6 +17,10 @@ export interface HtmlConfig {
   block: string;
   /** Regex source whose group 1 is the course title in a row's text; else the whole row. */
   title?: string;
+  /** Match config.title against the row's raw HTML (an aria-label or data attribute) instead. */
+  titleHtml?: boolean;
+  /** Regex source whose group 1 holds the row's date text (e.g. 'Starts \\| ([^|]+)'); else the whole row. */
+  date?: string;
   /** Every row is this course (a page per course); skips title matching. */
   course?: string;
   /** Only rows whose text matches this regex source (a venue on a multi-site page). */
@@ -352,15 +356,17 @@ export function parseHtml(html: string, pageUrl: string, config: HtmlConfig): Pa
   // Whatever comes before the first row (page header, nav) isn't a row.
   const parts = body.split(new RegExp(`(?=${config.block})`, 'i')).filter((p) => blockRe.test(p));
   const titleRe = config.title ? new RegExp(config.title, 'i') : null;
+  const dateRe = config.date ? new RegExp(config.date, 'i') : null;
   const venueRe = config.venue ? new RegExp(config.venue, 'i') : null;
   const out: ParsedDate[] = [];
   for (const part of parts) {
     const text = htmlText(part).replace(/\n/g, ' | ');
     if (venueRe && !venueRe.test(text)) continue;
-    const title = titleRe ? titleRe.exec(text)?.[1] ?? '' : text;
+    const title = titleRe ? decodeEntities(titleRe.exec(config.titleHtml ? part : text)?.[1] ?? '') : text;
     const code = config.course ?? (title ? matchCourseCode(title) : null);
     if (!code) continue;
-    const span = firstDateSpan(text, config.dateOrder ?? 'dmy');
+    const dateText = dateRe ? dateRe.exec(text)?.[1] ?? '' : text;
+    const span = dateText ? firstDateSpan(dateText, config.dateOrder ?? 'dmy') : null;
     if (!span) continue;
     const href = part.match(/<a\b[^>]*href=["']([^"'#][^"']*)["']/i)?.[1];
     out.push({

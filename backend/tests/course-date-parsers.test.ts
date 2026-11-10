@@ -146,3 +146,13 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('Proficiency in Survival Craft and Rescue Boats')).toBe('pscrb');
   });
 });
+
+describe('parseHtml title and date patterns', () => {
+  it('reads the title from raw HTML and the date from a labelled cell', () => {
+    const card = `<article class="course-index-item"><button aria-label="Compare toggle for the GMDSS Restricted Operator Certificate (ROC) course">x</button>
+      <p>For mariners in Area A1 (VHF range). Updated 1 Jan 2099.</p><h3>Starts</h3><p>15 Dec 2099</p></article>
+      <article class="course-index-item"><button aria-label="Compare toggle for the HNC Nautical Science course">x</button><h3>Starts</h3><p>1 Sep 2099</p></article>`;
+    const d = parseHtml(card, 'https://x.test', { block: '<article class="course-index-item"', title: 'aria-label="Compare toggle for the ([^"]+) course"', titleHtml: true, date: 'Starts \\| ([^|]+)' });
+    expect(d).toEqual([expect.objectContaining({ course_code: 'gmdss_roc', start_date: '2099-12-15' })]);
+  });
+});
