@@ -34,6 +34,8 @@ export const CERTIFICATE_TYPE_LABELS: Record<string, string> = {
   stcw_medical_first_aid: "Medical First Aid",
   stcw_proficiency_security: "Security Awareness",
   eng1_medical: "ENG1 Medical Certificate",
+  // Another country's STCW seafarer medical the MCA accepts instead of an ENG1 (MSN 1815).
+  accepted_seafarer_medical: "Seafarer medical accepted instead of ENG1",
   gmdss_goc: "GMDSS GOC",
   gmdss_roc: "GMDSS ROC",
   ecdis: "ECDIS",
@@ -141,6 +143,20 @@ export const CERTIFICATE_TYPES = Object.keys(CERTIFICATE_TYPE_LABELS);
 // Short names crew actually type, which never appear in the labels.
 const CERTIFICATE_TYPE_ALIASES: Record<string, string[]> = {
   eng1_medical: ['seafarer medical', 'seafarers medical'],
+  accepted_seafarer_medical: [
+    'seafarer medical',
+    'seafarers medical',
+    'msn 1815',
+    'foreign medical',
+    'national medical',
+    'stcw medical',
+    'amsa medical',
+    'maritime nz medical',
+    'samsa medical',
+    'transport canada medical',
+    'equivalent',
+  ],
+  course_ml5: ['msf 4112', 'small commercial medical'],
   stcw_basic_safety: ['bst', 'basic training', 'stcw 95'],
   stcw_advanced_firefighting: ['aff'],
   stcw_medical_first_aid: ['mfa'],
@@ -192,7 +208,7 @@ export const CERTIFICATE_TYPE_GROUPS: CertificateTypeGroup[] = [
       "personal_survival_techniques",
     ],
   },
-  { title: "Medical", types: ["eng1_medical"] },
+  { title: "Medical", types: ["eng1_medical", "accepted_seafarer_medical"] },
   { title: "Communications", types: ["gmdss_goc", "gmdss_roc"] },
   { title: "Navigation & Bridge", types: ["ecdis", "radar_observer", "radar_arpa"] },
   {
