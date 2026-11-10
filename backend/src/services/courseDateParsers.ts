@@ -68,7 +68,7 @@ function upcoming(out: ParsedDate[]): ParsedDate[] {
   });
 }
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '-', mdash: '-', rsquo: "'", lsquo: "'", hellip: '...' };
+const ENTITIES: Record<string, string> = { euro: '€', pound: '£', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '-', mdash: '-', rsquo: "'", lsquo: "'", hellip: '...' };
 export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === '#') {
@@ -101,12 +101,18 @@ function money(n: number, cur: string): string | null {
   return `${sym}${n.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`;
 }
 
-/** First price written in text as £895, €1,200.00, $450 or 895 GBP. */
+/** Reads 1,195.00 or the European 1.049,00 as a number. */
+function amount(raw: string): number {
+  return /^\d{1,3}(\.\d{3})*,\d{2}$|^\d+,\d{2}$/.test(raw) ? Number(raw.replace(/\./g, '').replace(',', '.')) : Number(raw.replace(/,/g, ''));
+}
+
+/** First price written in text as £895, €1,200.00, € 1.049,00, $450 or 895 GBP. */
 export function priceInText(text: string): string | null {
-  const m = text.match(/([£€$])\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)/);
-  if (m) return money(Number(m[2].replace(/,/g, '')), m[1] === '£' ? 'GBP' : m[1] === '€' ? 'EUR' : 'USD');
-  const m2 = text.match(/(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s?(GBP|EUR|USD|AUD|NZD|ZAR)\b/);
-  return m2 ? money(Number(m2[1].replace(/,/g, '')), m2[2]) : null;
+  const NUM = '(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+(?:[.,]\\d{2})?)';
+  const m = text.match(new RegExp(`([£€$])\\s?${NUM}`));
+  if (m) return money(amount(m[2]), m[1] === '£' ? 'GBP' : m[1] === '€' ? 'EUR' : 'USD');
+  const m2 = text.match(new RegExp(`${NUM}\\s?(GBP|EUR|USD|AUD|NZD|ZAR)\\b`));
+  return m2 ? money(amount(m2[1]), m2[2]) : null;
 }
 
 /** Availability from the words a row uses; null when it says nothing clear. */

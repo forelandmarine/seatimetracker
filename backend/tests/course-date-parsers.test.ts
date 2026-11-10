@@ -34,6 +34,9 @@ describe('text helpers', () => {
     expect(priceInText('Price: £1,195.00 inc VAT')).toBe('£1,195');
     expect(priceInText('Cost 850 EUR')).toBe('€850');
     expect(priceInText('Call us')).toBeNull();
+    expect(priceInText('&euro; 1.049,00 3 spots')).toBeNull();
+    expect(priceInText('€ 1.049,00 3 spots')).toBe('€1,049');
+    expect(priceInText('€ 806,50')).toBe('€806.5');
     expect(availabilityInText('FULLY BOOKED')).toBe('Full');
     expect(availabilityInText('Only 2 places left')).toBe('Few places left');
     expect(availabilityInText('Places available')).toBe('Available');
