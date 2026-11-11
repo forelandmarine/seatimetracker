@@ -431,52 +431,67 @@ export interface VesselSpecs {
   not_found?: boolean;
 }
 
-export async function fetchVesselSpecs(
-  mmsi: string,
+/** Raw Datalastic /vessel_info record, looked up by MMSI or by IMO (1 credit). */
+export type VesselInfoResult =
+  | { status: 'ok'; data: Record<string, any> }
+  | { status: 'not_found' }
+  | null; // not configured, outage or timeout
+
+export async function fetchVesselInfo(
+  by: { mmsi: string } | { imo: string },
   logger: any
-): Promise<VesselSpecs | null> {
+): Promise<VesselInfoResult> {
+  const label = 'imo' in by ? `IMO ${by.imo}` : `MMSI ${by.mmsi}`;
   try {
     if (!DATALASTIC_API_KEY) {
-      logger.debug('Datalastic API key not configured, skipping vessel specs fetch');
+      logger.debug('Datalastic API key not configured, skipping vessel_info');
       return null;
     }
+    const url = new URL(DATALASTIC_INFO_URL);
+    url.searchParams.append('api-key', DATALASTIC_API_KEY);
+    if ('imo' in by) url.searchParams.append('imo', by.imo);
+    else url.searchParams.append('mmsi', by.mmsi);
+    logger.info(`Fetching vessel_info from Datalastic for ${label}`);
 
-    const url = `${DATALASTIC_INFO_URL}?api-key=${DATALASTIC_API_KEY}&mmsi=${mmsi}`;
-    logger.info(`Fetching vessel specs from Datalastic for MMSI ${mmsi}`);
-
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       signal: timeoutSignal(AIS_FETCH_TIMEOUT_MS),
     });
-
     if (!response.ok) {
-      logger.warn(`Datalastic vessel_info returned ${response.status} for MMSI ${mmsi}`);
-      if (response.status === 404) {
-        return { callsign: null, flag: null, type: null, length_metres: null, gross_tonnes: null, imo_number: null, breadth: null, not_found: true };
-      }
-      return null;
+      logger.warn(`Datalastic vessel_info returned ${response.status} for ${label}`);
+      return response.status === 404 ? { status: 'not_found' } : null;
     }
-
     const raw = await response.json() as any;
-    const data = raw.data && typeof raw.data === 'object' ? raw.data : raw;
-
-    const specs: VesselSpecs = {
-      callsign: data.callsign || null,
-      flag: data.country_name || data.country_iso || null,
-      type: data.type_specific || data.type || null,
-      length_metres: data.length != null ? String(data.length) : null,
-      gross_tonnes: data.gross_tonnage != null ? String(data.gross_tonnage) : null,
-      imo_number: data.imo || null,
-      breadth: data.breadth != null ? String(data.breadth) : null,
-    };
-
-    logger.info({ mmsi, specs }, `Vessel specs retrieved from Datalastic for MMSI ${mmsi}`);
-    return specs;
+    const data = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
+    return { status: 'ok', data: data && typeof data === 'object' ? data : {} };
   } catch (error) {
-    logger.error(`Error fetching vessel specs from Datalastic for MMSI ${mmsi}: ${error}`);
+    logger.error(`Error fetching vessel_info from Datalastic for ${label}: ${error}`);
     return null;
   }
+}
+
+export async function fetchVesselSpecs(
+  mmsi: string,
+  logger: any
+): Promise<VesselSpecs | null> {
+  const result = await fetchVesselInfo({ mmsi }, logger);
+  if (!result) return null;
+  if (result.status === 'not_found') {
+    return { callsign: null, flag: null, type: null, length_metres: null, gross_tonnes: null, imo_number: null, breadth: null, not_found: true };
+  }
+  const data = result.data;
+  const specs: VesselSpecs = {
+    callsign: data.callsign || null,
+    flag: data.country_name || data.country_iso || null,
+    type: data.type_specific || data.type || null,
+    length_metres: data.length != null ? String(data.length) : null,
+    gross_tonnes: data.gross_tonnage != null ? String(data.gross_tonnage) : null,
+    imo_number: data.imo || null,
+    breadth: data.breadth != null ? String(data.breadth) : null,
+  };
+  logger.info({ mmsi, specs }, `Vessel specs retrieved from Datalastic for MMSI ${mmsi}`);
+  return specs;
 }
 
 async function fetchVesselAISDataFromBase44(

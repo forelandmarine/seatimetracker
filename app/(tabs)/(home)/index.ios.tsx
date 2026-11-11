@@ -115,6 +115,7 @@ export default function SeaTimeScreen() {
   const [activeVesselLocation, setActiveVesselLocation] = useState<VesselLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [nextExpiringCert, setNextExpiringCert] = useState<Certificate | null>(null);
+  const mmsiInputRef = React.useRef<TextInput>(null);
   const isMountedRef = React.useRef(true);
   // Set once the first fresh vessel list has arrived
   const hasLoadedRef = React.useRef(false);
@@ -306,7 +307,7 @@ export default function SeaTimeScreen() {
   const [newSector, setNewSector] = useState<'yachting' | 'commercial' | null>(null);
   const isFirstVessel = vessels.length === 0;
 
-  // Add Vessel: the user confirmed an AIS match for the name and length they typed.
+  // Add Vessel: the user picked a lookup match and confirmed it after the AIS check.
   // Fill the MMSI and any particulars they have not filled in themselves.
   const applyLookupMatch = (c: seaTimeApi.VesselCandidate) => {
     setNewMMSI(c.mmsi);
@@ -323,7 +324,7 @@ export default function SeaTimeScreen() {
       return;
     }
     if (!newMMSI || !newMMSI.trim()) {
-      Alert.alert('MMSI needed', 'Please enter the MMSI, or enter the name and length and tap Find my vessel.');
+      Alert.alert('MMSI needed', 'Enter the MMSI, or enter the vessel name and tap Find my vessel.');
       return;
     }
     const mmsiProblem = seaTimeApi.mmsiValidationError(newMMSI);
@@ -1002,11 +1003,13 @@ export default function SeaTimeScreen() {
                   length={newLengthMetres}
                   onLengthChange={setNewLengthMetres}
                   onConfirm={applyLookupMatch}
+                  onEnterMmsi={() => mmsiInputRef.current?.focus()}
                 />
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>{t('home.mmsi')} *</Text>
                   <TextInput
+                    ref={mmsiInputRef}
                     style={styles.input}
                     placeholder="e.g., 235012345"
                     placeholderTextColor={isDark ? colors.textSecondary : colors.textSecondaryLight}

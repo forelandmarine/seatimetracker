@@ -346,15 +346,58 @@ export interface VesselCandidate {
   app_type: 'Motor' | 'Sail' | null;
   length_metres: number | null;
   year_built: string | null;
+  call_sign?: string | null;
+  former_names?: string[];
+  /** Other MMSIs the same ship (same IMO) has used, e.g. before a reflag. */
+  alt_mmsis?: string[];
+  source?: string;
 }
 
-// Find a vessel's MMSI from its name and length overall (AIS data, best match first).
-// The user must confirm a match before its MMSI is used.
-export const lookupVessel = async (name: string, lengthMetres: string): Promise<VesselCandidate[]> => {
-  const q = `name=${encodeURIComponent(name.trim())}&length=${encodeURIComponent(lengthMetres.trim())}`;
-  const res = await authFetch(`/api/vessels/lookup?${q}`, { timeout: 20_000 });
+export interface VesselLookupResult {
+  candidates: VesselCandidate[];
+  /** 'index' = our own data, 'web' = web search fallback, 'none' = nothing found. */
+  source: 'index' | 'web' | 'none';
+}
+
+// Find a vessel's MMSI from its name, with the length overall as a ranking hint
+// (best match first). The backend never calls AIS here; the user picks a match and
+// confirmVesselLookup checks it on AIS before its MMSI is used. A web search can
+// take a while, hence the long timeout.
+export const lookupVessel = async (name: string, length: string, unit: 'm' | 'ft'): Promise<VesselLookupResult> => {
+  const params = [`name=${encodeURIComponent(name.trim())}`, `unit=${unit}`];
+  if (length.trim()) params.push(`length=${encodeURIComponent(length.trim())}`);
+  const res = await authFetch(`/api/vessels/lookup?${params.join('&')}`, { timeout: 60_000 });
   const data = await res.json();
-  return Array.isArray(data?.candidates) ? data.candidates : [];
+  return {
+    candidates: Array.isArray(data?.candidates) ? data.candidates : [],
+    source: data?.source === 'web' ? 'web' : data?.source === 'index' ? 'index' : 'none',
+  };
+};
+
+export interface ConfirmedVessel extends VesselCandidate {
+  last_position_at: string | null;
+  area: string | null;
+  /** The MMSI that was picked, when a different (live) MMSI came back. */
+  former_mmsi: string | null;
+}
+
+export interface VesselConfirmResult {
+  /** live = on AIS; not_found = no vessel on that MMSI; unavailable = AIS could not be checked. */
+  status: 'live' | 'not_found' | 'unavailable';
+  vessel: ConfirmedVessel | null;
+  note: string | null;
+}
+
+// Check a picked lookup match on AIS (one Datalastic call on the backend).
+export const confirmVesselLookup = async (c: VesselCandidate): Promise<VesselConfirmResult> => {
+  const res = await authFetch('/api/vessels/lookup/confirm', {
+    method: 'POST',
+    body: { mmsi: c.mmsi, imo: c.imo ?? null, alt_mmsis: c.alt_mmsis ?? [] },
+    timeout: 45_000,
+  });
+  const data = await res.json();
+  const status = data?.status === 'live' || data?.status === 'not_found' ? data.status : 'unavailable';
+  return { status, vessel: data?.vessel ?? null, note: data?.note ?? null };
 };
 
 export const updateVesselParticulars = async (

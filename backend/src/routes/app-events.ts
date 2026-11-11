@@ -18,6 +18,9 @@ export const APP_EVENTS = new Set([
   "signed_in",          // detail: email | apple | biometric
   "vessel_lookup",      // detail: number of matches (0-5) or error
   "vessel_confirmed",   // picked a lookup match
+  "vessel_lookup_web",  // lookup fell back to web search (detail: number of matches)
+  "vessel_check",       // AIS check of a picked match (detail: live | not_found | unavailable | error)
+  "vessel_renamed_mail", // tapped My vessel was renamed on the no-results pop-up
   "vessel_added",       // detail: lookup | manual
   "history_offer_shown", // AIS history import offered (detail: home | profile)
   "history_opened",     // history import screen opened (detail: entry point)
