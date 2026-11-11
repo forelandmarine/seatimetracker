@@ -294,6 +294,51 @@ export function rankVesselCandidates(
   };
 }
 
+export interface ConfirmedVessel extends VesselCandidate {
+  /** When AIS last heard from it, ISO time, if Datalastic gave one. */
+  last_position_at: string | null;
+  /** Port or area AIS last placed it in, if given. */
+  area: string | null;
+  /** The MMSI the user picked, when a different (live) MMSI was returned. */
+  former_mmsi: string | null;
+}
+
+/** Datalastic vessel_info record -> confirmed vessel. */
+export function vesselFromInfo(data: Record<string, any>, fallbackMmsi: string): ConfirmedVessel | null {
+  const mmsi = String(data.mmsi ?? fallbackMmsi).replace(/\D/g, '');
+  const name = cleanVesselName(String(data.name || data.vessel_name || ''));
+  if (!isShipMmsi(mmsi) || !name) return null;
+  const imo = String(data.imo ?? '').replace(/\D/g, '');
+  const iso = data.country_iso ? String(data.country_iso).toUpperCase() : null;
+  const type = data.type_specific || data.type || null;
+  const len = parseLength(data.length);
+  const when = data.last_position_UTC || data.last_position_epoch || data.timestamp || null;
+  let lastAt: string | null = null;
+  if (when != null) {
+    const n = Number(when);
+    const d = Number.isFinite(n) && n > 0 ? new Date(n < 1e11 ? n * 1000 : n) : new Date(String(when));
+    lastAt = Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return {
+    mmsi,
+    name,
+    imo: isImo(imo) ? imo : null,
+    flag: data.country_name || countryName(iso),
+    flag_iso: iso,
+    type,
+    app_type: appTypeFor(type),
+    length_metres: len != null ? Math.round(len * 10) / 10 : null,
+    year_built: data.year_built != null && data.year_built !== '' ? String(data.year_built) : null,
+    call_sign: data.callsign ? String(data.callsign) : null,
+    former_names: [],
+    alt_mmsis: [],
+    source: 'datalastic',
+    last_position_at: lastAt,
+    area: data.current_port || data.last_port || null,
+    former_mmsi: null,
+  };
+}
+
 /**
  * The web-search model's reply -> checked rows. It is asked for JSON only but
  * may wrap it in prose, so the outermost {...} is taken. Anything without a

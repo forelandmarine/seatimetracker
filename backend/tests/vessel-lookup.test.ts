@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'bun:test';
 import {
   cleanVesselName, normaliseVesselName, lengthMismatch, nameMatchScore, trigramSimilarity,
-  rankVesselCandidates, parseWebReply, mergeByMmsi, countryName, type RawCandidate,
+  rankVesselCandidates, parseWebReply, mergeByMmsi, countryName, vesselFromInfo, type RawCandidate,
 } from '../src/utils/vesselLookup.js';
 import { likeVariants, searchOwnData, upsertVesselIndex, logLookupMiss, resetVesselIndexState } from '../src/services/vesselIndex.js';
 import { replyText, buildWebSearchPrompt } from '../src/services/vesselWebSearch.js';
-import { vesselFromInfo } from '../src/routes/vessel-lookup.js';
 
 describe('cleanVesselName', () => {
   it('drops the prefixes AIS names never carry', () => {
