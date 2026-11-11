@@ -4,6 +4,10 @@
 const RULES: [RegExp, string | null][] = [
   // "Nav & Radar (OOW) Week 2": a later week of a multi-week course isn't a start date.
   [/\bweek\s*[2-9]\b/i, null],
+  // Mile builders and skills weekends aren't certificate courses.
+  [/mile ?builder|skills? (refresh\w*|weekend)/i, null],
+  // "Coastal Skipper / Yachtmaster Offshore" names both the theory and the practical course.
+  [/coastal skipper\s*\/\s*yachtmaster offshore(?![^|]*(theory|shore))/i, null],
   // Master-level nav and radar isn't the OOW (Yachts) module; which master module it is varies.
   [/master'?s?\b[^|]*nav(igation)?\b[^|]*radar/i, null],
   // Restricted PSCRB is a narrower certificate than PSCRB or PSCRB (other than lifeboats).
@@ -11,6 +15,11 @@ const RULES: [RegExp, string | null][] = [
   [/(pscrb|survival craft).*(refresher|update)|(refresher|updat(?:ed?|ing)|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],
   [/advanced? fire ?fighting.*(refresher|update|revalidation)|(refresher|updat(?:ed?|ing)|revalidation)\b.*advanced? fire ?fighting|advanced fire.*(refresher|update)/i, 'aff_refresher'],
   [/gwo[^|]*(basic safety[^|]*refresher|\bbstr\b|\bbst\b[^|]*refresher)/i, 'gwo_bst_refresher'],
+  // GWO before the STCW rules: "GWO EFA" (Enhanced First Aid) isn't STCW Elementary First Aid.
+  [/gwo.*sea survival/i, 'gwo_sea_survival'],
+  [/(gwo|global wind)[^|]*(basic safety|\bbst\b)/i, 'gwo_bst'],
+  // Other GWO standards (ART, BTT, Enhanced First Aid, Slinger Signaller) aren't BST.
+  [/gwo|global wind/i, null],
   [/medical care.*(refresher|update)|(refresher|updat(?:ed?|ing)|revalidation)\b.*medical care/i, 'medical_care_refresher'],
   [/(basic|bst).*(refresher|update|revalidation)|(refresher|update|revalidation).*basic/i, 'stcw_basic_refresher'],
   // "Updated proficiency in fire prevention and fire fighting and personal survival techniques"
@@ -65,10 +74,6 @@ const RULES: [RegExp, string | null][] = [
   [/business and law/i, 'master_yachts_business_law'],
   [/seamanship and met/i, 'master_yachts_seamanship'],
   [/workboat operations/i, 'workboat_ops'],
-  [/gwo.*sea survival/i, 'gwo_sea_survival'],
-  [/(gwo|global wind)[^|]*(basic safety|\bbst\b)/i, 'gwo_bst'],
-  // Other GWO standards (ART, BTT, Enhanced First Aid, Slinger Signaller) aren't BST.
-  [/gwo|global wind/i, null],
   [/bosiet/i, 'opito_bosiet'],
   [/foet/i, 'opito_foet'],
   [/huet/i, 'huet'],
@@ -80,7 +85,12 @@ const RULES: [RegExp, string | null][] = [
   [/food (hygiene|safety)/i, 'food_hygiene'],
 ];
 
-export function matchCourseCode(title: string): string | null {
-  for (const [re, code] of RULES) if (re.test(title)) return code;
+/** The rule a title hits: { code } (code may be null: deliberately unmapped), or null if none. */
+export function matchCourseRule(title: string): { code: string | null } | null {
+  for (const [re, code] of RULES) if (re.test(title)) return { code };
   return null;
+}
+
+export function matchCourseCode(title: string): string | null {
+  return matchCourseRule(title)?.code ?? null;
 }

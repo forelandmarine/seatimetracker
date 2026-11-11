@@ -1,4 +1,4 @@
-import { matchCourseCode } from '../utils/courseMatch.js';
+import { matchCourseCode, matchCourseRule } from '../utils/courseMatch.js';
 
 /**
  * Parsers for providers' published course dates (2.5.0 "Find a course" passes).
@@ -350,7 +350,10 @@ export function parseTribe(json: string, apiUrl: string, course?: string): Parse
   for (const e of Array.isArray(data?.events) ? data.events : []) {
     const title = htmlText(String(e?.title ?? ''));
     const cats = (Array.isArray(e?.categories) ? e.categories : []).map((c: any) => String(c?.name ?? '')).join(' ');
-    const code = course ?? matchCourseCode(title) ?? (cats ? matchCourseCode(cats) : null);
+    // Categories only when the title hits no rule at all: a title left unmapped on
+    // purpose ("Mile Builder") mustn't pick up a course from its category list.
+    const rule = matchCourseRule(title);
+    const code = course ?? (rule ? rule.code : cats ? matchCourseCode(cats) : null);
     const start = isoDay(e?.start_date);
     if (!code || !start || /cancel+ed/i.test(title)) continue;
     const cost = typeof e?.cost === 'string' ? e.cost : '';

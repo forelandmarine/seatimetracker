@@ -109,7 +109,7 @@ describe('parseTribe', () => {
     events: [
       { title: 'STCW Fire Prevention &amp; Fire Fighting', start_date: `${Y}-04-07 09:00:00`, end_date: `${Y}-04-08 17:00:00`, url: 'https://example.com/event/fpff/', cost: '£450', cost_details: { currency_code: 'GBP', values: ['450'] } },
       { title: 'Open day', start_date: `${Y}-04-09 09:00:00` },
-      { title: 'Refresher week', categories: [{ name: 'PSCRB Refresher' }], start_date: `${Y}-04-10 09:00:00` },
+      { title: 'Boat week', categories: [{ name: 'PSCRB Refresher' }], start_date: `${Y}-04-10 09:00:00` },
     ],
     next_rest_url: 'https://example.com/wp-json/tribe/events/v1/events?page=2',
   });
@@ -119,6 +119,10 @@ describe('parseTribe', () => {
     expect(d[0]).toMatchObject({ course_code: 'fpff', start_date: `${Y}-04-07`, end_date: `${Y}-04-08`, price_text: '£450', booking_url: 'https://example.com/event/fpff/' });
     expect(d[1]).toMatchObject({ course_code: 'pscrb_refresher', start_date: `${Y}-04-10` });
     expect(tribeNextPage(body)).toBe('https://example.com/wp-json/tribe/events/v1/events?page=2');
+  });
+  it('does not take a course from categories when the title is unmapped on purpose', () => {
+    const b = JSON.stringify({ events: [{ title: '5-Day Mile Builder', categories: [{ name: 'RYA Competent Crew' }], start_date: `${Y}-05-01 09:00:00` }] });
+    expect(parseTribe(b, 'https://x.test')).toEqual([]);
   });
   it('survives bad JSON', () => {
     expect(parseTribe('<html>', 'https://example.com')).toEqual([]);
@@ -192,6 +196,14 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('MCA Nav & Radar (OOW) Week 2 PYT118')).toBeNull();
     expect(matchCourseCode('MCA Nav & Radar (OOW) Week 1 PYT118')).toBe('oow_yachts_nav_radar');
     expect(matchCourseCode('MCA Masters Nav and Radar Week 1 PYT136')).toBeNull();
+  });
+  it('keeps GWO modules apart from STCW courses and ambiguous yacht titles unmapped', () => {
+    expect(matchCourseCode('GWO EFA')).toBeNull();
+    expect(matchCourseCode('SZKOLENIE GWO Enhanced First Aid')).toBeNull();
+    expect(matchCourseCode('RYA Coastal Skipper / Yachtmaster Offshore - Limerick')).toBeNull();
+    expect(matchCourseCode('RYA Coastal Skipper / Yachtmaster Offshore Shorebased')).toBe('ym_offshore_sb');
+    expect(matchCourseCode('RYA Day Skipper Skills Refresh Weekend')).toBeNull();
+    expect(matchCourseCode('5-Day Mile Builder South Coast')).toBeNull();
   });
   it('leaves skipper refreshers and mile builders unmapped', () => {
     expect(matchCourseCode('5 DAY SKIPPER REFRESHER COURSE')).toBeNull();
