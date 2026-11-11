@@ -2,6 +2,10 @@
 // in the app). Order matters: refreshers and specific courses before the general ones.
 // A null code means "deliberately not mapped": no app course matches it closely enough.
 const RULES: [RegExp, string | null][] = [
+  // "Nav & Radar (OOW) Week 2": a later week of a multi-week course isn't a start date.
+  [/\bweek\s*[2-9]\b/i, null],
+  // Master-level nav and radar isn't the OOW (Yachts) module; which master module it is varies.
+  [/master'?s?\b[^|]*nav(igation)?\b[^|]*radar/i, null],
   // Restricted PSCRB is a narrower certificate than PSCRB or PSCRB (other than lifeboats).
   [/(pscrb|survival craft)[^|]*restricted|restricted[^|]*(pscrb|survival craft)/i, null],
   [/(pscrb|survival craft).*(refresher|update)|(refresher|updat(?:ed?|ing)|revalidation)\b.*(pscrb|survival craft)/i, 'pscrb_refresher'],

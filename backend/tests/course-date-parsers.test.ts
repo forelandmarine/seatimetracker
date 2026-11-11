@@ -186,6 +186,11 @@ describe('matchCourseCode 2.5.0 additions', () => {
     expect(matchCourseCode('Aggiornamento Ship Security Officer')).toBeNull();
     expect(matchCourseCode('RYA Level 2 Powerboat Handling')).toBe('powerboat_l2');
   });
+  it('skips later weeks and master-level nav and radar', () => {
+    expect(matchCourseCode('MCA Nav & Radar (OOW) Week 2 PYT118')).toBeNull();
+    expect(matchCourseCode('MCA Nav & Radar (OOW) Week 1 PYT118')).toBe('oow_yachts_nav_radar');
+    expect(matchCourseCode('MCA Masters Nav and Radar Week 1 PYT136')).toBeNull();
+  });
   it('leaves skipper refreshers and mile builders unmapped', () => {
     expect(matchCourseCode('5 DAY SKIPPER REFRESHER COURSE')).toBeNull();
     expect(matchCourseCode('Coastal Skipper Mile Builder')).toBeNull();
