@@ -114,7 +114,8 @@
     "searchPlaceholder": "Cerca per nave, data, tipo di servizio...",
     "selectDate": "Seleziona una data sul calendario per vedere le voci di quel giorno",
     "entries": "Voci",
-    "total": "Totale"
+    "total": "Totale",
+    "distanceThisMonth": "Distanza questo mese"
   },
   "review": {
     "title": "Verifica",
@@ -123,7 +124,8 @@
     "noPending": "Nessuna voce da verificare",
     "noPendingHint": "Quando la tua nave smette di muoversi, le voci appaiono qui per la verifica",
     "days": "giorni",
-    "day": "giorno"
+    "day": "giorno",
+    "distance": "Distanza"
   },
   "vessel": {
     "particulars": "Dati della nave",

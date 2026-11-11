@@ -1,5 +1,6 @@
 
 import { formatEntryNotes } from '@/utils/entryNotes';
+import { entryNm, formatNm } from '@/utils/distance';
 import {
   View,
   Text,
@@ -66,6 +67,7 @@ interface SeaTimeEntry {
   mca_compliant?: boolean | null;
   detection_window_hours?: number | string | null;
   to_port?: string | null;
+  distance_nm?: number | string | null;
 }
 
 type ServiceType = 'actual_sea_service' | 'watchkeeping_service';
@@ -576,10 +578,17 @@ export default function ConfirmationsScreen() {
                       <Text style={styles.entryDate}>
                         {isYardEntry(entry) ? formatYardDates(entry) : `${formatDate(entry.start_time)} at ${formatTime(entry.start_time)}`}
                       </Text>
-                      <View style={styles.durationBadge}>
-                        <Text style={styles.durationText}>
-                          {formatDuration(entry.duration_hours)}
-                        </Text>
+                      <View style={styles.badgeRow}>
+                        <View style={styles.durationBadge}>
+                          <Text style={styles.durationText}>
+                            {formatDuration(entry.duration_hours)}
+                          </Text>
+                        </View>
+                        {entryNm(entry.distance_nm) > 0 && (
+                          <View style={styles.durationBadge}>
+                            <Text style={styles.durationText}>{formatNm(entryNm(entry.distance_nm))}</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                     {!bulk.selecting && (
@@ -629,6 +638,12 @@ export default function ConfirmationsScreen() {
                           {formatDuration(entry.duration_hours)}
                         </Text>
                       </View>
+                      {entryNm(entry.distance_nm) > 0 && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>{t('review.distance')}:</Text>
+                          <Text style={styles.detailValue}>{formatNm(entryNm(entry.distance_nm))}</Text>
+                        </View>
+                      )}
 
                       {(entry.start_latitude || entry.start_longitude) && (
                         <View style={styles.detailRow}>
@@ -905,6 +920,11 @@ function createStyles(isDark: boolean, topInset: number) {
       fontSize: 14,
       color: isDark ? colors.textSecondary : colors.textSecondaryLight,
       marginBottom: 8,
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
     },
     durationBadge: {
       backgroundColor: colors.primary + '20',

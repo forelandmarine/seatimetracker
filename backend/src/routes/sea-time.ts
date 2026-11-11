@@ -149,6 +149,8 @@ const ENTRY_DETAIL_PROPS = {
   certificate_id: { type: ['string', 'null'] },
   from_port: { type: ['string', 'null'] },
   to_port: { type: ['string', 'null'] },
+  // Miles logged for the entry (AIS track for shifts, otherwise start to end); Review and Logbook show it
+  distance_nm: { type: ['number', 'null'] },
   // Who signed the entry (entrySignatureView); the image itself is not sent
   signature: {
     type: ['object', 'null'],
@@ -231,6 +233,7 @@ function transformSeaTimeEntryForResponse(entry: any) {
     certificate_id: entry.certificate_id || null,
     from_port: entry.from_port || null,
     to_port: entry.to_port || null,
+    distance_nm: entry.distance_nm != null && Number.isFinite(Number(entry.distance_nm)) ? Number(entry.distance_nm) : null,
     is_sole_watch: entry.is_sole_watch === true,
     area_category: entry.area_category ?? null,
     is_tidal: entry.is_tidal ?? null,

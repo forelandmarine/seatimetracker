@@ -30,6 +30,7 @@ import { sendLocalNotification, scheduleShiftReminder, cancelShiftReminder } fro
 import { useOnBoard } from '@/hooks/useOnBoard';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { formatHoursMinutes } from '@/utils/entryNotes';
+import { formatNm as fmtNm } from '@/utils/distance';
 import { log, error as logError } from '@/utils/log';
 
 // Proximity thresholds (nautical miles). ~0.08nm ≈ 150m aboard; ~0.25nm ≈ 460m clear of the vessel.
@@ -45,11 +46,6 @@ const POSITION_TIMEOUT_MS = 8_000;
 interface Props {
   vesselId?: string | null;
   vesselName?: string | null;
-}
-
-/** Nautical miles for display, e.g. "44.6 nm". */
-function fmtNm(nm: number): string {
-  return `${nm >= 100 ? Math.round(nm) : Math.round(nm * 10) / 10} nm`;
 }
 
 function haversineNm(aLat: number, aLon: number, bLat: number, bLon: number): number {

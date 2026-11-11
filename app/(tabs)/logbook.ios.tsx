@@ -1,5 +1,6 @@
 
 import { formatEntryNotes } from '@/utils/entryNotes';
+import { entryNm, formatNm, monthDistanceNm } from '@/utils/distance';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -64,6 +65,7 @@ interface SeaTimeEntry {
   /** Inside a sole watchkeeper period, so it also counts as watchkeeping. */
   is_sole_watch?: boolean;
   signature?: { signer_name: string; signed_at: string } | null;
+  distance_nm?: number | string | null;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -893,6 +895,7 @@ export default function LogbookScreen() {
   }
 
   const totalDays = calculateTotalDays();
+  const monthNm = monthDistanceNm(entries);
 
   return (
     <ErrorBoundary>
@@ -1040,6 +1043,7 @@ export default function LogbookScreen() {
                         {entry.duration_hours !== null && (
                           <Text style={styles.durationText}>
                             {daysDisplay}
+                            {entryNm(entry.distance_nm) > 0 ? ` · ${formatNm(entryNm(entry.distance_nm))}` : ''}
                           </Text>
                         )}
 
@@ -1173,6 +1177,12 @@ export default function LogbookScreen() {
                   <Text style={styles.summaryLabel}>{t('logbook.pendingReview')}</Text>
                   <Text style={styles.summaryValue}>{pendingEntries.length}</Text>
                 </View>
+                {monthNm > 0 && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>{t('logbook.distanceThisMonth')}</Text>
+                    <Text style={styles.summaryValue}>{formatNm(monthNm)}</Text>
+                  </View>
+                )}
               </View>
 
               {confirmedEntries.length > 0 && (
@@ -1243,6 +1253,7 @@ export default function LogbookScreen() {
                               {entry.duration_hours !== null && (
                                 <Text style={styles.durationText}>
                                   {entryDaysDisplay}
+                                  {entryNm(entry.distance_nm) > 0 ? ` · ${formatNm(entryNm(entry.distance_nm))}` : ''}
                                 </Text>
                               )}
 
@@ -1348,6 +1359,7 @@ export default function LogbookScreen() {
                         {entry.duration_hours !== null && (
                           <Text style={styles.durationText}>
                             {pendingDaysDisplay}
+                            {entryNm(entry.distance_nm) > 0 ? ` · ${formatNm(entryNm(entry.distance_nm))}` : ''}
                           </Text>
                         )}
                       </TouchableOpacity>

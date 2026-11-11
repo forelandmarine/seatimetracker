@@ -9,6 +9,8 @@
  * MANUAL_SHIFT_NOTE_PREFIX (no column marks them, so no migration is needed).
  */
 
+import { cumulativeTrackDistanceNm, type TrackFix } from './seaTime.js';
+
 /**
  * Longest shift that can be logged. A shift left open longer than this (a
  * forgotten clock-out) is not closed at "now": the user must say when it ended.
@@ -112,4 +114,17 @@ export function totalShiftMiles(
   let total = 0;
   for (const s of shifts) total += shiftMiles(trackByEntry.get(s.id), s.distance_nm == null ? 0 : Number(s.distance_nm));
   return Math.round(total * 100) / 100;
+}
+
+/**
+ * Backfill for shifts logged before clock-out counted the AIS track: the corrected
+ * miles from the fixes inside the shift, or null when nothing should change (under
+ * two fixes, or the track is no longer than the stored figure). Same rule as
+ * clock-out: the AIS track via cumulativeTrackDistanceNm, larger figure kept.
+ */
+export function backfilledShiftMiles(fixes: TrackFix[], storedNm: string | number | null | undefined): number | null {
+  if (fixes.length < 2) return null;
+  const stored = Number.isFinite(Number(storedNm)) ? Number(storedNm) : 0;
+  const next = shiftMiles(cumulativeTrackDistanceNm(fixes), stored);
+  return next > Math.round(stored * 100) / 100 ? next : null;
 }

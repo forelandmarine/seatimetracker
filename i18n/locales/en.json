@@ -114,7 +114,8 @@
     "searchPlaceholder": "Search by vessel, date, service type...",
     "selectDate": "Select a date on the calendar to view sea time entries for that day",
     "entries": "Entries",
-    "total": "Total"
+    "total": "Total",
+    "distanceThisMonth": "Distance this month"
   },
   "review": {
     "title": "Review",
@@ -123,7 +124,8 @@
     "noPending": "No entries to review",
     "noPendingHint": "When your vessel stops moving, entries appear here for review",
     "days": "days",
-    "day": "day"
+    "day": "day",
+    "distance": "Distance"
   },
   "vessel": {
     "particulars": "Vessel Particulars",

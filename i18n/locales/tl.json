@@ -114,7 +114,8 @@
     "searchPlaceholder": "Maghanap ayon sa barko, petsa, uri ng serbisyo...",
     "selectDate": "Pumili ng petsa sa kalendaryo upang makita ang mga sea time entry para sa araw na iyon",
     "entries": "Mga entry",
-    "total": "Kabuuan"
+    "total": "Kabuuan",
+    "distanceThisMonth": "Layo ngayong buwan"
   },
   "review": {
     "title": "Suriin",
@@ -123,7 +124,8 @@
     "noPending": "Walang entry na kailangang suriin",
     "noPendingHint": "Kapag tumigil ang iyong barko sa paggalaw, lalabas dito ang mga entry para suriin",
     "days": "araw",
-    "day": "araw"
+    "day": "araw",
+    "distance": "Layo"
   },
   "vessel": {
     "particulars": "Mga detalye ng barko",

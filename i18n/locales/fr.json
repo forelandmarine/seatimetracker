@@ -114,7 +114,8 @@
     "searchPlaceholder": "Rechercher par navire, date, type de service...",
     "selectDate": "Sélectionnez une date sur le calendrier pour voir les entrées de ce jour",
     "entries": "Entrées",
-    "total": "Total"
+    "total": "Total",
+    "distanceThisMonth": "Distance ce mois-ci"
   },
   "review": {
     "title": "Vérification",
@@ -123,7 +124,8 @@
     "noPending": "Aucune entrée à vérifier",
     "noPendingHint": "Lorsque votre navire cesse de bouger, les entrées apparaissent ici pour vérification",
     "days": "jours",
-    "day": "jour"
+    "day": "jour",
+    "distance": "Distance"
   },
   "vessel": {
     "particulars": "Caractéristiques du navire",
