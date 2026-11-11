@@ -5,6 +5,7 @@ import {
   coveredByShift,
   isShiftNote,
   resolveShiftEnd,
+  backfilledShiftMiles,
   shiftMiles,
   totalShiftMiles,
 } from "../src/utils/shifts";
@@ -111,5 +112,32 @@ describe("totalShiftMiles", () => {
       { id: "d", distance_nm: "7.25" },
     ];
     expect(totalShiftMiles(shifts, track)).toBe(53.75);
+  });
+});
+
+describe("backfilledShiftMiles", () => {
+  const t0 = new Date("2026-11-01T08:00:00Z").getTime();
+  // Out from the SOV to a turbine 0.1 deg of latitude north (6 nm) and back: 12 nm of track.
+  const outAndBack = [
+    { latitude: 53.0, longitude: 1.0, check_time: new Date(t0) },
+    { latitude: "53.1", longitude: "1.0", check_time: new Date(t0 + H) },
+    { latitude: 53.0, longitude: 1.0, check_time: new Date(t0 + 2 * H).toISOString() },
+  ];
+
+  test("an old shift stored as a near-zero straight line takes the track", () => {
+    expect(backfilledShiftMiles(outAndBack, "0.02")).toBeCloseTo(12, 1);
+  });
+  test("fixes out of order are sorted by time first", () => {
+    expect(backfilledShiftMiles([outAndBack[2], outAndBack[0], outAndBack[1]], 0)).toBeCloseTo(12, 1);
+  });
+  test("no change with under two fixes", () => {
+    expect(backfilledShiftMiles([outAndBack[0]], 0)).toBeNull();
+    expect(backfilledShiftMiles([], null)).toBeNull();
+  });
+  test("no change when the stored figure is already as long as the track", () => {
+    expect(backfilledShiftMiles(outAndBack, 15)).toBeNull();
+    const already = backfilledShiftMiles(outAndBack, 0)!;
+    expect(backfilledShiftMiles(outAndBack, already)).toBeNull();
+    expect(backfilledShiftMiles(outAndBack, String(already))).toBeNull();
   });
 });
