@@ -216,7 +216,7 @@ describe('parseHtml title and date patterns', () => {
 });
 
 describe('parseHtml dates from markup', () => {
-  it('reads Bookwhen agenda rows from data-event', () => {
+  it('reads agenda rows dated in a data attribute', () => {
     const page = `<tr class="month_title"><td>November</td></tr>
       <tr data-hook="agenda_list_item" data-event="ev-s34rp-${Y}1101000000"><td class="dom">1</td><td class="summary"><button>RYA Marine Radio VHF - SRC Course</button></td></tr>
       <tr data-hook="agenda_list_item" data-event="ev-s8p21-${Y}1115090000"><td class="dom">15</td><td class="summary"><button>RYA Sea Survival</button></td></tr>`;

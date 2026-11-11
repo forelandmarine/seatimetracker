@@ -23,7 +23,7 @@ export interface HtmlConfig {
   date?: string;
   /**
    * Match config.date against the row's raw HTML. With three groups it reads them
-   * as year, month, day (Bookwhen's data-event="ev-xxxx-20261115090000").
+   * as year, month, day (a data attribute such as data-event="ev-xxxx-20261115090000").
    */
   dateHtml?: boolean;
   /** Every row is this course (a page per course); skips title matching. */
