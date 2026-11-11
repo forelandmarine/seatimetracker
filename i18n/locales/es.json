@@ -114,7 +114,8 @@
     "searchPlaceholder": "Buscar por buque, fecha, tipo de servicio...",
     "selectDate": "Selecciona una fecha en el calendario para ver las entradas de ese día",
     "entries": "Entradas",
-    "total": "Total"
+    "total": "Total",
+    "distanceThisMonth": "Distancia este mes"
   },
   "review": {
     "title": "Revisión",
@@ -123,7 +124,8 @@
     "noPending": "No hay entradas para revisar",
     "noPendingHint": "Cuando tu buque deja de moverse, las entradas aparecen aquí para revisión",
     "days": "días",
-    "day": "día"
+    "day": "día",
+    "distance": "Distancia"
   },
   "vessel": {
     "particulars": "Datos del buque",

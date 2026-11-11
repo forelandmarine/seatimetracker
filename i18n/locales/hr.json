@@ -114,7 +114,8 @@
     "searchPlaceholder": "Pretraži po brodu, datumu, vrsti službe...",
     "selectDate": "Odaberite datum na kalendaru za prikaz unosa tog dana",
     "entries": "Unosi",
-    "total": "Ukupno"
+    "total": "Ukupno",
+    "distanceThisMonth": "Udaljenost ovaj mjesec"
   },
   "review": {
     "title": "Pregled",
@@ -123,7 +124,8 @@
     "noPending": "Nema unosa za pregled",
     "noPendingHint": "Kada vaš brod prestane ploviti, unosi se pojavljuju ovdje za pregled",
     "days": "dana",
-    "day": "dan"
+    "day": "dan",
+    "distance": "Udaljenost"
   },
   "vessel": {
     "particulars": "Podaci o brodu",

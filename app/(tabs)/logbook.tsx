@@ -1,5 +1,6 @@
 
 import { formatEntryNotes } from '@/utils/entryNotes';
+import { entryNm, formatNm, monthDistanceNm } from '@/utils/distance';
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -67,6 +68,7 @@ interface SeaTimeEntry {
   /** Inside a sole watchkeeper period, so it also counts as watchkeeping. */
   is_sole_watch?: boolean;
   signature?: { signer_name: string; signed_at: string } | null;
+  distance_nm?: number | string | null;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -906,6 +908,7 @@ export default function LogbookScreen() {
   }
 
   const totalSeaDays = calculateTotalSeaDays();
+  const monthNm = monthDistanceNm(entries);
 
   return (
     <View style={styles.container}>
@@ -1061,6 +1064,21 @@ export default function LogbookScreen() {
                         </View>
                       )}
 
+                      {entryNm(entry.distance_nm) > 0 && (
+                        <View style={styles.entryRow}>
+                          <IconSymbol
+                            ios_icon_name="ruler"
+                            android_material_icon_name="straighten"
+                            size={16}
+                            color={colors.primary}
+                            style={styles.entryIcon}
+                          />
+                          <Text style={[styles.entryText, { color: colors.primary, fontWeight: '600' }]}>
+                            {formatNm(entryNm(entry.distance_nm))}
+                          </Text>
+                        </View>
+                      )}
+
                       <View style={styles.seaDayBadge}>
                         <Text style={styles.seaDayText}>
                           {formatSeaDay(entry)}
@@ -1187,6 +1205,12 @@ export default function LogbookScreen() {
                   <Text style={styles.summaryLabel}>{t('logbook.pendingReview')}</Text>
                   <Text style={styles.summaryValue}>{pendingEntries.length}</Text>
                 </View>
+                {monthNm > 0 && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>{t('logbook.distanceThisMonth')}</Text>
+                    <Text style={styles.summaryValue}>{formatNm(monthNm)}</Text>
+                  </View>
+                )}
               </View>
 
               {confirmedEntries.length > 0 && (
@@ -1266,6 +1290,21 @@ export default function LogbookScreen() {
                                 />
                                 <Text style={[styles.entryText, { color: colors.primary, fontWeight: '600' }]}>
                                   {formatDuration(entry.duration_hours)}
+                                </Text>
+                              </View>
+                            )}
+
+                            {entryNm(entry.distance_nm) > 0 && (
+                              <View style={styles.entryRow}>
+                                <IconSymbol
+                                  ios_icon_name="ruler"
+                                  android_material_icon_name="straighten"
+                                  size={16}
+                                  color={colors.primary}
+                                  style={styles.entryIcon}
+                                />
+                                <Text style={[styles.entryText, { color: colors.primary, fontWeight: '600' }]}>
+                                  {formatNm(entryNm(entry.distance_nm))}
                                 </Text>
                               </View>
                             )}
@@ -1385,6 +1424,21 @@ export default function LogbookScreen() {
                           )}
                         </Text>
                       </View>
+
+                      {entryNm(entry.distance_nm) > 0 && (
+                        <View style={styles.entryRow}>
+                          <IconSymbol
+                            ios_icon_name="ruler"
+                            android_material_icon_name="straighten"
+                            size={16}
+                            color={colors.primary}
+                            style={styles.entryIcon}
+                          />
+                          <Text style={[styles.entryText, { color: colors.primary, fontWeight: '600' }]}>
+                            {formatNm(entryNm(entry.distance_nm))}
+                          </Text>
+                        </View>
+                      )}
 
                       <View style={styles.seaDayBadge}>
                         <Text style={styles.seaDayText}>
