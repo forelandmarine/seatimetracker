@@ -628,5 +628,9 @@
       "saved": "El archivo CSV se ha guardado en tu dispositivo.",
       "failed": "No se pudo exportar. Inténtalo de nuevo."
     }
+  },
+  "findCourse": {
+    "withDates_one": "{{count}} con fechas",
+    "withDates_other": "{{count}} con fechas"
   }
 }

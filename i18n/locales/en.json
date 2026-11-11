@@ -630,5 +630,9 @@
       "saved": "The CSV file was saved to your device.",
       "failed": "Could not export. Please try again."
     }
+  },
+  "findCourse": {
+    "withDates_one": "{{count}} with dates",
+    "withDates_other": "{{count}} with dates"
   }
 }

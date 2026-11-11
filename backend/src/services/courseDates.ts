@@ -1,130 +1,79 @@
 import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
-import { matchCourseCode } from '../utils/courseMatch.js';
+import { parseHtml, parseIcs, parseJsonLd, parseTribe, tribeNextPage, type HtmlConfig, type ParsedDate, type ParserType } from './courseDateParsers.js';
 import { COURSE_DATE_SOURCES } from '../data/course-date-sources.js';
 
 /**
  * Reads upcoming course dates from training providers that publish them in a
- * machine-readable way (2.4.0 "Find a course"). Sources live in
- * src/data/course-date-sources.ts, written by scripts/probe-course-dates.ts. Each
- * provider is re-read weekly, one request at a time, and its rows replaced.
- * Kill switch: COURSE_DATES=off.
+ * machine-readable way (2.4.0 "Find a course", more parsers in 2.5.0). Sources
+ * live in src/data/course-date-sources.ts, found by scripts/probe-course-dates.ts
+ * and the 2.5.0 discovery passes. Each provider is re-read weekly, one request at
+ * a time, and its rows replaced. Kill switch: COURSE_DATES=off.
  */
+
+export { parseJsonLd };
+export type { ParsedDate };
 
 export interface DateSource {
   provider_id: string;
   dates_url: string;
-  parser: 'jsonld';
-}
-
-export interface ParsedDate {
-  course_code: string;
-  start_date: string;
-  end_date: string | null;
-  price_text: string | null;
-  availability_text: string | null;
-  booking_url: string | null;
+  parser: ParserType;
+  /** html: how to split the page into rows. ics / tribe: optional fixed course. */
+  config?: HtmlConfig | { course: string };
 }
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const USER_AGENT = 'SeaTimeTrackerCourseDates/1.0 (+https://forelandmarine.com; course dates for seafarers)';
+const TRIBE_MAX_PAGES = 4;
 
 function loadSources(): DateSource[] {
   return COURSE_DATE_SOURCES;
 }
 
-/** Absolute http(s) URL or null; anything else in the page's data is ignored. */
-function httpUrl(v: unknown, base: string): string | null {
-  if (typeof v !== 'string') return null;
-  try {
-    const u = new URL(v, base);
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null;
-  } catch {
-    return null;
-  }
+async function getText(url: string, accept: string): Promise<string> {
+  const res = await fetch(url, { headers: { 'user-agent': USER_AGENT, accept }, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
 }
 
-const isoDay = (v: unknown): string | null => {
-  if (typeof v !== 'string') return null;
-  const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
-  return m ? m[1] : null;
-};
-
-function priceText(offers: any): string | null {
-  const o = Array.isArray(offers) ? offers[0] : offers;
-  if (!o || o.price == null) return null;
-  const n = Number(o.price);
-  if (!isFinite(n) || n <= 0) return null;
-  const cur = String(o.priceCurrency || '').toUpperCase();
-  const sym = cur === 'GBP' ? '£' : cur === 'EUR' ? '€' : cur === 'USD' ? '$' : cur ? `${cur} ` : '';
-  return `${sym}${n.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`;
-}
-
-function availability(offers: any, ev: any): string | null {
-  const o = Array.isArray(offers) ? offers[0] : offers;
-  const a = String(o?.availability || ev?.eventStatus || '');
-  if (/SoldOut/i.test(a)) return 'Full';
-  if (/LimitedAvailability/i.test(a)) return 'Few places left';
-  if (/InStock|OnlineOnly|PreOrder/i.test(a)) return 'Available';
-  if (/Cancelled/i.test(a)) return 'Cancelled';
-  return null;
-}
-
-/** schema.org Event / CourseInstance blocks embedded as JSON-LD. */
-export function parseJsonLd(html: string, pageUrl: string): ParsedDate[] {
-  const out: ParsedDate[] = [];
-  const blocks = html.match(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi) ?? [];
-  const visit = (node: any, parentName?: string) => {
-    if (!node || typeof node !== 'object') return;
-    if (Array.isArray(node)) return node.forEach((n) => visit(n, parentName));
-    if (node['@graph']) visit(node['@graph'], parentName);
-    const type = ([] as string[]).concat(node['@type'] ?? []).join(' ');
-    const name = String(node.name ?? parentName ?? '');
-    if (/Course\b/.test(type) && node.hasCourseInstance) visit(node.hasCourseInstance, name);
-    if (/Event|CourseInstance/.test(type)) {
-      const start = isoDay(node.startDate);
-      const code = matchCourseCode(name) ?? (parentName ? matchCourseCode(parentName) : null);
-      if (start && code && !/Cancelled/i.test(String(node.eventStatus ?? ''))) {
-        out.push({
-          course_code: code,
-          start_date: start,
-          end_date: isoDay(node.endDate),
-          price_text: priceText(node.offers),
-          availability_text: availability(node.offers, node),
-          booking_url: httpUrl(node.url, pageUrl) ?? httpUrl((Array.isArray(node.offers) ? node.offers[0] : node.offers)?.url, pageUrl),
-        });
+/** Fetches and parses one source. Tribe listings may page; pages are read one after another. */
+export async function readSource(src: DateSource): Promise<ParsedDate[]> {
+  const course = src.config && 'course' in src.config ? src.config.course : undefined;
+  switch (src.parser) {
+    case 'ics':
+      return parseIcs(await getText(src.dates_url, 'text/calendar,text/plain'), src.dates_url, course);
+    case 'tribe': {
+      const out: ParsedDate[] = [];
+      let url: string | null = src.dates_url;
+      for (let page = 0; url && page < TRIBE_MAX_PAGES; page++) {
+        if (page > 0) await new Promise((r) => setTimeout(r, 2000));
+        const body = await getText(url, 'application/json');
+        out.push(...parseTribe(body, src.dates_url, course));
+        url = tribeNextPage(body);
       }
+      const seen = new Set<string>();
+      return out.filter((d) => !seen.has(`${d.course_code}|${d.start_date}`) && !!seen.add(`${d.course_code}|${d.start_date}`));
     }
-  };
-  for (const b of blocks) {
-    const json = b.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '').trim();
-    try {
-      visit(JSON.parse(json));
-    } catch {
-      // ignore malformed blocks
-    }
+    case 'html':
+      if (!src.config || !('block' in src.config)) throw new Error('html source without config');
+      return parseHtml(await getText(src.dates_url, 'text/html,application/xhtml+xml'), src.dates_url, src.config);
+    default:
+      return parseJsonLd(await getText(src.dates_url, 'text/html,application/xhtml+xml'), src.dates_url);
   }
-  const today = new Date().toISOString().slice(0, 10);
-  const seen = new Set<string>();
-  return out.filter((d) => {
-    const k = `${d.course_code}|${d.start_date}`;
-    if (d.start_date < today || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
 }
 
-async function refreshOne(app: App, src: DateSource): Promise<void> {
+// Several providers share one page (a school's sites, an Arlo account): one fetch per run.
+type RunCache = Map<string, Promise<ParsedDate[]>>;
+const sourceKey = (s: DateSource) => `${s.parser}|${s.dates_url}|${JSON.stringify(s.config ?? null)}`;
+
+async function refreshOne(app: App, src: DateSource, cache: RunCache): Promise<boolean> {
   const now = new Date();
+  const key = sourceKey(src);
+  const fetched = !cache.has(key);
+  if (fetched) cache.set(key, readSource(src));
   try {
-    const res = await fetch(src.dates_url, {
-      headers: { 'user-agent': USER_AGENT, accept: 'text/html,application/xhtml+xml' },
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
-    const dates = parseJsonLd(html, src.dates_url);
+    const dates = await cache.get(key)!;
     await app.db.transaction(async (tx) => {
       await tx.delete(schema.training_course_dates).where(eq(schema.training_course_dates.provider_id, src.provider_id));
       if (dates.length) {
@@ -138,6 +87,7 @@ async function refreshOne(app: App, src: DateSource): Promise<void> {
     await upsertSource(app, src, { last_run_at: now, last_error: String(err?.message ?? err).slice(0, 300) });
     app.logger.warn({ provider: src.provider_id, err: err?.message }, 'course dates refresh failed');
   }
+  return fetched;
 }
 
 async function upsertSource(app: App, src: DateSource, fields: Partial<typeof schema.training_date_sources.$inferInsert>) {
@@ -159,8 +109,10 @@ export async function refreshDueCourseDates(app: App): Promise<number> {
     .where(inArray(schema.training_date_sources.provider_id, sources.map((s) => s.provider_id)));
   const lastRun = new Map(state.map((s) => [s.provider_id, s.last_run_at?.getTime() ?? 0]));
   const due = sources.filter((s) => Date.now() - (lastRun.get(s.provider_id) ?? 0) > WEEK_MS);
+  const cache: RunCache = new Map();
   for (const src of due) {
-    await refreshOne(app, src);
+    const fetched = await refreshOne(app, src, cache);
+    if (!fetched) continue;
     await new Promise((r) => setTimeout(r, 3000));
   }
   return due.length;

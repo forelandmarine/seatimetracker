@@ -14,12 +14,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import ProviderMap from '@/components/ProviderMap';
 import MedicalAlternativesCard from '@/components/MedicalAlternativesCard';
-import { useTranslation } from 'react-i18next';
 import { medicalAlternatives, queryWithout } from '@/utils/medicalAlternatives';
 import * as seaTimeApi from '@/utils/seaTimeApi';
 import { courseLabel } from '@/utils/courseChecklist';
@@ -59,9 +59,9 @@ const fmtDay = (iso: string) => localDate(iso).toLocaleDateString('en-GB', { day
 
 export default function TrainingProvidersScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ course?: string }>();
   const isDark = useColorScheme() === 'dark';
-  const { t } = useTranslation();
   const styles = createStyles(isDark);
   const miles = usesMiles();
   // The user's maritime authority's country (MCA = GB) picks which Falmouth a
@@ -109,8 +109,13 @@ export default function TrainingProvidersScreen() {
     () => (providers ? medicalAlternatives(directory, { query, course, authority, origin, homeCountry }) : null),
     [providers, directory, query, course, authority, origin, homeCountry],
   );
+  // Providers with an upcoming date for the chosen course rank a little higher.
+  const dated = useMemo(() => {
+    const today = todayIso();
+    return new Set(dates.filter((d) => d.start_date >= today).map((d) => d.provider_id));
+  }, [dates]);
   const hits = useMemo(() => {
-    const found = searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry });
+    const found = searchProviders(directory, { query, course, sector, approval, origin, radiusKm: origin ? radiusKm : null, homeCountry, dated });
     // A country with no providers at all ("eng1 Iceland"): list the ENG1 doctors elsewhere.
     if (found.length || !medical?.countryWords.length) return found;
     return searchProviders(directory, {
@@ -121,8 +126,10 @@ export default function TrainingProvidersScreen() {
       origin,
       radiusKm: origin ? radiusKm : null,
       homeCountry,
+      dated,
     });
-  }, [directory, query, course, sector, approval, origin, radiusKm, homeCountry, medical]);
+  }, [directory, query, course, sector, approval, origin, radiusKm, homeCountry, medical, dated]);
+  const datedHits = useMemo(() => (course ? hits.filter((h) => dated.has(h.provider.id)).length : 0), [hits, dated, course]);
   // When the authority filter leaves nothing, say how many other providers match.
   const otherApprovals = useMemo(
     () =>
@@ -311,6 +318,7 @@ export default function TrainingProvidersScreen() {
           <Text style={styles.count}>
             {hits.length} {hits.length === 1 ? 'provider' : 'providers'}
             {origin ? ' · nearest first' : ''}
+            {datedHits > 0 ? ` · ${t('findCourse.withDates', { count: datedHits })}` : ''}
             {hidden > 0 && approval ? ` · ${hidden} more not ${approvalLabel(approval)} approved` : ''}
           </Text>
           <TouchableOpacity onPress={() => setShowMap(!showMap)}>
