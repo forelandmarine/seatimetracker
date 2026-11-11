@@ -8,3 +8,4 @@ export * from './schema/referrals.js';
 export * from './schema/testimonial-requests.js';
 export * from './schema/entry-signature-requests.js';
 export * from './schema/presence.js';
+export * from './schema/vessel-index.js';
