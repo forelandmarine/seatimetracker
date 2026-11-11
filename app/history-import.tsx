@@ -24,6 +24,8 @@ import {
   resumePendingHistoryImport,
 } from '@/utils/historyPurchase';
 import { log, error as logError } from '@/utils/log';
+import { trackEvent } from '@/utils/appEvents';
+import { clearHistoryOffer } from '@/components/HistoryImportOffer';
 
 const POLL_MS = 10_000;
 
@@ -67,7 +69,7 @@ const rangesDays = (ranges: HistoryRange[]) => ranges.reduce((n, r) => n + daysI
 
 /** Import past sea time for one vessel from its AIS history (one-off purchase). */
 export default function HistoryImportScreen() {
-  const { vesselId, vesselName } = useLocalSearchParams<{ vesselId: string; vesselName?: string }>();
+  const { vesselId, vesselName, source } = useLocalSearchParams<{ vesselId: string; vesselName?: string; source?: string }>();
   const isDark = useColorScheme() === 'dark';
   const styles = createStyles(isDark);
 
@@ -155,6 +157,8 @@ export default function HistoryImportScreen() {
     setBuying(productId);
     try {
       const created = await buyHistoryImport({ vesselId, product, ranges });
+      trackEvent('history_purchased', `${source || 'unknown'}:${productId === 'seatime_history_12m' ? '12m' : '6m'}`);
+      clearHistoryOffer(vesselId);
       setCurrent(created);
       setStartAnother(false);
       setPeriods([{ from: null, last: null }]);

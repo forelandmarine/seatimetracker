@@ -19,7 +19,10 @@ export type AppEvent =
   | 'signed_in'
   | 'vessel_lookup'
   | 'vessel_confirmed'
-  | 'vessel_added';
+  | 'vessel_added'
+  | 'history_offer_shown'
+  | 'history_opened'
+  | 'history_purchased';
 
 const INSTALL_ID_KEY = 'seatime_install_id';
 let installId: Promise<string> | null = null;
