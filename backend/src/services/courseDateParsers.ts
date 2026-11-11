@@ -97,7 +97,7 @@ export function htmlText(html: string): string {
       .replace(/<br\s*\/?>|<\/(p|div|li|td|th|tr|h\d)>/gi, ' \n ')
       .replace(/<[^>]+>/g, ' '),
   )
-    .replace(/[–—]/g, '-')
+    .replace(/[\u2013\u2014]/g, '-')
     .replace(/[ \t\r\f\v ]+/g, ' ')
     .replace(/\s*\n\s*/g, '\n')
     .trim();
@@ -166,7 +166,7 @@ export interface DateSpan {
  * Dates without a year are ignored: guessing the year is how wrong dates get in.
  */
 export function firstDateSpan(text: string, order: 'dmy' | 'mdy' = 'dmy'): DateSpan | null {
-  const t = text.replace(/[–—]/g, '-').replace(/,/g, ', ').replace(/\s+/g, ' ');
+  const t = text.replace(/[\u2013\u2014]/g, '-').replace(/,/g, ', ').replace(/\s+/g, ' ');
   const found: { at: number; span: DateSpan }[] = [];
   const add = (at: number, start: string | null, end: string | null) => {
     if (start) found.push({ at, span: { start, end: end && end >= start ? end : null } });
