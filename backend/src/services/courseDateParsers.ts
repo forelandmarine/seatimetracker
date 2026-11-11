@@ -161,7 +161,8 @@ export interface DateSpan {
 /**
  * The first date or date range written in a piece of text. Reads 12 January 2027,
  * Mon 12th Jan 2027, 12-15 Jan 2027, 30 Jan - 2 Feb 2027, January 12-15, 2027,
- * Jan 12 - Feb 2 2027, 2027-01-12, and 12/01/2027 (dateOrder picks d/m or m/d).
+ * Jan 12 - Feb 2 2027, 2027-01-12, and 12/01/2027, 12.01.2027 or 12-01-2027
+ * (dateOrder picks d/m or m/d).
  * Dates without a year are ignored: guessing the year is how wrong dates get in.
  */
 export function firstDateSpan(text: string, order: 'dmy' | 'mdy' = 'dmy'): DateSpan | null {
@@ -205,11 +206,13 @@ export function firstDateSpan(text: string, order: 'dmy' | 'mdy' = 'dmy'): DateS
   const iso = /\b(20\d{2})-(\d{2})-(\d{2})\b/g;
   while ((m = iso.exec(t))) add(m.index, ymd(Number(m[1]), Number(m[2]), Number(m[3])), null);
   // 12/01/2027 or 12.01.2027, optionally "- 15/01/2027"
-  const num = /\b(\d{1,2})[/.](\d{1,2})[/.](\d{4}|\d{2})\b(?:\s*(?:-|to)\s*(\d{1,2})[/.](\d{1,2})[/.](\d{4}|\d{2})\b)?/g;
+  const num = /\b(\d{1,2})([/.-])(\d{1,2})\2(\d{4}|\d{2})\b(?:\s*(?:-|to)\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})\b)?/g;
   while ((m = num.exec(t))) {
-    const [a, b] = order === 'mdy' ? [m[2], m[1]] : [m[1], m[2]];
-    const end = m[4] ? (order === 'mdy' ? ymd(Number(m[6]), Number(m[4]), Number(m[5])) : ymd(Number(m[6]), Number(m[5]), Number(m[4]))) : null;
-    add(m.index, ymd(Number(m[3]), Number(b), Number(a)), end);
+    // A dashed pair with a two-digit year ("12-15-26") is too likely a range or a code.
+    if (m[2] === '-' && m[4].length === 2) continue;
+    const [a, b] = order === 'mdy' ? [m[3], m[1]] : [m[1], m[3]];
+    const end = m[5] ? (order === 'mdy' ? ymd(Number(m[7]), Number(m[5]), Number(m[6])) : ymd(Number(m[7]), Number(m[6]), Number(m[5]))) : null;
+    add(m.index, ymd(Number(m[4]), Number(b), Number(a)), end);
   }
   if (!found.length) return null;
   found.sort((x, y) => x.at - y.at || (y.span.end ? 1 : 0) - (x.span.end ? 1 : 0));

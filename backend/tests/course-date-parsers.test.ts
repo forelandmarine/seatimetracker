@@ -25,6 +25,8 @@ describe('firstDateSpan', () => {
     expect(firstDateSpan(`12/01/${Y}`, 'mdy')).toEqual({ start: `${Y}-12-01`, end: null });
     expect(firstDateSpan(`12.01.${Y} - 15.01.${Y}`)).toEqual({ start: `${Y}-01-12`, end: `${Y}-01-15` });
     expect(firstDateSpan(`${Y}-01-12`)).toEqual({ start: `${Y}-01-12`, end: null });
+    expect(firstDateSpan(`23-11-${Y}`)).toEqual({ start: `${Y}-11-23`, end: null });
+    expect(firstDateSpan('12-15-26')).toBeNull();
   });
   it('takes the first date in the text and ignores dates without a year', () => {
     expect(firstDateSpan(`3 Feb ${Y} then 1 Jan ${Y}`)?.start).toBe(`${Y}-02-03`);
