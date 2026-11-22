@@ -26,10 +26,18 @@
  * app leaves them out of the Schengen count.
  *
  * Gibraltar is not in the Schengen area, but under the UK-EU agreement on
- * Gibraltar, applied provisionally from 15 July 2026, time there counts with
- * Schengen time towards the 90 days (GOV.UK Gibraltar entry requirements,
- * https://www.gov.uk/foreign-travel-advice/gibraltar/entry-requirements, read
- * 2026-11-22). Days in Gibraltar from that date count; earlier days do not.
+ * Gibraltar, applied provisionally from 15 July 2026, any time there counts
+ * with Schengen time towards the 90 days. Sources (read 2026-11-22):
+ * GOV.UK Gibraltar entry requirements,
+ * https://www.gov.uk/foreign-travel-advice/gibraltar/entry-requirements ,
+ * and HM Government of Gibraltar technical notice on immigration at Gibraltar
+ * airport and the crossing of Schengen external borders (press release
+ * 562/2026),
+ * https://www.gibraltar.gov.gi/press-releases/technical-notice-reminder-concerning-immigration-arrangements-at-gibraltar-airport-and-the-crossing-of-schengen-external-borders-5622026-12205 .
+ * Days in Gibraltar from 15 July 2026 count; earlier days do not. Gibraltar
+ * residents are exempt from the Entry/Exit System under the treaty, but the
+ * app cannot tell who is a resident and still counts their days (the cautious
+ * side: a resident who does not need the count can ignore it).
  *
  * Microstates: Monaco, San Marino and the Vatican have open borders with France
  * or Italy and can only be reached through the Schengen area, so days there
@@ -41,6 +49,13 @@
  * would make days in Andorra count by law; it was not yet in force when checked
  * on 2026-11-22. The app counts Andorra and says so. Counting more days is the
  * safe side for an overstay warning.
+ *
+ * Caution policy (owner's rule, 2026-11-22: err on the side of caution with
+ * any unknown or ambiguous day count). Where a day is unknown the app counts
+ * it: microstates and Gibraltar as above; on-board days in a Schengen port
+ * (switch on by default); days at sea after a Schengen port (unless switched
+ * off: cleared out with an exit check); unlogged days between two stays that
+ * count. See schengenDayDetail in presence.ts and the research doc.
  *
  * Outermost regions: the Canary Islands (ES), Azores and Madeira (PT) are in
  * the area and use their country's code. French territories outside Europe
@@ -68,7 +83,7 @@ export const SCHENGEN_COUNTS_FROM: Record<string, string> = {
   HR: '2023-01-01',
   BG: '2024-03-31',
   RO: '2024-03-31',
-  GI: '2026-07-15',
+  GI: '2026-07-15', // UK-EU agreement on Gibraltar, provisional application (see the header)
 };
 
 const COUNTED = new Set([...SCHENGEN_MEMBERS, ...SCHENGEN_COUNTED_MICROSTATES]);

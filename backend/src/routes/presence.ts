@@ -30,6 +30,7 @@ import {
   isCountryCode,
   isIsoDate,
   resolveToday,
+  schengenStayStatus,
   schengenSummary,
   sedSummary,
   taxCountrySummary,
@@ -85,6 +86,16 @@ function toStay(r: StayRow): Stay & { vessel_id: string | null; note: string | n
     vessel_id: r.vessel_id,
     note: r.note,
   };
+}
+
+/**
+ * Stays with a "counts for Schengen" switch: on-board stays, and at-sea stays
+ * whatever their kind (off = cleared out with an exit check before sailing).
+ * Every other stay is stored as true. The column defaults to true, so an
+ * at-sea stay counts unless the user turned it off.
+ */
+function hasSchengenToggle(kind: StayKind, country: string | undefined | null): boolean {
+  return kind === 'on_board' || (country ?? '').toUpperCase() === AT_SEA_CODE;
 }
 
 function csvCell(v: unknown): string {
@@ -182,7 +193,7 @@ export function register(app: App, fastify: FastifyInstance) {
       start_date: b.start_date as string,
       end_date: b.end_date ?? null,
       kind,
-      counts_schengen: kind === 'ashore' ? true : b.counts_schengen ?? true,
+      counts_schengen: hasSchengenToggle(kind, b.country_code) ? b.counts_schengen ?? true : true,
       counts_tax: b.counts_tax ?? true,
       vessel_id: kind === 'on_board' ? b.vessel_id ?? null : null,
     };
@@ -214,13 +225,14 @@ export function register(app: App, fastify: FastifyInstance) {
     if (!row) return reply.code(404).send({ error: 'Stay not found' });
     const b = request.body;
     const kind: StayKind = b.kind ?? (row.kind as StayKind);
+    const country = (b.country_code ?? row.country_code).toUpperCase();
     const stay = {
       id: row.id,
-      country_code: (b.country_code ?? row.country_code).toUpperCase(),
+      country_code: country,
       start_date: b.start_date ?? row.start_date,
       end_date: b.end_date !== undefined ? b.end_date : row.end_date,
       kind,
-      counts_schengen: kind === 'ashore' ? true : b.counts_schengen ?? row.counts_schengen,
+      counts_schengen: hasSchengenToggle(kind, country) ? b.counts_schengen ?? row.counts_schengen : true,
       counts_tax: b.counts_tax ?? row.counts_tax,
       vessel_id: kind === 'on_board' ? (b.vessel_id !== undefined ? b.vessel_id : row.vessel_id) : null,
     };
@@ -479,6 +491,8 @@ export function register(app: App, fastify: FastifyInstance) {
     push([]);
     push(['STAYS']);
     push(['Country', 'Start date', 'End date', 'Days', 'Type', 'Vessel', 'Counts for Schengen', 'Counts for tax', 'Note']);
+    const schStatus = schengenStayStatus(stays, today);
+    const schCounts = new Map(stays.map((s, i) => [s, schStatus[i].counts]));
     for (const s of [...stays].sort((a, b) => a.start_date.localeCompare(b.start_date))) {
       const end = s.end_date ?? today;
       push([
@@ -488,7 +502,7 @@ export function register(app: App, fastify: FastifyInstance) {
         Math.max(0, dayNum(end) - dayNum(s.start_date) + 1),
         s.kind === 'on_board' ? 'Signed on' : 'Ashore',
         s.vessel_id ? vesselName.get(s.vessel_id) ?? '' : '',
-        s.kind === 'ashore' || s.counts_schengen ? 'yes' : 'no',
+        schCounts.get(s) ? 'yes' : 'no',
         s.counts_tax ? 'yes' : 'no',
         s.note ?? '',
       ]);
@@ -500,6 +514,7 @@ export function register(app: App, fastify: FastifyInstance) {
     push([]);
     const sch = schengenSummary(stays, today);
     push(['SCHENGEN 90/180', `Days used in the 180 days to ${today}`, sch.used, 'Days left', sch.remaining, 'Latest day if staying from today', sch.latest_stay_date ?? 'none']);
+    push(['Of those, days at sea after a Schengen port', sch.at_sea_days, 'Days with nothing logged between Schengen stays, counted to be safe', sch.assumed_days]);
     if (settings.tax_countries.length) {
       push([]);
       push(['TAX DAYS']);

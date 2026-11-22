@@ -498,6 +498,7 @@
     "stillOnBoard": "Sigo a bordo",
     "countsSchengen": "Cuenta para Schengen",
     "countsSchengenHelp": "El tiempo a bordo de un buque en un puerto o en aguas de un país Schengen suele contar como tiempo en el espacio Schengen. El Tribunal de Justicia de la UE ha declarado que un marino en un buque amarrado en un puerto Schengen no ha salido del espacio (asunto C-341/18). Déjalo activado salvo que una autoridad fronteriza te indique lo contrario.",
+    "countsSchengenAtSeaHelp": "Los días en el mar después de salir de un puerto Schengen siguen contando, porque no has salido del espacio Schengen. Desactívalo solo si hiciste el control de salida antes de zarpar. Los días en el mar después de un puerto fuera del espacio nunca cuentan.",
     "countsTax": "Cuenta para los días fiscales",
     "countsTaxHelp": "Desactívalo para dejar esta estancia fuera del recuento fiscal, por ejemplo el tiempo en un barco extranjero que un país no cuenta.",
     "note": "Nota",
@@ -510,6 +511,8 @@
     "stays": "Estancias",
     "noStays": "Aún no hay estancias. Añade dónde has estado para ver tus días Schengen y fiscales.",
     "notSchengen": "No cuenta para Schengen",
+    "atSeaCounted": "Cuenta para Schengen: en el mar después de un puerto Schengen",
+    "atSeaClearedOut": "No cuenta para Schengen: control de salida antes de zarpar",
     "notTax": "Fuera de los días fiscales",
     "perCountry": "Días por país",
     "perCountryHelp": "Todas las estancias. Cuenta cualquier parte de un día.",
@@ -543,8 +546,12 @@
       "futureBreach": "Tus estancias previstas incumplen la norma el {{date}}.",
       "release_one": "Si no pasas más días en el espacio, desde el {{date}} empiezas a recuperar días (te quedará {{count}} día).",
       "release_other": "Si no pasas más días en el espacio, desde el {{date}} empiezas a recuperar días (te quedarán {{count}} días).",
+      "atSea_one": "Incluye {{count}} día en el mar después de un puerto Schengen.",
+      "atSea_other": "Incluye {{count}} días en el mar después de un puerto Schengen.",
+      "assumed_one": "Incluye {{count}} día sin nada anotado entre dos estancias Schengen, que se cuenta por precaución. Anota dónde estuviste para quitarlo.",
+      "assumed_other": "Incluye {{count}} días sin nada anotado entre dos estancias Schengen, que se cuentan por precaución. Anota dónde estuviste para quitarlos.",
       "today": "Hoy",
-      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. Se cuentan los días en Mónaco, San Marino, el Vaticano y Andorra, y los días en Gibraltar desde el 15 de julio de 2026. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
+      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. Se cuentan los días en Mónaco, San Marino, el Vaticano y Andorra, y los días en Gibraltar desde el 15 de julio de 2026. Los días en el mar después de un puerto Schengen cuentan salvo que desactives esa estancia, y también cuentan los días sin nada anotado entre dos estancias Schengen. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
     },
     "plan": {
       "button": "Probar un viaje",
@@ -575,6 +582,8 @@
       "planned_other": "Incluye {{count}} días previstos.",
       "unrecorded_one": "{{count}} día de este año no tiene estancia anotada.",
       "unrecorded_other": "{{count}} días de este año no tienen estancia anotada.",
+      "assumed_one": "Incluye {{count}} día sin nada anotado entre dos estancias aquí, que se cuenta por precaución. Anota dónde estuviste para quitarlo.",
+      "assumed_other": "Incluye {{count}} días sin nada anotado entre dos estancias aquí, que se cuentan por precaución. Anota dónde estuviste para quitarlos.",
       "status": {
         "met": "Se cumple",
         "near": "Cerca",
@@ -604,7 +613,7 @@
         "ES": "Más de 183 días en España en un año natural. Las ausencias esporádicas cuentan como días en España salvo que acredites residencia fiscal en otro país. El núcleo de tus actividades o intereses económicos en España, o un cónyuge e hijos menores que vivan allí, también pueden hacerte residente.",
         "FR": "Más de seis meses en Francia en un año suele convertirla en tu lugar de estancia principal, pero no es una prueba absoluta. Tu hogar, trabajo o intereses económicos principales en Francia también pueden hacerte residente.",
         "IT": "En Italia la mayor parte del año (183 días, o 184 en año bisiesto), contando cualquier parte de un día. Desde 2024 la presencia física por sí sola puede contar. Tu hogar, tus lazos familiares o tu inscripción en Italia también pueden hacerte residente.",
-        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves no cortan la estancia, pero esta app solo une días sin huecos."
+        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves no cortan la estancia. La app une estancias a través de días sin nada anotado, pero no a través de un viaje anotado en otro país, así que revisa tú las salidas cortas."
       },
       "pickTitle": "Países fiscales",
       "pickIntro": "Elige los países de los que quieres el recuento de días. Los países de esta lista tienen su propio año fiscal y regla de días.",

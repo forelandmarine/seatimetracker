@@ -10,7 +10,7 @@ import {
   schengenDays,
   schengenSummary,
   sedSummary,
-  taxCountrySummary,
+  taxCountrySummary as rawTaxSummary,
   taxYearStart,
   validateStay,
   type Stay,
@@ -29,6 +29,25 @@ const stay = (country: string, start: string, end: string | null, extra: Partial
   counts_tax: true,
   ...extra,
 });
+/**
+ * The gaps between the given stays logged as time somewhere else (`where`).
+ * Unlogged days between two stays in the same place now count as days there
+ * (caution rule, 2026-11-22). In the worked examples a gap is time spent
+ * elsewhere, which a user would log, so the tests log it too.
+ */
+const away = (stays: Stay[], where = "TR"): Stay[] => {
+  const sorted = [...stays].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const out = [...stays];
+  let lastEnd: string | null = null;
+  for (const s of sorted) {
+    if (lastEnd && s.start_date > addDays(lastEnd, 1)) out.push(stay(where, addDays(lastEnd, 1), addDays(s.start_date, -1)));
+    const end = s.end_date ?? s.start_date;
+    if (!lastEnd || end > lastEnd) lastEnd = end;
+  }
+  return out;
+};
+/** Tax summary with the gaps between stays logged as elsewhere (see `away`). */
+const taxCountrySummary = (stays: Stay[], country: string, today: string, yearsBack?: number) => rawTaxSummary(away(stays), country, today, yearsBack);
 /** A stay of `days` days ending `endOffset` days from TODAY (0 = today). */
 const block = (country: string, days: number, endOffset = 0, extra: Partial<Stay> = {}) =>
   stay(country, addDays(TODAY, endOffset - days + 1), addDays(TODAY, endOffset), extra);
@@ -184,6 +203,122 @@ describe("Schengen 90/180", () => {
     // Days -184..-175: 5 inside the window today (-179..-175). One leaves tomorrow.
     expect(s.used).toBe(5);
     expect(s.next_release).toEqual({ date: addDays(TODAY, 1), remaining: 86 });
+  });
+});
+
+describe("Schengen caution rules (2026-11-22)", () => {
+  const sea = (a: string, b: string | null, on = true) => stay("ZZ", a, b, { kind: "on_board", counts_schengen: on });
+  const used = (stays: Stay[], today = TODAY) => schengenSummary(stays, today).used;
+
+  test("at sea between two Schengen ports counts (Palma to Antibes)", () => {
+    const s = [stay("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-14"), stay("FR", "2026-06-14", "2026-06-20")];
+    const r = schengenSummary(s, "2026-06-30");
+    expect(r.used).toBe(20);
+    expect(r.at_sea_days).toBe(3); // 11 to 13 June
+    expect(r.assumed_days).toBe(0);
+  });
+
+  test("at sea after a Schengen port with nothing logged after still counts", () => {
+    expect(used([stay("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-30")], "2026-07-15")).toBe(30);
+    // Open passage: runs to today.
+    expect(used([stay("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", null)], "2026-06-20")).toBe(20);
+  });
+
+  test("at sea after a non-Schengen port does not count", () => {
+    expect(used([stay("GB", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-20"), stay("FR", "2026-06-20", "2026-06-25")], "2026-06-30")).toBe(6);
+    expect(used([stay("GI", "2026-03-01", "2026-03-05"), sea("2026-03-05", "2026-03-20")], "2026-06-30")).toBe(0);
+  });
+
+  test("turned off (cleared out with an exit check) does not count", () => {
+    const s = [stay("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-20", false), stay("FR", "2026-06-20", "2026-06-25")];
+    expect(used(s, "2026-06-30")).toBe(16); // 1 to 10 and 20 to 25 June
+    expect(schengenSummary(s, "2026-06-30").at_sea_days).toBe(0);
+  });
+
+  test("a gap of unlogged days does not break the chain, and the gap counts too", () => {
+    const s = [stay("ES", "2026-06-01", "2026-06-05"), sea("2026-06-10", "2026-06-15")];
+    const r = schengenSummary(s, "2026-06-30");
+    expect(r.used).toBe(15);
+    expect(r.at_sea_days).toBe(6);
+    expect(r.assumed_days).toBe(4); // 6 to 9 June
+  });
+
+  test("at sea from Gibraltar counts only from 15 July 2026", () => {
+    const s = [stay("GI", "2026-07-01", "2026-07-05"), sea("2026-07-05", "2026-07-25")];
+    const days = schengenDays(s, "2026-08-01");
+    expect(days.size).toBe(11); // 15 to 25 July
+    expect(days.has(dayNum("2026-07-14"))).toBe(false);
+    expect(days.has(dayNum("2026-07-15"))).toBe(true);
+  });
+
+  test("a run of at-sea stays follows the first port; one turned off stops the chain", () => {
+    expect(used([stay("IT", "2026-06-01", "2026-06-01"), sea("2026-06-01", "2026-06-05"), sea("2026-06-05", "2026-06-10")], "2026-06-30")).toBe(10);
+    expect(used([stay("IT", "2026-06-01", "2026-06-01"), sea("2026-06-01", "2026-06-05", false), sea("2026-06-05", "2026-06-10")], "2026-06-30")).toBe(1);
+  });
+
+  test("at sea with nothing logged before it does not count", () => {
+    expect(used([sea("2026-06-01", "2026-06-10")], "2026-06-30")).toBe(0);
+  });
+
+  test("the summary names the at-sea stays that count", () => {
+    const s = [
+      { ...stay("ES", "2026-06-01", "2026-06-10"), id: "a" },
+      { ...sea("2026-06-10", "2026-06-14"), id: "b" },
+      { ...stay("GB", "2026-06-14", "2026-06-20"), id: "c" },
+      { ...sea("2026-06-20", "2026-06-24"), id: "d" },
+    ];
+    expect(schengenSummary(s, "2026-06-30").at_sea_counted_ids).toEqual(["b"]);
+  });
+
+  test("unlogged days between two Schengen stays count; not next to a non-Schengen stay or a planned one", () => {
+    expect(schengenSummary([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-06-11", "2026-06-15")], "2026-06-30").assumed_days).toBe(5);
+    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(15);
+    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("GB", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(5);
+    expect(used([stay("GB", "2026-06-01", "2026-06-05"), stay("FR", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(5);
+    // On board in a Schengen port with the switch off does not count, so it does not bridge.
+    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("FR", "2026-06-11", "2026-06-15", { kind: "on_board", counts_schengen: false })], "2026-06-30")).toBe(5);
+    // The next stay is planned (starts after today): the days in between are plans, not unknowns.
+    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-07-11", "2026-07-15")], "2026-06-30")).toBe(5);
+  });
+});
+
+describe("tax caution rules (2026-11-22)", () => {
+  test("unlogged days between two stays in the country count as days there", () => {
+    const r = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-05-01", "2026-07-31")], "ES", TODAY);
+    expect(r.years[0].days).toBe(90 + 30 + 92);
+    expect(r.years[0].assumed_days).toBe(30);
+    expect(r.years[0].unrecorded_days).toBe(30 + (dayNum(TODAY) - dayNum("2026-07-31")));
+    // Next to a stay in another country they stay unlogged and uncounted.
+    const r2 = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("FR", "2026-05-01", "2026-07-31")], "ES", TODAY);
+    expect(r2.years[0].days).toBe(90);
+    expect(r2.years[0].assumed_days).toBe(0);
+    // A stay left out of tax days does not bridge.
+    const r3 = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-05-01", "2026-07-31", { counts_tax: false })], "ES", TODAY);
+    expect(r3.years[0].days).toBe(90);
+  });
+
+  test("UK midnight count: with unlogged days after it, the day a UK stay ends counts too", () => {
+    // 1 to 10 May: 9 midnights, then 11 to 19 May unlogged, then 20 to 25 May: 5 midnights.
+    const r = rawTaxSummary([stay("GB", "2026-05-01", "2026-05-10"), stay("GB", "2026-05-20", "2026-05-25")], "GB", TODAY);
+    expect(r.years[0].days).toBe(10 + 9 + 5);
+    expect(r.years[0].assumed_days).toBe(9);
+    // Logged as leaving for France on the 10th: the midnight rule stands (law).
+    const r2 = rawTaxSummary([stay("GB", "2026-05-01", "2026-05-10"), stay("FR", "2026-05-10", "2026-05-19"), stay("GB", "2026-05-20", "2026-05-25")], "GB", TODAY);
+    expect(r2.years[0].days).toBe(9 + 5);
+  });
+
+  test("a day spent in two countries counts for both (any part of a day), UK by midnight only", () => {
+    const s = [stay("ES", "2026-05-01", "2026-05-10"), stay("FR", "2026-05-10", "2026-05-20"), stay("GB", "2026-05-20", "2026-05-25"), stay("IE", "2026-05-25", "2026-05-30")];
+    expect(rawTaxSummary(s, "ES", TODAY).years[0].days).toBe(10);
+    expect(rawTaxSummary(s, "FR", TODAY).years[0].days).toBe(11);
+    expect(rawTaxSummary(s, "IE", TODAY).years[0].days).toBe(6);
+    expect(rawTaxSummary(s, "GB", TODAY).years[0].days).toBe(5); // 20 to 24 May; left on the 25th
+  });
+
+  test("Germany: unlogged days between stays join them into one unbroken stay", () => {
+    const r = rawTaxSummary([stay("DE", "2026-01-01", "2026-03-31"), stay("DE", "2026-04-10", "2026-07-15")], "DE", TODAY);
+    expect(r.years[0].detail.longest_stay).toBe(196);
+    expect(r.years[0].status).toBe("met");
   });
 });
 
@@ -477,9 +612,12 @@ describe("tax years", () => {
   });
 
   test("planned and unrecorded days", () => {
-    const r = taxCountrySummary([stay("FR", "2026-01-01", "2026-10-31"), stay("FR", "2026-12-01", "2026-12-10")], "FR", TODAY);
+    const r = rawTaxSummary([stay("FR", "2026-01-01", "2026-10-31"), stay("FR", "2026-12-01", "2026-12-10")], "FR", TODAY);
     expect(r.years[0].planned_days).toBe(10);
     expect(r.years[0].unrecorded_days).toBe(10); // 1 to 10 November
+    // The next FR stay is planned, not begun, so 1 to 10 November are not filled.
+    expect(r.years[0].assumed_days).toBe(0);
+    expect(r.years[0].days).toBe(304 + 10);
   });
 
   test("country totals", () => {

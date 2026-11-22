@@ -180,7 +180,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // AO s. 9: an unbroken stay of more than six months is always a habitual abode. It is not tied to the calendar year.
     test: { type: 'de_continuous' },
     // Satz 3: not for stays only for visits, holidays, a cure or similar private purposes of up to a year.
-    note: 'An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay, but this app only joins days with no gap.',
+    note: 'An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay. The app joins stays across days with nothing logged, but not across a trip you logged elsewhere, so check short trips away yourself.',
     sources: ['https://www.gesetze-im-internet.de/ao_1977/__9.html'],
   },
 };

@@ -132,3 +132,96 @@ export function tripVerdict(
   }
   return { ok: firstOver === null, firstOver, maxUsed };
 }
+
+// ── From a crew member's log to days of stay ──────────────────────────
+//
+// The owner's caution rules (2026-11-22), written from the brief, not from
+// the app code:
+//
+//  (a) "At sea" after a Schengen port. A yacht sailing between Schengen ports
+//      is never checked out of the area (Borders Code art. 6; Annex VI
+//      3.2.4 to 3.2.6), and the app cannot know whether an exit check was
+//      done before an ocean passage. So a log entry at sea counts when the
+//      entry immediately before it in time counts, however many unlogged
+//      days lie between them, unless the crew member marked it "cleared out
+//      with an exit check". It counts only from the day the place it sailed
+//      from counts (Gibraltar from 15 July 2026, late joiners).
+//  (b) Unknown days. A day with nothing logged, after the last entry that
+//      ended before it and before the first entry that starts after it, is a
+//      day in the area when either neighbour counts on that day and the
+//      other neighbour counts too, and the later entry has already begun.
+//      Days after today are plans and are never filled.
+//
+// "Immediately before in time": entries are ranked by first day, then last
+// day, then the order they were written down; the one ranked just below.
+
+export type RefLogEntry = {
+  first: number;
+  /** null = open, runs to today (or is a one-day entry when it starts later) */
+  last: number | null;
+  place: "area" | "outside" | "sea";
+  /** "area" only: the first day the place counts (Gibraltar, late joiners) */
+  countsFrom?: number;
+  /** "sea" only: crew member says they cleared out with an exit check */
+  clearedOut?: boolean;
+};
+
+function rankBelow(a: [number, number, number], b: [number, number, number]): boolean {
+  return a[0] < b[0] || (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2] < b[2])));
+}
+
+/** Counted days of stay from a log, by brute force, one day at a time. */
+export function daysFromLog(log: RefLogEntry[], today: number): Set<number> {
+  const lastOf = (e: RefLogEntry) => e.last ?? Math.max(today, e.first);
+  const key = (i: number): [number, number, number] => [log[i].first, lastOf(log[i]), i];
+
+  // From which day each entry counts (Infinity = never).
+  const memo = new Map<number, number>();
+  const countsFrom = (i: number): number => {
+    if (memo.has(i)) return memo.get(i)!;
+    const e = log[i];
+    let v = Infinity;
+    if (e.place === "area") v = e.countsFrom ?? -Infinity;
+    else if (e.place === "sea" && !e.clearedOut) {
+      let before = -1;
+      for (let j = 0; j < log.length; j++) {
+        if (j === i || !rankBelow(key(j), key(i))) continue;
+        if (before < 0 || rankBelow(key(before), key(j))) before = j;
+      }
+      if (before >= 0) v = countsFrom(before);
+    }
+    memo.set(i, v);
+    return v;
+  };
+
+  const days = new Set<number>();
+  if (log.length === 0) return days;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const e of log) {
+    lo = Math.min(lo, e.first);
+    hi = Math.max(hi, lastOf(e));
+  }
+  for (let d = lo; d <= hi; d++) {
+    const covering = log.map((_, i) => i).filter((i) => log[i].first <= d && d <= lastOf(log[i]));
+    if (covering.length) {
+      if (covering.some((i) => d >= countsFrom(i))) days.add(d);
+      continue;
+    }
+    if (d > today) continue;
+    // Unlogged day: neighbours either side.
+    let prevEnd = -Infinity;
+    let nextStart = Infinity;
+    for (let i = 0; i < log.length; i++) {
+      if (lastOf(log[i]) < d) prevEnd = Math.max(prevEnd, lastOf(log[i]));
+      if (log[i].first > d) nextStart = Math.min(nextStart, log[i].first);
+    }
+    if (prevEnd === -Infinity || nextStart === Infinity || nextStart > today) continue;
+    const prev = log.map((_, i) => i).filter((i) => lastOf(log[i]) === prevEnd);
+    const next = log.map((_, i) => i).filter((i) => log[i].first === nextStart);
+    const prevCounts = prev.some((i) => countsFrom(i) !== Infinity);
+    const nextCounts = next.some((i) => countsFrom(i) !== Infinity);
+    if (prevCounts && nextCounts && [...prev, ...next].some((i) => d >= countsFrom(i))) days.add(d);
+  }
+  return days;
+}

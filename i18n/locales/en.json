@@ -500,6 +500,7 @@
     "stillOnBoard": "Still on board",
     "countsSchengen": "Counts towards Schengen",
     "countsSchengenHelp": "Time on board a vessel in a Schengen port or its waters normally counts as time in the Schengen area. The EU Court of Justice has held that a seafarer on a ship moored in a Schengen port has not left the area (case C-341/18). Leave this on unless a border authority has told you otherwise.",
+    "countsSchengenAtSeaHelp": "Days at sea after leaving a Schengen port still count, because you have not left the Schengen area. Turn this off only if you cleared out with an exit check before sailing. Days at sea after a port outside the area never count.",
     "countsTax": "Counts for tax days",
     "countsTaxHelp": "Turn off to leave this stay out of the tax day counts, for example time on a foreign vessel that a country does not count.",
     "note": "Note",
@@ -512,6 +513,8 @@
     "stays": "Stays",
     "noStays": "No stays yet. Add where you have been to see your Schengen and tax days.",
     "notSchengen": "Not counted for Schengen",
+    "atSeaCounted": "Counted for Schengen: at sea after a Schengen port",
+    "atSeaClearedOut": "Not counted for Schengen: cleared out before sailing",
     "notTax": "Left out of tax days",
     "perCountry": "Days per country",
     "perCountryHelp": "All stays. Any part of a day counts.",
@@ -545,8 +548,12 @@
       "futureBreach": "Your planned stays break the rule on {{date}}.",
       "release_one": "If you spend no more days in the area, days start coming back from {{date}} ({{count}} day left then).",
       "release_other": "If you spend no more days in the area, days start coming back from {{date}} ({{count}} days left then).",
+      "atSea_one": "Includes {{count}} day at sea after a Schengen port.",
+      "atSea_other": "Includes {{count}} days at sea after a Schengen port.",
+      "assumed_one": "Includes {{count}} day with nothing logged between two Schengen stays, counted to be safe. Log where you were to take it out.",
+      "assumed_other": "Includes {{count}} days with nothing logged between two Schengen stays, counted to be safe. Log where you were to take them out.",
       "today": "Today",
-      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Days in Monaco, San Marino, the Vatican and Andorra are counted, and days in Gibraltar from 15 July 2026. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
+      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Days in Monaco, San Marino, the Vatican and Andorra are counted, and days in Gibraltar from 15 July 2026. Days at sea after a Schengen port count unless you turn that stay off, and days with nothing logged between two Schengen stays count too. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
     },
     "plan": {
       "button": "Try a trip",
@@ -577,6 +584,8 @@
       "planned_other": "Includes {{count}} planned days.",
       "unrecorded_one": "{{count}} day in this year has no stay logged.",
       "unrecorded_other": "{{count}} days in this year have no stay logged.",
+      "assumed_one": "Includes {{count}} day with nothing logged between two stays here, counted to be safe. Log where you were to take it out.",
+      "assumed_other": "Includes {{count}} days with nothing logged between two stays here, counted to be safe. Log where you were to take them out.",
       "status": {
         "met": "Test met",
         "near": "Close",
@@ -606,7 +615,7 @@
         "ES": "More than 183 days in Spain in a calendar year. Short trips away still count as days in Spain unless you prove tax residence in another country. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.",
         "FR": "More than six months in France in a year usually makes it your main place of stay, but it is not an absolute test. Your home, job or main economic interests in France can also make you resident.",
         "IT": "In Italy for most of the year (183 days, or 184 in a leap year), counting any part of a day. From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.",
-        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay, but this app only joins days with no gap."
+        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay. The app joins stays across days with nothing logged, but not across a trip you logged elsewhere, so check short trips away yourself."
       },
       "pickTitle": "Tax countries",
       "pickIntro": "Pick the countries you want day counts for. Countries in this list have their own tax year and day rule.",

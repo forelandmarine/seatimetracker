@@ -64,6 +64,12 @@ export interface SchengenSummary {
   segments: Segment[];
   future_segments: Segment[];
   next_release: { date: string; remaining: number } | null;
+  /** Of `used`, days at sea counted because you sailed from a Schengen port (older backends omit it). */
+  at_sea_days?: number;
+  /** Of `used`, unlogged days counted because the stays either side count. */
+  assumed_days?: number;
+  /** Ids of at-sea stays that count for Schengen. */
+  at_sea_counted_ids?: string[];
   plan: SchengenPlan | null;
 }
 
@@ -76,6 +82,8 @@ export interface TaxYear {
   days: number;
   planned_days: number;
   unrecorded_days: number;
+  /** Of `days`, unlogged days counted because stays in the country are logged either side. */
+  assumed_days?: number;
   status: TaxStatus;
   days_to_test: number | null;
   detail: Record<string, number | string | null>;
