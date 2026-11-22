@@ -516,7 +516,11 @@ export function PlanSheet({ onCancel, onCheck }: { onCancel: () => void; onCheck
                 {result.ok ? (
                   <Text style={styles.ok}>{t('daysAbroad.plan.ok', { count: result.days })}</Text>
                 ) : (
-                  <Text style={styles.danger}>{t('daysAbroad.plan.breaks', { date: fmt(result.first_breach as string) })}</Text>
+                  <Text style={styles.danger}>
+                    {t(result.first_breach && result.first_breach > result.end_date ? 'daysAbroad.plan.breaksLater' : 'daysAbroad.plan.breaks', {
+                      date: fmt(result.first_breach as string),
+                    })}
+                  </Text>
                 )}
                 <Text style={styles.body}>{t('daysAbroad.plan.maxUsed', { count: result.max_used })}</Text>
                 {result.latest_stay_if_enter ? (

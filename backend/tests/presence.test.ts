@@ -36,7 +36,17 @@ const block = (country: string, days: number, endOffset = 0, extra: Partial<Stay
 describe("Schengen membership", () => {
   test("members, new members and non-members", () => {
     for (const c of ["FR", "ES", "HR", "BG", "RO", "CH", "NO", "IS", "LI"]) expect(isSchengenCountry(c)).toBe(true);
-    for (const c of ["GB", "IE", "CY", "GP", "MQ", "RE", "GI", "TR", "ME", "ZZ"]) expect(isSchengenCountry(c)).toBe(false);
+    for (const c of ["GB", "IE", "CY", "GP", "MQ", "RE", "TR", "ME", "ZZ"]) expect(isSchengenCountry(c)).toBe(false);
+  });
+  test("Gibraltar counts from 15 July 2026; Bulgaria and Romania from 31 March 2024", () => {
+    expect(isSchengenCountry("GI")).toBe(true);
+    expect(isSchengenCountry("GI", "2026-07-14")).toBe(false);
+    expect(isSchengenCountry("GI", "2026-07-15")).toBe(true);
+    expect(isSchengenCountry("BG", "2024-03-30")).toBe(false);
+    expect(isSchengenCountry("RO", "2024-03-31")).toBe(true);
+    // A Gibraltar stay across the start date only counts from 15 July.
+    const days = schengenDays([stay("GI", "2026-07-10", "2026-07-20")], "2026-11-22");
+    expect(days.size).toBe(6);
   });
   test("microstates with open borders count", () => {
     for (const c of ["MC", "SM", "VA", "AD"]) expect(isSchengenCountry(c)).toBe(true);

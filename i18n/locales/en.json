@@ -499,7 +499,7 @@
     "stillHere": "Still here",
     "stillOnBoard": "Still on board",
     "countsSchengen": "Counts towards Schengen",
-    "countsSchengenHelp": "Rules for time on board differ. It can depend on your visa, your nationality and whether you are on the crew list. On by default to be safe. Check your own situation.",
+    "countsSchengenHelp": "Time on board a vessel in a Schengen port or its waters normally counts as time in the Schengen area. The EU Court of Justice has held that a seafarer on a ship moored in a Schengen port has not left the area (case C-341/18). Leave this on unless a border authority has told you otherwise.",
     "countsTax": "Counts for tax days",
     "countsTaxHelp": "Turn off to leave this stay out of the tax day counts, for example time on a foreign vessel that a country does not count.",
     "note": "Note",
@@ -543,10 +543,10 @@
       "over": "You are over the 90-day limit.",
       "near": "You are close to the 90-day limit.",
       "futureBreach": "Your planned stays break the rule on {{date}}.",
-      "release_one": "From {{date}} days start coming back ({{count}} day left then).",
-      "release_other": "From {{date}} days start coming back ({{count}} days left then).",
+      "release_one": "If you spend no more days in the area, days start coming back from {{date}} ({{count}} day left then).",
+      "release_other": "If you spend no more days in the area, days start coming back from {{date}} ({{count}} days left then).",
       "today": "Today",
-      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
+      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Days in Monaco, San Marino, the Vatican and Andorra are counted, and days in Gibraltar from 15 July 2026. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
     },
     "plan": {
       "button": "Try a trip",
@@ -558,6 +558,7 @@
       "ok_one": "This {{count}}-day trip fits the 90/180 rule.",
       "ok_other": "This {{count}}-day trip fits the 90/180 rule.",
       "breaks": "This trip breaks the rule on {{date}}.",
+      "breaksLater": "This trip would push your planned stay over the limit on {{date}}.",
       "maxUsed_one": "Most days used at any point: {{count}} day.",
       "maxUsed_other": "Most days used at any point: {{count}} days.",
       "latest": "Entering on the first day, you could stay until {{date}}.",

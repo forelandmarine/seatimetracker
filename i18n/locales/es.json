@@ -497,7 +497,7 @@
     "stillHere": "Sigo aquí",
     "stillOnBoard": "Sigo a bordo",
     "countsSchengen": "Cuenta para Schengen",
-    "countsSchengenHelp": "Las normas sobre el tiempo a bordo varían. Puede depender de tu visado, tu nacionalidad y de si figuras en la lista de tripulantes. Activado por defecto por seguridad. Comprueba tu caso.",
+    "countsSchengenHelp": "El tiempo a bordo de un buque en un puerto o en aguas de un país Schengen suele contar como tiempo en el espacio Schengen. El Tribunal de Justicia de la UE ha declarado que un marino en un buque amarrado en un puerto Schengen no ha salido del espacio (asunto C-341/18). Déjalo activado salvo que una autoridad fronteriza te indique lo contrario.",
     "countsTax": "Cuenta para los días fiscales",
     "countsTaxHelp": "Desactívalo para dejar esta estancia fuera del recuento fiscal, por ejemplo el tiempo en un barco extranjero que un país no cuenta.",
     "note": "Nota",
@@ -541,10 +541,10 @@
       "over": "Has superado el límite de 90 días.",
       "near": "Estás cerca del límite de 90 días.",
       "futureBreach": "Tus estancias previstas incumplen la norma el {{date}}.",
-      "release_one": "Desde el {{date}} empiezas a recuperar días (te quedará {{count}} día).",
-      "release_other": "Desde el {{date}} empiezas a recuperar días (te quedarán {{count}} días).",
+      "release_one": "Si no pasas más días en el espacio, desde el {{date}} empiezas a recuperar días (te quedará {{count}} día).",
+      "release_other": "Si no pasas más días en el espacio, desde el {{date}} empiezas a recuperar días (te quedarán {{count}} días).",
       "today": "Hoy",
-      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
+      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. Se cuentan los días en Mónaco, San Marino, el Vaticano y Andorra, y los días en Gibraltar desde el 15 de julio de 2026. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
     },
     "plan": {
       "button": "Probar un viaje",
@@ -556,6 +556,7 @@
       "ok_one": "Este viaje de {{count}} día cumple la norma 90/180.",
       "ok_other": "Este viaje de {{count}} días cumple la norma 90/180.",
       "breaks": "Este viaje incumple la norma el {{date}}.",
+      "breaksLater": "Este viaje haría que tu estancia prevista superara el límite el {{date}}.",
       "maxUsed_one": "Máximo de días usados en cualquier momento: {{count}} día.",
       "maxUsed_other": "Máximo de días usados en cualquier momento: {{count}} días.",
       "latest": "Entrando el primer día, podrías quedarte hasta el {{date}}.",
