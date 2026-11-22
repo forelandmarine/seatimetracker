@@ -497,7 +497,7 @@
     "stillHere": "J'y suis encore",
     "stillOnBoard": "Toujours à bord",
     "countsSchengen": "Compte pour Schengen",
-    "countsSchengenHelp": "Les règles pour le temps à bord varient. Cela peut dépendre de votre visa, de votre nationalité et de votre inscription sur la liste d'équipage. Activé par défaut par prudence. Vérifiez votre situation.",
+    "countsSchengenHelp": "Le temps passé à bord d'un navire dans un port ou dans les eaux d'un pays Schengen compte normalement comme du temps dans l'espace Schengen. La Cour de justice de l'UE a jugé qu'un marin à bord d'un navire amarré dans un port Schengen n'a pas quitté l'espace (affaire C-341/18). Laissez activé sauf si une autorité frontalière vous a indiqué le contraire.",
     "countsTax": "Compte pour les jours fiscaux",
     "countsTaxHelp": "Désactivez pour exclure ce séjour du décompte fiscal, par exemple le temps sur un navire étranger qu'un pays ne compte pas.",
     "note": "Note",
@@ -541,10 +541,10 @@
       "over": "Vous avez dépassé la limite de 90 jours.",
       "near": "Vous approchez de la limite de 90 jours.",
       "futureBreach": "Vos séjours prévus enfreignent la règle le {{date}}.",
-      "release_one": "À partir du {{date}}, des jours reviennent ({{count}} jour restant alors).",
-      "release_other": "À partir du {{date}}, des jours reviennent ({{count}} jours restants alors).",
+      "release_one": "Si vous ne passez plus de jours dans l'espace, des jours reviennent à partir du {{date}} ({{count}} jour restant alors).",
+      "release_other": "Si vous ne passez plus de jours dans l'espace, des jours reviennent à partir du {{date}} ({{count}} jours restants alors).",
       "today": "Aujourd'hui",
-      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
+      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Les jours à Monaco, Saint-Marin, au Vatican et en Andorre sont comptés, ainsi que les jours à Gibraltar depuis le 15 juillet 2026. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
     },
     "plan": {
       "button": "Tester un voyage",
@@ -556,6 +556,7 @@
       "ok_one": "Ce voyage de {{count}} jour respecte la règle 90/180.",
       "ok_other": "Ce voyage de {{count}} jours respecte la règle 90/180.",
       "breaks": "Ce voyage enfreint la règle le {{date}}.",
+      "breaksLater": "Ce voyage ferait dépasser la limite à votre séjour prévu le {{date}}.",
       "maxUsed_one": "Maximum de jours utilisés à tout moment : {{count}} jour.",
       "maxUsed_other": "Maximum de jours utilisés à tout moment : {{count}} jours.",
       "latest": "En entrant le premier jour, vous pourriez rester jusqu'au {{date}}.",

@@ -15,6 +15,7 @@
  * Guidance only. Nothing here is legal or tax advice.
  */
 import {
+  SCHENGEN_COUNTS_FROM,
   SCHENGEN_LIMIT,
   SCHENGEN_WARN_AT,
   SCHENGEN_WINDOW,
@@ -198,7 +199,15 @@ export function countsForSchengen(s: Stay): boolean {
 }
 
 export function schengenDays(stays: Stay[], today: string): Set<number> {
-  return stayDays(stays, today, countsForSchengen, 'any_part');
+  const out = new Set<number>();
+  for (const s of stays) {
+    if (!countsForSchengen(s)) continue;
+    const from = SCHENGEN_COUNTS_FROM[s.country_code.toUpperCase()];
+    const first = from ? dayNum(from) : -Infinity;
+    // Days before a country joined (or, for Gibraltar, began to count) are left out.
+    for (const d of stayDays([s], today, () => true, 'any_part')) if (d >= first) out.add(d);
+  }
+  return out;
 }
 
 /** Schengen days in the 180-day window that ends on `day`. */
@@ -220,10 +229,22 @@ export function latestStayFrom(days: Set<number>, from: number): number | null {
   return from + SCHENGEN_WINDOW + SCHENGEN_LIMIT;
 }
 
-/** First day in [from, to] where the window passes 90, or null. */
-function firstBreach(days: Set<number>, from: number, to: number): number | null {
-  for (let d = from; d <= to; d++) if (days.has(d) && windowCount(days, d) > SCHENGEN_LIMIT) return d;
+/**
+ * First day of stay in [from, to] where the window passes 90, or null. With
+ * `unless`, a day is skipped when `unless(d)` is true.
+ */
+function firstBreach(days: Set<number>, from: number, to: number, unless?: (d: number) => boolean): number | null {
+  for (let d = from; d <= to; d++) {
+    if (days.has(d) && windowCount(days, d) > SCHENGEN_LIMIT && !(unless && unless(d))) return d;
+  }
   return null;
+}
+
+/** The last day in the set, or -Infinity when it is empty. */
+function lastDay(days: Set<number>): number {
+  let max = -Infinity;
+  for (const d of days) if (d > max) max = d;
+  return max;
 }
 
 export interface SchengenPlanResult {
@@ -231,7 +252,7 @@ export interface SchengenPlanResult {
   end_date: string;
   days: number;
   ok: boolean;
-  /** First day the rule would be broken (in the trip or a stay already logged after it). */
+  /** First day the rule would be broken: in the trip, or a logged stay after it that the trip pushes over. */
   first_breach: string | null;
   /** Most days used in any window ending during the trip. */
   max_used: number;
@@ -270,7 +291,9 @@ export function planSchengenTrip(stays: Stay[], today: string, plan: { start_dat
   let maxUsed = 0;
   for (let d = ps; d <= pe; d++) maxUsed = Math.max(maxUsed, windowCount(trial, d));
   // Days logged after the trip can be pushed over by it, so look a full window past it.
-  const breach = firstBreach(trial, ps, pe + SCHENGEN_WINDOW - 1);
+  // A later day that is over even without the trip is not this trip's doing (the
+  // summary's future_breach reports it), so it does not fail the trip.
+  const breach = firstBreach(trial, ps, pe + SCHENGEN_WINDOW - 1, (d) => d > pe && windowCount(days, d) > SCHENGEN_LIMIT);
   const latest = latestStayFrom(days, ps);
   return {
     start_date: plan.start_date,
@@ -325,7 +348,8 @@ export function schengenSummary(
     over: used > SCHENGEN_LIMIT,
     warn: used >= SCHENGEN_WARN_AT,
     future_breach: (() => {
-      const b = firstBreach(days, t + 1, t + SCHENGEN_WINDOW * 2);
+      // Up to the last logged day, however far ahead it is planned.
+      const b = firstBreach(days, t + 1, lastDay(days));
       return b == null ? null : isoOf(b);
     })(),
     segments,
