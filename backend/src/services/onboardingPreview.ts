@@ -50,7 +50,7 @@ import { countryName, isImo, isShipMmsi, vesselFromInfo } from '../utils/vesselL
 /** Paid calls a user without a trial or subscription may cause, per 24 h. */
 const UNSUBSCRIBED_PAID_CALLS_PER_DAY = 1;
 /** All users' paid preview calls per UTC day (protects the monthly allowance). */
-const PREVIEW_DAILY_CAP = Number(process.env.ONBOARDING_PREVIEW_DAILY_CAP || 150);
+const PREVIEW_DAILY_CAP = Number(process.env.ONBOARDING_PREVIEW_DAILY_CAP || 40);
 
 const budget = new CallBudget(UNSUBSCRIBED_PAID_CALLS_PER_DAY, 24 * 3_600_000);
 let daily = { day: '', count: 0 };
