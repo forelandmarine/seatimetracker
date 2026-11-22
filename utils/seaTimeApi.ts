@@ -400,6 +400,48 @@ export const confirmVesselLookup = async (c: VesselCandidate): Promise<VesselCon
   return { status, vessel: data?.vessel ?? null, note: data?.note ?? null };
 };
 
+/** Days underway in a recent window, from AIS history (sign-up activation, 2.5.0). */
+export interface RecentActivity {
+  from: string; // YYYY-MM-DD, inclusive
+  to: string; // YYYY-MM-DD, exclusive
+  window_days: number;
+  days_with_ais: number;
+  days_underway: number;
+  last_position_at: string | null;
+}
+
+export interface VesselPreviewResult extends VesselConfirmResult {
+  activity: RecentActivity | null;
+  /** cache = free; history = one vessel_history call; info = one vessel_info call; none = no check. */
+  source: 'cache' | 'history' | 'info' | 'none';
+}
+
+// Sign-up flow: check the picked vessel on AIS and get its recent activity, with
+// at most one paid Datalastic call on the backend (replaces confirmVesselLookup there).
+export const previewVesselLookup = async (c: Pick<VesselCandidate, 'mmsi' | 'imo' | 'alt_mmsis' | 'name'>): Promise<VesselPreviewResult> => {
+  const res = await authFetch('/api/vessels/lookup/preview', {
+    method: 'POST',
+    body: { mmsi: c.mmsi, imo: c.imo ?? null, alt_mmsis: c.alt_mmsis ?? [], name: c.name || null },
+    timeout: 45_000,
+  });
+  const data = await res.json();
+  const status = data?.status === 'live' || data?.status === 'not_found' ? data.status : 'unavailable';
+  return {
+    status,
+    vessel: data?.vessel ?? null,
+    note: data?.note ?? null,
+    activity: data?.activity ?? null,
+    source: ['cache', 'history', 'info'].includes(data?.source) ? data.source : 'none',
+  };
+};
+
+// The same activity line from the backend's AIS history cache only (never a paid call).
+export const getRecentActivity = async (vesselId: string): Promise<RecentActivity | null> => {
+  const res = await authFetch(`/api/vessels/${vesselId}/recent-activity`);
+  const data = await res.json();
+  return data?.activity ?? null;
+};
+
 export const updateVesselParticulars = async (
   vesselId: string,
   // null clears a field

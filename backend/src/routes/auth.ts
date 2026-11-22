@@ -243,9 +243,6 @@ export function register(app: App, fastify: FastifyInstance) {
           },
         };
 
-        // Send response immediately to user
-        reply.code(200).send(response);
-
         // Create default notification schedule for user (non-blocking, fire-and-forget)
         ensureUserNotificationSchedule(app, userId).catch(err => {
           app.logger.warn(
@@ -258,6 +255,10 @@ export function register(app: App, fastify: FastifyInstance) {
         sendWelcomeEmail({ email, name }, app.logger).catch((err) => {
           app.logger.warn({ userId, email, err }, 'Failed to send welcome email (non-critical)');
         });
+
+        // Return the reply so Fastify knows the async handler has answered
+        // (sending without returning could crash the process).
+        return reply.code(200).send(response);
       } catch (error: any) {
         const errMsg = error?.message || String(error);
         app.logger.error({ err: error, email }, 'Registration error: ' + errMsg);

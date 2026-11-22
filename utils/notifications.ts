@@ -701,6 +701,35 @@ export async function cancelNoVesselReminder(): Promise<void> {
   await cancelById(NO_VESSEL_REMINDER_ID);
 }
 
+const TRIAL_END_REMINDER_ID = 'trial-end-reminder';
+const TRIAL_REMINDER_DAYS_BEFORE = 2;
+
+/**
+ * Remind the user 2 days before their free trial turns into a paid plan, at
+ * 10:00 local that day (or straight after, if the trial ends earlier in the day
+ * than that). Local only, so no server or native change. Replaces any earlier one.
+ */
+export async function scheduleTrialEndReminder(trialEndsAt: Date, planName?: string | null): Promise<void> {
+  const fire = new Date(trialEndsAt.getTime() - TRIAL_REMINDER_DAYS_BEFORE * 86_400_000);
+  fire.setHours(10, 0, 0, 0);
+  if (fire.getTime() >= trialEndsAt.getTime() - 86_400_000) {
+    // Never later than 24 hours before the end, so there is still time to cancel.
+    fire.setTime(trialEndsAt.getTime() - TRIAL_REMINDER_DAYS_BEFORE * 86_400_000);
+  }
+  const ends = trialEndsAt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  await scheduleOneOff(
+    TRIAL_END_REMINDER_ID,
+    fire,
+    'Your free trial ends in 2 days',
+    `Your ${planName ? `${planName} ` : ''}SeaTime Tracker plan starts on ${ends}. To stop it, cancel in your ${Platform.OS === 'ios' ? 'App Store' : 'Google Play'} subscriptions before then.`,
+    '/(tabs)/profile'
+  );
+}
+
+export async function cancelTrialEndReminder(): Promise<void> {
+  await cancelById(TRIAL_END_REMINDER_ID);
+}
+
 const SHIFT_REMINDER_ID = 'shift-clock-out-reminder';
 const SHIFT_REMINDER_HOURS = 12;
 

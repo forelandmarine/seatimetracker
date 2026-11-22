@@ -246,6 +246,14 @@ function RootLayoutContent() {
           }}
         />
         <Stack.Screen
+          name="onboarding-vessel"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="locked-home"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
+        <Stack.Screen
           name="paywall"
           options={{
             title: t('navigation.upgrade'),

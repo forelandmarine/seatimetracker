@@ -25,6 +25,17 @@ export const APP_EVENTS = new Set([
   "history_offer_shown", // AIS history import offered (detail: home | profile)
   "history_opened",     // history import screen opened (detail: entry point)
   "history_purchased",  // detail: <entry point>:<6m|12m>
+  // Sign-up activation flow (2.5.0): boat first, paywall second
+  "onboarding_vessel_shown",     // boat screen on screen after sign-up
+  "onboarding_vessel_checked",   // AIS check of the picked boat (detail: <status>:<source>, e.g. live:history)
+  "onboarding_vessel_confirmed", // boat saved (detail: lookup | mmsi, plus :stat when an activity line was found)
+  "onboarding_vessel_skipped",   // tapped I don't have my boat details now
+  "onboarding_pathway_done",     // authority and department saved in the sign-up flow (detail: authority)
+  "paywall_shown",      // detail: <source>:<personalised|generic> (source: onboarding | launch | locked_home | home | settings | lapsed)
+  "paywall_dismissed",  // closed without buying (detail: source)
+  "trial_started",      // purchase with a free trial (detail: annual | monthly)
+  "subscribed",         // purchase without a trial (detail: annual | monthly)
+  "locked_home_shown",  // locked Home after closing the paywall (detail: vessel | no_vessel)
 ]);
 
 const perIp = new Map<string, { at: number; n: number }>();

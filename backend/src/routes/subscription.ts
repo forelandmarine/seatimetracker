@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import * as authSchema from "../db/auth-schema.js";
 import { checkReferralFor } from "../services/referrals.js";
 import * as schema from "../db/schema.js";
@@ -588,11 +588,13 @@ export function register(app: App, fastify: FastifyInstance): void {
       app.logger.info({ userId }, "Pausing vessel tracking for user");
 
       try {
-        // Get all active vessels for this user
+        // Only vessels that are being tracked. A saved but inactive vessel (the
+        // sign-up flow saves the boat before the trial starts) is not "paused", and
+        // counting it made the app tell a new user their subscription had expired.
         const activeVessels = await app.db
           .select()
           .from(schema.vessels)
-          .where(eq(schema.vessels.user_id, userId));
+          .where(and(eq(schema.vessels.user_id, userId), eq(schema.vessels.is_active, true)));
 
         if (activeVessels.length === 0) {
           app.logger.debug({ userId }, "No vessels to deactivate");
