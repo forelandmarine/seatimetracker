@@ -566,7 +566,7 @@
     "tax": {
       "title": "Tax days",
       "choose": "Choose countries",
-      "disclaimer": "Guidance only. Check with a tax adviser. Day counts are only one part of tax residence, and tax treaties can change the answer.",
+      "disclaimer": "Guidance only, not tax advice. Day counts are only one part of tax residence: a home, family, work or main interests in a country can make you resident there with fewer days, and tax treaties can change the answer. Check with a tax adviser.",
       "none": "No countries picked. Tap Choose countries.",
       "noRule": "No day rule in the app for this country, so this is a plain count by calendar year.",
       "countMidnight": "Counts the days you are there at midnight. The day you leave does not count.",
@@ -595,17 +595,17 @@
         "deNone": "No stay in Germany this year."
       },
       "notes": {
-        "GB": "Statutory Residence Test: 183 days or more in the UK in a tax year makes you UK resident. Fewer days can also make you resident if you have UK ties.",
-        "US": "Substantial presence test: 31 days this year and 183 days over 3 years (all of this year, a third of last year, a sixth of the year before). Days as crew of a foreign vessel do not count: turn those stays off for tax.",
-        "AU": "183-day test: in Australia for more than half the income year. You can still be non-resident if your usual home is overseas.",
-        "NZ": "More than 183 days in New Zealand in any 12-month period makes you tax resident from the first of those days.",
-        "ZA": "Physical presence test: more than 91 days this tax year and in each of the 5 years before, and more than 915 days over those 5 years.",
-        "IE": "183 days in a tax year, or 280 days over this year and last. A year with 30 days or fewer does not count towards the 280.",
-        "CA": "Staying 183 days or more in a calendar year can make you a deemed resident if you have no significant ties to Canada.",
-        "ES": "More than 183 days in Spain in a calendar year. Short trips away can still count as days in Spain.",
-        "FR": "More than six months in France in a year usually makes it your main place of stay. Your home, job or main income in France can also make you resident.",
-        "IT": "In Italy for most of the year (183 days, or 184 in a leap year). From 2024 physical presence alone can count.",
-        "DE": "An unbroken stay of more than six months, even across the year end. Short breaks do not stop the stay, but this app only joins days with no gap."
+        "GB": "Statutory Residence Test: 183 days or more in the UK in a tax year makes you UK resident. With fewer days you can still be resident through a UK home, full-time UK work or UK ties, and days you leave before midnight can count if you have 3 or more UK ties.",
+        "US": "Substantial presence test: 31 days this year and 183 days over 3 years (all of this year, a third of last year, a sixth of the year before). Days as regular crew of a foreign vessel travelling between the US and abroad may not count, but only if you do no other work in the US those days: check before turning those stays off. With fewer than 183 days this year, a closer connection to another country can still make you non-resident.",
+        "AU": "183-day test: in Australia for more than half the income year (183 days, or 184 in a leap year) makes you resident, unless your usual home is overseas and you do not intend to live in Australia. Living in Australia or an Australian domicile can make you resident with fewer days.",
+        "NZ": "More than 183 days in New Zealand in any 12-month period makes you tax resident from the first of those days. A permanent place of abode in New Zealand makes you resident whatever the days. Some short-term visitors who do not work for New Zealand businesses are exempt from 1 April 2026.",
+        "ZA": "Physical presence test: more than 91 days this tax year and in each of the 5 years before, and more than 915 days over those 5 years. If you ordinarily live in South Africa you are resident whatever the days.",
+        "IE": "183 days in a tax year, or 280 days over this year and last. A year with 30 days or fewer does not count towards the 280, and you are not resident in that year under the 280-day test.",
+        "CA": "Staying 183 days or more in a calendar year can make you a deemed resident if you have no significant ties to Canada. If you do have significant ties (a home, a partner or dependants in Canada) you can be resident whatever the days.",
+        "ES": "More than 183 days in Spain in a calendar year. Short trips away still count as days in Spain unless you prove tax residence in another country. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.",
+        "FR": "More than six months in France in a year usually makes it your main place of stay, but it is not an absolute test. Your home, job or main economic interests in France can also make you resident.",
+        "IT": "In Italy for most of the year (183 days, or 184 in a leap year), counting any part of a day. From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.",
+        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay, but this app only joins days with no gap."
       },
       "pickTitle": "Tax countries",
       "pickIntro": "Pick the countries you want day counts for. Countries in this list have their own tax year and day rule.",
@@ -615,7 +615,7 @@
     },
     "sed": {
       "title": "UK Seafarers' Earnings Deduction",
-      "intro": "Checks the day tests only: 365 days or more, mostly outside the UK, with no UK visit over 183 days. A day abroad is a day you are outside the UK at midnight. Days with no stay logged count as UK days.",
+      "intro": "Checks the day tests only: 365 days or more, at least half of them outside the UK, with no UK visit over 183 days. A day abroad is a day you are outside the UK at midnight. Days with no stay logged count as UK days.",
       "current": "Current period: {{start}} to {{end}}, {{days}} days ({{away}} away, {{uk}} in the UK).",
       "toGo_one": "{{count}} more day to reach 365.",
       "toGo_other": "{{count}} more days to reach 365.",

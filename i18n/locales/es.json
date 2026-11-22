@@ -564,7 +564,7 @@
     "tax": {
       "title": "Días fiscales",
       "choose": "Elegir países",
-      "disclaimer": "Solo orientativo. Consulta con un asesor fiscal. Los días son solo una parte de la residencia fiscal, y los convenios fiscales pueden cambiar la respuesta.",
+      "disclaimer": "Solo orientativo, no es asesoramiento fiscal. Los días son solo una parte de la residencia fiscal: una vivienda, la familia, el trabajo o los intereses principales en un país pueden hacerte residente allí con menos días, y los convenios fiscales pueden cambiar la respuesta. Consulta con un asesor fiscal.",
       "none": "No has elegido países. Pulsa Elegir países.",
       "noRule": "La app no tiene una regla de días para este país, así que es un recuento simple por año natural.",
       "countMidnight": "Cuenta los días en que estás allí a medianoche. El día que te vas no cuenta.",
@@ -593,17 +593,17 @@
         "deNone": "Ninguna estancia en Alemania este año."
       },
       "notes": {
-        "GB": "Statutory Residence Test: 183 días o más en el Reino Unido en un año fiscal te hacen residente. Menos días también pueden hacerlo si tienes vínculos con el Reino Unido.",
-        "US": "Prueba de presencia sustancial: 31 días este año y 183 días en 3 años (todos los de este año, un tercio del año pasado y un sexto del anterior). Los días como tripulante de un barco extranjero no cuentan: desactiva esas estancias para impuestos.",
-        "AU": "Prueba de 183 días: en Australia más de la mitad del año fiscal. Puedes seguir siendo no residente si tu hogar habitual está fuera.",
-        "NZ": "Más de 183 días en Nueva Zelanda en cualquier período de 12 meses te hacen residente fiscal desde el primero de esos días.",
-        "ZA": "Prueba de presencia física: más de 91 días este año fiscal y en cada uno de los 5 años anteriores, y más de 915 días en esos 5 años.",
-        "IE": "183 días en un año fiscal, o 280 días entre este año y el pasado. Un año con 30 días o menos no cuenta para los 280.",
-        "CA": "Permanecer 183 días o más en un año natural puede convertirte en residente presunto si no tienes vínculos importantes con Canadá.",
-        "ES": "Más de 183 días en España en un año natural. Las ausencias esporádicas pueden seguir contando como días en España.",
-        "FR": "Más de seis meses en Francia en un año suele convertirla en tu lugar de estancia principal. Tu hogar, trabajo o ingresos principales en Francia también pueden hacerte residente.",
-        "IT": "En Italia la mayor parte del año (183 días, o 184 en año bisiesto). Desde 2024 la presencia física por sí sola puede contar.",
-        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año. Las interrupciones breves no la cortan, pero esta app solo une días sin huecos."
+        "GB": "Statutory Residence Test: 183 días o más en el Reino Unido en un año fiscal te hacen residente. Con menos días puedes ser residente por tener vivienda, trabajo a tiempo completo o vínculos en el Reino Unido, y los días que te vas antes de medianoche pueden contar si tienes 3 o más vínculos.",
+        "US": "Prueba de presencia sustancial: 31 días este año y 183 días en 3 años (todos los de este año, un tercio del año pasado y un sexto del anterior). Los días como tripulante habitual de un barco extranjero que viaja entre EE. UU. y el extranjero pueden no contar, pero solo si no haces otro trabajo en EE. UU. esos días: compruébalo antes de desactivar esas estancias. Con menos de 183 días este año, una conexión más estrecha con otro país puede hacerte no residente.",
+        "AU": "Prueba de 183 días: estar en Australia más de la mitad del año fiscal (183 días, o 184 en año bisiesto) te hace residente, salvo que tu hogar habitual esté fuera y no tengas intención de vivir en Australia. Vivir en Australia o tener allí tu domicilio puede hacerte residente con menos días.",
+        "NZ": "Más de 183 días en Nueva Zelanda en cualquier período de 12 meses te hacen residente fiscal desde el primero de esos días. Una vivienda permanente en Nueva Zelanda te hace residente sean cuantos sean los días. Desde el 1 de abril de 2026 algunos visitantes de corta estancia que no trabajan para empresas neozelandesas están exentos.",
+        "ZA": "Prueba de presencia física: más de 91 días este año fiscal y en cada uno de los 5 años anteriores, y más de 915 días en esos 5 años. Si vives habitualmente en Sudáfrica eres residente sean cuantos sean los días.",
+        "IE": "183 días en un año fiscal, o 280 días entre este año y el pasado. Un año con 30 días o menos no cuenta para los 280, y ese año no eres residente por la prueba de 280 días.",
+        "CA": "Permanecer 183 días o más en un año natural puede convertirte en residente presunto si no tienes vínculos importantes con Canadá. Si los tienes (vivienda, pareja o dependientes en Canadá), puedes ser residente sean cuantos sean los días.",
+        "ES": "Más de 183 días en España en un año natural. Las ausencias esporádicas cuentan como días en España salvo que acredites residencia fiscal en otro país. El núcleo de tus actividades o intereses económicos en España, o un cónyuge e hijos menores que vivan allí, también pueden hacerte residente.",
+        "FR": "Más de seis meses en Francia en un año suele convertirla en tu lugar de estancia principal, pero no es una prueba absoluta. Tu hogar, trabajo o intereses económicos principales en Francia también pueden hacerte residente.",
+        "IT": "En Italia la mayor parte del año (183 días, o 184 en año bisiesto), contando cualquier parte de un día. Desde 2024 la presencia física por sí sola puede contar. Tu hogar, tus lazos familiares o tu inscripción en Italia también pueden hacerte residente.",
+        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves no cortan la estancia, pero esta app solo une días sin huecos."
       },
       "pickTitle": "Países fiscales",
       "pickIntro": "Elige los países de los que quieres el recuento de días. Los países de esta lista tienen su propio año fiscal y regla de días.",
@@ -613,7 +613,7 @@
     },
     "sed": {
       "title": "Seafarers' Earnings Deduction (Reino Unido)",
-      "intro": "Solo comprueba las pruebas de días: 365 días o más, en su mayoría fuera del Reino Unido, sin ninguna visita al Reino Unido de más de 183 días. Un día fuera es un día en que estás fuera del Reino Unido a medianoche. Los días sin estancia anotada cuentan como días en el Reino Unido.",
+      "intro": "Solo comprueba las pruebas de días: 365 días o más, al menos la mitad fuera del Reino Unido, sin ninguna visita al Reino Unido de más de 183 días. Un día fuera es un día en que estás fuera del Reino Unido a medianoche. Los días sin estancia anotada cuentan como días en el Reino Unido.",
       "current": "Período actual: {{start}} a {{end}}, {{days}} días ({{away}} fuera, {{uk}} en el Reino Unido).",
       "toGo_one": "Falta {{count}} día para llegar a 365.",
       "toGo_other": "Faltan {{count}} días para llegar a 365.",
