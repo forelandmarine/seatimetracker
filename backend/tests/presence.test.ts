@@ -287,6 +287,177 @@ describe("tax years", () => {
     expect(r.years[0].status).toBe("met");
   });
 
+  // ── Worked examples and rules from the official pages (re-checked 2026-11-22) ──
+
+  test("UK: only midnights count, days you leave before midnight do not (RFIG20710, RFIG20720 Example 1)", () => {
+    // RFIG20720 Example 1 (Angharad): 35 days in the UK at midnight plus day trips where she left
+    // before midnight. The midnight count is 35; the deeming rule (which could add days for someone
+    // with 3 UK ties) is not modelled, so the app shows 35.
+    const nights = stay("GB", "2026-05-01", addDays("2026-05-01", 35)); // 35 midnights, leaves on day 36
+    const dayTrips = [0, 1, 2, 3, 4].map((k) => stay("GB", addDays("2026-08-01", k * 7), addDays("2026-08-01", k * 7)));
+    const r = taxCountrySummary([nights, ...dayTrips], "GB", TODAY);
+    expect(r.counting).toBe("midnight");
+    expect(r.years[0].days).toBe(35);
+  });
+
+  test("US: IRS worked example, 120 days in each of 3 years is 180 weighted days, not resident", () => {
+    // irs.gov Substantial presence test page and Pub 519: 120 + 40 + 20 = 180, under 183.
+    const year = (y: number) => stay("US", `${y}-01-01`, addDays(`${y}-01-01`, 119));
+    const r = taxCountrySummary([year(2023), year(2024), year(2025)], "US", "2025-12-31");
+    expect(r.years[0].days).toBe(120);
+    expect(r.years[0].detail.previous_year).toBe(120);
+    expect(r.years[0].detail.year_before).toBe(120);
+    expect(r.years[0].detail.weighted_days).toBe(180);
+    expect(r.years[0].status).not.toBe("met");
+  });
+
+  test("US: a day counts if present at any time during it (26 USC 7701(b)(7)(A))", () => {
+    const r = taxCountrySummary([stay("US", "2026-03-01", "2026-03-01")], "US", TODAY);
+    expect(r.counting).toBe("any_part");
+    expect(r.years[0].days).toBe(1);
+  });
+
+  test("Australia: arrival and departure days both count, income year 1 July to 30 June (ATO 183-day test page)", () => {
+    const r = taxCountrySummary([stay("AU", "2026-06-29", "2026-07-02")], "AU", TODAY);
+    expect(r.years[0].label).toBe("2026/27");
+    expect(r.years[0].days).toBe(2); // 1 and 2 July
+    expect(r.years[1].days).toBe(2); // 29 and 30 June
+  });
+
+  test("New Zealand: part days count as whole days (IRD page, Income Tax Act 2007 s YD 1(8))", () => {
+    const r = taxCountrySummary([stay("NZ", "2026-05-10", "2026-05-12")], "NZ", TODAY);
+    expect(r.counting).toBe("any_part");
+    expect(r.years[0].days).toBe(3);
+  });
+
+  test("New Zealand: a 12-month period that spans 29 February has 366 days (s YD 1(3))", () => {
+    // 1 March 2027, then 183 days ending 29 February 2028. Any 365-day window holds only 183,
+    // but the 12 months 1 March 2027 to 29 February 2028 hold 184, which is more than 183.
+    const stays = [stay("NZ", "2027-03-01", "2027-03-01"), stay("NZ", addDays("2028-02-29", -182), "2028-02-29")];
+    const r = taxCountrySummary(stays, "NZ", "2028-03-15");
+    expect(r.years[0].label).toBe("2027/28");
+    expect(r.years[0].detail.best_12_months).toBe(184);
+    expect(r.years[0].detail.best_12_months_end).toBe("2028-02-29");
+    expect(r.years[0].status).toBe("met");
+    // Exactly 183 is not more than 183.
+    const r2 = taxCountrySummary([stay("NZ", addDays("2028-02-29", -182), "2028-02-29")], "NZ", "2028-03-15");
+    expect(r2.years[0].detail.best_12_months).toBe(183);
+    expect(r2.years[0].status).toBe("near");
+  });
+
+  test("South Africa: IN4 Example 1, arrive 1 Feb 19:00 and leave 4 Feb 06:00 is 4 days", () => {
+    // SARS Interpretation Note 4 (Issue 5), Example 1.
+    const r = taxCountrySummary([stay("ZA", "2026-02-01", "2026-02-04")], "ZA", TODAY);
+    expect(r.years.find((y) => y.label === "2025/26")?.days).toBe(4);
+  });
+
+  // SARS IN4 years of assessment are named by the year they end in: "2018" is 1 March 2017 to 28 February 2018.
+  const zaYear = (endYear: number, days: number) => stay("ZA", `${endYear - 1}-03-01`, addDays(`${endYear - 1}-03-01`, days - 1));
+
+  test("South Africa: IN4 Example 2, 563 days in the 5 years before is not more than 915, so not resident", () => {
+    const stays = [zaYear(2013, 95), zaYear(2014, 110), zaYear(2015, 115), zaYear(2016, 92), zaYear(2017, 151), zaYear(2018, 355)];
+    const r = taxCountrySummary(stays, "ZA", "2018-02-28", 0);
+    expect(r.years[0].label).toBe("2017/18");
+    expect(r.years[0].days).toBe(355);
+    expect(r.years[0].detail.previous_five_total).toBe(563);
+    expect(r.years[0].status).not.toBe("met");
+  });
+
+  test("South Africa: IN4 Example 3, 108 days this year and 975 over the 5 before is resident", () => {
+    const stays = [zaYear(2013, 113), zaYear(2014, 147), zaYear(2015, 208), zaYear(2016, 202), zaYear(2017, 305), stay("ZA", "2017-04-15", "2017-07-31")];
+    const r = taxCountrySummary(stays, "ZA", "2018-02-28", 0);
+    expect(r.years[0].days).toBe(108);
+    expect(r.years[0].detail.previous_five_total).toBe(975);
+    expect(r.years[0].status).toBe("met");
+  });
+
+  test("South Africa: IN4 Example 4, Z is resident for the 2017 year of assessment (958 days before)", () => {
+    const stays = [
+      stay("ZA", "2011-06-29", "2012-02-29"), // 246
+      stay("ZA", "2012-06-01", "2012-08-31"), // 92
+      stay("ZA", "2013-09-01", "2014-02-28"), // 181
+      stay("ZA", "2014-03-01", "2014-05-21"), // 82
+      stay("ZA", "2014-11-08", "2015-02-28"), // 113
+      stay("ZA", "2015-07-01", "2016-02-29"), // 244
+      stay("ZA", "2016-06-29", "2016-07-15"), // 17
+      stay("ZA", "2016-08-29", "2016-11-30"), // 94
+    ];
+    const r = taxCountrySummary(stays, "ZA", "2017-02-28", 0);
+    expect(r.years[0].label).toBe("2016/17");
+    expect(r.years[0].days).toBe(111);
+    expect(r.years[0].detail.previous_years).toBe("244,195,181,92,246");
+    expect(r.years[0].detail.previous_five_total).toBe(958);
+    expect(r.years[0].status).toBe("met");
+  });
+
+  test("Ireland: a day counts if present at any time, and a year of 30 days or fewer is ignored (TCA s 819)", () => {
+    // Revenue TDM 34-00-01: 30 days or fewer this year means not resident under the 280-day test,
+    // even with 300 days last year.
+    const r = taxCountrySummary([stay("IE", "2025-01-01", addDays("2025-01-01", 299)), stay("IE", "2026-02-01", addDays("2026-02-01", 29))], "IE", TODAY);
+    expect(r.counting).toBe("any_part");
+    expect(r.years[0].days).toBe(30);
+    expect(r.years[0].detail.two_year_total).toBe(0);
+    expect(r.years[0].status).not.toBe("met");
+    // 31 days this year and 249 last year is exactly 280: resident.
+    const r2 = taxCountrySummary([stay("IE", "2025-01-01", addDays("2025-01-01", 248)), stay("IE", "2026-02-01", addDays("2026-02-01", 30))], "IE", TODAY);
+    expect(r2.years[0].detail.two_year_total).toBe(280);
+    expect(r2.years[0].status).toBe("met");
+  });
+
+  test("Canada: 183 days or more in the year (ITA s 250(1)(a)), part days count", () => {
+    const r = taxCountrySummary([stay("CA", "2026-01-01", addDays("2026-01-01", 182))], "CA", TODAY);
+    expect(r.years[0].days).toBe(183);
+    expect(r.years[0].status).toBe("met");
+  });
+
+  test("Italy: Circolare 20/E Example, 9 separate stays in 2024 add up to 184 days, resident", () => {
+    const stays = [
+      stay("IT", "2024-01-11", "2024-01-31"),
+      stay("IT", "2024-02-05", "2024-02-10"),
+      stay("IT", "2024-04-01", "2024-04-30"),
+      stay("IT", "2024-05-12", "2024-05-26"),
+      stay("IT", "2024-06-01", "2024-07-31"),
+      stay("IT", "2024-10-01", "2024-10-31"),
+      stay("IT", "2024-11-05", "2024-11-12"),
+      stay("IT", "2024-11-27", "2024-11-27"),
+      stay("IT", "2024-12-02", "2024-12-12"),
+    ];
+    const r = taxCountrySummary(stays, "IT", "2024-12-31");
+    expect(r.years[0].days).toBe(184);
+    expect(r.years[0].detail.threshold).toBe(184);
+    expect(r.years[0].status).toBe("met");
+  });
+
+  test("Italy: Circolare 20/E Example, 23:00 on 1 July to 01:00 on 31 December 2024 is 184 days", () => {
+    const r = taxCountrySummary([stay("IT", "2024-07-01", "2024-12-31")], "IT", "2024-12-31");
+    expect(r.years[0].days).toBe(184);
+    expect(r.years[0].status).toBe("met");
+  });
+
+  test("Germany: more than six calendar months from arrival, not a fixed 183 days (AO s 9)", () => {
+    // From 1 January six months end on 30 June, so 1 July (day 182 in 2026) is the first day over.
+    const jan = taxCountrySummary([stay("DE", "2026-01-01", "2026-07-01")], "DE", TODAY);
+    expect(jan.years[0].detail.longest_stay).toBe(182);
+    expect(jan.years[0].detail.threshold).toBe(182);
+    expect(jan.years[0].status).toBe("met");
+    expect(taxCountrySummary([stay("DE", "2026-01-01", "2026-06-30")], "DE", TODAY).years[0].status).toBe("near");
+    // From 1 July six months end on 31 December: 183 days (1 July to 30 December) is not more than six months.
+    const jul = taxCountrySummary([stay("DE", "2025-07-01", "2025-12-30")], "DE", TODAY);
+    expect(jul.years[1].detail.longest_stay).toBe(183);
+    expect(jul.years[1].status).toBe("near");
+    expect(taxCountrySummary([stay("DE", "2025-07-01", "2026-01-01")], "DE", TODAY).years[1].status).toBe("met");
+    // From 31 August there is no 31 February: six months end on the last day of February.
+    const aug = taxCountrySummary([stay("DE", "2025-08-31", "2026-03-01")], "DE", TODAY);
+    expect(aug.years[0].detail.threshold).toBe(183);
+    expect(aug.years[0].status).toBe("met");
+    expect(taxCountrySummary([stay("DE", "2025-08-31", "2026-02-28")], "DE", TODAY).years[0].status).toBe("near");
+  });
+
+  test("France: more than 183 days, 183 is not enough (BOFiP BOI-IR-CHAMP-10 para 130)", () => {
+    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 182))], "FR", TODAY).years[0].status).toBe("near");
+    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 183))], "FR", TODAY).years[0].status).toBe("met");
+  });
+
   test("a country with no rule gets a plain calendar-year count", () => {
     const r = taxCountrySummary([stay("NL", "2026-02-01", "2026-02-10")], "NL", TODAY);
     expect(r.has_rule).toBe(false);
@@ -387,6 +558,37 @@ describe("Seafarers' Earnings Deduction", () => {
     const r = sedSummary(stays, TODAY);
     expect(r.periods).toHaveLength(0);
     expect(r.current?.start_date).toBe("2026-01-15");
+  });
+
+  test("HMRC EIM33006 worked example: combined period from 1 January 2004 passes 365 days", () => {
+    // Absence 1 Jan to 31 Mar 2004 (91), UK 61, absence 92, UK 61, absence 92, UK 59, absence 1 Apr to 30 Jun 2005.
+    // A day of absence is abroad at midnight (EIM33004, ITEPA s 378(4)), so each abroad stay ends on the day home.
+    const stays = [
+      stay("FR", "2004-01-01", "2004-04-01"),
+      stay("GB", "2004-04-01", "2004-06-01"),
+      stay("FR", "2004-06-01", "2004-09-01"),
+      stay("GB", "2004-09-01", "2004-11-01"),
+      stay("FR", "2004-11-01", "2005-02-01"),
+      stay("GB", "2005-02-01", "2005-04-01"),
+      stay("FR", "2005-04-01", "2005-07-01"),
+      stay("GB", "2005-07-01", "2005-12-31"),
+    ];
+    const r = sedSummary(stays, TODAY);
+    expect(r.periods).toHaveLength(1);
+    expect(r.periods[0].start_date).toBe("2004-01-01");
+    expect(r.periods[0].end_date).toBe("2005-06-30");
+    // HMRC prints 548 days and 92 days for the last absence; the dates give 547 and 91.
+    expect(r.periods[0].days).toBe(547);
+    expect(r.periods[0].uk_days).toBe(181);
+    expect(r.periods[0].absence_days).toBe(366);
+  });
+
+  test("fewer than half the days abroad breaks the combined period (ITEPA s 378(3)(a), EIM33005)", () => {
+    // 30 nights away, 180 in the UK, 30 away: each UK stay is under 183 days but only 60 of 240 days are absence.
+    const stays = [stay("FR", "2025-01-01", "2025-01-31"), stay("GB", "2025-01-31", "2025-07-30"), stay("FR", "2025-07-30", "2025-08-29")];
+    const r = sedSummary(stays, TODAY);
+    expect(r.current?.start_date).toBe("2025-07-30");
+    expect(r.current?.absence_days).toBe(30);
   });
 
   test("the current period counts days to go", () => {

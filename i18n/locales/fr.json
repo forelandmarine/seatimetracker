@@ -564,7 +564,7 @@
     "tax": {
       "title": "Jours fiscaux",
       "choose": "Choisir les pays",
-      "disclaimer": "À titre indicatif. Consultez un conseiller fiscal. Le nombre de jours n'est qu'un élément de la résidence fiscale, et les conventions fiscales peuvent changer la réponse.",
+      "disclaimer": "À titre indicatif, ce n'est pas un conseil fiscal. Le nombre de jours n'est qu'un élément de la résidence fiscale : un logement, la famille, le travail ou les intérêts principaux dans un pays peuvent vous y rendre résident avec moins de jours, et les conventions fiscales peuvent changer la réponse. Consultez un conseiller fiscal.",
       "none": "Aucun pays choisi. Touchez Choisir les pays.",
       "noRule": "L'app n'a pas de règle de jours pour ce pays : c'est un simple décompte par année civile.",
       "countMidnight": "Compte les jours où vous y êtes à minuit. Le jour du départ ne compte pas.",
@@ -593,17 +593,17 @@
         "deNone": "Aucun séjour en Allemagne cette année."
       },
       "notes": {
-        "GB": "Statutory Residence Test : 183 jours ou plus au Royaume-Uni sur une année fiscale vous rendent résident. Moins de jours peuvent suffire si vous avez des attaches au Royaume-Uni.",
-        "US": "Test de présence substantielle : 31 jours cette année et 183 jours sur 3 ans (tous ceux de cette année, un tiers de l'an dernier, un sixième de l'année d'avant). Les jours comme membre d'équipage d'un navire étranger ne comptent pas : désactivez ces séjours pour l'impôt.",
-        "AU": "Test des 183 jours : en Australie plus de la moitié de l'année fiscale. Vous pouvez rester non-résident si votre domicile habituel est à l'étranger.",
-        "NZ": "Plus de 183 jours en Nouvelle-Zélande sur toute période de 12 mois vous rendent résident fiscal dès le premier de ces jours.",
-        "ZA": "Test de présence physique : plus de 91 jours cette année fiscale et chacune des 5 années précédentes, et plus de 915 jours sur ces 5 années.",
-        "IE": "183 jours sur une année fiscale, ou 280 jours sur cette année et la précédente. Une année de 30 jours ou moins ne compte pas pour les 280.",
-        "CA": "Séjourner 183 jours ou plus sur une année civile peut faire de vous un résident réputé si vous n'avez pas de liens importants avec le Canada.",
-        "ES": "Plus de 183 jours en Espagne sur une année civile. De courtes absences peuvent quand même compter comme des jours en Espagne.",
-        "FR": "Plus de six mois en France dans l'année en font en général votre lieu de séjour principal. Votre foyer, votre emploi ou vos revenus principaux en France peuvent aussi vous rendre résident.",
-        "IT": "En Italie la majeure partie de l'année (183 jours, ou 184 les années bissextiles). Depuis 2024, la présence physique seule peut suffire.",
-        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années. De courtes interruptions ne le coupent pas, mais cette app ne relie que les jours sans interruption."
+        "GB": "Statutory Residence Test : 183 jours ou plus au Royaume-Uni sur une année fiscale vous rendent résident. Avec moins de jours, un logement, un travail à temps plein ou des attaches au Royaume-Uni peuvent suffire, et les jours où vous partez avant minuit peuvent compter si vous avez 3 attaches ou plus.",
+        "US": "Test de présence substantielle : 31 jours cette année et 183 jours sur 3 ans (tous ceux de cette année, un tiers de l'an dernier, un sixième de l'année d'avant). Les jours comme membre d'équipage régulier d'un navire étranger qui voyage entre les États-Unis et l'étranger peuvent ne pas compter, mais seulement si vous n'avez aucune autre activité aux États-Unis ces jours-là : vérifiez avant de désactiver ces séjours. Avec moins de 183 jours cette année, un lien plus étroit avec un autre pays peut vous laisser non-résident.",
+        "AU": "Test des 183 jours : être en Australie plus de la moitié de l'année fiscale (183 jours, ou 184 les années bissextiles) vous rend résident, sauf si votre domicile habituel est à l'étranger et que vous n'avez pas l'intention de vivre en Australie. Vivre en Australie ou y avoir votre domicile peut vous rendre résident avec moins de jours.",
+        "NZ": "Plus de 183 jours en Nouvelle-Zélande sur toute période de 12 mois vous rendent résident fiscal dès le premier de ces jours. Un logement permanent en Nouvelle-Zélande vous rend résident quel que soit le nombre de jours. Depuis le 1er avril 2026, certains visiteurs de courte durée qui ne travaillent pas pour des entreprises néo-zélandaises sont exemptés.",
+        "ZA": "Test de présence physique : plus de 91 jours cette année fiscale et chacune des 5 années précédentes, et plus de 915 jours sur ces 5 années. Si vous vivez habituellement en Afrique du Sud, vous êtes résident quel que soit le nombre de jours.",
+        "IE": "183 jours sur une année fiscale, ou 280 jours sur cette année et la précédente. Une année de 30 jours ou moins ne compte pas pour les 280, et vous n'êtes pas résident cette année-là au titre des 280 jours.",
+        "CA": "Séjourner 183 jours ou plus sur une année civile peut faire de vous un résident réputé si vous n'avez pas de liens importants avec le Canada. Si vous en avez (logement, conjoint ou personnes à charge au Canada), vous pouvez être résident quel que soit le nombre de jours.",
+        "ES": "Plus de 183 jours en Espagne sur une année civile. Les absences sporadiques comptent comme des jours en Espagne sauf si vous prouvez votre résidence fiscale dans un autre pays. Le centre de vos activités ou intérêts économiques en Espagne, ou un conjoint et des enfants mineurs qui y vivent, peuvent aussi vous rendre résident.",
+        "FR": "Plus de six mois en France dans l'année en font en général votre lieu de séjour principal, mais ce n'est pas un critère absolu. Votre foyer, votre activité professionnelle ou le centre de vos intérêts économiques en France peuvent aussi vous rendre résident.",
+        "IT": "En Italie la majeure partie de l'année (183 jours, ou 184 les années bissextiles), toute fraction de jour comptant. Depuis 2024, la présence physique seule peut suffire. Votre domicile, vos liens familiaux ou votre inscription à l'état civil en Italie peuvent aussi vous rendre résident.",
+        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années, fait de l'Allemagne votre résidence habituelle dès le premier jour. Cela ne s'applique pas aux visites ou vacances purement privées d'un an au plus. Un logement en Allemagne vous rend résident quel que soit le nombre de jours. De courtes interruptions ne coupent pas le séjour, mais cette app ne relie que les jours sans interruption."
       },
       "pickTitle": "Pays fiscaux",
       "pickIntro": "Choisissez les pays pour lesquels vous voulez un décompte. Les pays de cette liste ont leur propre année fiscale et règle de jours.",
@@ -613,7 +613,7 @@
     },
     "sed": {
       "title": "Seafarers' Earnings Deduction (Royaume-Uni)",
-      "intro": "Vérifie seulement les critères de jours : 365 jours ou plus, surtout hors du Royaume-Uni, sans séjour au Royaume-Uni de plus de 183 jours. Un jour à l'étranger est un jour où vous êtes hors du Royaume-Uni à minuit. Les jours sans séjour noté comptent comme des jours au Royaume-Uni.",
+      "intro": "Vérifie seulement les critères de jours : 365 jours ou plus, dont au moins la moitié hors du Royaume-Uni, sans séjour au Royaume-Uni de plus de 183 jours. Un jour à l'étranger est un jour où vous êtes hors du Royaume-Uni à minuit. Les jours sans séjour noté comptent comme des jours au Royaume-Uni.",
       "current": "Période en cours : du {{start}} au {{end}}, {{days}} jours ({{away}} à l'étranger, {{uk}} au Royaume-Uni).",
       "toGo_one": "Encore {{count}} jour pour atteindre 365.",
       "toGo_other": "Encore {{count}} jours pour atteindre 365.",

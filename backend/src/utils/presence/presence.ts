@@ -65,6 +65,33 @@ export function addDays(iso: string, days: number): string {
   return isoOf(dayNum(iso) + days);
 }
 
+/**
+ * The same day of the month `months` later (or earlier). When that day does not
+ * exist (31 August plus six months), the last day of that month.
+ */
+export function addMonthsClamped(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const idx = y * 12 + (m - 1) + months;
+  const ny = Math.floor(idx / 12);
+  const nm = idx - ny * 12;
+  const last = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+  return `${ny}-${String(nm + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+
+/**
+ * Germany, AO s. 9: the first day on which a stay that began on `start` has
+ * lasted more than six months. The day of arrival is day 1, so six months from
+ * 1 January run to 30 June and 1 July is the first day over. When the matching
+ * day does not exist (31 August), six months end on the last day of February
+ * and 1 March is the first day over (AO s. 108 with BGB ss. 187, 188).
+ */
+export function deSixMonthsPassed(start: number): number {
+  const iso = isoOf(start);
+  const day = Number(iso.slice(8, 10));
+  const target = addMonthsClamped(iso, 6);
+  return Number(target.slice(8, 10)) === day ? dayNum(target) : dayNum(target) + 1;
+}
+
 /** UTC today, or the phone's date when it is within a day of it (time zones). */
 export function resolveToday(requested: string | undefined, now: Date = new Date()): string {
   const utc = now.toISOString().slice(0, 10);
@@ -365,12 +392,26 @@ function yearLength(range: { start: string; end: string }): number {
   return dayNum(range.end) - dayNum(range.start) + 1;
 }
 
-function longestRunTouching(days: Set<number>, from: number, to: number): { length: number; start: number | null; end: number | null } {
-  let best = { length: 0, start: null as number | null, end: null as number | null };
+/**
+ * The unbroken run touching [from, to] that comes closest to (or furthest past)
+ * six calendar months, with the days it needs to pass six months.
+ */
+function bestRunTouching(
+  days: Set<number>,
+  from: number,
+  to: number,
+): { length: number; start: number | null; end: number | null; needed: number } {
+  let best = { length: 0, start: null as number | null, end: null as number | null, needed: 183 };
+  let bestMargin = -Infinity;
   for (const r of runsOf(days)) {
     if (r.end < from || r.start > to) continue;
     const len = r.end - r.start + 1;
-    if (len > best.length) best = { length: len, start: r.start, end: r.end };
+    const needed = deSixMonthsPassed(r.start) - r.start + 1;
+    const margin = len - needed;
+    if (margin > bestMargin) {
+      bestMargin = margin;
+      best = { length: len, start: r.start, end: r.end, needed };
+    }
   }
   return best;
 }
@@ -462,7 +503,9 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
           let best = 0;
           let bestEnd: number | null = null;
           for (let d = from; d <= to; d++) {
-            const c = countIn(days, d - 364, d);
+            // A calendar 12 months ending on d: 366 days when it spans 29 February.
+            const windowStart = dayNum(addMonthsClamped(isoOf(d), -12)) + 1;
+            const c = countIn(days, windowStart, d);
             if (c > best) {
               best = c;
               bestEnd = d;
@@ -475,10 +518,11 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
           break;
         }
         case 'de_continuous': {
-          const run = longestRunTouching(days, from, to);
-          // "More than six months": 183 days or more, on the safe side.
-          status = statusFor(run.length >= 183, run.length >= 183 - NEAR_MARGIN);
-          need = Math.max(0, 183 - run.length);
+          // "More than six months" in calendar months from the day of arrival (182 to 185 days).
+          const run = bestRunTouching(days, from, to);
+          status = statusFor(run.start != null && run.length >= run.needed, run.start != null && run.length >= run.needed - NEAR_MARGIN);
+          need = Math.max(0, run.needed - run.length);
+          detail.threshold = run.needed;
           detail.longest_stay = run.length;
           detail.longest_stay_start = run.start == null ? null : isoOf(run.start);
           detail.longest_stay_end = run.end == null ? null : isoOf(run.end);
