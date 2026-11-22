@@ -9,17 +9,28 @@ import { isOnboardingComplete } from './onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { log, error as logError } from '@/utils/log';
+import { getActivation, type ActivationRecord } from '@/utils/activation';
 
 export default function Index() {
   // CRITICAL: Call useAuth and useSubscription at the top level - NEVER conditionally
   const authContext = useAuth();
-  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed, paywallDismissed } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, revenueCatFailed, paywallDismissed, everSubscribed, paywallSkipped } = useSubscription();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
   useEffect(() => {
     isOnboardingComplete().then(setOnboardingDone);
   }, []);
+
+  // Sign-up activation progress for this user (boat, then pathway, then paywall).
+  const userId = authContext?.user?.id;
+  const [activation, setActivation] = useState<{ userId: string; record: ActivationRecord } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    getActivation(userId).then((record) => { if (live) setActivation({ userId, record }); });
+    return () => { live = false; };
+  }, [userId]);
 
   // Remember that this device has had a signed-in user, so after a sign-out the
   // account screen opens on Sign in rather than Create account.
@@ -90,10 +101,38 @@ export default function Index() {
     );
   }
 
-  // Step 4: Paywall — show paywall unless user already dismissed it this session
+  // Step 4: Not subscribed.
   if (!isSubscribed && !paywallDismissed) {
-    log('[Index] Authenticated but not subscribed, redirecting to /paywall');
-    return <Redirect href="/paywall" />;
+    // Lapsed (had a trial or subscription) or RevenueCat unavailable: the paywall, as before.
+    if (everSubscribed) {
+      log('[Index] Authenticated but not subscribed, redirecting to /paywall');
+      return <Redirect href="/paywall?source=lapsed" />;
+    }
+
+    // Never subscribed: boat first, then authority and pathway, then the paywall
+    // (2.5.0 activation flow). Closing the paywall leads to the locked Home.
+    if (!activation || activation.userId !== user?.id) {
+      return (
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      );
+    }
+    if (!activation.record.vessel) {
+      log('[Index] New user, redirecting to /onboarding-vessel');
+      return <Redirect href={"/onboarding-vessel" as any} />;
+    }
+    if (!hasDepartment) {
+      log('[Index] New user with boat step done, redirecting to /select-pathway');
+      return <Redirect href="/select-pathway" />;
+    }
+    if (!paywallSkipped) {
+      const source = activation.record.paywallSeen ? 'launch' : 'onboarding';
+      log('[Index] New user set up, redirecting to /paywall, source:', source);
+      return <Redirect href={`/paywall?source=${source}` as any} />;
+    }
+    log('[Index] New user closed the paywall, redirecting to /locked-home');
+    return <Redirect href={"/locked-home" as any} />;
   }
 
   // Step 5: Pathway — must select department

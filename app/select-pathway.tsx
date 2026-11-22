@@ -19,6 +19,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { log, error as logError } from '@/utils/log';
+import { trackEvent } from '@/utils/appEvents';
 
 type Department = 'Deck' | 'Engineering';
 type MaritimeAuthority = 'mca' | 'uscg' | 'amsa' | 'mnz' | 'samsa';
@@ -45,6 +46,13 @@ function createStyles(isDark: boolean) {
     header: {
       marginBottom: 32,
       alignItems: 'center',
+    },
+    stepLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.primary,
+      letterSpacing: 0.5,
+      marginBottom: 6,
     },
     title: {
       fontSize: 28,
@@ -194,7 +202,10 @@ export default function SelectPathwayScreen() {
   const isDark = colorScheme === 'dark';
   const styles = createStyles(isDark);
   const router = useRouter();
-  const { isSubscribed, isLoading: subscriptionLoading, paywallDismissed } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, paywallDismissed, everSubscribed } = useSubscription();
+  // Sign-up activation flow (2.5.0): a user who has never subscribed picks the
+  // pathway BEFORE the paywall. Lapsed users still go to the paywall first.
+  const inActivationFlow = !isSubscribed && !paywallDismissed && !everSubscribed;
   const auth = useAuth();
   const useAuthRef = React.useRef(auth);
   useAuthRef.current = auth;
@@ -224,14 +235,14 @@ export default function SelectPathwayScreen() {
     
     // CRITICAL: If not subscribed, redirect to paywall immediately
     // This is a MANDATORY gate - no exceptions
-    if (!isSubscribed && !paywallDismissed) {
+    if (!isSubscribed && !paywallDismissed && !inActivationFlow) {
       log('[SelectPathway] User not subscribed, redirecting to paywall');
       router.replace('/paywall');
       return;
     }
     
     log('[SelectPathway] ✅ User is subscribed, allowing pathway selection');
-  }, [isSubscribed, subscriptionLoading, router]);
+  }, [isSubscribed, subscriptionLoading, router, inActivationFlow]);
 
   const handleSelectDepartment = (department: Department) => {
     log('User selected department:', department);
@@ -272,6 +283,12 @@ export default function SelectPathwayScreen() {
       const { checkAuth } = useAuthRef.current;
       await checkAuth();
 
+      if (inActivationFlow) {
+        // Step 2 of 3 done: back to the router, which shows the paywall next.
+        trackEvent('onboarding_pathway_done', selectedAuthority);
+        router.replace('/');
+        return;
+      }
       log('Navigating to home screen');
       router.replace('/(tabs)');
     } catch (error: any) {
@@ -293,7 +310,7 @@ export default function SelectPathwayScreen() {
     );
   }
 
-  if (!isSubscribed && !paywallDismissed) {
+  if (!isSubscribed && !paywallDismissed && !inActivationFlow) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -313,6 +330,7 @@ export default function SelectPathwayScreen() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          {inActivationFlow && <Text style={styles.stepLabel}>Step 2 of 3</Text>}
           <Text style={styles.title}>Choose Your Sea Time Pathway</Text>
           <Text style={styles.subtitle}>
             Select your maritime authority and department. This determines how your sea service is calculated.

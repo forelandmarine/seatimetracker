@@ -16,13 +16,16 @@ import {
   AppStateStatus,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { ExitSurveyPrompt } from '@/components/ExitSurveyPrompt';
 import { colors } from '@/styles/commonStyles';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPendingEntries } from '@/utils/seaTimeApi';
+import { BoatActivityCard, TrialPromise, freePeriod, useActivationBoat } from '@/components/ActivationBoat';
+import { updateActivation } from '@/utils/activation';
+import { trackEvent } from '@/utils/appEvents';
 import Purchases, { INTRO_ELIGIBILITY_STATUS, type PurchasesPackage } from 'react-native-purchases';
 import Constants from 'expo-constants';
 
@@ -67,10 +70,27 @@ export default function PaywallScreen() {
     refreshOfferings,
     hasActiveTrial,
     dismissPaywall,
+    everSubscribed,
+    skipPaywall,
     error: subscriptionError,
   } = useSubscription();
 
   const { user } = useAuth();
+
+  // Sign-up activation flow (2.5.0): a user who has never subscribed sees their
+  // boat here and may close the paywall (to the locked Home). Lapsed users keep
+  // the paywall as it was.
+  const params = useLocalSearchParams<{ source?: string }>();
+  const source = (typeof params.source === 'string' && params.source) || (everSubscribed ? 'lapsed' : 'other');
+  const isNewUser = !!user && !everSubscribed;
+  const activation = useActivationBoat(isNewUser);
+  const shownRef = useRef(false);
+  useEffect(() => {
+    if (shownRef.current || isLoading || activation.loading) return;
+    shownRef.current = true;
+    trackEvent('paywall_shown', `${source}:${activation.boat ? 'personalised' : 'generic'}`);
+    if (isNewUser && user?.id) void updateActivation(user.id, { paywallSeen: true });
+  }, [isLoading, activation.loading]);
   const [purchasing, setPurchasing] = useState(false);
 
   // Passages AIS logged that the user hasn't confirmed yet. A lapsed user can't
@@ -237,6 +257,8 @@ export default function PaywallScreen() {
       
       if (result.success) {
         log('[Paywall] Purchase successful');
+        const ent = result.customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] || Object.values(result.customerInfo.entitlements.active)[0];
+        trackEvent(ent?.periodType === 'TRIAL' ? 'trial_started' : 'subscribed', selectedPlan);
         Alert.alert(
           'Subscription Active',
           'Your subscription is now active. Enjoy unlimited vessel tracking!',
@@ -360,7 +382,10 @@ export default function PaywallScreen() {
     // Let the user browse the app without subscribing this session.
     // The paywall will reappear on next app launch.
     log('[Paywall] User tapped X button, dismissing paywall');
-    dismissPaywall();
+    trackEvent('paywall_dismissed', source);
+    if (hasActiveTrial) dismissPaywall();
+    // Never subscribed: the locked Home (boat saved, tracking off), not the tabs.
+    else skipPaywall();
     router.replace('/');
   };
 
@@ -410,8 +435,8 @@ export default function PaywallScreen() {
       {/* Plan just ended: ask once why (trial or subscription) */}
       <ExitSurveyPrompt trigger="lapsed" enabled={!isLoading} />
       <SafeAreaView edges={['bottom']} style={[styles.container, { backgroundColor: isDark ? colors.background : colors.backgroundLight }]}>
-        {/* X Button - Top Right (only visible during active trial) */}
-        {hasActiveTrial && (
+        {/* X Button - Top Right (during an active trial, or for a new user: to the locked Home) */}
+        {(hasActiveTrial || isNewUser) && (
           <TouchableOpacity
             style={styles.closeButton}
             onPress={handleClose}
@@ -447,6 +472,16 @@ export default function PaywallScreen() {
               By Foreland Marine
             </Text>
           </View>
+
+          {isNewUser && activation.boat && (
+            <BoatActivityCard boat={activation.boat} activity={activation.activity} isDark={isDark} />
+          )}
+          {isNewUser && (
+            <TrialPromise
+              period={freePeriod(introOfferFor(selectedPlan === 'annual' ? annualPackage : monthlyPackage))}
+              isDark={isDark}
+            />
+          )}
 
           {waiting && (
             <View style={styles.waitingNotice}>
@@ -688,6 +723,15 @@ export default function PaywallScreen() {
                 </Text>
               )}
             </TouchableOpacity>
+
+            {/* New user: close to the locked Home, boat kept */}
+            {isNewUser && !hasActiveTrial && (
+              <TouchableOpacity style={styles.restoreButton} onPress={handleClose} disabled={purchasing || restoring}>
+                <Text style={[styles.restoreButtonText, { color: isDark ? colors.textSecondary : colors.textSecondaryLight }]}>
+                  Not now
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Redeem Code Button (iOS only) */}
             {Platform.OS === 'ios' && (

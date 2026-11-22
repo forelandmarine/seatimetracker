@@ -318,7 +318,7 @@ export default function HistoryImportScreen() {
         {intro}
         <View style={styles.card}>
           <Text style={styles.body}>Importing past sea time needs an active subscription or free trial.</Text>
-          <TouchableOpacity style={[styles.button, styles.primary]} onPress={() => router.push('/paywall' as any)}>
+          <TouchableOpacity style={[styles.button, styles.primary]} onPress={() => router.push('/paywall?source=history_import' as any)}>
             <Text style={styles.primaryText}>See plans</Text>
           </TouchableOpacity>
         </View>

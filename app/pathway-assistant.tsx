@@ -436,7 +436,7 @@ export default function PathwayAssistantScreen() {
             <View style={styles.blockedCard}>
               <Text style={styles.blockedText}>{blocked.message}</Text>
               {(blocked.code === 'trial_limit_reached' || blocked.code === 'subscription_required') && (
-                <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/paywall')}>
+                <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/paywall?source=pathway_assistant' as any)}>
                   <Text style={styles.primaryButtonText}>See plans</Text>
                 </TouchableOpacity>
               )}

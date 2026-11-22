@@ -10,6 +10,8 @@ import { useAuth } from './AuthContext';
 import { BACKEND_URL } from '@/utils/api';
 import Constants from 'expo-constants';
 import { log, warn, error as logError } from '@/utils/log';
+import { activateOnboardingVessel } from '@/utils/activation';
+import { scheduleTrialEndReminder, cancelTrialEndReminder } from '@/utils/notifications';
 
 // Environment detection
 const isTestFlight = Constants.appOwnership === 'expo' ||
@@ -34,6 +36,11 @@ interface SubscriptionContextType {
   paywallDismissed: boolean;
   hasActiveTrial: boolean;
   dismissPaywall: () => void;
+  /** Has ever had the subscription entitlement (trial or paid), or RevenueCat is unavailable: not a new user. */
+  everSubscribed: boolean;
+  /** Never-subscribed user closed the paywall this session: show the locked Home, not the tabs. */
+  paywallSkipped: boolean;
+  skipPaywall: () => void;
   customerInfo: CustomerInfo | null;
   availablePackages: PurchasesPackage[];
   purchasePackage: (pkg: PurchasesPackage) => Promise<{ customerInfo: CustomerInfo; success: boolean }>;
@@ -75,9 +82,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [hasActiveTrial]);
 
+  // Sign-up activation flow (2.5.0): a user who has never had the entitlement may
+  // close the paywall and lands on the locked Home (no tabs, no tracking). Session only.
+  const [paywallSkipped, setPaywallSkipped] = useState(false);
+  // When RevenueCat could not start we can't tell a new user from a lapsed one,
+  // so treat them as lapsed: the paywall stays as it was before 2.5.0.
+  const everSubscribed = useMemo(
+    () => initializationFailed || (!!customerInfo && Object.keys(customerInfo.entitlements.all || {}).length > 0),
+    [customerInfo, initializationFailed]
+  );
+  const skipPaywall = useCallback(() => {
+    if (!everSubscribed) setPaywallSkipped(true);
+  }, [everSubscribed]);
+  useEffect(() => setPaywallSkipped(false), [user?.id]);
+
   // FIX 1: Idempotency guard — pause-tracking should fire at most once per
   // confirmed lapsed-subscription event. Reset when subscription becomes active.
   const hasPausedTracking = useRef(false);
+  const everSubscribedRef = useRef(false);
+  everSubscribedRef.current = everSubscribed;
 
   // Backend subscription expiry — used as fallback when RevenueCat is unavailable.
   const [backendSubscriptionActive, setBackendSubscriptionActive] = useState<boolean | null>(null);
@@ -142,8 +165,35 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (isSubscribed) {
       hasPausedTracking.current = false;
       setPaywallDismissed(false);
+      setPaywallSkipped(false);
     }
   }, [isSubscribed]);
+
+  // The boat saved in the sign-up flow is stored switched off; switch it on for
+  // tracking once a trial or subscription is active (purchase, restore or code).
+  useEffect(() => {
+    if (isSubscribed && user?.id) void activateOnboardingVessel(user.id);
+  }, [isSubscribed, user?.id]);
+
+  // Local reminder 2 days before a free trial turns into a paid plan. Scheduled
+  // when RevenueCat reports a trial that will renew; cancelled when the trial is
+  // cancelled, has ended or turned into a paid plan.
+  const reminderForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!customerInfo) return;
+    const active = customerInfo.entitlements.active || {};
+    const ent = active[PRO_ENTITLEMENT_ID] || Object.values(active)[0];
+    const trialEnd = ent && ent.periodType === 'TRIAL' && ent.willRenew && ent.expirationDate ? ent.expirationDate : null;
+    if (trialEnd) {
+      if (reminderForRef.current === trialEnd) return;
+      reminderForRef.current = trialEnd;
+      const plan = ent.productIdentifier === PRO_ANNUAL_PRODUCT_ID ? 'annual' : ent.productIdentifier === PRO_MONTHLY_PRODUCT_ID ? 'monthly' : null;
+      void scheduleTrialEndReminder(new Date(trialEnd), plan);
+    } else if (reminderForRef.current !== 'none') {
+      reminderForRef.current = 'none';
+      void cancelTrialEndReminder();
+    }
+  }, [customerInfo]);
 
   // Initialize RevenueCat SDK
   useEffect(() => {
@@ -501,7 +551,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
               // Only tell people when something was actually paused. A new
               // user on the paywall has never subscribed and has no tracked
               // vessels, so "your subscription has expired" would be wrong.
-              if (data.vesselsDeactivated > 0) {
+              if (data.vesselsDeactivated > 0 && everSubscribedRef.current) {
                 Alert.alert(
                   'Tracking Paused',
                   'Your subscription has expired and vessel tracking has been paused. Subscribe to resume automatic tracking.',
@@ -534,6 +584,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         paywallDismissed,
         hasActiveTrial,
         dismissPaywall,
+        everSubscribed,
+        paywallSkipped,
+        skipPaywall,
         customerInfo,
         availablePackages,
         purchasePackage,

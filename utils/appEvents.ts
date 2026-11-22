@@ -25,7 +25,17 @@ export type AppEvent =
   | 'vessel_added'
   | 'history_offer_shown'
   | 'history_opened'
-  | 'history_purchased';
+  | 'history_purchased'
+  | 'onboarding_vessel_shown'
+  | 'onboarding_vessel_checked'
+  | 'onboarding_vessel_confirmed'
+  | 'onboarding_vessel_skipped'
+  | 'onboarding_pathway_done'
+  | 'paywall_shown'
+  | 'paywall_dismissed'
+  | 'trial_started'
+  | 'subscribed'
+  | 'locked_home_shown';
 
 const INSTALL_ID_KEY = 'seatime_install_id';
 let installId: Promise<string> | null = null;

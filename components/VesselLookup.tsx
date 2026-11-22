@@ -17,8 +17,9 @@ import { colors, withOpacity } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import {
   lookupVessel, confirmVesselLookup, getUserProfile,
-  type VesselCandidate, type VesselConfirmResult,
+  type VesselCandidate, type VesselConfirmResult, type RecentActivity,
 } from '@/utils/seaTimeApi';
+import { activityLine } from '@/utils/activation';
 import { phoneRegion } from '@/utils/trainingProviders';
 import { trackEvent } from '@/utils/appEvents';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,11 +32,16 @@ interface Props {
   /** Length overall in metres (converted here when the user types feet). */
   length: string;
   onLengthChange: (metres: string) => void;
-  /** User confirmed a match: fill the MMSI (and any empty particulars). */
-  onConfirm: (c: VesselCandidate) => void;
+  /** User confirmed a match: fill the MMSI (and any empty particulars). `result` is the AIS check, if one ran. */
+  onConfirm: (c: VesselCandidate, result?: CheckResult) => void;
+  /** AIS check for a picked match. Default: POST /api/vessels/lookup/confirm (one vessel_info call). */
+  confirm?: (c: VesselCandidate) => Promise<CheckResult>;
   /** Take the user to the MMSI field (focus it). */
   onEnterMmsi?: () => void;
 }
+
+/** An AIS check result, with the recent activity when the sign-up preview ran it. */
+type CheckResult = VesselConfirmResult & { activity?: RecentActivity | null };
 
 type State =
   | { kind: 'idle' }
@@ -43,7 +49,7 @@ type State =
   | { kind: 'error'; message: string }
   | { kind: 'results'; candidates: VesselCandidate[] }
   | { kind: 'checking'; candidate: VesselCandidate; candidates: VesselCandidate[] }
-  | { kind: 'check'; candidate: VesselCandidate; result: VesselConfirmResult; candidates: VesselCandidate[] }
+  | { kind: 'check'; candidate: VesselCandidate; result: CheckResult; candidates: VesselCandidate[] }
   | { kind: 'confirmed'; candidate: VesselCandidate };
 
 const FT = 0.3048;
@@ -72,7 +78,7 @@ const ids = (c: VesselCandidate) =>
 const formerly = (c: VesselCandidate) =>
   c.former_names && c.former_names.length ? `Formerly ${c.former_names.slice(0, 3).join(', ')}` : null;
 
-export default function VesselLookup({ name, onNameChange, length, onLengthChange, onConfirm, onEnterMmsi }: Props) {
+export default function VesselLookup({ name, onNameChange, length, onLengthChange, onConfirm, onEnterMmsi, confirm }: Props) {
   const isDark = useColorScheme() === 'dark';
   const s = createStyles(isDark);
   const { user } = useAuth();
@@ -196,17 +202,17 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
   const pick = async (c: VesselCandidate, candidates: VesselCandidate[]) => {
     setState({ kind: 'checking', candidate: c, candidates });
     try {
-      const result = await confirmVesselLookup(c);
+      const result = await (confirm ?? confirmVesselLookup)(c);
       trackEvent('vessel_check', result.status);
       setState({ kind: 'check', candidate: c, result, candidates });
     } catch (e: any) {
       trackEvent('vessel_check', 'error');
-      const result: VesselConfirmResult = { status: 'unavailable', vessel: null, note: e?.status === 429 ? e.message : null };
+      const result: CheckResult = { status: 'unavailable', vessel: null, note: e?.status === 429 ? e.message : null };
       setState({ kind: 'check', candidate: c, result, candidates });
     }
   };
 
-  const accept = (picked: VesselCandidate, checked?: VesselCandidate | null) => {
+  const accept = (picked: VesselCandidate, checked?: VesselCandidate | null, result?: CheckResult) => {
     const c: VesselCandidate = checked
       ? {
           ...picked,
@@ -215,7 +221,7 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
         }
       : picked;
     trackEvent('vessel_confirmed');
-    onConfirm(c);
+    onConfirm(c, result);
     setState({ kind: 'confirmed', candidate: c });
   };
 
@@ -362,8 +368,9 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
 
     if (result.status === 'live' && result.vessel) {
       const v = result.vessel;
-      const merged = { ...candidate, ...v, former_names: Array.from(new Set([...(v.former_names || []), ...(candidate.former_names || [])])) };
+      const merged: VesselCandidate = { ...candidate, ...v, former_names: Array.from(new Set([...(v.former_names || []), ...(candidate.former_names || [])])) };
       const lastSeen = v.last_position_at ? new Date(v.last_position_at) : null;
+      const activity = activityLine(result.activity);
       return (
         <View style={s.results}>
           <View style={[s.card, s.checkedCard]}>
@@ -371,12 +378,12 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
               <IconSymbol ios_icon_name="checkmark.circle.fill" android_material_icon_name="check-circle" size={18} color={colors.success} />
               <Text style={s.checkedLabel}>Checked on AIS now</Text>
             </View>
-            <Text style={[s.cardName, { marginTop: 8 }]}>{v.name}</Text>
-            {!!describe(v) && <Text style={s.cardMeta}>{describe(v)}</Text>}
+            <Text style={[s.cardName, { marginTop: 8 }]}>{merged.name}</Text>
+            {!!describe(merged) && <Text style={s.cardMeta}>{describe(merged)}</Text>}
             {!!formerly(merged) && <Text style={s.cardMeta}>{formerly(merged)}</Text>}
-            {(v.imo || v.year_built) && (
+            {(merged.imo || merged.year_built) && (
               <Text style={s.cardMeta}>
-                {[v.imo ? `IMO ${v.imo}` : null, v.year_built ? `Built ${v.year_built}` : null].filter(Boolean).join('  ·  ')}
+                {[merged.imo ? `IMO ${merged.imo}` : null, merged.year_built ? `Built ${merged.year_built}` : null].filter(Boolean).join('  ·  ')}
               </Text>
             )}
             {lastSeen && !Number.isNaN(lastSeen.getTime()) && (
@@ -384,10 +391,11 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
                 Last seen on AIS {lastSeen.toLocaleDateString()}{v.area ? `, ${v.area}` : ''}
               </Text>
             )}
-            <Text style={s.cardMmsi}>{ids(v)}</Text>
+            {!!activity && <Text style={s.activity}>{activity}</Text>}
+            <Text style={s.cardMmsi}>{ids(merged)}</Text>
             {!!result.note && <Text style={s.note}>{result.note}</Text>}
           </View>
-          <TouchableOpacity style={s.yesButton} onPress={() => accept(candidate, v)} accessibilityRole="button">
+          <TouchableOpacity style={s.yesButton} onPress={() => accept(candidate, v, result)} accessibilityRole="button">
             <Text style={s.yesText}>Yes, that's my vessel</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => notMine(candidates)} style={s.notMine}>
@@ -430,7 +438,7 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
             {result.note || "We couldn't check AIS just now."} Check the MMSI matches your vessel.
           </Text>
         </View>
-        <TouchableOpacity style={s.yesButton} onPress={() => accept(candidate)} accessibilityRole="button">
+        <TouchableOpacity style={s.yesButton} onPress={() => accept(candidate, null, result)} accessibilityRole="button">
           <Text style={s.yesText}>Yes, that's my vessel</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => notMine(candidates)} style={s.notMine}>
@@ -481,6 +489,7 @@ function createStyles(isDark: boolean) {
     cardMeta: { fontSize: 13, color: text2, marginTop: 2 },
     cardMmsi: { fontSize: 15, fontWeight: '600', color: text, marginTop: 8 },
     note: { fontSize: 13, color: text, marginTop: 6, fontStyle: 'italic' },
+    activity: { fontSize: 14, fontWeight: '600', color: colors.primary, marginTop: 6 },
     pick: { position: 'absolute', right: 14, top: 14, color: colors.primary, fontWeight: '600', fontSize: 14 },
     yesButton: { backgroundColor: colors.primary, borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 4 },
     yesText: { color: colors.white, fontSize: 16, fontWeight: '700' },
