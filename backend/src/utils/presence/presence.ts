@@ -191,23 +191,158 @@ function runsOf(days: Set<number>): Array<{ start: number; end: number }> {
   return runs;
 }
 
+// ── Timeline helpers ──────────────────────────────────────────────────
+
+interface Placed {
+  s: Stay;
+  start: number;
+  end: number;
+  idx: number;
+}
+
+/**
+ * Stays in time order: by start, then end, then the order given. An open stay
+ * runs to today (or is a one-day record when it starts later).
+ */
+function placed(stays: Stay[], today: string): Placed[] {
+  const t = dayNum(today);
+  return stays
+    .map((s, idx) => {
+      const start = dayNum(s.start_date);
+      return { s, start, end: s.end_date ? dayNum(s.end_date) : Math.max(t, start), idx };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end || a.idx - b.idx);
+}
+
+/**
+ * Every run of days with no stay logged that has a logged stay on both sides
+ * and ends before a stay that has already begun (on or before today). `before`
+ * are the stays that end on the day before the gap, `after` the stays that
+ * start on the day after it. Days after today are plans, not unknowns, so
+ * they are never filled.
+ */
+function boundedGaps(items: Placed[], today: string): Array<{ from: number; to: number; before: Placed[]; after: Placed[] }> {
+  const t = dayNum(today);
+  const out: Array<{ from: number; to: number; before: Placed[]; after: Placed[] }> = [];
+  let maxEnd = -Infinity;
+  let atMax: Placed[] = [];
+  for (let k = 0; k < items.length; k++) {
+    const it = items[k];
+    if (maxEnd !== -Infinity && it.start > maxEnd + 1 && it.start <= t) {
+      const after = items.filter((o) => o.start === it.start);
+      out.push({ from: maxEnd + 1, to: it.start - 1, before: atMax, after });
+    }
+    if (it.end > maxEnd) {
+      maxEnd = it.end;
+      atMax = [it];
+    } else if (it.end === maxEnd) {
+      atMax.push(it);
+    }
+  }
+  return out;
+}
+
 // ── Schengen ──────────────────────────────────────────────────────────
 
+/**
+ * Whether a stay in a country counts on its own terms: the country (or
+ * Gibraltar, or a microstate) is counted, and an on-board stay has not been
+ * switched off. "At sea" stays are decided by schengenStayStatus.
+ */
 export function countsForSchengen(s: Stay): boolean {
   if (!isSchengenCountry(s.country_code)) return false;
   return s.kind === 'ashore' || s.counts_schengen;
 }
 
-export function schengenDays(stays: Stay[], today: string): Set<number> {
-  const out = new Set<number>();
-  for (const s of stays) {
-    if (!countsForSchengen(s)) continue;
-    const from = SCHENGEN_COUNTS_FROM[s.country_code.toUpperCase()];
-    const first = from ? dayNum(from) : -Infinity;
-    // Days before a country joined (or, for Gibraltar, began to count) are left out.
-    for (const d of stayDays([s], today, () => true, 'any_part')) if (d >= first) out.add(d);
+/** First day a country's days count (Gibraltar, late joiners), or -Infinity. */
+function countsFromDay(code: string): number {
+  const from = SCHENGEN_COUNTS_FROM[code.toUpperCase()];
+  return from ? dayNum(from) : -Infinity;
+}
+
+/**
+ * For each stay (in the order given): does it count for Schengen, and from
+ * which day.
+ *
+ * Caution rule for "At sea" (owner's rule, 2026-11-22): a yacht sailing between
+ * Schengen ports never leaves the area (there is no exit check, Borders Code
+ * art. 6 and Annex VI 3.2.4 to 3.2.6), and the app cannot know whether a crew
+ * member did exit formalities before an ocean passage. So an at-sea stay
+ * counts when the stay just before it in time counts (a gap of unlogged days
+ * between them does not matter), unless the user switched the at-sea stay's
+ * "counts for Schengen" off, which means "I cleared out with an exit check
+ * before sailing". It takes the start date of the place it sailed from, so
+ * days before Gibraltar began to count (15 July 2026) still never count. An
+ * at-sea stay with nothing logged before it does not count.
+ */
+export function schengenStayStatus(stays: Stay[], today: string): Array<{ counts: boolean; from: number }> {
+  const items = placed(stays, today);
+  const out: Array<{ counts: boolean; from: number }> = new Array(stays.length);
+  let prev: { counts: boolean; from: number } | null = null;
+  for (const it of items) {
+    let st: { counts: boolean; from: number };
+    if (it.s.country_code.toUpperCase() === AT_SEA_CODE) {
+      st = it.s.counts_schengen && prev ? { counts: prev.counts, from: prev.from } : { counts: false, from: -Infinity };
+    } else {
+      st = { counts: countsForSchengen(it.s), from: countsFromDay(it.s.country_code) };
+    }
+    out[it.idx] = st;
+    prev = st;
   }
   return out;
+}
+
+export interface SchengenDayDetail {
+  /** Every day that counts. */
+  days: Set<number>;
+  /** Counted days covered only by at-sea stays. */
+  at_sea: Set<number>;
+  /** Counted days with nothing logged, between two stays that count. */
+  assumed: Set<number>;
+}
+
+/**
+ * The days that count towards the 90, with the at-sea and unlogged days the
+ * caution rules add.
+ *
+ * Unlogged days: a run of days with nothing logged, between a stay that counts
+ * and a later stay that counts (and has begun), is counted. Where you were is
+ * unknown, and the safe side is that you did not leave. Log where you were to
+ * take them out. Days after today and days before the first or after the last
+ * stay are not filled.
+ */
+export function schengenDayDetail(stays: Stay[], today: string): SchengenDayDetail {
+  const status = schengenStayStatus(stays, today);
+  const items = placed(stays, today);
+  const days = new Set<number>();
+  const onLand = new Set<number>();
+  const seaDays = new Set<number>();
+  for (const it of items) {
+    const st = status[it.idx];
+    if (!st.counts) continue;
+    const atSea = it.s.country_code.toUpperCase() === AT_SEA_CODE;
+    // Days before a country joined (or, for Gibraltar, began to count) are left out.
+    for (let d = Math.max(it.start, st.from); d <= it.end; d++) {
+      days.add(d);
+      (atSea ? seaDays : onLand).add(d);
+    }
+  }
+  const assumed = new Set<number>();
+  for (const g of boundedGaps(items, today)) {
+    const counting = [...g.before, ...g.after].filter((p) => status[p.idx].counts);
+    if (!g.before.some((p) => status[p.idx].counts) || !g.after.some((p) => status[p.idx].counts)) continue;
+    const first = Math.min(...counting.map((p) => status[p.idx].from));
+    for (let d = Math.max(g.from, first); d <= g.to; d++) {
+      days.add(d);
+      assumed.add(d);
+    }
+  }
+  const atSeaOnly = new Set([...seaDays].filter((d) => !onLand.has(d)));
+  return { days, at_sea: atSeaOnly, assumed };
+}
+
+export function schengenDays(stays: Stay[], today: string): Set<number> {
+  return schengenDayDetail(stays, today).days;
 }
 
 /** Schengen days in the 180-day window that ends on `day`. */
@@ -279,6 +414,12 @@ export interface SchengenSummary {
   future_segments: Array<{ start_date: string; end_date: string; days: number }>;
   /** When `used` next falls, the date and how many days are back by then (next 30 days). */
   next_release: { date: string; remaining: number } | null;
+  /** Of `used`, days at sea counted because you sailed from a Schengen port. */
+  at_sea_days: number;
+  /** Of `used`, days with nothing logged, counted because the stays either side count. */
+  assumed_days: number;
+  /** Ids of at-sea stays that count (to label them in the list). */
+  at_sea_counted_ids: string[];
   plan: SchengenPlanResult | null;
 }
 
@@ -311,7 +452,9 @@ export function schengenSummary(
   today: string,
   plan?: { start_date: string; end_date: string } | null,
 ): SchengenSummary {
-  const days = schengenDays(stays, today);
+  const detail = schengenDayDetail(stays, today);
+  const days = detail.days;
+  const status = schengenStayStatus(stays, today);
   const t = dayNum(today);
   const windowStart = t - SCHENGEN_WINDOW + 1;
   const used = windowCount(days, t);
@@ -355,6 +498,11 @@ export function schengenSummary(
     segments,
     future_segments: futureSegments,
     next_release: nextRelease,
+    at_sea_days: windowCount(detail.at_sea, t),
+    assumed_days: windowCount(detail.assumed, t),
+    at_sea_counted_ids: stays
+      .filter((st, i) => st.id && st.country_code.toUpperCase() === AT_SEA_CODE && status[i].counts)
+      .map((st) => st.id as string),
     plan: plan ? planSchengenTrip(stays, today, plan) : null,
   };
 }
@@ -394,6 +542,8 @@ export interface TaxYearResult {
   planned_days: number;
   /** Days in the year up to today (or the year end) with no stay logged anywhere. */
   unrecorded_days: number;
+  /** Of `days`, unlogged days counted because stays in the country are logged either side. */
+  assumed_days: number;
   status: TaxStatus;
   /** Days still needed to meet the test, when that is a simple number. */
   days_to_test: number | null;
@@ -444,12 +594,38 @@ function statusFor(met: boolean, near: boolean): TaxStatus {
   return met ? 'met' : near ? 'near' : 'under';
 }
 
+/**
+ * Days in `country` for tax, with the unlogged days the caution rule adds.
+ *
+ * Unlogged days between two stays in the country (both counted for tax, the
+ * later one already begun) count as days there: where you were is unknown, and
+ * the safe side for a residence test is that you stayed. With midnight counting
+ * the day the earlier stay ends also counts then, because nothing logged says
+ * you left. Days before the first stay, after the last or between stays in
+ * different countries are left as unlogged (the card shows how many).
+ */
+export function taxDays(stays: Stay[], country: string, today: string, counting: DayCounting): { days: Set<number>; assumed: Set<number> } {
+  const inCountry = (s: Stay) => s.country_code === country && s.counts_tax;
+  const days = stayDays(stays, today, inCountry, counting);
+  const assumed = new Set<number>();
+  for (const g of boundedGaps(placed(stays, today), today)) {
+    const before = g.before.filter((p) => inCountry(p.s));
+    if (before.length === 0 || !g.after.some((p) => inCountry(p.s))) continue;
+    for (let d = g.from; d <= g.to; d++) {
+      days.add(d);
+      assumed.add(d);
+    }
+    if (counting === 'midnight') days.add(g.from - 1);
+  }
+  return { days, assumed };
+}
+
 /** Tax years for one country: the current one and the two before. */
 export function taxCountrySummary(stays: Stay[], country: string, today: string, yearsBack = 2): TaxCountryResult {
   const rule = TAX_RULES[country] ?? null;
   const counting: DayCounting = rule?.counting ?? 'any_part';
   const yearStart = rule?.yearStart ?? { month: 1, day: 1 };
-  const days = stayDays(stays, today, (s) => s.country_code === country && s.counts_tax, counting);
+  const { days, assumed } = taxDays(stays, country, today, counting);
   const anyDays = stayDays(stays, today, () => true, 'any_part');
   const t = dayNum(today);
   const currentStartYear = Number(taxYearStart(yearStart, today).slice(0, 4));
@@ -562,6 +738,7 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
       days: n,
       planned_days: planned,
       unrecorded_days: unrecorded,
+      assumed_days: countIn(assumed, from, to),
       status,
       days_to_test: need,
       detail,

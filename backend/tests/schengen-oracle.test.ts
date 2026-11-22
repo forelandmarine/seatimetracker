@@ -6,7 +6,8 @@
  * Thousands of seeded random itineraries: same-day in/out, back-to-back stays,
  * overlapping records, open stays to today, leap years (29 Feb 2028), window
  * edges, planned future trips (including ones more than a year ahead), and
- * on-board stays with the Schengen toggle on and off.
+ * on-board stays with the Schengen toggle on and off, at-sea stays (counted
+ * after a counted stay unless switched off) and unlogged gaps between stays.
  *
  * Compared: the set of counted days, days used on any date, days left today,
  * the latest day you can stay (from today and from a trip's first day), the
@@ -45,21 +46,23 @@ const JOINED: Record<string, number> = {
   RO: R.dayNum("2024-03-31"),
   GI: ORACLE_GI_FROM,
 };
-const oracleCounts = (s: Stay) =>
-  (MEMBERS.has(s.country_code) || COUNTED_NON_MEMBERS.has(s.country_code) || s.country_code === "GI") &&
-  (s.kind === "ashore" || s.counts_schengen);
+const inArea = (c: string) => MEMBERS.has(c) || COUNTED_NON_MEMBERS.has(c) || c === "GI";
 
-function toRef(stays: Stay[], today: string): R.RefStay[] {
-  const out: R.RefStay[] = [];
-  for (const s of stays.filter(oracleCounts)) {
-    const entry = R.dayNum(s.start_date);
-    // Open stays run to today, or stay a one-day record if they start later.
-    const exit = s.end_date ? R.dayNum(s.end_date) : Math.max(R.dayNum(today), entry);
-    const joined = JOINED[s.country_code] ?? -Infinity;
-    const from = Math.max(entry, joined);
-    if (from <= exit) out.push({ entry: from, exit });
-  }
-  return out;
+/** The app's stays as the oracle's log (see daysFromLog for the caution rules). */
+function toLog(stays: Stay[]): R.RefLogEntry[] {
+  return stays.map((s) => {
+    const first = R.dayNum(s.start_date);
+    const last = s.end_date ? R.dayNum(s.end_date) : null;
+    if (s.country_code === "ZZ") return { first, last, place: "sea" as const, clearedOut: !s.counts_schengen };
+    const counted = inArea(s.country_code) && (s.kind === "ashore" || s.counts_schengen);
+    return counted
+      ? { first, last, place: "area" as const, countsFrom: JOINED[s.country_code] }
+      : { first, last, place: "outside" as const };
+  });
+}
+
+function oracleDays(stays: Stay[], todayIso: string): Set<number> {
+  return R.daysFromLog(toLog(stays), R.dayNum(todayIso));
 }
 
 // ── Seeded RNG ────────────────────────────────────────────────────────
@@ -75,7 +78,8 @@ function mulberry32(seed: number) {
 }
 
 const SCHENGEN_PICK = ["FR", "ES", "IT", "GR", "HR", "MT", "PT", "NO", "CH", "BG", "RO", "DE", "NL"];
-const OTHER_PICK = ["GB", "IE", "CY", "US", "TR", "ME", "AL", "GI", "GI", "GP", "MQ", "RE", "FO", "GL", "SJ", "ZZ"];
+// "At sea" (ZZ) is listed four times so the at-sea caution rule gets plenty of cases.
+const OTHER_PICK = ["GB", "IE", "CY", "US", "TR", "ME", "AL", "GI", "GI", "GP", "MQ", "RE", "FO", "GL", "SJ", "ZZ", "ZZ", "ZZ", "ZZ"];
 const MICRO_PICK = ["MC", "SM", "VA", "AD"];
 
 type Gen = { stays: Stay[]; today: string };
@@ -133,7 +137,7 @@ function genItinerary(rnd: () => number): Gen {
 // ── Oracle answers ────────────────────────────────────────────────────
 function oracleSummary(stays: Stay[], todayIso: string) {
   const t = R.dayNum(todayIso);
-  const days = R.countedDays(toRef(stays, todayIso), t);
+  const days = oracleDays(stays, todayIso);
   const used = R.daysUsed(days, t);
   const lim = R.continuousStayLimit(days, t);
   let futureBreach: number | null = null;
@@ -170,7 +174,7 @@ function oracleSummary(stays: Stay[], todayIso: string) {
  * not this trip's fault (the summary's future breach line covers it).
  */
 function oraclePlan(stays: Stay[], todayIso: string, ps: number, pe: number) {
-  const days = R.countedDays(toRef(stays, todayIso), R.dayNum(todayIso));
+  const days = oracleDays(stays, todayIso);
   const v = R.tripVerdict(days, ps, pe);
   const trial = new Set(days);
   for (let d = ps; d <= pe; d++) trial.add(d);
@@ -329,7 +333,7 @@ describe("Schengen 90/180: hand-worked cases", () => {
     const days = schengenDays(s, "2026-12-31");
     expect(windowCount(days, appDayNum("2026-06-29"))).toBe(90); // 2026-06-29 - 179 = 2026-01-01
     expect(windowCount(days, appDayNum("2026-06-30"))).toBe(89); // 2026-01-01 drops out
-    expect(R.daysUsed(R.countedDays(toRef(s, "2026-12-31"), 0), R.dayNum("2026-06-30"))).toBe(89);
+    expect(R.daysUsed(oracleDays(s, "2026-12-31"), R.dayNum("2026-06-30"))).toBe(89);
   });
 
   test("29 Feb 2028 is a day like any other", () => {
@@ -362,12 +366,24 @@ describe("Schengen 90/180: hand-worked cases", () => {
 // entered in the calculator and its answer recorded here.
 describe("Schengen 90/180: Commission calculator results", () => {
   const F = (a: string, b: string) => S("FR", a, b);
+  // The calculator takes separate trips: between them you were outside the
+  // area. In the app you log that (unlogged days between Schengen stays now
+  // count, caution rule 2026-11-22), so these cases log the gaps as GB.
+  const outside = (stays: Stay[]): Stay[] => {
+    const out = [...stays];
+    for (let i = 1; i < stays.length; i++) {
+      const gapFrom = appDayNum(stays[i - 1].end_date!) + 1;
+      const gapTo = appDayNum(stays[i].start_date) - 1;
+      if (gapFrom <= gapTo) out.push(S("GB", appIsoOf(gapFrom), appIsoOf(gapTo)));
+    }
+    return out;
+  };
   const upTo = (stays: Stay[], entry: string) => {
-    const p = planSchengenTrip(stays, entry, { start_date: entry, end_date: entry });
+    const p = planSchengenTrip(outside(stays), entry, { start_date: entry, end_date: entry });
     return p.latest_stay_if_enter ? appDayNum(p.latest_stay_if_enter) - appDayNum(entry) + 1 : 0;
   };
   const overstay = (stays: Stay[], today: string) => {
-    const d = schengenDays(stays, today);
+    const d = schengenDays(outside(stays), today);
     return [...d].sort((a, b) => a - b).filter((x) => windowCount(d, x) > 90).map(appIsoOf);
   };
 
@@ -379,25 +395,53 @@ describe("Schengen 90/180: Commission calculator results", () => {
     expect(upTo([F("2025-10-15", "2025-12-15"), F("2026-02-01", "2026-02-28"), F("2026-04-20", "2026-04-30")], "2026-05-01")).toBe(51);
     // Entry on the last exit day: calculator says 70 more days (the day is already counted).
     const b2b = [F("2026-03-01", "2026-03-10"), F("2026-03-10", "2026-03-20")];
-    expect(schengenSummary(b2b, "2026-03-20").remaining).toBe(70);
+    expect(schengenSummary(outside(b2b), "2026-03-20").remaining).toBe(70);
   });
 
   test("control mode", () => {
-    expect(schengenSummary([F("2026-03-01", "2026-03-10"), F("2026-03-10", "2026-03-20")], "2026-03-20").latest_stay_date).toBe("2026-05-29");
-    expect(schengenSummary([F("2026-01-01", "2026-03-15")], "2026-06-29").latest_stay_date).toBe("2026-09-26");
-    expect(schengenSummary([F("2026-09-01", "2026-10-10")], "2026-10-10").latest_stay_date).toBe("2026-11-29");
+    expect(schengenSummary(outside([F("2026-03-01", "2026-03-10"), F("2026-03-10", "2026-03-20")]), "2026-03-20").latest_stay_date).toBe("2026-05-29");
+    expect(schengenSummary(outside([F("2026-01-01", "2026-03-15")]), "2026-06-29").latest_stay_date).toBe("2026-09-26");
+    expect(schengenSummary(outside([F("2026-09-01", "2026-10-10")]), "2026-10-10").latest_stay_date).toBe("2026-11-29");
     // Overstays: calculator reports days used and the overstay period.
     const leap = [F("2027-12-01", "2028-02-29")];
-    expect(schengenSummary(leap, "2028-02-29").used).toBe(91);
+    expect(schengenSummary(outside(leap), "2028-02-29").used).toBe(91);
     expect(overstay(leap, "2028-02-29")).toEqual(["2028-02-29"]);
     const long = [F("2026-01-01", "2026-04-15")];
-    expect(schengenSummary(long, "2026-04-15").used).toBe(105);
+    expect(schengenSummary(outside(long), "2026-04-15").used).toBe(105);
     expect(overstay(long, "2026-04-15")[0]).toBe("2026-04-01");
     expect(overstay(long, "2026-04-15").length).toBe(15);
     expect(overstay([F("2026-01-05", "2026-02-20"), F("2026-04-10", "2026-05-25")], "2026-07-01")).toEqual(["2026-05-23", "2026-05-24", "2026-05-25"]);
     const two = [F("2026-03-01", "2026-05-15"), F("2026-07-01", "2026-07-20")];
-    expect(windowCount(schengenDays(two, "2026-08-15"), appDayNum("2026-07-20"))).toBe(96);
+    expect(windowCount(schengenDays(outside(two), "2026-08-15"), appDayNum("2026-07-20"))).toBe(96);
     expect(overstay(two, "2026-08-15")).toEqual(["2026-07-15", "2026-07-16", "2026-07-17", "2026-07-18", "2026-07-19", "2026-07-20"]);
     expect(overstay([F("2025-10-15", "2025-12-15"), F("2026-02-01", "2026-03-01"), F("2026-04-20", "2026-04-30")], "2026-05-01")).toEqual(["2026-03-01"]);
+  });
+});
+
+// ── The owner's caution rules (2026-11-22), oracle and app side by side ──
+describe("Schengen caution rules: oracle and app agree on hand-made logs", () => {
+  const D = R.dayNum;
+  const sea = (a: string, b: string | null, on = true): Stay => S("ZZ", a, b, { kind: "on_board", counts_schengen: on });
+  const both = (stays: Stay[], today: string) => {
+    const o = [...oracleDays(stays, today)].sort((a, b) => a - b);
+    const a = [...schengenDays(stays, today)].sort((x, y) => x - y);
+    expect(a).toEqual(o);
+    return o.length;
+  };
+
+  test("Palma to Antibes: the passage counts", () => {
+    expect(both([S("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-14"), S("FR", "2026-06-14", "2026-06-20")], "2026-06-30")).toBe(20);
+  });
+  test("after a Schengen port with nothing after; after a non-Schengen port; cleared out", () => {
+    expect(both([S("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-30")], "2026-07-15")).toBe(30);
+    expect(both([S("GB", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-20")], "2026-06-30")).toBe(0);
+    expect(both([S("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-20", false)], "2026-06-30")).toBe(10);
+  });
+  test("gap of unlogged days before the passage; Gibraltar before 15 July 2026", () => {
+    expect(both([S("ES", "2026-06-01", "2026-06-05"), sea("2026-06-10", "2026-06-15")], "2026-06-30")).toBe(15);
+    const days = oracleDays([S("GI", "2026-07-01", "2026-07-05"), sea("2026-07-05", "2026-07-25")], "2026-08-01");
+    expect(days.size).toBe(11);
+    expect(days.has(D("2026-07-14"))).toBe(false);
+    expect(both([S("GI", "2026-07-01", "2026-07-05"), sea("2026-07-05", "2026-07-25")], "2026-08-01")).toBe(11);
   });
 });

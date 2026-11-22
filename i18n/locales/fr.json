@@ -498,6 +498,7 @@
     "stillOnBoard": "Toujours à bord",
     "countsSchengen": "Compte pour Schengen",
     "countsSchengenHelp": "Le temps passé à bord d'un navire dans un port ou dans les eaux d'un pays Schengen compte normalement comme du temps dans l'espace Schengen. La Cour de justice de l'UE a jugé qu'un marin à bord d'un navire amarré dans un port Schengen n'a pas quitté l'espace (affaire C-341/18). Laissez activé sauf si une autorité frontalière vous a indiqué le contraire.",
+    "countsSchengenAtSeaHelp": "Les jours en mer après avoir quitté un port Schengen comptent toujours, car vous n'avez pas quitté l'espace Schengen. Désactivez seulement si vous avez fait le contrôle de sortie avant d'appareiller. Les jours en mer après un port hors de l'espace ne comptent jamais.",
     "countsTax": "Compte pour les jours fiscaux",
     "countsTaxHelp": "Désactivez pour exclure ce séjour du décompte fiscal, par exemple le temps sur un navire étranger qu'un pays ne compte pas.",
     "note": "Note",
@@ -510,6 +511,8 @@
     "stays": "Séjours",
     "noStays": "Aucun séjour pour l'instant. Ajoutez où vous avez été pour voir vos jours Schengen et fiscaux.",
     "notSchengen": "Non compté pour Schengen",
+    "atSeaCounted": "Compté pour Schengen : en mer après un port Schengen",
+    "atSeaClearedOut": "Non compté pour Schengen : contrôle de sortie avant d'appareiller",
     "notTax": "Exclu des jours fiscaux",
     "perCountry": "Jours par pays",
     "perCountryHelp": "Tous les séjours. Toute partie d'une journée compte.",
@@ -543,8 +546,12 @@
       "futureBreach": "Vos séjours prévus enfreignent la règle le {{date}}.",
       "release_one": "Si vous ne passez plus de jours dans l'espace, des jours reviennent à partir du {{date}} ({{count}} jour restant alors).",
       "release_other": "Si vous ne passez plus de jours dans l'espace, des jours reviennent à partir du {{date}} ({{count}} jours restants alors).",
+      "atSea_one": "Dont {{count}} jour en mer après un port Schengen.",
+      "atSea_other": "Dont {{count}} jours en mer après un port Schengen.",
+      "assumed_one": "Dont {{count}} jour sans rien de noté entre deux séjours Schengen, compté par précaution. Notez où vous étiez pour le retirer.",
+      "assumed_other": "Dont {{count}} jours sans rien de noté entre deux séjours Schengen, comptés par précaution. Notez où vous étiez pour les retirer.",
       "today": "Aujourd'hui",
-      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Les jours à Monaco, Saint-Marin, au Vatican et en Andorre sont comptés, ainsi que les jours à Gibraltar depuis le 15 juillet 2026. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
+      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Les jours à Monaco, Saint-Marin, au Vatican et en Andorre sont comptés, ainsi que les jours à Gibraltar depuis le 15 juillet 2026. Les jours en mer après un port Schengen comptent sauf si vous désactivez ce séjour, de même que les jours sans rien de noté entre deux séjours Schengen. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
     },
     "plan": {
       "button": "Tester un voyage",
@@ -575,6 +582,8 @@
       "planned_other": "Dont {{count}} jours prévus.",
       "unrecorded_one": "{{count}} jour de cette année n'a aucun séjour noté.",
       "unrecorded_other": "{{count}} jours de cette année n'ont aucun séjour noté.",
+      "assumed_one": "Dont {{count}} jour sans rien de noté entre deux séjours ici, compté par précaution. Notez où vous étiez pour le retirer.",
+      "assumed_other": "Dont {{count}} jours sans rien de noté entre deux séjours ici, comptés par précaution. Notez où vous étiez pour les retirer.",
       "status": {
         "met": "Critère atteint",
         "near": "Proche",
@@ -604,7 +613,7 @@
         "ES": "Plus de 183 jours en Espagne sur une année civile. Les absences sporadiques comptent comme des jours en Espagne sauf si vous prouvez votre résidence fiscale dans un autre pays. Le centre de vos activités ou intérêts économiques en Espagne, ou un conjoint et des enfants mineurs qui y vivent, peuvent aussi vous rendre résident.",
         "FR": "Plus de six mois en France dans l'année en font en général votre lieu de séjour principal, mais ce n'est pas un critère absolu. Votre foyer, votre activité professionnelle ou le centre de vos intérêts économiques en France peuvent aussi vous rendre résident.",
         "IT": "En Italie la majeure partie de l'année (183 jours, ou 184 les années bissextiles), toute fraction de jour comptant. Depuis 2024, la présence physique seule peut suffire. Votre domicile, vos liens familiaux ou votre inscription à l'état civil en Italie peuvent aussi vous rendre résident.",
-        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années, fait de l'Allemagne votre résidence habituelle dès le premier jour. Cela ne s'applique pas aux visites ou vacances purement privées d'un an au plus. Un logement en Allemagne vous rend résident quel que soit le nombre de jours. De courtes interruptions ne coupent pas le séjour, mais cette app ne relie que les jours sans interruption."
+        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années, fait de l'Allemagne votre résidence habituelle dès le premier jour. Cela ne s'applique pas aux visites ou vacances purement privées d'un an au plus. Un logement en Allemagne vous rend résident quel que soit le nombre de jours. De courtes interruptions ne coupent pas le séjour. L'app relie les séjours à travers les jours sans rien de noté, mais pas à travers un voyage noté ailleurs, vérifiez donc vous-même les courtes absences."
       },
       "pickTitle": "Pays fiscaux",
       "pickIntro": "Choisissez les pays pour lesquels vous voulez un décompte. Les pays de cette liste ont leur propre année fiscale et règle de jours.",

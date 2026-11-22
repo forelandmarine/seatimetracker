@@ -30,6 +30,7 @@ import { getVessels } from '@/utils/seaTimeApi';
 import { formatDayShort, localDate } from '@/utils/localDate';
 import { error as logError } from '@/utils/log';
 import {
+  AT_SEA_CODE,
   deleteStay,
   downloadPresenceCsv,
   getPresenceSummary,
@@ -258,6 +259,10 @@ export default function DaysAbroadScreen() {
                         {summary && s.start_date > summary.today ? ` · ${t('daysAbroad.planned')}` : ''}
                       </Text>
                       {s.kind === 'on_board' && !s.counts_schengen && isSchengen(s.country_code) && <Text style={styles.rowSub}>{t('daysAbroad.notSchengen')}</Text>}
+                      {s.country_code === AT_SEA_CODE && !s.counts_schengen && <Text style={styles.rowSub}>{t('daysAbroad.atSeaClearedOut')}</Text>}
+                      {s.country_code === AT_SEA_CODE && s.counts_schengen && summary?.schengen.at_sea_counted_ids?.includes(s.id) && (
+                        <Text style={styles.rowSub}>{t('daysAbroad.atSeaCounted')}</Text>
+                      )}
                       {!s.counts_tax && <Text style={styles.rowSub}>{t('daysAbroad.notTax')}</Text>}
                     </View>
                     <Text style={styles.rowValue}>{t('daysAbroad.days', { count: stayDays(s) })}</Text>
@@ -337,6 +342,8 @@ function SchengenCard({ summary, styles, fmt, onPlan }: { summary: PresenceSumma
           <Text style={styles.warning}>{t('daysAbroad.schengen.near')}</Text>
         ) : null}
         {s.future_breach && <Text style={styles.warning}>{t('daysAbroad.schengen.futureBreach', { date: fmt(s.future_breach) })}</Text>}
+        {!!s.at_sea_days && <Text style={styles.small}>{t('daysAbroad.schengen.atSea', { count: s.at_sea_days })}</Text>}
+        {!!s.assumed_days && <Text style={styles.warning}>{t('daysAbroad.schengen.assumed', { count: s.assumed_days })}</Text>}
         {s.next_release && s.used > 0 && (
           <Text style={styles.small}>{t('daysAbroad.schengen.release', { date: fmt(s.next_release.date), count: s.next_release.remaining })}</Text>
         )}
@@ -393,6 +400,7 @@ function TaxCard({ country, styles, fmt, labelFor }: { country: TaxCountry; styl
           <TaxDetail country={country} year={y} styles={styles} fmt={fmt} />
           {y.planned_days > 0 && <Text style={styles.rowSub}>{t('daysAbroad.tax.planned', { count: y.planned_days })}</Text>}
           {y.unrecorded_days > 0 && <Text style={styles.rowSub}>{t('daysAbroad.tax.unrecorded', { count: y.unrecorded_days })}</Text>}
+          {!!y.assumed_days && <Text style={styles.rowSub}>{t('daysAbroad.tax.assumed', { count: y.assumed_days })}</Text>}
         </View>
       ))}
     </View>

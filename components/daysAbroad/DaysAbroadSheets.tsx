@@ -313,13 +313,13 @@ export function StayEditor({
               <DateField label={kind === 'on_board' ? t('daysAbroad.signedOffDate') : t('daysAbroad.left')} value={end} onChange={setEnd} minimumDate={start} />
             )}
 
-            {kind === 'on_board' && country && isSchengen(country) && (
+            {kind === 'on_board' && country && (isSchengen(country) || country === AT_SEA_CODE) && (
               <View style={styles.editorBlock}>
                 <View style={styles.editorRow}>
                   <Text style={styles.editorRowText}>{t('daysAbroad.countsSchengen')}</Text>
                   <Toggle value={countsSchengen} onChange={setCountsSchengen} />
                 </View>
-                <Text style={styles.small}>{t('daysAbroad.countsSchengenHelp')}</Text>
+                <Text style={styles.small}>{country === AT_SEA_CODE ? t('daysAbroad.countsSchengenAtSeaHelp') : t('daysAbroad.countsSchengenHelp')}</Text>
               </View>
             )}
 
@@ -396,13 +396,13 @@ export function SignOnSheet({ vessels, isSchengen, onCancel, onDone }: { vessels
             <CountryField label={t('daysAbroad.vesselCountry')} value={country} placeholder={t('daysAbroad.pickCountry')} onPress={() => setPicking(true)} />
             <VesselField vessels={vessels} value={vesselId} onChange={setVesselId} />
             <DateField label={t('daysAbroad.signedOnDate')} value={date} onChange={setDate} maximumDate={todayIso()} />
-            {country && isSchengen(country) && (
+            {country && (isSchengen(country) || country === AT_SEA_CODE) && (
               <View style={styles.editorBlock}>
                 <View style={styles.editorRow}>
                   <Text style={styles.editorRowText}>{t('daysAbroad.countsSchengen')}</Text>
                   <Toggle value={countsSchengen} onChange={setCountsSchengen} />
                 </View>
-                <Text style={styles.small}>{t('daysAbroad.countsSchengenHelp')}</Text>
+                <Text style={styles.small}>{country === AT_SEA_CODE ? t('daysAbroad.countsSchengenAtSeaHelp') : t('daysAbroad.countsSchengenHelp')}</Text>
               </View>
             )}
             {problem && <Text style={styles.problem}>{problem}</Text>}
