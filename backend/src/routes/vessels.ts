@@ -9,6 +9,7 @@ import { VesselIdentityError, answerPendingName, renameFromDetails } from "../se
 import { lookupPort } from "../utils/portDatabase.js";
 import { loadSoleWatchPeriods, replaceVesselPeriods, todayUtc } from "../services/soleWatch.js";
 import { legacyFlagChange } from "../utils/soleWatch.js";
+import { isSubscriptionActive as checkSubscriptionActive } from "../utils/subscription.js";
 
 // Trigger an immediate AIS check for a vessel and store the result.
 // Used on activation to populate position data right away rather than waiting
@@ -652,9 +653,12 @@ export function register(app: App, fastify: FastifyInstance) {
       'Vessel created successfully'
     );
 
-    // Auto-fill vessel particulars from Datalastic specs API
+    // Auto-fill vessel particulars from Datalastic specs API. Only for people with a
+    // trial or subscription: no free tier, and the sign-up flow has already checked
+    // the boat with its one Datalastic call (POST /api/vessels/lookup/preview).
+    // Particulars are filled in when the vessel is activated after the trial starts.
     let aisWarning: string | null = null;
-    if (mmsi) {
+    if (mmsi && isSubscriptionActive) {
       try {
         const specs = await fetchVesselSpecs(mmsi, app.logger);
         if (specs?.not_found) {
@@ -837,8 +841,15 @@ export function register(app: App, fastify: FastifyInstance) {
       scheduledTaskFailed = true;
     }
 
-    // Fetch initial AIS position immediately so user sees data right after activation
-    await fetchAndStoreInitialAISCheck(app, activated.id, activated.mmsi, userId);
+    // Fetch initial AIS position immediately so user sees data right after activation.
+    // No free tier: without a trial or subscription the scheduler skips the task and
+    // no Datalastic call is made until the trial starts.
+    const [owner] = await app.db.select().from(authSchema.user).where(eq(authSchema.user.id, userId));
+    if (owner && checkSubscriptionActive(owner.subscription_status ?? undefined, owner.subscription_expires_at ?? null)) {
+      await fetchAndStoreInitialAISCheck(app, activated.id, activated.mmsi, userId);
+    } else {
+      app.logger.info({ userId, vesselId: activated.id }, 'Vessel activated without an active subscription: initial AIS check skipped');
+    }
 
     const response = transformVesselForResponse(activated);
     if (scheduledTaskFailed) {

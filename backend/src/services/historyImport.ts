@@ -57,7 +57,7 @@ export const CHUNK_DAYS = 10;
 /** Imports wait while fewer credits than this remain (30% of the 20,000 monthly allowance). */
 export const CREDIT_FLOOR = 6_000;
 /** A probe day that came back empty is asked again after this long. */
-const EMPTY_DAY_RECHECK_MS = 7 * 24 * 3_600_000;
+export const EMPTY_DAY_RECHECK_MS = 7 * 24 * 3_600_000;
 /** Probe points for the availability check, oldest first (months before tracking started). */
 const PROBE_MONTHS = [12, 10, 8, 6, 4, 2, 1];
 /** Days fetched for a pre-purchase check (about 2 credits each; cached days are free). */
@@ -67,7 +67,7 @@ const CHECKS_PER_HOUR = 10;
 /** An import that keeps failing for this long is marked failed. */
 const FAIL_AFTER_MS = 24 * 3_600_000;
 
-const apiKey = () => process.env.DATALASTIC_API_KEY || '';
+export const apiKey = () => process.env.DATALASTIC_API_KEY || '';
 
 export class HistoryImportError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -90,15 +90,31 @@ interface DatalasticPosition {
 }
 
 /** A vessel to fetch history for. Positions are cached under `mmsi`. */
-interface HistoryTarget {
+export interface HistoryTarget {
   mmsi: string;
   imo?: string | null;
 }
 
 const validImo = (imo: string | null | undefined) => (imo && /^\d{7}$/.test(imo.trim()) ? imo.trim() : null);
 
+/** Vessel details Datalastic sends alongside the positions (any may be missing). */
+export interface HistoryMeta {
+  name: string | null;
+  mmsi: string | null;
+  imo: string | null;
+  country_iso: string | null;
+  type: string | null;
+}
+
+interface HistoryResponse {
+  positions: DatalasticPosition[];
+  meta: HistoryMeta;
+}
+
+const str = (v: unknown) => (v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim());
+
 /** One vessel_history call; null when Datalastic doesn't know the vessel (404). */
-async function queryHistory(key: 'mmsi' | 'imo', value: string, from: string, to: string): Promise<DatalasticPosition[] | null> {
+async function queryHistory(key: 'mmsi' | 'imo', value: string, from: string, to: string): Promise<HistoryResponse | null> {
   const url = new URL(HISTORY_URL);
   url.searchParams.set('api-key', apiKey());
   url.searchParams.set(key, value);
@@ -108,22 +124,32 @@ async function queryHistory(key: 'mmsi' | 'imo', value: string, from: string, to
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Datalastic vessel_history returned ${res.status}`);
   const body = (await res.json()) as any;
-  return Array.isArray(body?.data?.positions) ? body.data.positions : [];
+  const d = body?.data ?? {};
+  return {
+    positions: Array.isArray(d.positions) ? d.positions : [],
+    meta: { name: str(d.name), mmsi: str(d.mmsi), imo: str(d.imo), country_iso: str(d.country_iso), type: str(d.type_specific ?? d.type) },
+  };
 }
 
 /**
  * By MMSI first; by IMO only when Datalastic no longer knows the MMSI (the record
  * is out of date after a reflag). MMSI first so a mistyped IMO can't bring in
- * another ship's track; a 404 costs no credits.
+ * another ship's track; a 404 costs no credits. Null when neither is known.
  */
-async function fetchHistory(target: HistoryTarget, from: string, to: string): Promise<DatalasticPosition[]> {
+async function fetchHistory(target: HistoryTarget, from: string, to: string): Promise<(HistoryResponse & { by: 'mmsi' | 'imo' }) | null> {
   const byMmsi = await queryHistory('mmsi', target.mmsi, from, to);
-  if (byMmsi) return byMmsi;
+  if (byMmsi) return { ...byMmsi, by: 'mmsi' };
   const imo = validImo(target.imo);
-  return (imo && (await queryHistory('imo', imo, from, to))) || [];
+  const byImo = imo ? await queryHistory('imo', imo, from, to) : null;
+  return byImo ? { ...byImo, by: 'imo' } : null;
 }
 
 let creditCache: { value: number | null; at: number } | null = null;
+
+/** For tests: forget the cached credit count. */
+export function resetCreditCache(): void {
+  creditCache = null;
+}
 
 /** Credits left this cycle (cached 5 minutes). Null if the stat call fails. */
 export async function creditsRemaining(): Promise<number | null> {
@@ -145,8 +171,33 @@ export async function creditsRemaining(): Promise<number | null> {
 
 /** Fetch [from, to) for an MMSI and store positions and per-day counts in the cache. */
 async function fetchAndStore(app: App, target: HistoryTarget, from: string, to: string): Promise<number> {
+  return (await fetchAndStoreDetailed(app, target, from, to, { storeUnknown: true })).count;
+}
+
+export interface FetchResult {
+  /** False when Datalastic knows neither the MMSI nor the IMO (404: no credits used). */
+  known: boolean;
+  count: number;
+  by: 'mmsi' | 'imo' | null;
+  meta: HistoryMeta | null;
+}
+
+/**
+ * One vessel_history call for [from, to), stored in the per-MMSI cache. With
+ * storeUnknown false, an unknown vessel stores nothing, so a later look at the
+ * cache can't mistake a mistyped MMSI for a quiet vessel.
+ */
+export async function fetchAndStoreDetailed(
+  app: App,
+  target: HistoryTarget,
+  from: string,
+  to: string,
+  opts: { storeUnknown: boolean }
+): Promise<FetchResult> {
   const mmsi = target.mmsi;
-  const positions = await fetchHistory(target, from, to);
+  const result = await fetchHistory(target, from, to);
+  if (!result && !opts.storeUnknown) return { known: false, count: 0, by: null, meta: null };
+  const positions = result?.positions ?? [];
   const rows = positions
     .map((p) => {
       const time = p.last_position_UTC ? new Date(p.last_position_UTC) : p.last_position_epoch ? new Date(p.last_position_epoch * 1000) : null;
@@ -180,12 +231,12 @@ async function fetchAndStore(app: App, target: HistoryTarget, from: string, to: 
         });
     }
   });
-  app.logger.info({ mmsi, from, to, positions: rows.length }, 'Fetched AIS history');
-  return rows.length;
+  app.logger.info({ mmsi, from, to, positions: rows.length, by: result?.by ?? null }, 'Fetched AIS history');
+  return { known: !!result, count: rows.length, by: result?.by ?? null, meta: result?.meta ?? null };
 }
 
 /** Cached day rows for an MMSI within [from, to). */
-async function cachedDays(app: App, mmsi: string, from: string, to: string) {
+export async function cachedDays(app: App, mmsi: string, from: string, to: string) {
   const rows = await app.db
     .select()
     .from(schema.ais_history_days)
@@ -193,7 +244,7 @@ async function cachedDays(app: App, mmsi: string, from: string, to: string) {
   return new Map(rows.map((r) => [String(r.day), r]));
 }
 
-function isFresh(row: { position_count: number; fetched_at: Date } | undefined, since: number): boolean {
+export function isFresh(row: { position_count: number; fetched_at: Date } | undefined, since: number): boolean {
   if (!row) return false;
   return row.position_count > 0 || row.fetched_at.getTime() >= since;
 }
@@ -398,7 +449,7 @@ function logCheck(app: App, row: typeof schema.history_checks.$inferInsert) {
   });
 }
 
-function toFix(r: typeof schema.ais_history_positions.$inferSelect): HistoryFix {
+export function toFix(r: typeof schema.ais_history_positions.$inferSelect): HistoryFix {
   return {
     time: r.position_time,
     latitude: Number(r.latitude),
