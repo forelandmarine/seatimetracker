@@ -577,9 +577,9 @@
       "noRule": "La app no tiene una regla de días para este país, así que es un recuento simple por año natural.",
       "noRuleNotes": {
         "NL": "Países Bajos no tiene una prueba de días: la residencia depende de todas tus circunstancias, así que esto es un recuento simple por año natural. Si vives a bordo de un barco con puerto base en Países Bajos, el barco cuenta como Países Bajos para decidir dónde vives. Si te vas y vuelves en menos de un año sin vivir en otro sitio, pueden tratarte como residente todo ese tiempo.",
-        "BE": "Bélgica no tiene una prueba de días: eres residente si tu domicilio o la sede de tu patrimonio está en Bélgica, y estar inscrito en el registro nacional hace presumir que lo eres. Esto es un recuento simple por año natural.",
+        "BE": "Bélgica no tiene una prueba de días: eres residente si tu domicilio está en Bélgica o, si no lo tienes, la sede de tu patrimonio. Estar inscrito en el Registro Nacional hace presumir que tu domicilio está allí salvo prueba en contrario. La administración considera que moverse entre varios países no es establecerse en el extranjero, así que los marinos suelen seguir siendo residentes belgas. Esto es un recuento simple por año natural.",
         "MC": "Mónaco no tiene impuesto sobre la renta para la mayoría de los residentes, así que no hay prueba de días y esto es un recuento simple. Los franceses que viven en Mónaco tributan en Francia salvo que vivan en Mónaco desde el 13 de octubre de 1957 o antes.",
-        "PH": "Filipinas no tiene una prueba de días para sus ciudadanos. Un marino en un barco dedicado solo al comercio internacional se trata como trabajador en el extranjero y solo tributa por ingresos de Filipinas, lo que depende del barco y de tus papeles, no de los días. Esto es un recuento simple por año natural."
+        "PH": "Un marino filipino en un barco dedicado solo al comercio internacional se trata como trabajador en el extranjero y solo tributa por ingresos de Filipinas, sin prueba de días, siempre que tengas un OEC y una libreta de marino (SIRB) válidos. Los demás ciudadanos que trabajan fuera necesitan al menos 183 días fuera de Filipinas en el año. Esto es un recuento simple por año natural."
       },
       "alt": {
         "CY": {

@@ -579,9 +579,9 @@
       "noRule": "No day rule in the app for this country, so this is a plain count by calendar year.",
       "noRuleNotes": {
         "NL": "The Netherlands has no day-count test: residence depends on all your circumstances, so this is a plain count by calendar year. If you live on board a ship with a Dutch home port, the ship counts as the Netherlands when deciding where you live. If you leave and come back within a year without living elsewhere, you can be treated as resident the whole time.",
-        "BE": "Belgium has no day-count test: you are resident if your home (domicile) or the seat of your wealth is in Belgium, and being on the national register is presumed to mean you are. This is a plain count by calendar year.",
+        "BE": "Belgium has no day-count test: you are resident if your home (domicile) is in Belgium or, without one, the seat of your wealth. Being on the National Register is presumed to mean your home is there unless you prove otherwise. The tax office treats moving between several countries as not settling abroad, so seafarers usually stay Belgian residents. This is a plain count by calendar year.",
         "MC": "Monaco has no personal income tax for most residents, so there is no day test and this is a plain count. French nationals living in Monaco are taxed by France unless they have lived in Monaco since 13 October 1957 or earlier.",
-        "PH": "The Philippines has no day test for its citizens. A seafarer on a ship engaged only in international trade is treated as an overseas worker and is taxed only on income from the Philippines, which depends on the ship and your papers, not on days. This is a plain count by calendar year."
+        "PH": "A Filipino seafarer on a ship engaged only in international trade is treated as an overseas worker and taxed only on income from the Philippines, with no day test, as long as you hold a valid OEC and seaman's book (SIRB). Other citizens working abroad need at least 183 days outside the Philippines in the year. This is a plain count by calendar year."
       },
       "alt": {
         "CY": {

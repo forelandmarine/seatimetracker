@@ -301,11 +301,12 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'departure_out', // Income Tax Law 118(I)/2002 s. 2 (consolidated text, CyLaw)
     // More than 183 days in the tax year. 60-day rule (user switch tax_options.cy_60_day): at least 60 days, not
     // more than 183 days in any one other state, work/business/office in Cyprus not ended in the year, a home in
-    // Cyprus. The 2025 reform (gazetted 31 Dec 2025, from tax year 2026) dropped "not resident in another state".
+    // Cyprus. Law 244(I)/2025 (Gazette 5070, 31 Dec 2025, in force 1 Jan 2026) dropped "not resident in another state".
     test: { type: 'threshold', days: 183, cmp: 'gt' },
     note: 'More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you spent no more than 183 days in any one other country, work, run a business or hold an office in Cyprus all year and have a home there: switch it on below if that is you. Until 2025 you also had to be tax resident nowhere else.',
     sources: [
       'https://www.cylaw.org/nomoi/enop/non-ind/2002_1_118/full.html',
+      'https://www.cylaw.org/nomoi/arith/2025_1_244.pdf',
       'https://www.oecd.org/tax/automatic-exchange/crs-implementation-and-assistance/tax-residency/Cyprus-Tax-Residency.pdf',
     ],
   },
@@ -341,15 +342,17 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'any_part',
     // Inkomstskattelagen 3 kap. 3 s: stadigvarande vistelse. Skatteverket: at least six months in a row; shorter
     // breaks (e.g. visits home) do not interrupt it; HFD 2018 ref. 30 / RA 1997 ref. 25: temporary breaks carry no
-    // weight. No number in law or guidance. Skatteverket's 2005 position (dnr 130 92654-05/111, seen only in
-    // secondary sources): a break is temporary if no longer than the stay before or after it; over six months abroad
-    // always ends it. The app uses that, and counts the break days.
+    // weight. Skatteverket stallningstagande 2005-02-14 (dnr 130 92654-05/111, still in Rattslig vagledning 2026):
+    // a break is temporary if no longer than the stay before or after it; over six months abroad always ends it.
+    // Rattslig vagledning 2026 "Stadigvarande vistelse i Sverige": time abroad in a temporary break is not deducted.
     // Prop. 2025/26:306 (vote planned 25 Nov 2026) would replace this from 1 Jan 2027 with more than 160 days in the
     // year (120 if the year before was over 120). Not built until passed.
     test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 0, countBreaks: true, breakRule: 'adjacent_stay' },
     note: 'A stay in Sweden of at least six months in a row makes you resident. Temporary breaks, such as visits home, do not end the stay and count towards the six months. The law gives no limit; the app treats a break as temporary when it is no longer than your stay in Sweden before or after it, and never over six months. A home in Sweden, or close ties after you leave, can also make you resident. A new rule (more than 160 days in a year) is planned from 2027.',
     sources: [
       'https://www.skatteverket.se/privat/skatter/arbeteochinkomst/sabeskattasdinlon/skattskyldighet.4.65fc817e1077c25b8328000206.html',
+      'https://www4.skatteverket.se/rattsligvagledning/29251.html',
+      'https://www4.skatteverket.se/rattsligvagledning/edition/2026.14/2637.html',
       'https://lagen.nu/dom/hfd/2018:30',
     ],
   },
@@ -377,7 +380,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
     // Kildeskatteloven s. 1(1)(2): a stay of at least 6 months, including short stays abroad for holiday or similar.
-    // Den juridiske vejledning C.F.1.3: holiday trips count towards the 6 months; work abroad breaks the stay;
+    // Den juridiske vejledning 2026-2 C.F.1.3 (info.skat.dk oid=1977375): holiday trips count towards the 6 months; work abroad breaks the stay;
     // frequent breaks can too (SKM2021.217.SR: business trips are not holiday). No number of days is given (the
     // 42 days in LL s. 33 A is a different rule). The app joins a break no longer than the stay before or after it
     // (max six months) unless it has time on board outside Denmark, which it treats as work abroad.
@@ -385,6 +388,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     note: 'A stay in Denmark of at least six months in a row makes you resident. Short holiday trips abroad do not end the stay and count towards the six months, but working abroad ends it, and so can frequent breaks. The law gives no limit; the app joins a break that is no longer than your stay before or after it, unless you logged time on board outside Denmark in it. A home in Denmark makes you resident whatever the days, and Danish citizens on ships with a Danish home port usually stay resident.',
     sources: [
       'https://www.retsinformation.dk/eli/lta/2024/460/pdf',
+      'https://info.skat.dk/data.aspx?oid=1977375',
     ],
   },
 };
