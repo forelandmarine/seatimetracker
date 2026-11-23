@@ -9,7 +9,9 @@
  *
  * Checked on 2026-11-10 against the official pages listed in `sources`, and
  * re-checked on 2026-11-22 against the full official pages and, where it could
- * be reached, the law itself. The full notes live in "Tax days and Schengen
+ * be reached, the law itself. Re-checked 2026-11-23 for how each country treats
+ * days away and days with no record (only Spain adds them; Germany disregards
+ * short breaks in its unbroken-stay test). The full notes live in "Tax days and Schengen
  * research 2026-11-10.md" (Store Uploads 2.5.0).
  *
  * Left out on purpose: the Netherlands. Dutch residence is decided on all the
@@ -150,17 +152,25 @@ export const TAX_RULES: Record<string, TaxRule> = {
     country: 'ES',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
-    // Ley 35/2006 (IRPF) art. 9.1.a: more than 183 days in the calendar year; sporadic absences count as days in Spain.
+    // Ley 35/2006 (IRPF) art. 9.1.a: more than 183 days in the calendar year; sporadic absences count as days in Spain
+    // unless tax residence elsewhere is proven. TEAC RG 04812/2020 (25 Apr 2023): days between two days proven in Spain
+    // count unless presence outside Spain is proven. STS 28 Nov 2017 (appeals 812/2017, 815/2017): an absence of more
+    // than 183 days is not sporadic. Applied in taxDays (presence.ts).
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'More than 183 days in Spain in a calendar year. Short trips away still count as days in Spain unless you prove tax residence in another country. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.',
-    sources: ['https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764#a9'],
+    note: 'More than 183 days in Spain in a calendar year. Days between two stays in Spain count as days in Spain, whether nothing is logged or you logged a trip away, unless you hold a tax residence certificate from another country; a single absence of more than 183 days is not added. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.',
+    sources: [
+      'https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764#a9',
+      'https://sede.agenciatributaria.gob.es/Sede/informacion-institucional/puede-interesar/sobre-agencia-tributaria/2023/junio/9/teac-define-concepto-dias-permanencia-espana.html',
+    ],
   },
   FR: {
     country: 'FR',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
-    // CGI art. 4 B: main place of stay. BOFiP: more than six months in the year is generally the main place of stay.
-    test: { type: 'threshold', days: 183, cmp: 'gt' },
+    // CGI art. 4 B: main place of stay. BOFiP BOI-IR-CHAMP-10 §130-150: more than six months in the year is generally
+    // the main place of stay (not an absolute test). More than six months = more than half the year: 183 days, 184 in a
+    // leap year (changed 2026-11-23 from "more than 183", which was a day too strict).
+    test: { type: 'majority' },
     note: 'More than six months in France in a year usually makes it your main place of stay, but it is not an absolute test. Your home, job or main economic interests in France can also make you resident.',
     sources: ['https://bofip.impots.gouv.fr/bofip/1911-PGP.html/identifiant=BOI-IR-CHAMP-10-20160728'],
   },
@@ -178,9 +188,11 @@ export const TAX_RULES: Record<string, TaxRule> = {
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
     // AO s. 9: an unbroken stay of more than six months is always a habitual abode. It is not tied to the calendar year.
+    // Sentence 2: short breaks are disregarded (AEAO zu s. 9: home trips, annual leave, cures, business trips). The app
+    // joins runs across breaks of up to DE_MAX_SHORT_BREAK_DAYS (presence.ts), counting the break days.
     test: { type: 'de_continuous' },
     // Satz 3: not for stays only for visits, holidays, a cure or similar private purposes of up to a year.
-    note: 'An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay. The app joins stays across days with nothing logged, but not across a trip you logged elsewhere, so check short trips away yourself.',
+    note: 'An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks (home trips, leave, business trips) do not stop the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks, counting the break days.',
     sources: ['https://www.gesetze-im-internet.de/ao_1977/__9.html'],
   },
 };

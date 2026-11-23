@@ -541,7 +541,7 @@ export interface TaxYearResult {
   planned_days: number;
   /** Days in the year up to today (or the year end) with no stay logged anywhere. */
   unrecorded_days: number;
-  /** Of `days`, unlogged days counted because stays in the country are logged either side. */
+  /** Of `days`, days added by the country's own rule (Spain: unlogged days and sporadic absences between Spanish stays). */
   assumed_days: number;
   status: TaxStatus;
   /** Days still needed to meet the test, when that is a simple number. */
@@ -567,16 +567,25 @@ function yearLength(range: { start: string; end: string }): number {
 
 /**
  * The unbroken run touching [from, to] that comes closest to (or furthest past)
- * six calendar months, with the days it needs to pass six months.
+ * six calendar months, with the days it needs to pass six months. Breaks of
+ * up to `breakDays` join the runs either side and count towards the run.
  */
 function bestRunTouching(
   days: Set<number>,
   from: number,
   to: number,
+  breakDays = 0,
 ): { length: number; start: number | null; end: number | null; needed: number } {
   let best = { length: 0, start: null as number | null, end: null as number | null, needed: 183 };
   let bestMargin = -Infinity;
+  // Short breaks are disregarded: join runs across them, break days included.
+  const joined: Array<{ start: number; end: number }> = [];
   for (const r of runsOf(days)) {
+    const last = joined[joined.length - 1];
+    if (last && r.start - last.end - 1 <= breakDays) last.end = r.end;
+    else joined.push({ ...r });
+  }
+  for (const r of joined) {
     if (r.end < from || r.start > to) continue;
     const len = r.end - r.start + 1;
     const needed = deSixMonthsPassed(r.start) - r.start + 1;
@@ -594,27 +603,58 @@ function statusFor(met: boolean, near: boolean): TaxStatus {
 }
 
 /**
- * Days in `country` for tax, with the unlogged days the caution rule adds.
+ * Spain: an absence longer than this is not "sporadic" (Tribunal Supremo,
+ * 28 Nov 2017, appeals 812/2017 and 815/2017), so it is not added.
+ */
+export const ES_MAX_SPORADIC_ABSENCE_DAYS = 183;
+
+/**
+ * Germany: a break of up to this many days (logged elsewhere or with nothing
+ * logged) does not end an unbroken stay (AO s 9 sentence 2: short breaks are
+ * disregarded). The law gives no number; the AEAO examples are home trips,
+ * annual leave, cures and business trips, and the BFH has left open whether
+ * about 1.5 months or more breaks a stay. Six weeks is the app's line.
+ */
+export const DE_MAX_SHORT_BREAK_DAYS = 42;
+
+/**
+ * Days in `country` for tax, as each country's rules count them (owner's
+ * rule, 2026-11-23: tax follows each country's own documentation).
  *
- * Unlogged days between two stays in the country (both counted for tax, the
- * later one already begun) count as days there: where you were is unknown, and
- * the safe side for a residence test is that you stayed. With midnight counting
- * the day the earlier stay ends also counts then, because nothing logged says
- * you left. Days before the first stay, after the last or between stays in
- * different countries are left as unlogged (the card shows how many).
+ * Every country counts only days you were there (UK: at midnight; others: any
+ * part of a day). Days away and days with nothing logged are not days there,
+ * because none of their laws or guidance counts them, with one exception:
+ *
+ * Spain (Ley 35/2006 art. 9.1.a; TEAC RG 04812/2020 of 25 Apr 2023): days
+ * between two days proven in Spain count unless you prove you were outside
+ * Spain, and sporadic absences abroad are added unless you prove tax residence
+ * in another country. So a break between two Spanish stays (the later one
+ * begun) is added: always when nothing is logged in it, and when time abroad
+ * is logged in it only if the break is 183 days or fewer. These are the
+ * `assumed` days; the note says a residence certificate from another country
+ * takes them out.
+ *
+ * Germany's short-break rule is applied to the unbroken-stay test itself
+ * (bestRunTouching), not here.
  */
 export function taxDays(stays: Stay[], country: string, today: string, counting: DayCounting): { days: Set<number>; assumed: Set<number> } {
   const inCountry = (s: Stay) => s.country_code === country && s.counts_tax;
   const days = stayDays(stays, today, inCountry, counting);
   const assumed = new Set<number>();
-  for (const g of boundedGaps(placed(stays, today), today)) {
-    const before = g.before.filter((p) => inCountry(p.s));
-    if (before.length === 0 || !g.after.some((p) => inCountry(p.s))) continue;
-    for (let d = g.from; d <= g.to; d++) {
-      days.add(d);
-      assumed.add(d);
+  if (country === 'ES') {
+    const t = dayNum(today);
+    const logged = stayDays(stays, today, () => true, 'any_part');
+    const runs = runsOf(days);
+    for (let k = 1; k < runs.length; k++) {
+      if (runs[k].start > t) break; // the next Spanish stay is a plan
+      const from = runs[k - 1].end + 1;
+      const to = runs[k].start - 1;
+      let abroad = false;
+      for (let d = from; d <= to && !abroad; d++) if (logged.has(d)) abroad = true;
+      if (abroad && to - from + 1 > ES_MAX_SPORADIC_ABSENCE_DAYS) continue;
+      for (let d = from; d <= to; d++) assumed.add(d);
     }
-    if (counting === 'midnight') days.add(g.from - 1);
+    for (const d of assumed) days.add(d);
   }
   return { days, assumed };
 }
@@ -718,7 +758,7 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
         }
         case 'de_continuous': {
           // "More than six months" in calendar months from the day of arrival (182 to 185 days).
-          const run = bestRunTouching(days, from, to);
+          const run = bestRunTouching(days, from, to, DE_MAX_SHORT_BREAK_DAYS);
           status = statusFor(run.start != null && run.length >= run.needed, run.start != null && run.length >= run.needed - NEAR_MARGIN);
           need = Math.max(0, run.needed - run.length);
           detail.threshold = run.needed;

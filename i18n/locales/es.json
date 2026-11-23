@@ -582,8 +582,8 @@
       "planned_other": "Incluye {{count}} días previstos.",
       "unrecorded_one": "{{count}} día de este año no tiene estancia anotada.",
       "unrecorded_other": "{{count}} días de este año no tienen estancia anotada.",
-      "assumed_one": "Incluye {{count}} día sin nada anotado entre dos estancias aquí, que se cuenta por precaución. Anota dónde estuviste para quitarlo.",
-      "assumed_other": "Incluye {{count}} días sin nada anotado entre dos estancias aquí, que se cuentan por precaución. Anota dónde estuviste para quitarlos.",
+      "assumed_one": "Incluye {{count}} día entre dos estancias en España (sin nada anotado o una salida corta). La ley española los cuenta salvo que tengas un certificado de residencia fiscal de otro país.",
+      "assumed_other": "Incluye {{count}} días entre dos estancias en España (sin nada anotado o salidas cortas). La ley española los cuenta salvo que tengas un certificado de residencia fiscal de otro país.",
       "status": {
         "met": "Se cumple",
         "near": "Cerca",
@@ -610,10 +610,10 @@
         "ZA": "Prueba de presencia física: más de 91 días este año fiscal y en cada uno de los 5 años anteriores, y más de 915 días en esos 5 años. Si vives habitualmente en Sudáfrica eres residente sean cuantos sean los días.",
         "IE": "183 días en un año fiscal, o 280 días entre este año y el pasado. Un año con 30 días o menos no cuenta para los 280, y ese año no eres residente por la prueba de 280 días.",
         "CA": "Permanecer 183 días o más en un año natural puede convertirte en residente presunto si no tienes vínculos importantes con Canadá. Si los tienes (vivienda, pareja o dependientes en Canadá), puedes ser residente sean cuantos sean los días.",
-        "ES": "Más de 183 días en España en un año natural. Las ausencias esporádicas cuentan como días en España salvo que acredites residencia fiscal en otro país. El núcleo de tus actividades o intereses económicos en España, o un cónyuge e hijos menores que vivan allí, también pueden hacerte residente.",
+        "ES": "Más de 183 días en España en un año natural. Los días entre dos estancias en España cuentan como días en España, tanto si no hay nada anotado como si anotaste una salida, salvo que tengas un certificado de residencia fiscal de otro país; una sola ausencia de más de 183 días no se suma. El núcleo de tus actividades o intereses económicos en España, o un cónyuge e hijos menores que vivan allí, también pueden hacerte residente.",
         "FR": "Más de seis meses en Francia en un año suele convertirla en tu lugar de estancia principal, pero no es una prueba absoluta. Tu hogar, trabajo o intereses económicos principales en Francia también pueden hacerte residente.",
         "IT": "En Italia la mayor parte del año (183 días, o 184 en año bisiesto), contando cualquier parte de un día. Desde 2024 la presencia física por sí sola puede contar. Tu hogar, tus lazos familiares o tu inscripción en Italia también pueden hacerte residente.",
-        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves no cortan la estancia. La app une estancias a través de días sin nada anotado, pero no a través de un viaje anotado en otro país, así que revisa tú las salidas cortas."
+        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves (viajes a casa, vacaciones, viajes de trabajo) no cortan la estancia; la ley no fija un límite, y la app une estancias a través de interrupciones de hasta seis semanas, contando esos días."
       },
       "pickTitle": "Países fiscales",
       "pickIntro": "Elige los países de los que quieres el recuento de días. Los países de esta lista tienen su propio año fiscal y regla de días.",

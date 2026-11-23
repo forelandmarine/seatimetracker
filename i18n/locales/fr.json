@@ -582,8 +582,8 @@
       "planned_other": "Dont {{count}} jours prévus.",
       "unrecorded_one": "{{count}} jour de cette année n'a aucun séjour noté.",
       "unrecorded_other": "{{count}} jours de cette année n'ont aucun séjour noté.",
-      "assumed_one": "Dont {{count}} jour sans rien de noté entre deux séjours ici, compté par précaution. Notez où vous étiez pour le retirer.",
-      "assumed_other": "Dont {{count}} jours sans rien de noté entre deux séjours ici, comptés par précaution. Notez où vous étiez pour les retirer.",
+      "assumed_one": "Dont {{count}} jour entre deux séjours en Espagne (rien de noté, ou une courte absence). La loi espagnole les compte sauf si vous avez un certificat de résidence fiscale d'un autre pays.",
+      "assumed_other": "Dont {{count}} jours entre deux séjours en Espagne (rien de noté, ou de courtes absences). La loi espagnole les compte sauf si vous avez un certificat de résidence fiscale d'un autre pays.",
       "status": {
         "met": "Critère atteint",
         "near": "Proche",
@@ -610,10 +610,10 @@
         "ZA": "Test de présence physique : plus de 91 jours cette année fiscale et chacune des 5 années précédentes, et plus de 915 jours sur ces 5 années. Si vous vivez habituellement en Afrique du Sud, vous êtes résident quel que soit le nombre de jours.",
         "IE": "183 jours sur une année fiscale, ou 280 jours sur cette année et la précédente. Une année de 30 jours ou moins ne compte pas pour les 280, et vous n'êtes pas résident cette année-là au titre des 280 jours.",
         "CA": "Séjourner 183 jours ou plus sur une année civile peut faire de vous un résident réputé si vous n'avez pas de liens importants avec le Canada. Si vous en avez (logement, conjoint ou personnes à charge au Canada), vous pouvez être résident quel que soit le nombre de jours.",
-        "ES": "Plus de 183 jours en Espagne sur une année civile. Les absences sporadiques comptent comme des jours en Espagne sauf si vous prouvez votre résidence fiscale dans un autre pays. Le centre de vos activités ou intérêts économiques en Espagne, ou un conjoint et des enfants mineurs qui y vivent, peuvent aussi vous rendre résident.",
+        "ES": "Plus de 183 jours en Espagne sur une année civile. Les jours entre deux séjours en Espagne comptent comme des jours en Espagne, que rien ne soit noté ou que vous ayez noté une absence, sauf si vous avez un certificat de résidence fiscale d'un autre pays ; une absence unique de plus de 183 jours n'est pas ajoutée. Le centre de vos activités ou intérêts économiques en Espagne, ou un conjoint et des enfants mineurs qui y vivent, peuvent aussi vous rendre résident.",
         "FR": "Plus de six mois en France dans l'année en font en général votre lieu de séjour principal, mais ce n'est pas un critère absolu. Votre foyer, votre activité professionnelle ou le centre de vos intérêts économiques en France peuvent aussi vous rendre résident.",
         "IT": "En Italie la majeure partie de l'année (183 jours, ou 184 les années bissextiles), toute fraction de jour comptant. Depuis 2024, la présence physique seule peut suffire. Votre domicile, vos liens familiaux ou votre inscription à l'état civil en Italie peuvent aussi vous rendre résident.",
-        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années, fait de l'Allemagne votre résidence habituelle dès le premier jour. Cela ne s'applique pas aux visites ou vacances purement privées d'un an au plus. Un logement en Allemagne vous rend résident quel que soit le nombre de jours. De courtes interruptions ne coupent pas le séjour. L'app relie les séjours à travers les jours sans rien de noté, mais pas à travers un voyage noté ailleurs, vérifiez donc vous-même les courtes absences."
+        "DE": "Un séjour continu de plus de six mois, même à cheval sur deux années, fait de l'Allemagne votre résidence habituelle dès le premier jour. Cela ne s'applique pas aux visites ou vacances purement privées d'un an au plus. Un logement en Allemagne vous rend résident quel que soit le nombre de jours. De courtes interruptions (retours au foyer, congés, déplacements professionnels) ne coupent pas le séjour ; la loi ne fixe pas de limite, et l'app relie les séjours à travers des interruptions de six semaines au plus, en comptant ces jours."
       },
       "pickTitle": "Pays fiscaux",
       "pickIntro": "Choisissez les pays pour lesquels vous voulez un décompte. Les pays de cette liste ont leur propre année fiscale et règle de jours.",

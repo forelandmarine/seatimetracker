@@ -282,29 +282,47 @@ describe("Schengen caution rules (2026-11-22)", () => {
   });
 });
 
-describe("tax caution rules (2026-11-22)", () => {
-  test("unlogged days between two stays in the country count as days there", () => {
+describe("tax: days away and days with nothing logged, per country (2026-11-23)", () => {
+  test("Spain: unlogged days between two Spanish stays count (TEAC 25 Apr 2023)", () => {
     const r = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-05-01", "2026-07-31")], "ES", TODAY);
     expect(r.years[0].days).toBe(90 + 30 + 92);
     expect(r.years[0].assumed_days).toBe(30);
     expect(r.years[0].unrecorded_days).toBe(30 + (dayNum(TODAY) - dayNum("2026-07-31")));
-    // Next to a stay in another country they stay unlogged and uncounted.
+    // No Spanish stay after it: nothing to bridge.
     const r2 = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("FR", "2026-05-01", "2026-07-31")], "ES", TODAY);
     expect(r2.years[0].days).toBe(90);
     expect(r2.years[0].assumed_days).toBe(0);
     // A stay left out of tax days does not bridge.
     const r3 = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-05-01", "2026-07-31", { counts_tax: false })], "ES", TODAY);
     expect(r3.years[0].days).toBe(90);
+    // The next Spanish stay is a plan: nothing bridged.
+    const r4 = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-12-20", "2026-12-24")], "ES", TODAY);
+    expect(r4.years[0].assumed_days).toBe(0);
   });
 
-  test("UK midnight count: with unlogged days after it, the day a UK stay ends counts too", () => {
-    // 1 to 10 May: 9 midnights, then 11 to 19 May unlogged, then 20 to 25 May: 5 midnights.
-    const r = rawTaxSummary([stay("GB", "2026-05-01", "2026-05-10"), stay("GB", "2026-05-20", "2026-05-25")], "GB", TODAY);
-    expect(r.years[0].days).toBe(10 + 9 + 5);
-    expect(r.years[0].assumed_days).toBe(9);
-    // Logged as leaving for France on the 10th: the midnight rule stands (law).
-    const r2 = rawTaxSummary([stay("GB", "2026-05-01", "2026-05-10"), stay("FR", "2026-05-10", "2026-05-19"), stay("GB", "2026-05-20", "2026-05-25")], "GB", TODAY);
-    expect(r2.years[0].days).toBe(9 + 5);
+  test("Spain: a logged trip abroad between Spanish stays is a sporadic absence and counts; over 183 days it does not", () => {
+    // ES 1 Jan to 31 Mar, FR 1 to 30 Apr, ES 1 May to 31 Jul: April is added (31 Mar and 1 May already Spanish days).
+    const r = rawTaxSummary([stay("ES", "2026-01-01", "2026-03-31"), stay("FR", "2026-04-01", "2026-04-30"), stay("ES", "2026-05-01", "2026-07-31")], "ES", TODAY);
+    expect(r.years[0].days).toBe(90 + 30 + 92);
+    expect(r.years[0].assumed_days).toBe(30);
+    // 184 days logged in France between Spanish stays: not sporadic (STS 28 Nov 2017), not added.
+    const long = [stay("ES", "2025-11-01", "2025-11-30"), stay("FR", "2025-12-01", "2026-06-02"), stay("ES", "2026-06-03", "2026-06-30")];
+    expect(rawTaxSummary(long, "ES", TODAY).years[0].assumed_days).toBe(0);
+    // Unlogged and longer than 183 days: still counted (nothing shows you were outside Spain).
+    const unlogged = [stay("ES", "2025-11-01", "2025-11-30"), stay("ES", "2026-06-03", "2026-06-30")];
+    expect(rawTaxSummary(unlogged, "ES", TODAY).years[0].assumed_days).toBe(153); // 1 Jan to 2 Jun 2026
+  });
+
+  test("other countries count only days there: unlogged days between stays are not added", () => {
+    // UK: 1 to 10 May = 9 midnights, 11 to 19 May unlogged, 20 to 25 May = 5 midnights.
+    const uk = rawTaxSummary([stay("GB", "2026-05-01", "2026-05-10"), stay("GB", "2026-05-20", "2026-05-25")], "GB", TODAY);
+    expect(uk.years[0].days).toBe(9 + 5);
+    expect(uk.years[0].assumed_days).toBe(0);
+    for (const c of ["US", "AU", "NZ", "ZA", "IE", "CA", "FR", "IT"]) {
+      const r = rawTaxSummary([stay(c, "2026-08-01", "2026-08-10"), stay(c, "2026-08-21", "2026-08-30")], c, TODAY);
+      expect(r.years[0].days).toBe(20);
+      expect(r.years[0].assumed_days).toBe(0);
+    }
   });
 
   test("a day spent in two countries counts for both (any part of a day), UK by midnight only", () => {
@@ -315,10 +333,17 @@ describe("tax caution rules (2026-11-22)", () => {
     expect(rawTaxSummary(s, "GB", TODAY).years[0].days).toBe(5); // 20 to 24 May; left on the 25th
   });
 
-  test("Germany: unlogged days between stays join them into one unbroken stay", () => {
+  test("Germany: short breaks (logged or not, up to six weeks) do not end the unbroken stay", () => {
     const r = rawTaxSummary([stay("DE", "2026-01-01", "2026-03-31"), stay("DE", "2026-04-10", "2026-07-15")], "DE", TODAY);
     expect(r.years[0].detail.longest_stay).toBe(196);
     expect(r.years[0].status).toBe("met");
+    // A two-week trip home logged in GB still joins.
+    const trip = rawTaxSummary([stay("DE", "2026-01-01", "2026-03-31"), stay("GB", "2026-04-01", "2026-04-14"), stay("DE", "2026-04-15", "2026-07-15")], "DE", TODAY);
+    expect(trip.years[0].detail.longest_stay).toBe(196);
+    expect(trip.years[0].status).toBe("met");
+    // A break longer than six weeks ends it.
+    const long = rawTaxSummary([stay("DE", "2026-01-01", "2026-03-31"), stay("DE", "2026-05-20", "2026-07-15")], "DE", TODAY);
+    expect(long.years[0].detail.longest_stay).toBe(90);
   });
 });
 
@@ -598,9 +623,12 @@ describe("tax years", () => {
     expect(taxCountrySummary([stay("DE", "2025-08-31", "2026-02-28")], "DE", TODAY).years[0].status).toBe("near");
   });
 
-  test("France: more than 183 days, 183 is not enough (BOFiP BOI-IR-CHAMP-10 para 130)", () => {
-    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 182))], "FR", TODAY).years[0].status).toBe("near");
-    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 183))], "FR", TODAY).years[0].status).toBe("met");
+  test("France: more than six months = more than half the year (BOFiP BOI-IR-CHAMP-10 para 130)", () => {
+    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 181))], "FR", TODAY).years[0].status).toBe("near"); // 182 days
+    expect(taxCountrySummary([stay("FR", "2026-01-01", addDays("2026-01-01", 182))], "FR", TODAY).years[0].status).toBe("met"); // 183 days
+    // 2028 is a leap year: 184 needed.
+    expect(taxCountrySummary([stay("FR", "2028-01-01", addDays("2028-01-01", 182))], "FR", "2028-12-31").years[0].status).toBe("near");
+    expect(taxCountrySummary([stay("FR", "2028-01-01", addDays("2028-01-01", 183))], "FR", "2028-12-31").years[0].status).toBe("met");
   });
 
   test("a country with no rule gets a plain calendar-year count", () => {

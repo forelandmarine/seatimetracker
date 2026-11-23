@@ -584,8 +584,8 @@
       "planned_other": "Includes {{count}} planned days.",
       "unrecorded_one": "{{count}} day in this year has no stay logged.",
       "unrecorded_other": "{{count}} days in this year have no stay logged.",
-      "assumed_one": "Includes {{count}} day with nothing logged between two stays here, counted to be safe. Log where you were to take it out.",
-      "assumed_other": "Includes {{count}} days with nothing logged between two stays here, counted to be safe. Log where you were to take them out.",
+      "assumed_one": "Includes {{count}} day between two stays in Spain (nothing logged, or a short trip away). Spanish law counts these unless you hold a tax residence certificate from another country.",
+      "assumed_other": "Includes {{count}} days between two stays in Spain (nothing logged, or short trips away). Spanish law counts these unless you hold a tax residence certificate from another country.",
       "status": {
         "met": "Test met",
         "near": "Close",
@@ -612,10 +612,10 @@
         "ZA": "Physical presence test: more than 91 days this tax year and in each of the 5 years before, and more than 915 days over those 5 years. If you ordinarily live in South Africa you are resident whatever the days.",
         "IE": "183 days in a tax year, or 280 days over this year and last. A year with 30 days or fewer does not count towards the 280, and you are not resident in that year under the 280-day test.",
         "CA": "Staying 183 days or more in a calendar year can make you a deemed resident if you have no significant ties to Canada. If you do have significant ties (a home, a partner or dependants in Canada) you can be resident whatever the days.",
-        "ES": "More than 183 days in Spain in a calendar year. Short trips away still count as days in Spain unless you prove tax residence in another country. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.",
+        "ES": "More than 183 days in Spain in a calendar year. Days between two stays in Spain count as days in Spain, whether nothing is logged or you logged a trip away, unless you hold a tax residence certificate from another country; a single absence of more than 183 days is not added. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.",
         "FR": "More than six months in France in a year usually makes it your main place of stay, but it is not an absolute test. Your home, job or main economic interests in France can also make you resident.",
         "IT": "In Italy for most of the year (183 days, or 184 in a leap year), counting any part of a day. From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.",
-        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks do not stop the stay. The app joins stays across days with nothing logged, but not across a trip you logged elsewhere, so check short trips away yourself."
+        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks (home trips, leave, business trips) do not stop the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks, counting the break days."
       },
       "pickTitle": "Tax countries",
       "pickIntro": "Pick the countries you want day counts for. Countries in this list have their own tax year and day rule.",
