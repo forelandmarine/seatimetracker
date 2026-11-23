@@ -12,6 +12,8 @@
 --   nz_visitor: boolean          user says they meet New Zealand's non-resident visitor
 --                                conditions (Income Tax Act 2007 s YD 1(13), YD 1B, from
 --                                1 April 2026)
+--   cy_60_day: boolean           Cyprus 60-day rule conditions met
+--   ae_90_day: boolean           UAE 90-day rule conditions met
 ALTER TABLE presence_settings ADD COLUMN IF NOT EXISTS tax_options jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 -- Check: SELECT column_name FROM information_schema.columns WHERE table_name = 'presence_settings';

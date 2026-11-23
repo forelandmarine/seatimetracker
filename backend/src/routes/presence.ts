@@ -468,15 +468,17 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.send(await settingsFor(userId));
   });
 
-  fastify.put<{ Body: { es_certificate_years?: number[]; nz_visitor?: boolean } }>('/api/presence/tax-options', {
+  fastify.put<{ Body: { es_certificate_years?: number[]; nz_visitor?: boolean; cy_60_day?: boolean; ae_90_day?: boolean } }>('/api/presence/tax-options', {
     schema: {
-      description: 'Save per-country tax options (Spain certificate years, New Zealand visitor)',
+      description: 'Save per-country tax options (Spain certificate years, New Zealand visitor, Cyprus 60-day, UAE 90-day)',
       tags: ['presence'],
       body: {
         type: 'object',
         properties: {
           es_certificate_years: { type: 'array', items: { type: 'integer', minimum: 2000, maximum: 2100 }, maxItems: 20 },
           nz_visitor: { type: 'boolean' },
+          cy_60_day: { type: 'boolean' },
+          ae_90_day: { type: 'boolean' },
         },
       },
       response: { 200: anyObject, 400: errorSchema, 401: errorSchema },
@@ -487,7 +489,9 @@ export function register(app: App, fastify: FastifyInstance) {
     const current = await settingsFor(userId);
     const next: TaxOptions = { ...current.tax_options };
     if (request.body.es_certificate_years) next.es_certificate_years = [...new Set(request.body.es_certificate_years)].sort();
-    if (typeof request.body.nz_visitor === 'boolean') next.nz_visitor = request.body.nz_visitor;
+    for (const k of ['nz_visitor', 'cy_60_day', 'ae_90_day'] as const) {
+      if (typeof request.body[k] === 'boolean') next[k] = request.body[k];
+    }
     await app.db
       .insert(schema.presence_settings)
       .values({ user_id: userId, tax_countries: current.tax_countries, tax_options: next })

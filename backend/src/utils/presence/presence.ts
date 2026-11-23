@@ -162,6 +162,10 @@ export function stayDays(
     if (s.end_date) {
       end = dayNum(s.end_date);
       if (counting === 'midnight') end -= 1;
+      // Portugal: a same-day visit has no overnight, so it does not count.
+      if (counting === 'overnight' && end === start) continue;
+      // Cyprus: the day you leave is a day outside, but a visit that starts and ends on one day counts.
+      if (counting === 'departure_out' && end > start) end -= 1;
     } else {
       end = Math.max(t, start);
     }
@@ -575,6 +579,8 @@ function bestRunTouching(
   from: number,
   to: number,
   breakDays = 0,
+  neededFor: (start: number) => number = (start) => deSixMonthsPassed(start) - start + 1,
+  countBreaks = true,
 ): { length: number; start: number | null; end: number | null; needed: number } {
   let best = { length: 0, start: null as number | null, end: null as number | null, needed: 183 };
   let bestMargin = -Infinity;
@@ -587,8 +593,8 @@ function bestRunTouching(
   }
   for (const r of joined) {
     if (r.end < from || r.start > to) continue;
-    const len = r.end - r.start + 1;
-    const needed = deSixMonthsPassed(r.start) - r.start + 1;
+    const len = countBreaks ? r.end - r.start + 1 : countIn(days, r.start, r.end);
+    const needed = neededFor(r.start);
     const margin = len - needed;
     if (margin > bestMargin) {
       bestMargin = margin;
@@ -608,6 +614,10 @@ export interface TaxOptions {
   es_certificate_years?: number[];
   /** The user says they meet New Zealand's non-resident visitor conditions. */
   nz_visitor?: boolean;
+  /** Cyprus 60-day rule conditions met (not resident elsewhere, work and a home in Cyprus...). */
+  cy_60_day?: boolean;
+  /** UAE 90-day rule conditions met (residence permit or UAE/GCC national, plus home, job or business there). */
+  ae_90_day?: boolean;
 }
 
 /**
@@ -813,6 +823,76 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
           detail.longest_stay_end = run.end == null ? null : isoOf(run.end);
           break;
         }
+        case 'continuous': {
+          // Calendar months from the day of arrival ("at least" = the day before the "more than" day), or a day count.
+          const neededFor = (start: number) => {
+            if (test.days != null) return test.cmp === 'gte' ? test.days : test.days + 1;
+            const iso = isoOf(start);
+            const target = dayNum(addMonthsClamped(iso, test.months ?? 6));
+            const over = Number(isoOf(target).slice(8, 10)) === Number(iso.slice(8, 10)) ? target : target + 1;
+            return (test.cmp === 'gte' ? over - 1 : over) - start + 1;
+          };
+          const run = bestRunTouching(days, from, to, test.breakDays, neededFor, test.countBreaks);
+          status = statusFor(run.start != null && run.length >= run.needed, run.start != null && run.length >= run.needed - NEAR_MARGIN);
+          need = Math.max(0, run.needed - run.length);
+          detail.threshold = run.needed;
+          detail.longest_stay = run.length;
+          detail.longest_stay_start = run.start == null ? null : isoOf(run.start);
+          detail.longest_stay_end = run.end == null ? null : isoOf(run.end);
+          break;
+        }
+        case 'rolling': {
+          // Best window per test; met when any test is passed.
+          let met = false;
+          let near = false;
+          let bestNeed = Infinity;
+          test.tests.forEach((rt, k) => {
+            const target = rt.cmp === 'gte' ? rt.days : rt.days + 1;
+            let best = 0;
+            let bestEnd: number | null = null;
+            for (let d = from; d <= to; d++) {
+              const ends: Array<[number, number]> = [[dayNum(addMonthsClamped(isoOf(d), -rt.months)) + 1, d]];
+              if (test.window === 'start_or_end') ends.push([d, dayNum(addMonthsClamped(isoOf(d), rt.months)) - 1]);
+              for (const [a, b] of ends) {
+                const c = countIn(days, a, b);
+                if (c > best) {
+                  best = c;
+                  bestEnd = b;
+                }
+              }
+            }
+            if (best >= target) met = true;
+            if (best >= target - NEAR_MARGIN) near = true;
+            bestNeed = Math.min(bestNeed, Math.max(0, target - best));
+            detail[`best_${k}`] = best;
+            detail[`best_${k}_end`] = bestEnd == null ? null : isoOf(bestEnd);
+          });
+          if (country === 'AE' && opts.ae_90_day && Number(detail.best_0) >= 90) met = true;
+          status = statusFor(met, near);
+          need = met ? 0 : bestNeed;
+          break;
+        }
+        case 'year_or_multi': {
+          const target = test.cmp === 'gte' ? test.days : test.days + 1;
+          // Every run of `years` tax years that includes this one.
+          let bestTotal = 0;
+          for (let first = startYear - test.years + 1; first <= startYear; first++) {
+            let total = 0;
+            for (let y = first; y < first + test.years; y++) total += countYear(y);
+            bestTotal = Math.max(bestTotal, total);
+          }
+          const met = n >= target || bestTotal > test.total;
+          status = statusFor(met, n >= target - NEAR_MARGIN || bestTotal > test.total - NEAR_MARGIN);
+          need = met ? 0 : Math.max(0, Math.min(target - n, test.total + 1 - bestTotal));
+          detail.threshold = target;
+          detail.multi_total = bestTotal;
+          break;
+        }
+      }
+      // Cyprus 60-day rule: at least 60 days when the user says the other conditions are met.
+      if (country === 'CY' && opts.cy_60_day && n >= 60 && status !== 'met') {
+        status = 'met';
+        need = 0;
       }
     }
 

@@ -575,12 +575,33 @@
       "disclaimer": "Solo orientativo, no es asesoramiento fiscal. Los días son solo una parte de la residencia fiscal: una vivienda, la familia, el trabajo o los intereses principales en un país pueden hacerte residente allí con menos días, y los convenios fiscales pueden cambiar la respuesta. Consulta con un asesor fiscal.",
       "none": "No has elegido países. Pulsa Elegir países.",
       "noRule": "La app no tiene una regla de días para este país, así que es un recuento simple por año natural.",
-      "noRuleNL": "Países Bajos no tiene una prueba de días: la residencia depende de todas tus circunstancias, así que esto es un recuento simple por año natural. Si vives a bordo de un barco con puerto base en Países Bajos, el barco cuenta como Países Bajos para decidir dónde vives. Si te vas y vuelves en menos de un año sin vivir en otro sitio, pueden tratarte como residente todo ese tiempo.",
+      "noRuleNotes": {
+        "NL": "Países Bajos no tiene una prueba de días: la residencia depende de todas tus circunstancias, así que esto es un recuento simple por año natural. Si vives a bordo de un barco con puerto base en Países Bajos, el barco cuenta como Países Bajos para decidir dónde vives. Si te vas y vuelves en menos de un año sin vivir en otro sitio, pueden tratarte como residente todo ese tiempo.",
+        "BE": "Bélgica no tiene una prueba de días: eres residente si tu domicilio o la sede de tu patrimonio está en Bélgica, y estar inscrito en el registro nacional hace presumir que lo eres. Esto es un recuento simple por año natural.",
+        "MC": "Mónaco no tiene impuesto sobre la renta para la mayoría de los residentes, así que no hay prueba de días y esto es un recuento simple. Los franceses que viven en Mónaco tributan en Francia salvo que vivan en Mónaco desde el 13 de octubre de 1957 o antes.",
+        "PH": "Filipinas no tiene una prueba de días para sus ciudadanos. Un marino en un barco dedicado solo al comercio internacional se trata como trabajador en el extranjero y solo tributa por ingresos de Filipinas, lo que depende del barco y de tus papeles, no de los días. Esto es un recuento simple por año natural."
+      },
+      "alt": {
+        "CY": {
+          "title": "Cumplo la regla de los 60 días",
+          "help": "Al menos 60 días en Chipre; no eres residente fiscal en otro país; no más de 183 días en ningún otro país; trabajo, negocio o cargo en Chipre durante el año; una vivienda en Chipre en propiedad o alquiler."
+        },
+        "AE": {
+          "title": "Cumplo la regla de los 90 días",
+          "help": "Tienes permiso de residencia en los EAU, o eres nacional de los EAU o del CCG, y tienes vivienda permanente, trabajo o negocio en los EAU. Entonces 90 días en 12 meses te hacen residente."
+        }
+      },
       "nzVisitor": "Cumplo las condiciones de visitante no residente",
       "nzVisitorHelp": "Desde el 1 de abril de 2026: llegaste en esa fecha o después, no trabajas para una empresa neozelandesa, no tienes que estar en Nueva Zelanda por trabajo, estás allí legalmente y eres residente fiscal en otro país. Entonces no se aplica la regla de 183 días; más de 275 días en cualquier período de 18 meses te hacen residente desde el día 276.",
       "esCertificate": "Tengo un certificado de residencia fiscal de otro país para {{year}} (entonces las salidas no se suman)",
       "countMidnight": "Cuenta los días en que estás allí a medianoche. El día que te vas no cuenta.",
       "countAnyPart": "Cuenta cualquier parte de un día, así que cuentan los días de llegada y de salida.",
+      "count": {
+        "midnight": "Cuenta los días en que estás allí a medianoche. El día que te vas no cuenta.",
+        "any_part": "Cuenta cualquier parte de un día, así que cuentan los días de llegada y de salida.",
+        "overnight": "Un día cuenta si incluye una noche en el país, así que las excursiones de un día no cuentan.",
+        "departure_out": "El día que te vas cuenta como día fuera y el día que llegas como día dentro. Una visita que empieza y termina el mismo día cuenta."
+      },
       "year": "Año fiscal {{label}}",
       "planned_one": "Incluye {{count}} día previsto.",
       "planned_other": "Incluye {{count}} días previstos.",
@@ -606,7 +627,13 @@
         "nzVisitor_other": "Máximo en cualquier período de 18 meses (visitante): {{count}} días. Más de 275 te hacen residente.",
         "deLongest_one": "Estancia continua más larga: {{count}} día ({{start}} a {{end}}).",
         "deLongest_other": "Estancia continua más larga: {{count}} días ({{start}} a {{end}}).",
-        "deNone": "Ninguna estancia en Alemania este año."
+        "deNone": "Ninguna estancia en Alemania este año.",
+        "continuous_one": "Estancia más larga: {{count}} día ({{start}} a {{end}}). Se necesitan {{threshold}}.",
+        "continuous_other": "Estancia más larga: {{count}} días ({{start}} a {{end}}). Se necesitan {{threshold}}.",
+        "continuousNone": "Ninguna estancia aquí este año.",
+        "rolling_one": "Máximo en cualquier período de {{months}} meses: {{count}} día (se necesitan {{threshold}}).",
+        "rolling_other": "Máximo en cualquier período de {{months}} meses: {{count}} días (se necesitan {{threshold}}).",
+        "yearOrMulti": "Mejor tramo de {{years}} años fiscales seguidos que incluye este: {{total}} días. Más de {{over}} te hacen residente."
       },
       "notes": {
         "GB": "Statutory Residence Test: 183 días o más en el Reino Unido en un año fiscal te hacen residente. Con menos días puedes ser residente por tener vivienda, trabajo a tiempo completo o vínculos en el Reino Unido, y los días que te vas antes de medianoche pueden contar si tienes 3 o más vínculos.",
@@ -619,7 +646,18 @@
         "ES": "Más de 183 días en España en un año natural. Los días entre dos estancias en España cuentan como días en España, tanto si no hay nada anotado como si anotaste una salida, salvo que tengas un certificado de residencia fiscal de otro país; una sola ausencia de más de 183 días no se suma. El núcleo de tus actividades o intereses económicos en España, o un cónyuge e hijos menores que vivan allí, también pueden hacerte residente.",
         "FR": "Más de seis meses en Francia en un año suele convertirla en tu lugar de estancia principal, pero no es una prueba absoluta. Tu hogar, trabajo o intereses económicos principales en Francia también pueden hacerte residente.",
         "IT": "En Italia la mayor parte del año (183 días, o 184 en año bisiesto), contando cualquier parte de un día. Desde 2024 la presencia física por sí sola puede contar. Tu hogar, tus lazos familiares o tu inscripción en Italia también pueden hacerte residente.",
-        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves (viajes a casa, vacaciones, viajes de trabajo) no cortan la estancia; la ley no fija un límite, y la app une estancias a través de interrupciones de hasta seis semanas, contando esos días."
+        "DE": "Una estancia continua de más de seis meses, aunque cruce el fin de año, hace de Alemania tu residencia habitual desde el primer día. No se aplica a visitas o vacaciones puramente privadas de hasta un año. Una vivienda en Alemania te hace residente sean cuantos sean los días. Las interrupciones breves (viajes a casa, vacaciones, viajes de trabajo) no cortan la estancia; la ley no fija un límite, y la app une estancias a través de interrupciones de hasta seis semanas, contando esos días.",
+        "HR": "Una estancia de al menos 183 días en Croacia, en un año natural o entre dos, la convierte en tu residencia habitual. Las interrupciones de hasta un año no cortan la estancia, pero solo cuentan para los 183 los días en Croacia. Una vivienda en Croacia que poseas o puedas usar al menos 183 días también te hace residente. La exención de ingresos para marinos (183 días navegando en tráfico internacional) es una regla aparte.",
+        "PL": "Más de 183 días en Polonia en un año fiscal (año natural), contando cualquier parte de un día. Los días no tienen que ser de una sola estancia. El centro de tus intereses personales o económicos en Polonia también te hace residente.",
+        "PT": "Más de 183 días en Portugal en cualquier período de 12 meses que empiece o termine en el año. Un día cuenta si incluye una noche en Portugal, así que una excursión de un día no cuenta. Una vivienda que mantengas como residencia habitual también te hace residente, y los tripulantes de barcos operados por una empresa portuguesa a 31 de diciembre son residentes.",
+        "GR": "Más de 183 días en total en Grecia en cualquier período de 12 meses te hacen residente desde tu primer día allí, para el año en que se superan los 183 días. Cuenta cualquier parte de un día. Tu vivienda permanente o el centro de tus intereses vitales en Grecia también te hacen residente.",
+        "MT": "Malta no tiene una prueba de días en la ley: la residencia depende de todos los hechos. La orientación de Malta dice que más de seis meses (183 días) en un año natural te hacen probablemente residente, así que la app lo usa como guía. Tu vivienda, tus vínculos y la frecuencia de tus visitas también cuentan.",
+        "CY": "Más de 183 días en Chipre en un año natural. El día que te vas cuenta como día fuera de Chipre y el día que llegas como día dentro. Con la regla de los 60 días, 60 días pueden bastar si no eres residente fiscal en ningún otro país, no pasaste más de 183 días en otro país, trabajas o tienes un negocio en Chipre y tienes vivienda allí: actívalo abajo si es tu caso.",
+        "GI": "Al menos 183 días en Gibraltar en un año fiscal (1 de julio a 30 de junio), o más de 300 días en tres años fiscales seguidos. Cuenta cualquier parte de un día. La app marca cada año de un tramo de tres años que supere los 300.",
+        "AE": "183 días o más en los EAU en cualquier período de 12 meses seguidos. Cuenta cualquier parte de un día. 90 días pueden bastar si tienes permiso de residencia en los EAU (o eres nacional de los EAU o del CCG) y tienes vivienda, trabajo o negocio allí: actívalo abajo si es tu caso.",
+        "SE": "Una estancia en Suecia de al menos seis meses seguidos te hace residente. Las interrupciones más cortas no cortan la estancia; la ley no fija un límite, y la app une estancias a través de interrupciones de hasta seis semanas. Una vivienda en Suecia, o vínculos estrechos después de irte, también pueden hacerte residente. Está prevista una nueva regla (más de 160 días en un año) a partir de 2027.",
+        "NO": "Más de 183 días en Noruega en cualquier período de 12 meses, o más de 270 días en cualquier período de 36 meses. Cuenta cualquier parte de un día y los días no tienen que ser seguidos. Eres residente desde el año en que se supera el recuento.",
+        "DK": "Una estancia en Dinamarca de al menos seis meses seguidos te hace residente. Las vacaciones cortas en el extranjero no cortan la estancia, pero trabajar en el extranjero sí. La app une estancias a través de interrupciones de hasta seis semanas, así que revisa tú cualquier interrupción en la que trabajaras fuera. Una vivienda en Dinamarca te hace residente sean cuantos sean los días, y los ciudadanos daneses en barcos con puerto base danés suelen seguir siendo residentes."
       },
       "pickTitle": "Países fiscales",
       "pickIntro": "Elige los países de los que quieres el recuento de días. Los países de esta lista tienen su propio año fiscal y regla de días.",

@@ -374,6 +374,83 @@ describe("tax options: Spain certificate, New Zealand visitor (2026-11-23)", () 
   });
 });
 
+describe("tax rules added 2026-11-23", () => {
+  const T = "2026-12-31";
+  const y = (r: ReturnType<typeof rawTaxSummary>) => r.years[0];
+
+  test("Poland and Malta: more than 183 days in the calendar year", () => {
+    for (const c of ["PL", "MT"]) {
+      expect(y(rawTaxSummary([stay(c, "2026-01-01", addDays("2026-01-01", 182))], c, T)).status).toBe("near"); // 183
+      expect(y(rawTaxSummary([stay(c, "2026-01-01", addDays("2026-01-01", 183))], c, T)).status).toBe("met"); // 184
+    }
+  });
+
+  test("Cyprus: departure day is outside, arrival day inside; 60-day rule with the switch", () => {
+    // 1 to 10 March: 9 days (10 March is the departure day).
+    expect(y(rawTaxSummary([stay("CY", "2026-03-01", "2026-03-10")], "CY", T)).days).toBe(9);
+    // A visit that starts and ends on one day counts.
+    expect(y(rawTaxSummary([stay("CY", "2026-03-01", "2026-03-01")], "CY", T)).days).toBe(1);
+    const sixty = [stay("CY", "2026-03-01", "2026-05-01")]; // 61 days
+    expect(y(rawTaxSummary(sixty, "CY", T)).status).toBe("under");
+    expect(y(rawTaxSummary(sixty, "CY", T, 2, { cy_60_day: true })).status).toBe("met");
+  });
+
+  test("Portugal: overnight days, more than 183 in any 12 months starting or ending in the year", () => {
+    expect(y(rawTaxSummary([stay("PT", "2026-03-01", "2026-03-01")], "PT", T)).days).toBe(0); // day trip
+    // 1 Sep 2026 to 3 Mar 2027 = 184 days: the 12 months starting in 2026 pass, so 2026 is met.
+    const r = rawTaxSummary([stay("PT", "2026-09-01", "2027-03-03")], "PT", "2027-03-31");
+    const y2026 = r.years.find((x) => x.label === "2026")!;
+    expect(y2026.status).toBe("met");
+  });
+
+  test("Greece and Norway: rolling windows ending in the year; Norway 270 in 36 months", () => {
+    expect(y(rawTaxSummary([stay("GR", "2026-01-01", addDays("2026-01-01", 183))], "GR", T)).status).toBe("met");
+    // Norway: 100 days in each of 2024, 2025, 2026 = 300 in 36 months, never more than 183 in 12.
+    const no = [stay("NO", "2024-03-01", addDays("2024-03-01", 99)), stay("NO", "2025-03-01", addDays("2025-03-01", 99)), stay("NO", "2026-03-01", addDays("2026-03-01", 99))];
+    const r = y(rawTaxSummary(no, "NO", T));
+    expect(r.detail.best_0).toBe(100);
+    expect(r.detail.best_1).toBe(300);
+    expect(r.status).toBe("met");
+  });
+
+  test("UAE: 183 or more in 12 months; 90-day rule with the switch", () => {
+    expect(y(rawTaxSummary([stay("AE", "2026-01-01", addDays("2026-01-01", 182))], "AE", T)).status).toBe("met"); // 183
+    const ninety = [stay("AE", "2026-01-01", addDays("2026-01-01", 89))];
+    expect(y(rawTaxSummary(ninety, "AE", T)).status).toBe("under");
+    expect(y(rawTaxSummary(ninety, "AE", T, 2, { ae_90_day: true })).status).toBe("met");
+  });
+
+  test("Gibraltar: at least 183 in the 1 July year, or more than 300 over three tax years", () => {
+    const r = rawTaxSummary([stay("GI", "2026-07-01", addDays("2026-07-01", 182))], "GI", "2027-06-30");
+    expect(y(r).label).toBe("2026/27");
+    expect(y(r).status).toBe("met"); // 183
+    // 110 days in each of three tax years = 330.
+    const multi = [stay("GI", "2024-08-01", addDays("2024-08-01", 109)), stay("GI", "2025-08-01", addDays("2025-08-01", 109)), stay("GI", "2026-08-01", addDays("2026-08-01", 109))];
+    const m = y(rawTaxSummary(multi, "GI", "2027-06-30"));
+    expect(m.detail.multi_total).toBe(330);
+    expect(m.status).toBe("met");
+  });
+
+  test("Sweden and Denmark: six months in a row, breaks of up to six weeks joined", () => {
+    for (const c of ["SE", "DK"]) {
+      // 1 Jan to 30 Jun = six months (at least six months: met).
+      expect(y(rawTaxSummary([stay(c, "2026-01-01", "2026-06-30")], c, T)).status).toBe("met");
+      expect(y(rawTaxSummary([stay(c, "2026-01-01", "2026-06-29")], c, T)).status).toBe("near");
+      // A three-week trip away joins.
+      const trip = [stay(c, "2026-01-01", "2026-03-31"), stay("GB", "2026-04-01", "2026-04-21"), stay(c, "2026-04-22", "2026-07-15")];
+      expect(y(rawTaxSummary(trip, c, T)).status).toBe("met");
+    }
+  });
+
+  test("Croatia: 183 days present in one connected stay, breaks up to a year, across the year end", () => {
+    // 100 days in late 2025 and 90 days in early 2026 with a 2-month break: 190 days present in one stay.
+    const s = [stay("HR", "2025-08-01", addDays("2025-08-01", 99)), stay("HR", "2026-01-10", addDays("2026-01-10", 89))];
+    const r = y(rawTaxSummary(s, "HR", T));
+    expect(r.detail.longest_stay).toBe(190);
+    expect(r.status).toBe("met");
+  });
+});
+
 describe("tax years", () => {
   test("tax year start dates", () => {
     expect(taxYearStart({ month: 4, day: 6 }, "2026-04-05")).toBe("2025-04-06");

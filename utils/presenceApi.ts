@@ -89,13 +89,20 @@ export interface TaxYear {
   detail: Record<string, number | string | null>;
 }
 
-export type TaxTestType = 'threshold' | 'majority' | 'us_spt' | 'ie_two_year' | 'za_ppt' | 'nz_rolling' | 'de_continuous';
+export type TaxTestType = 'threshold' | 'majority' | 'us_spt' | 'ie_two_year' | 'za_ppt' | 'nz_rolling' | 'de_continuous' | 'rolling' | 'continuous' | 'year_or_multi';
 
 export interface TaxCountry {
   country: string;
   has_rule: boolean;
-  counting: 'midnight' | 'any_part';
-  test: { type: TaxTestType; days?: number; cmp?: 'gt' | 'gte' } | null;
+  counting: 'midnight' | 'any_part' | 'overnight' | 'departure_out';
+  test: {
+    type: TaxTestType;
+    days?: number;
+    cmp?: 'gt' | 'gte';
+    tests?: Array<{ days: number; cmp: 'gt' | 'gte'; months: number }>;
+    years?: number;
+    total?: number;
+  } | null;
   years: TaxYear[];
   note: string | null;
   sources: string[];
@@ -116,6 +123,10 @@ export interface TaxOptions {
   es_certificate_years?: number[];
   /** Meets New Zealand's non-resident visitor conditions. */
   nz_visitor?: boolean;
+  /** Meets the Cyprus 60-day rule conditions. */
+  cy_60_day?: boolean;
+  /** Meets the UAE 90-day rule conditions. */
+  ae_90_day?: boolean;
 }
 
 export interface PresenceSummary {

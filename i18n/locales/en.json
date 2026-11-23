@@ -577,12 +577,33 @@
       "disclaimer": "Guidance only, not tax advice. Day counts are only one part of tax residence: a home, family, work or main interests in a country can make you resident there with fewer days, and tax treaties can change the answer. Check with a tax adviser.",
       "none": "No countries picked. Tap Choose countries.",
       "noRule": "No day rule in the app for this country, so this is a plain count by calendar year.",
-      "noRuleNL": "The Netherlands has no day-count test: residence depends on all your circumstances, so this is a plain count by calendar year. If you live on board a ship with a Dutch home port, the ship counts as the Netherlands when deciding where you live. If you leave and come back within a year without living elsewhere, you can be treated as resident the whole time.",
+      "noRuleNotes": {
+        "NL": "The Netherlands has no day-count test: residence depends on all your circumstances, so this is a plain count by calendar year. If you live on board a ship with a Dutch home port, the ship counts as the Netherlands when deciding where you live. If you leave and come back within a year without living elsewhere, you can be treated as resident the whole time.",
+        "BE": "Belgium has no day-count test: you are resident if your home (domicile) or the seat of your wealth is in Belgium, and being on the national register is presumed to mean you are. This is a plain count by calendar year.",
+        "MC": "Monaco has no personal income tax for most residents, so there is no day test and this is a plain count. French nationals living in Monaco are taxed by France unless they have lived in Monaco since 13 October 1957 or earlier.",
+        "PH": "The Philippines has no day test for its citizens. A seafarer on a ship engaged only in international trade is treated as an overseas worker and is taxed only on income from the Philippines, which depends on the ship and your papers, not on days. This is a plain count by calendar year."
+      },
+      "alt": {
+        "CY": {
+          "title": "I meet the 60-day rule",
+          "help": "At least 60 days in Cyprus; not tax resident in another country; no more than 183 days in any other country; work, a business or an office in Cyprus during the year; a home in Cyprus that you own or rent."
+        },
+        "AE": {
+          "title": "I meet the 90-day rule",
+          "help": "You hold a UAE residence permit, or are a UAE or GCC national, and you have a permanent home, a job or a business in the UAE. Then 90 days in 12 months makes you resident."
+        }
+      },
       "nzVisitor": "I qualify as a non-resident visitor",
       "nzVisitorHelp": "From 1 April 2026: you arrived on or after that date, do not work for a New Zealand business, are not required to be in New Zealand for work, are there lawfully and are tax resident in another country. The 183-day rule then does not apply; more than 275 days in any 18 months makes you resident from day 276.",
       "esCertificate": "I have a tax residence certificate from another country for {{year}} (trips away are then not added)",
       "countMidnight": "Counts the days you are there at midnight. The day you leave does not count.",
       "countAnyPart": "Any part of a day counts, so arrival and departure days both count.",
+      "count": {
+        "midnight": "Counts the days you are there at midnight. The day you leave does not count.",
+        "any_part": "Any part of a day counts, so arrival and departure days both count.",
+        "overnight": "A day counts if it includes a night in the country, so day trips do not count.",
+        "departure_out": "The day you leave counts as a day outside and the day you arrive as a day in. A visit that starts and ends on one day counts."
+      },
       "year": "Tax year {{label}}",
       "planned_one": "Includes {{count}} planned day.",
       "planned_other": "Includes {{count}} planned days.",
@@ -608,7 +629,13 @@
         "nzVisitor_other": "Most in any 18 months (visitor): {{count}} days. More than 275 makes you resident.",
         "deLongest_one": "Longest unbroken stay: {{count}} day ({{start}} to {{end}}).",
         "deLongest_other": "Longest unbroken stay: {{count}} days ({{start}} to {{end}}).",
-        "deNone": "No stay in Germany this year."
+        "deNone": "No stay in Germany this year.",
+        "continuous_one": "Longest stay: {{count}} day ({{start}} to {{end}}). {{threshold}} needed.",
+        "continuous_other": "Longest stay: {{count}} days ({{start}} to {{end}}). {{threshold}} needed.",
+        "continuousNone": "No stay here this year.",
+        "rolling_one": "Most in any {{months}} months: {{count}} day ({{threshold}} needed).",
+        "rolling_other": "Most in any {{months}} months: {{count}} days ({{threshold}} needed).",
+        "yearOrMulti": "Best {{years}} tax years in a row including this one: {{total}} days. More than {{over}} makes you resident."
       },
       "notes": {
         "GB": "Statutory Residence Test: 183 days or more in the UK in a tax year makes you UK resident. With fewer days you can still be resident through a UK home, full-time UK work or UK ties, and days you leave before midnight can count if you have 3 or more UK ties.",
@@ -621,7 +648,18 @@
         "ES": "More than 183 days in Spain in a calendar year. Days between two stays in Spain count as days in Spain, whether nothing is logged or you logged a trip away, unless you hold a tax residence certificate from another country; a single absence of more than 183 days is not added. Your main business or economic interests in Spain, or a spouse and young children living there, can also make you resident.",
         "FR": "More than six months in France in a year usually makes it your main place of stay, but it is not an absolute test. Your home, job or main economic interests in France can also make you resident.",
         "IT": "In Italy for most of the year (183 days, or 184 in a leap year), counting any part of a day. From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.",
-        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks (home trips, leave, business trips) do not stop the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks, counting the break days."
+        "DE": "An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks (home trips, leave, business trips) do not stop the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks, counting the break days.",
+        "HR": "A stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Breaks of up to a year do not end the stay, but only days in Croatia count towards the 183. A home in Croatia that you own or have use of for at least 183 days also makes you resident. The seafarer income exemption (183 days sailing in international traffic) is a separate rule.",
+        "PL": "More than 183 days in Poland in a tax year (calendar year), counting any part of a day. The days do not have to be in one stay. Your centre of personal or economic interests in Poland also makes you resident.",
+        "PT": "More than 183 days in Portugal in any 12 months that start or end in the year. A day counts if it includes a night in Portugal, so a day trip does not. A home kept as your habitual residence also makes you resident, and crew of ships run by a Portuguese company on 31 December are resident.",
+        "GR": "More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Any part of a day counts. Your permanent home or centre of vital interests in Greece also makes you resident.",
+        "MT": "Malta has no day test in law: residence depends on all the facts. Malta's guidance says more than six months (183 days) in a calendar year makes you likely to be resident, so the app uses that as a guide. Your home, ties and how often you visit also count.",
+        "CY": "More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you are not tax resident anywhere else, spent no more than 183 days in any other country, work or run a business in Cyprus and have a home there: switch it on below if that is you.",
+        "GI": "At least 183 days in Gibraltar in a tax year (1 July to 30 June), or more than 300 days over three tax years in a row. Any part of a day counts. The app flags every year in a three-year run that passes 300.",
+        "AE": "183 days or more in the UAE in any 12 months in a row. Any part of a day counts. 90 days can be enough if you hold a UAE residence permit (or are a UAE or GCC national) and have a home, job or business in the UAE: switch it on below if that is you.",
+        "SE": "A stay in Sweden of at least six months in a row makes you resident. Shorter breaks do not end the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks. A home in Sweden, or close ties after you leave, can also make you resident. A new rule (more than 160 days in a year) is planned from 2027.",
+        "NO": "More than 183 days in Norway in any 12 months, or more than 270 days in any 36 months. Any part of a day counts and the days do not have to be in a row. You are resident from the year the count is passed.",
+        "DK": "A stay in Denmark of at least six months in a row makes you resident. Short holiday trips abroad do not end the stay, but working abroad does. The app joins stays across breaks of up to six weeks, so check any break when you worked abroad yourself. A home in Denmark makes you resident whatever the days, and Danish citizens on ships with a Danish home port usually stay resident."
       },
       "pickTitle": "Tax countries",
       "pickIntro": "Pick the countries you want day counts for. Countries in this list have their own tax year and day rule.",

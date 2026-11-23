@@ -14,6 +14,9 @@
  * short breaks in its unbroken-stay test). The full notes live in "Tax days and Schengen
  * research 2026-11-10.md" (Store Uploads 2.5.0).
  *
+ * Added 2026-11-23 from official sources: HR, PL, PT, GR, MT, CY, GI, AE, SE,
+ * NO, DK. No day test (plain count with a note): NL, BE, MC, PH.
+ *
  * Left out on purpose: the Netherlands. Dutch residence is decided on all the
  * circumstances and there is no day-count test for it in Dutch law (the 183-day
  * rule is a treaty rule for where salary is taxed). Its days still get a plain
@@ -25,7 +28,11 @@ export type DayCounting =
   /** In the country at the end of the day (midnight). The day you leave does not count. */
   | 'midnight'
   /** Any part of a day counts, so the days you arrive and leave both count. */
-  | 'any_part';
+  | 'any_part'
+  /** Portugal: a full or part day that includes an overnight stay. Arrival and departure days count; a same-day visit does not. */
+  | 'overnight'
+  /** Cyprus: the day you leave is a day outside, the day you arrive a day in; a visit that starts and ends on one day counts. */
+  | 'departure_out';
 
 export type TaxTest =
   /** Days in the tax year against a fixed number. `gt` = more than, `gte` = at least. */
@@ -45,7 +52,22 @@ export type TaxTest =
    * Germany: an unbroken stay of more than six months (calendar months from the
    * day of arrival, so 182 to 185 days depending on the start), across the year end.
    */
-  | { type: 'de_continuous' };
+  | { type: 'de_continuous' }
+  /**
+   * More than / at least N days in any window of `months` months. Several tests
+   * = any one is enough (Norway). `window`: 'end' = windows ending in the tax
+   * year; 'start_or_end' = windows starting or ending in it (Portugal).
+   */
+  | { type: 'rolling'; tests: Array<{ days: number; cmp: 'gt' | 'gte'; months: number }>; window: 'end' | 'start_or_end' }
+  /**
+   * An unbroken stay (it can cross the year end) of `months` calendar months or
+   * `days` days. Breaks of up to `breakDays` do not end it; `countBreaks` says
+   * whether the break days count towards the length (Sweden, Denmark) or only
+   * days present do (Croatia).
+   */
+  | { type: 'continuous'; months?: number; days?: number; cmp: 'gt' | 'gte'; breakDays: number; countBreaks: boolean }
+  /** Gibraltar: at least `days` in the tax year, or more than `total` over `years` consecutive tax years. */
+  | { type: 'year_or_multi'; days: number; cmp: 'gt' | 'gte'; years: number; total: number };
 
 export interface TaxRule {
   country: string; // ISO 3166-1 alpha-2
@@ -196,13 +218,157 @@ export const TAX_RULES: Record<string, TaxRule> = {
     note: 'An unbroken stay of more than six months, even across the year end, makes Germany your habitual abode from the first day. This does not apply to purely private visits or holidays of up to a year. A home in Germany makes you resident whatever the days. Short breaks (home trips, leave, business trips) do not stop the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks, counting the break days.',
     sources: ['https://www.gesetze-im-internet.de/ao_1977/__9.html'],
   },
+  HR: {
+    country: 'HR',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part',
+    // Opci porezni zakon art. 43(5) (NN 115/16, same wording to NN 114/22): habitual residence = a continuous or
+    // connected stay of at least 183 days in one or two calendar years; short breaks of up to a year are disregarded.
+    // The law does not say how arrival and departure days count; any part of a day is the cautious reading.
+    test: { type: 'continuous', days: 183, cmp: 'gte', breakDays: 365, countBreaks: false },
+    note: 'A stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Breaks of up to a year do not end the stay, but only days in Croatia count towards the 183. A home in Croatia that you own or have use of for at least 183 days also makes you resident. The seafarer income exemption (183 days sailing in international traffic) is a separate rule.',
+    sources: [
+      'https://narodne-novine.nn.hr/clanci/sluzbeni/2016_12_115_2519.html',
+      'https://porezna-uprava.gov.hr/hr/opcenito-o-dohotku/4774',
+    ],
+  },
+  PL: {
+    country: 'PL',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part', // Ministry of Finance explanations 29.04.2021, s. 2.2: part days, arrival and departure days count
+    // PIT Act art. 3 ust. 1a pkt 2: more than 183 days in the tax year; the stay need not be unbroken.
+    test: { type: 'threshold', days: 183, cmp: 'gt' },
+    note: 'More than 183 days in Poland in a tax year (calendar year), counting any part of a day. The days do not have to be in one stay. Your centre of personal or economic interests in Poland also makes you resident.',
+    sources: [
+      'https://www.gov.pl/attachment/8f2d0cf1-ee3c-49a4-ae8e-e41c4fb19df7',
+    ],
+  },
+  PT: {
+    country: 'PT',
+    yearStart: { month: 1, day: 1 },
+    counting: 'overnight', // CIRS art. 16(2): a full or part day that includes an overnight stay
+    // CIRS art. 16(1)(a): more than 183 days, consecutive or not, in any 12 months starting or ending in the year.
+    test: { type: 'rolling', tests: [{ days: 183, cmp: 'gt', months: 12 }], window: 'start_or_end' },
+    note: 'More than 183 days in Portugal in any 12 months that start or end in the year. A day counts if it includes a night in Portugal, so a day trip does not. A home kept as your habitual residence also makes you resident, and crew of ships run by a Portuguese company on 31 December are resident.',
+    sources: [
+      'https://info.portaldasfinancas.gov.pt/pt/informacao_fiscal/codigos_tributarios/cirs_rep/Pages/irs16.aspx',
+    ],
+  },
+  GR: {
+    country: 'GR',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part', // AADE circular E.2064/2023 s. 7: any day present, however short
+    // Income Tax Code (law 4172/2013) art. 4(2): more than 183 days in total in any 12-month period.
+    test: { type: 'rolling', tests: [{ days: 183, cmp: 'gt', months: 12 }], window: 'end' },
+    note: 'More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Any part of a day counts. Your permanent home or centre of vital interests in Greece also makes you resident.',
+    sources: [
+      'https://www.taxheaven.gr/circulars/45169/e-2064-2023',
+    ],
+  },
+  MT: {
+    country: 'MT',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part', // not set by law; any part of a day is the cautious reading
+    // Income Tax Act Cap. 123 art. 2 has no day number. Malta's OECD residency sheet: more than six months
+    // (more than 183 days) in a calendar year makes residence likely. Shown as a guide.
+    test: { type: 'threshold', days: 183, cmp: 'gt' },
+    note: 'Malta has no day test in law: residence depends on all the facts. Malta\'s guidance says more than six months (183 days) in a calendar year makes you likely to be resident, so the app uses that as a guide. Your home, ties and how often you visit also count.',
+    sources: [
+      'https://legislation.mt/eli/cap/123/eng',
+      'https://www.oecd.org/tax/automatic-exchange/crs-implementation-and-assistance/tax-residency/Malta-Residency.pdf',
+    ],
+  },
+  CY: {
+    country: 'CY',
+    yearStart: { month: 1, day: 1 },
+    counting: 'departure_out', // Income Tax Law 118(I)/2002 s. 2, as set out in Cyprus's OECD residency sheet
+    // More than 183 days in the tax year. 60-day rule (user switch tax_options.cy_60_day): at least 60 days, plus
+    // not resident elsewhere, not more than 183 days in another state, work or business in Cyprus, a home in Cyprus.
+    test: { type: 'threshold', days: 183, cmp: 'gt' },
+    note: 'More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you are not tax resident anywhere else, spent no more than 183 days in any other country, work or run a business in Cyprus and have a home there: switch it on below if that is you.',
+    sources: [
+      'https://www.oecd.org/tax/automatic-exchange/crs-implementation-and-assistance/tax-residency/Cyprus-Tax-Residency.pdf',
+    ],
+  },
+  GI: {
+    country: 'GI',
+    yearStart: { month: 7, day: 1 }, // year of assessment 1 July to 30 June
+    counting: 'any_part', // Income Tax Act 2010 s. 74: any part of a 24-hour period from midnight
+    // s. 74: at least 183 days in the year of assessment, or more than 300 days over three consecutive years.
+    test: { type: 'year_or_multi', days: 183, cmp: 'gte', years: 3, total: 300 },
+    note: 'At least 183 days in Gibraltar in a tax year (1 July to 30 June), or more than 300 days over three tax years in a row. Any part of a day counts. The app flags every year in a three-year run that passes 300.',
+    sources: [
+      'https://www.gibraltarlaws.gov.gi/uploads/legislations/income-tax/2010-21/2010-21(23-03-26).pdf',
+      'https://www.gibraltar.gov.gi/income-tax-office',
+    ],
+  },
+  AE: {
+    country: 'AE',
+    yearStart: { month: 1, day: 1 }, // no tax year for the test; windows ending in each calendar year
+    counting: 'any_part', // Ministerial Decision 27/2023; FTA guide TPGTR1 s. 5.2.1: any part of a day
+    // Cabinet Decision 85/2022 art. 4: 183 days or more in any 12 consecutive months. 90-day rule (user switch
+    // tax_options.ae_90_day): 90 days or more, for UAE or GCC nationals or residence-permit holders with a home,
+    // job or business in the UAE.
+    test: { type: 'rolling', tests: [{ days: 183, cmp: 'gte', months: 12 }], window: 'end' },
+    note: '183 days or more in the UAE in any 12 months in a row. Any part of a day counts. 90 days can be enough if you hold a UAE residence permit (or are a UAE or GCC national) and have a home, job or business in the UAE: switch it on below if that is you.',
+    sources: [
+      'https://tax.gov.ae/Datafolder/Files/Legislation/Corporate%20Tax/Cabinet%20Decision%2085%20of%202022%20-%20For%20publishing.pdf',
+      'https://mof.gov.ae/wp-content/uploads/2023/03/Ministerial-Decision-27-of-2023-of-Tax-Residency.pdf',
+    ],
+  },
+  SE: {
+    country: 'SE',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part',
+    // Inkomstskattelagen 3 kap. 3 s: stadigvarande vistelse. Skatteverket: at least six months in a row; shorter
+    // breaks do not interrupt the stay (no number given; the app uses six weeks, as for Germany).
+    // Prop. 2025/26:306 (vote planned 25 Nov 2026) would replace this from 1 Jan 2027 with more than 160 days in the
+    // year (120 if the year before was over 120). Not built until passed.
+    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 42, countBreaks: true },
+    note: 'A stay in Sweden of at least six months in a row makes you resident. Shorter breaks do not end the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks. A home in Sweden, or close ties after you leave, can also make you resident. A new rule (more than 160 days in a year) is planned from 2027.',
+    sources: [
+      'https://www.skatteverket.se/privat/skatter/arbeteochinkomst/sabeskattasdinlon/skattskyldighet',
+    ],
+  },
+  NO: {
+    country: 'NO',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part', // Skatteetaten: days spent only part of the day in Norway count
+    // Skatteloven s. 2-1(2): more than 183 days in any 12 months, or more than 270 days in any 36 months.
+    test: {
+      type: 'rolling',
+      tests: [
+        { days: 183, cmp: 'gt', months: 12 },
+        { days: 270, cmp: 'gt', months: 36 },
+      ],
+      window: 'end',
+    },
+    note: 'More than 183 days in Norway in any 12 months, or more than 270 days in any 36 months. Any part of a day counts and the days do not have to be in a row. You are resident from the year the count is passed.',
+    sources: [
+      'https://lovdata.no/dokument/NL/lov/1999-03-26-14/KAPITTEL_2',
+      'https://www.skatteetaten.no/person/til-fra-norge/til/flytte/skatt-til-norge/',
+    ],
+  },
+  DK: {
+    country: 'DK',
+    yearStart: { month: 1, day: 1 },
+    counting: 'any_part',
+    // Kildeskatteloven s. 1(1)(2): a stay of at least 6 months, including short holiday trips abroad. Den juridiske
+    // vejledning C.F.1.3: the stay must be unbroken; work abroad breaks it. The app cannot tell holiday from work,
+    // so it joins breaks of up to six weeks (cautious) and the note says work abroad ends the stay.
+    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 42, countBreaks: true },
+    note: 'A stay in Denmark of at least six months in a row makes you resident. Short holiday trips abroad do not end the stay, but working abroad does. The app joins stays across breaks of up to six weeks, so check any break when you worked abroad yourself. A home in Denmark makes you resident whatever the days, and Danish citizens on ships with a Danish home port usually stay resident.',
+    sources: [
+      'https://www.retsinformation.dk/eli/lta/2024/460/pdf',
+    ],
+  },
 };
 
 /** Countries in the table, in the order the app lists them. */
-export const TAX_RULE_COUNTRIES = ['GB', 'US', 'AU', 'NZ', 'ZA', 'IE', 'CA', 'ES', 'FR', 'IT', 'DE'];
+export const TAX_RULE_COUNTRIES = ['GB', 'US', 'AU', 'NZ', 'ZA', 'IE', 'CA', 'ES', 'FR', 'IT', 'DE', 'HR', 'PL', 'PT', 'GR', 'MT', 'CY', 'GI', 'AE', 'SE', 'NO', 'DK'];
 
 /**
  * Countries without a day test, so they show a plain count by calendar year.
  * Listed only so the app can explain why. See the header note.
  */
-export const NO_DAY_TEST_COUNTRIES = ['NL'];
+export const NO_DAY_TEST_COUNTRIES = ['NL', 'BE', 'MC', 'PH'];

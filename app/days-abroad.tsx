@@ -403,9 +403,7 @@ function TaxCard({ country, styles, fmt, labelFor, options, onOptions }: {
   const { t } = useTranslation();
   const note = country.has_rule
     ? t(`daysAbroad.tax.notes.${country.country}`, { defaultValue: country.note ?? '' })
-    : country.country === 'NL'
-      ? t('daysAbroad.tax.noRuleNL')
-      : t('daysAbroad.tax.noRule');
+    : t(`daysAbroad.tax.noRuleNotes.${country.country}`, { defaultValue: t('daysAbroad.tax.noRule') });
   const certYears = options.es_certificate_years ?? [];
   const toggleCert = (year: number, on: boolean) =>
     onOptions({ es_certificate_years: on ? [...certYears, year] : certYears.filter((y) => y !== year) });
@@ -413,7 +411,7 @@ function TaxCard({ country, styles, fmt, labelFor, options, onOptions }: {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{labelFor(country.country)}</Text>
       <Text style={styles.small}>{note}</Text>
-      <Text style={styles.small}>{country.counting === 'midnight' ? t('daysAbroad.tax.countMidnight') : t('daysAbroad.tax.countAnyPart')}</Text>
+      <Text style={styles.small}>{t(`daysAbroad.tax.count.${country.counting}`)}</Text>
       {country.country === 'NZ' && country.has_rule && (
         <View style={[styles.row, { marginTop: 8 }]}>
           <View style={{ flex: 1, paddingRight: 12 }}>
@@ -421,6 +419,18 @@ function TaxCard({ country, styles, fmt, labelFor, options, onOptions }: {
             <Text style={styles.rowSub}>{t('daysAbroad.tax.nzVisitorHelp')}</Text>
           </View>
           <Toggle value={!!options.nz_visitor} onChange={(v) => onOptions({ nz_visitor: v })} />
+        </View>
+      )}
+      {(country.country === 'CY' || country.country === 'AE') && country.has_rule && (
+        <View style={[styles.row, { marginTop: 8 }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.rowTitle}>{t(`daysAbroad.tax.alt.${country.country}.title`)}</Text>
+            <Text style={styles.rowSub}>{t(`daysAbroad.tax.alt.${country.country}.help`)}</Text>
+          </View>
+          <Toggle
+            value={!!(country.country === 'CY' ? options.cy_60_day : options.ae_90_day)}
+            onChange={(v) => onOptions(country.country === 'CY' ? { cy_60_day: v } : { ae_90_day: v })}
+          />
         </View>
       )}
       {country.years.map((y, i) => (
@@ -491,6 +501,25 @@ function TaxDetail({ country, year, styles, fmt }: { country: TaxCountry; year: 
       text = d.longest_stay_start
         ? t('daysAbroad.tax.detail.deLongest', { count: Number(d.longest_stay), start: fmt(String(d.longest_stay_start)), end: fmt(String(d.longest_stay_end)) })
         : t('daysAbroad.tax.detail.deNone');
+      break;
+    case 'continuous':
+      text = d.longest_stay_start
+        ? t('daysAbroad.tax.detail.continuous', { count: Number(d.longest_stay), start: fmt(String(d.longest_stay_start)), end: fmt(String(d.longest_stay_end)), threshold: d.threshold })
+        : t('daysAbroad.tax.detail.continuousNone');
+      break;
+    case 'rolling':
+      text = (country.test.tests ?? [])
+        .map((rt, k) =>
+          t('daysAbroad.tax.detail.rolling', {
+            count: Number(d[`best_${k}`] ?? 0),
+            months: rt.months,
+            threshold: rt.cmp === 'gte' ? rt.days : rt.days + 1,
+          }),
+        )
+        .join(' ');
+      break;
+    case 'year_or_multi':
+      text = t('daysAbroad.tax.detail.yearOrMulti', { total: d.multi_total, years: country.test.years, over: country.test.total });
       break;
     default:
       text = null;

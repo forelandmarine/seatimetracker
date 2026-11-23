@@ -30,6 +30,6 @@ export const presence_settings = pgTable('presence_settings', {
   tax_countries: text('tax_countries').array().notNull().default([]),
   // Per-country tax options (manual migration 2026-11-23_presence_tax_options.sql):
   // es_certificate_years (years with a tax residence certificate from another country), nz_visitor.
-  tax_options: jsonb('tax_options').$type<{ es_certificate_years?: number[]; nz_visitor?: boolean }>().notNull().default({}),
+  tax_options: jsonb('tax_options').$type<{ es_certificate_years?: number[]; nz_visitor?: boolean; cy_60_day?: boolean; ae_90_day?: boolean }>().notNull().default({}),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
