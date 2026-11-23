@@ -393,6 +393,8 @@ describe("tax rules added 2026-11-23", () => {
     const sixty = [stay("CY", "2026-03-01", "2026-05-01")]; // 61 days
     expect(y(rawTaxSummary(sixty, "CY", T)).status).toBe("under");
     expect(y(rawTaxSummary(sixty, "CY", T, 2, { cy_60_day: true })).status).toBe("met");
+    expect(y(rawTaxSummary(sixty, "CY", T, 2, { cy_60_day: true })).detail.alt_rule_days).toBe(60);
+    expect(y(rawTaxSummary(sixty, "CY", T)).detail.alt_rule_days).toBeUndefined();
   });
 
   test("Portugal: overnight days, more than 183 in any 12 months starting or ending in the year", () => {
@@ -418,6 +420,7 @@ describe("tax rules added 2026-11-23", () => {
     const ninety = [stay("AE", "2026-01-01", addDays("2026-01-01", 89))];
     expect(y(rawTaxSummary(ninety, "AE", T)).status).toBe("under");
     expect(y(rawTaxSummary(ninety, "AE", T, 2, { ae_90_day: true })).status).toBe("met");
+    expect(y(rawTaxSummary(ninety, "AE", T, 2, { ae_90_day: true })).detail.alt_rule_count).toBe(90);
   });
 
   test("Gibraltar: at least 183 in the 1 July year, or more than 300 over three tax years", () => {

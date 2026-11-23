@@ -214,7 +214,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'any_part',
     // TUIR art. 2 as changed by D.Lgs. 209/2023, from 2024: physical presence for most of the tax period.
     test: { type: 'majority' },
-    note: 'In Italy for most of the year (183 days, or 184 in a leap year), counting any part of a day. From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.',
+    note: 'In Italy for most of the year (183 days, or 184 in a leap year). From 2024 physical presence alone can count. Your home, family ties or registration in Italy can also make you resident.',
     sources: ['https://www.agenziaentrate.gov.it/portale/documents/20143/6519685/Circolare_20_del_4_11_2024_Eng.pdf'],
   },
   DE: {
@@ -238,7 +238,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // The law does not say whether break days count (the app counts only days present) or how arrival and departure
     // days count (any part of a day). Domicile (art. 43(1)): an owned or used home for 183 days, no stay needed.
     test: { type: 'continuous', days: 183, cmp: 'gte', breakDays: 365, countBreaks: false },
-    note: 'A permanent or connected stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Short breaks of up to a year do not end the stay. The law does not say whether break days count, so the app counts only your days in Croatia towards the 183. A home in Croatia that you own or have use of for at least 183 days makes you resident whatever your days abroad. The seafarer income exemption (183 days on ships in international traffic) is a separate rule.',
+    note: 'A permanent or connected stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Short breaks of up to a year do not end the stay. The law does not say whether break days count, so the app counts only your days in Croatia towards the 183. It also does not say how part days count, so the app counts any part of a day. A home in Croatia that you own or have use of for at least 183 days makes you resident whatever your days abroad. The seafarer income exemption (183 days on ships in international traffic) is a separate rule.',
     sources: [
       'https://narodne-novine.nn.hr/clanci/sluzbeni/2016_12_115_2519.html',
       'https://porezna-uprava.gov.hr/hr/opcenito-o-dohotku/4774',
@@ -251,7 +251,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'any_part', // Ministry of Finance explanations 29.04.2021, s. 2.2: part days, arrival and departure days count
     // PIT Act art. 3 ust. 1a pkt 2: more than 183 days in the tax year; the stay need not be unbroken.
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'More than 183 days in Poland in a tax year (calendar year), counting any part of a day. The days do not have to be in one stay. Your centre of personal or economic interests in Poland also makes you resident.',
+    note: 'More than 183 days in Poland in a tax year (calendar year). The days do not have to be in one stay. Your centre of personal or economic interests in Poland also makes you resident.',
     sources: [
       'https://www.gov.pl/attachment/8f2d0cf1-ee3c-49a4-ae8e-e41c4fb19df7',
     ],
@@ -262,7 +262,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'overnight', // CIRS art. 16(2): a full or part day that includes an overnight stay
     // CIRS art. 16(1)(a): more than 183 days, consecutive or not, in any 12 months starting or ending in the year.
     test: { type: 'rolling', tests: [{ days: 183, cmp: 'gt', months: 12 }], window: 'start_or_end' },
-    note: 'More than 183 days in Portugal in any 12 months that start or end in the year. A day counts if it includes a night in Portugal, so a day trip does not. A home kept as your habitual residence also makes you resident, and crew of ships run by a Portuguese company on 31 December are resident.',
+    note: 'More than 183 days in Portugal in any 12 months that start or end in the year. A home kept as your habitual residence also makes you resident, and crew of ships run by a Portuguese company on 31 December are resident.',
     sources: [
       'https://info.portaldasfinancas.gov.pt/pt/informacao_fiscal/codigos_tributarios/cirs_rep/Pages/irs16.aspx',
     ],
@@ -274,7 +274,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // Income Tax Code (law 4172/2013) art. 4(2): more than 183 days in total in any 12-month period. Stays only for
     // tourism or medical reasons up to 365 days are left out (not built: rare for crew; the note says so).
     test: { type: 'rolling', tests: [{ days: 183, cmp: 'gt', months: 12 }], window: 'end' },
-    note: 'More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Any part of a day counts, including the days you arrive and leave; days abroad do not. Days spent only on holiday or for medical treatment are left out, unless such a stay passes 365 days. Your permanent home or centre of vital interests in Greece also makes you resident.',
+    note: 'More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Days abroad do not count. Days spent only on holiday or for medical treatment are left out, unless such a stay passes 365 days. Your permanent home or centre of vital interests in Greece also makes you resident.',
     sources: [
       'https://www.aade.gr/sites/default/files/2023-10/e_2064_2023.pdf',
       'https://www.taxheaven.gr/circulars/45169/e-2064-2023',
@@ -288,7 +288,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // 29/08/2025): more than 183 days in any particular year = resident for that year; settlers resident from arrival.
     // Shown as a guide. No seafarer residence rule found (art. 56(17) 15% rate excludes ship service).
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'Malta has no day test in law: residence depends on all the facts. The tax authority says more than 183 days in Malta in a year makes you resident for that year, so the app uses that as a guide. If you move to Malta to settle, you are resident from the day you arrive. Your home, ties and how often you visit also count.',
+    note: 'Malta has no day test in law: residence depends on all the facts. The tax authority says more than 183 days in Malta in a year makes you resident for that year, so the app uses that as a guide. If you move to Malta to settle, you are resident from the day you arrive. Your home, ties and how often you visit also count. Malta does not say how part days count, so the app counts any part of a day.',
     sources: [
       'https://legislation.mt/eli/cap/123/eng',
       'https://mtca.gov.mt/personal-tax/individual/tax-residence',
@@ -303,7 +303,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // more than 183 days in any one other state, work/business/office in Cyprus not ended in the year, a home in
     // Cyprus. Law 244(I)/2025 (Gazette 5070, 31 Dec 2025, in force 1 Jan 2026) dropped "not resident in another state".
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you spent no more than 183 days in any one other country, work, run a business or hold an office in Cyprus all year and have a home there: switch it on below if that is you. Until 2025 you also had to be tax resident nowhere else.',
+    note: 'More than 183 days in Cyprus in a calendar year. Under the 60-day rule, 60 days can be enough if you spent no more than 183 days in any one other country, work, run a business or hold an office in Cyprus all year and have a home there: switch it on below if that is you. Until 2025 you also had to be tax resident nowhere else.',
     sources: [
       'https://www.cylaw.org/nomoi/enop/non-ind/2002_1_118/full.html',
       'https://www.cylaw.org/nomoi/arith/2025_1_244.pdf',
@@ -316,7 +316,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     counting: 'any_part', // Income Tax Act 2010 s. 74: any part of a 24-hour period from midnight
     // s. 74: at least 183 days in the year of assessment, or more than 300 days over three consecutive years.
     test: { type: 'year_or_multi', days: 183, cmp: 'gte', years: 3, total: 300 },
-    note: 'At least 183 days in Gibraltar in a tax year (1 July to 30 June), or more than 300 days over three tax years in a row. Any part of a day counts. The app flags every year in a three-year run that passes 300.',
+    note: 'At least 183 days in Gibraltar in a tax year (1 July to 30 June), or more than 300 days over three tax years in a row. The app flags every year in a three-year run that passes 300.',
     sources: [
       'https://www.gibraltarlaws.gov.gi/uploads/legislations/income-tax/2010-21/2010-21(23-03-26).pdf',
       'https://www.gibraltar.gov.gi/income-tax-office',
@@ -330,7 +330,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
     // tax_options.ae_90_day): 90 days or more, for UAE or GCC nationals or residence-permit holders with a home,
     // job or business in the UAE.
     test: { type: 'rolling', tests: [{ days: 183, cmp: 'gte', months: 12 }], window: 'end' },
-    note: '183 days or more in the UAE in any 12 months in a row. Any part of a day counts. 90 days can be enough if you hold a UAE residence permit (or are a UAE or GCC national) and have a home, job or business in the UAE: switch it on below if that is you.',
+    note: '183 days or more in the UAE in any 12 months in a row. 90 days can be enough if you hold a UAE residence permit (or are a UAE or GCC national) and have a home, job or business in the UAE: switch it on below if that is you.',
     sources: [
       'https://tax.gov.ae/Datafolder/Files/Legislation/Corporate%20Tax/Cabinet%20Decision%2085%20of%202022%20-%20For%20publishing.pdf',
       'https://mof.gov.ae/wp-content/uploads/2023/03/Ministerial-Decision-27-of-2023-of-Tax-Residency.pdf',
@@ -369,7 +369,7 @@ export const TAX_RULES: Record<string, TaxRule> = {
       ],
       window: 'end',
     },
-    note: 'More than 183 days in Norway in any 12 months, or more than 270 days in any 36 months. Any part of a day counts and the days do not have to be in a row. You are resident from the year the count is passed.',
+    note: 'More than 183 days in Norway in any 12 months, or more than 270 days in any 36 months. The days do not have to be in a row. You are resident from the year the count is passed.',
     sources: [
       'https://lovdata.no/dokument/NL/lov/1999-03-26-14/KAPITTEL_2',
       'https://www.skatteetaten.no/person/til-fra-norge/til/flytte/skatt-til-norge/',

@@ -524,6 +524,10 @@ function TaxDetail({ country, year, styles, fmt }: { country: TaxCountry; year: 
     default:
       text = null;
   }
+  if (d.alt_rule_days != null) {
+    const alt = t('daysAbroad.tax.detail.altRule', { count: Number(d.alt_rule_count), threshold: Number(d.alt_rule_days) });
+    text = text ? `${text} ${alt}` : alt;
+  }
   if (!text) return null;
   return <Text style={styles.rowSub}>{text}</Text>;
 }

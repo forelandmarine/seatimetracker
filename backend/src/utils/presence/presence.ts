@@ -893,7 +893,11 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
             detail[`best_${k}`] = best;
             detail[`best_${k}_end`] = bestEnd == null ? null : isoOf(bestEnd);
           });
-          if (country === 'AE' && opts.ae_90_day && Number(detail.best_0) >= 90) met = true;
+          if (country === 'AE' && opts.ae_90_day && !met && Number(detail.best_0) >= 90) {
+            met = true;
+            detail.alt_rule_days = 90;
+            detail.alt_rule_count = Number(detail.best_0);
+          }
           status = statusFor(met, near);
           need = met ? 0 : bestNeed;
           break;
@@ -919,6 +923,8 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
       if (country === 'CY' && opts.cy_60_day && n >= 60 && status !== 'met') {
         status = 'met';
         need = 0;
+        detail.alt_rule_days = 60;
+        detail.alt_rule_count = n;
       }
     }
 
