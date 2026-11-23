@@ -54,7 +54,7 @@ export default function LockedHomeScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <ScrollView contentContainerStyle={s.content}>
         <View style={s.header}>
-          <Image source={require('@/assets/images/8331a0b9-33c9-4ff2-93d0-772c257bd0c9.png')} style={s.logo} resizeMode="contain" />
+          <Image source={isDark ? require('@/assets/images/8331a0b9-33c9-4ff2-93d0-772c257bd0c9.png') : require('@/assets/images/8044436c-d8cf-489e-bf5f-7a7114b33cc0.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.brand}>SeaTime Tracker</Text>
         </View>
 

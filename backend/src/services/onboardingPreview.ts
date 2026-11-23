@@ -188,20 +188,35 @@ export async function previewVessel(
   const remaining = await creditsRemaining();
   const belowFloor = remaining !== null && remaining < CREDIT_FLOOR;
 
-  // 3a. Below the credit floor: one vessel_info call (1 credit) just to check the MMSI.
-  if (belowFloor) {
-    app.logger.warn({ remaining, floor: CREDIT_FLOOR, mmsi }, 'Vessel preview below credit floor: vessel_info only, stat from cache');
+  // 3a. Default (fewest credits, Dan 2026-11-23): one vessel_info call (1 credit)
+  // to check the MMSI; the activity line then comes from the cache only. Also
+  // used below the credit floor. VESSEL_PREVIEW_MODE=history switches to the
+  // 10-day vessel_history check (about 10 to 20 credits) for the activity line.
+  if (belowFloor || previewMode() !== 'history') {
+    if (belowFloor) app.logger.warn({ remaining, floor: CREDIT_FLOOR, mmsi }, 'Vessel preview below credit floor: vessel_info only, stat from cache');
     const cached = await fromCache();
     if (cached) return cached;
-    const info = await fetchVesselInfo({ mmsi }, app.logger);
-    if (!info) return { status: 'unavailable', vessel: null, note: null, activity: null, source: 'none' };
-    spend(userId);
-    if (info.status === 'not_found') return { status: 'not_found', vessel: null, note: null, activity: null, source: 'info' };
-    const v = vesselFromInfo(info.data, mmsi);
-    const vessel = vesselFrom(mmsi, null, input, v?.last_position_at ?? null, null);
-    if (v?.flag) vessel.flag = v.flag;
-    if (v?.flag_iso) vessel.flag_iso = v.flag_iso;
-    return { status: 'live', vessel, note: null, activity: await recentActivity(app, mmsi, today), source: 'info' };
+    // The picked MMSI, then the ship's other MMSIs, then its IMO. Unknown ones
+    // answer 404; the first one found is the live one.
+    const targets: Array<{ mmsi: string } | { imo: string }> = [{ mmsi }, ...alts.map((m) => ({ mmsi: m }))];
+    if (isImo(imo)) targets.push({ imo });
+    let answered = false;
+    for (const target of targets) {
+      const info = await fetchVesselInfo(target, app.logger);
+      if (!info) break;
+      answered = true;
+      if (info.status === 'not_found') continue;
+      spend(userId);
+      const liveMmsi = 'mmsi' in target ? target.mmsi : (isShipMmsi(clean(info.data?.mmsi)) ? clean(info.data?.mmsi) : mmsi);
+      const former = liveMmsi !== mmsi ? mmsi : null;
+      const v = vesselFromInfo(info.data, liveMmsi);
+      const vessel = vesselFrom(liveMmsi, null, input, v?.last_position_at ?? null, former);
+      if (v?.flag) vessel.flag = v.flag;
+      if (v?.flag_iso) vessel.flag_iso = v.flag_iso;
+      return { status: 'live', vessel, note: former ? `Formerly MMSI ${former}` : null, activity: await recentActivity(app, liveMmsi, today), source: 'info' };
+    }
+    if (!answered) return { status: 'unavailable', vessel: null, note: null, activity: null, source: 'none' };
+    return { status: 'not_found', vessel: null, note: null, activity: null, source: 'info' };
   }
 
   // 3b. One vessel_history call for the missing days. The picked MMSI, then the
@@ -237,6 +252,11 @@ export async function previewVessel(
   }
   app.logger.info({ userId, mmsi, alts: alts.length, imo: isImo(imo) }, 'Vessel preview: not on AIS');
   return { status: 'not_found', vessel: null, note: null, activity: null, source: 'history' };
+}
+
+/** 'info' (default): 1 vessel_info credit, stat from cache. 'history': one 10-day vessel_history call. */
+export function previewMode(): 'info' | 'history' {
+  return process.env.VESSEL_PREVIEW_MODE === 'history' ? 'history' : 'info';
 }
 
 function spend(userId: string) {
