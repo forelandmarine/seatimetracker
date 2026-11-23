@@ -59,7 +59,7 @@ function problemFor(e: any, t: (k: string) => string): string {
 
 // ── Small parts ───────────────────────────────────────────────────────
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+export function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <Switch
       value={value}

@@ -36,7 +36,9 @@ import {
   getPresenceSummary,
   getStays,
   savePresenceSettings,
+  saveTaxOptions,
   type PresenceStay,
+  type TaxOptions,
   type PresenceSummary,
   type TaxCountry,
   type TaxYear,
@@ -50,6 +52,7 @@ import {
   TaxCountriesSheet,
   useCountryLabel,
   type VesselOption,
+  Toggle,
 } from '@/components/daysAbroad/DaysAbroadSheets';
 
 const DAY_MS = 86_400_000;
@@ -93,6 +96,16 @@ export default function DaysAbroadScreen() {
       // Vessels are optional here.
     }
   }, []);
+
+  const onTaxOptions = useCallback(async (opts: TaxOptions) => {
+    try {
+      await saveTaxOptions(opts);
+      await load();
+    } catch (e: any) {
+      logError('[DaysAbroad] Tax options save failed:', e?.message || e);
+      Alert.alert(t('daysAbroad.errors.notSaved'));
+    }
+  }, [load, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -214,7 +227,7 @@ export default function DaysAbroadScreen() {
             {summary.tax.length === 0 ? (
               <Text style={styles.empty}>{t('daysAbroad.tax.none')}</Text>
             ) : (
-              summary.tax.map((c) => <TaxCard key={c.country} country={c} styles={styles} fmt={fmt} labelFor={labelFor} />)
+              summary.tax.map((c) => <TaxCard key={c.country} country={c} styles={styles} fmt={fmt} labelFor={labelFor} options={summary.settings.tax_options ?? {}} onOptions={onTaxOptions} />)
             )}
             {summary.sed && <SedCard sed={summary.sed} styles={styles} fmt={fmt} />}
 
@@ -379,14 +392,37 @@ function SchengenCard({ summary, styles, fmt, onPlan }: { summary: PresenceSumma
   );
 }
 
-function TaxCard({ country, styles, fmt, labelFor }: { country: TaxCountry; styles: Styles; fmt: (d: string) => string; labelFor: (c: string) => string }) {
+function TaxCard({ country, styles, fmt, labelFor, options, onOptions }: {
+  country: TaxCountry;
+  styles: Styles;
+  fmt: (d: string) => string;
+  labelFor: (c: string) => string;
+  options: TaxOptions;
+  onOptions: (opts: TaxOptions) => void;
+}) {
   const { t } = useTranslation();
-  const note = country.has_rule ? t(`daysAbroad.tax.notes.${country.country}`, { defaultValue: country.note ?? '' }) : t('daysAbroad.tax.noRule');
+  const note = country.has_rule
+    ? t(`daysAbroad.tax.notes.${country.country}`, { defaultValue: country.note ?? '' })
+    : country.country === 'NL'
+      ? t('daysAbroad.tax.noRuleNL')
+      : t('daysAbroad.tax.noRule');
+  const certYears = options.es_certificate_years ?? [];
+  const toggleCert = (year: number, on: boolean) =>
+    onOptions({ es_certificate_years: on ? [...certYears, year] : certYears.filter((y) => y !== year) });
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{labelFor(country.country)}</Text>
       <Text style={styles.small}>{note}</Text>
       <Text style={styles.small}>{country.counting === 'midnight' ? t('daysAbroad.tax.countMidnight') : t('daysAbroad.tax.countAnyPart')}</Text>
+      {country.country === 'NZ' && country.has_rule && (
+        <View style={[styles.row, { marginTop: 8 }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.rowTitle}>{t('daysAbroad.tax.nzVisitor')}</Text>
+            <Text style={styles.rowSub}>{t('daysAbroad.tax.nzVisitorHelp')}</Text>
+          </View>
+          <Toggle value={!!options.nz_visitor} onChange={(v) => onOptions({ nz_visitor: v })} />
+        </View>
+      )}
       {country.years.map((y, i) => (
         <View key={y.label} style={[styles.row, { flexDirection: 'column', alignItems: 'stretch' }, i === 0 && { marginTop: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -401,6 +437,12 @@ function TaxCard({ country, styles, fmt, labelFor }: { country: TaxCountry; styl
           {y.planned_days > 0 && <Text style={styles.rowSub}>{t('daysAbroad.tax.planned', { count: y.planned_days })}</Text>}
           {y.unrecorded_days > 0 && <Text style={styles.rowSub}>{t('daysAbroad.tax.unrecorded', { count: y.unrecorded_days })}</Text>}
           {!!y.assumed_days && <Text style={styles.rowSub}>{t('daysAbroad.tax.assumed', { count: y.assumed_days })}</Text>}
+          {country.country === 'ES' && (y.days > 0 || certYears.includes(Number(y.label))) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+              <Text style={[styles.rowSub, { flex: 1, paddingRight: 12 }]}>{t('daysAbroad.tax.esCertificate', { year: y.label })}</Text>
+              <Toggle value={certYears.includes(Number(y.label))} onChange={(v) => toggleCert(Number(y.label), v)} />
+            </View>
+          )}
         </View>
       ))}
     </View>
@@ -441,7 +483,9 @@ function TaxDetail({ country, year, styles, fmt }: { country: TaxCountry; year: 
       text = t('daysAbroad.tax.detail.zaPpt', { total: d.previous_five_total });
       break;
     case 'nz_rolling':
-      text = t('daysAbroad.tax.detail.nzRolling', { count: Number(d.best_12_months) });
+      text = d.visitor
+        ? t('daysAbroad.tax.detail.nzVisitor', { count: Number(d.best_18_months) })
+        : t('daysAbroad.tax.detail.nzRolling', { count: Number(d.best_12_months) });
       break;
     case 'de_continuous':
       text = d.longest_stay_start

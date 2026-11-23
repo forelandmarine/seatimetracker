@@ -37,6 +37,7 @@ import {
   validateStay,
   type Stay,
   type StayKind,
+  type TaxOptions,
 } from '../utils/presence/presence.js';
 import { SCHENGEN_COUNTED_MICROSTATES, SCHENGEN_MEMBERS } from '../utils/presence/schengen.js';
 import { NO_DAY_TEST_COUNTRIES, TAX_RULES, TAX_RULE_COUNTRIES } from '../utils/presence/taxRules.js';
@@ -158,11 +159,11 @@ export function register(app: App, fastify: FastifyInstance) {
     return guessHomeCountry(u?.nationality, u?.maritime_authority);
   }
 
-  async function settingsFor(userId: string): Promise<{ tax_countries: string[]; home_country: string | null; saved: boolean }> {
+  async function settingsFor(userId: string): Promise<{ tax_countries: string[]; home_country: string | null; saved: boolean; tax_options: TaxOptions }> {
     const home = await homeCountry(userId);
     const [row] = await app.db.select().from(schema.presence_settings).where(eq(schema.presence_settings.user_id, userId));
-    if (row) return { tax_countries: row.tax_countries, home_country: home, saved: true };
-    return { tax_countries: home ? [home] : [], home_country: home, saved: false };
+    if (row) return { tax_countries: row.tax_countries, home_country: home, saved: true, tax_options: row.tax_options ?? {} };
+    return { tax_countries: home ? [home] : [], home_country: home, saved: false, tax_options: {} };
   }
 
   // ── Stays CRUD ──────────────────────────────────────────────────────
@@ -410,7 +411,7 @@ export function register(app: App, fastify: FastifyInstance) {
     const stays = (await loadStays(userId)).map(toStay);
     const settings = await settingsFor(userId);
     const tax = settings.tax_countries.map((c) => {
-      const result = taxCountrySummary(stays, c, today);
+      const result = taxCountrySummary(stays, c, today, 2, settings.tax_options);
       const rule = TAX_RULES[c];
       return { ...result, note: rule?.note ?? null, sources: rule?.sources ?? [] };
     });
@@ -467,6 +468,33 @@ export function register(app: App, fastify: FastifyInstance) {
     return reply.send(await settingsFor(userId));
   });
 
+  fastify.put<{ Body: { es_certificate_years?: number[]; nz_visitor?: boolean } }>('/api/presence/tax-options', {
+    schema: {
+      description: 'Save per-country tax options (Spain certificate years, New Zealand visitor)',
+      tags: ['presence'],
+      body: {
+        type: 'object',
+        properties: {
+          es_certificate_years: { type: 'array', items: { type: 'integer', minimum: 2000, maximum: 2100 }, maxItems: 20 },
+          nz_visitor: { type: 'boolean' },
+        },
+      },
+      response: { 200: anyObject, 400: errorSchema, 401: errorSchema },
+    },
+  }, async (request, reply) => {
+    const userId = await auth(request, reply);
+    if (!userId) return;
+    const current = await settingsFor(userId);
+    const next: TaxOptions = { ...current.tax_options };
+    if (request.body.es_certificate_years) next.es_certificate_years = [...new Set(request.body.es_certificate_years)].sort();
+    if (typeof request.body.nz_visitor === 'boolean') next.nz_visitor = request.body.nz_visitor;
+    await app.db
+      .insert(schema.presence_settings)
+      .values({ user_id: userId, tax_countries: current.tax_countries, tax_options: next })
+      .onConflictDoUpdate({ target: schema.presence_settings.user_id, set: { tax_options: next, updated_at: new Date() } });
+    return reply.send(await settingsFor(userId));
+  });
+
   // ── Export ──────────────────────────────────────────────────────────
 
   fastify.get<{ Querystring: { today?: string } }>('/api/presence/export.csv', {
@@ -520,7 +548,7 @@ export function register(app: App, fastify: FastifyInstance) {
       push(['TAX DAYS']);
       push(['Country', 'Tax year', 'From', 'To', 'Days', 'Planned days', 'Test met']);
       for (const c of settings.tax_countries) {
-        const res = taxCountrySummary(stays, c, today);
+        const res = taxCountrySummary(stays, c, today, 2, settings.tax_options);
         for (const y of res.years) push([c, y.label, y.start_date, y.end_date, y.days, y.planned_days, y.status === 'none' ? 'no rule' : y.status === 'met' ? 'yes' : 'no']);
       }
     }

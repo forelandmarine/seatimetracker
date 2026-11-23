@@ -602,6 +602,26 @@ function statusFor(met: boolean, near: boolean): TaxStatus {
   return met ? 'met' : near ? 'near' : 'under';
 }
 
+/** Per-user tax options (presence_settings.tax_options). */
+export interface TaxOptions {
+  /** Calendar years with a tax residence certificate from another country (Spain). */
+  es_certificate_years?: number[];
+  /** The user says they meet New Zealand's non-resident visitor conditions. */
+  nz_visitor?: boolean;
+}
+
+/**
+ * New Zealand non-resident visitor (Income Tax Act 2007 s YD 1(13) and YD 1B,
+ * from 1 April 2026; IRD guide IR292): arrived on or after 1 April 2026, not
+ * working for a New Zealand resident or branch, not required to be in New
+ * Zealand for work, lawfully there and tax resident elsewhere. The 183-day
+ * rule does not apply; more than 275 days in any 18-month period makes them
+ * resident from day 276. The app cannot check the conditions, so the user
+ * switches it on.
+ */
+export const NZ_VISITOR_FROM = '2026-04-01';
+export const NZ_VISITOR_MAX_DAYS = 275;
+
 /**
  * Spain: an absence longer than this is not "sporadic" (Tribunal Supremo,
  * 28 Nov 2017, appeals 812/2017 and 815/2017), so it is not added.
@@ -631,19 +651,21 @@ export const DE_MAX_SHORT_BREAK_DAYS = 42;
  * in another country. So a break between two Spanish stays (the later one
  * begun) is added: always when nothing is logged in it, and when time abroad
  * is logged in it only if the break is 183 days or fewer. These are the
- * `assumed` days; the note says a residence certificate from another country
- * takes them out.
+ * `assumed` days. For a year with a tax residence certificate from another
+ * country (opts.es_certificate_years), breaks with time abroad are not added;
+ * unlogged-only breaks still are (TEAC: unless you prove you were outside Spain).
  *
  * Germany's short-break rule is applied to the unbroken-stay test itself
  * (bestRunTouching), not here.
  */
-export function taxDays(stays: Stay[], country: string, today: string, counting: DayCounting): { days: Set<number>; assumed: Set<number> } {
+export function taxDays(stays: Stay[], country: string, today: string, counting: DayCounting, opts: TaxOptions = {}): { days: Set<number>; assumed: Set<number> } {
   const inCountry = (s: Stay) => s.country_code === country && s.counts_tax;
   const days = stayDays(stays, today, inCountry, counting);
   const assumed = new Set<number>();
   if (country === 'ES') {
     const t = dayNum(today);
     const logged = stayDays(stays, today, () => true, 'any_part');
+    const certYears = new Set(opts.es_certificate_years ?? []);
     const runs = runsOf(days);
     for (let k = 1; k < runs.length; k++) {
       if (runs[k].start > t) break; // the next Spanish stay is a plan
@@ -652,7 +674,11 @@ export function taxDays(stays: Stay[], country: string, today: string, counting:
       let abroad = false;
       for (let d = from; d <= to && !abroad; d++) if (logged.has(d)) abroad = true;
       if (abroad && to - from + 1 > ES_MAX_SPORADIC_ABSENCE_DAYS) continue;
-      for (let d = from; d <= to; d++) assumed.add(d);
+      for (let d = from; d <= to; d++) {
+        // With a residence certificate from another country for that year, time abroad is not added.
+        if (abroad && certYears.has(Number(isoOf(d).slice(0, 4)))) continue;
+        assumed.add(d);
+      }
     }
     for (const d of assumed) days.add(d);
   }
@@ -660,11 +686,11 @@ export function taxDays(stays: Stay[], country: string, today: string, counting:
 }
 
 /** Tax years for one country: the current one and the two before. */
-export function taxCountrySummary(stays: Stay[], country: string, today: string, yearsBack = 2): TaxCountryResult {
+export function taxCountrySummary(stays: Stay[], country: string, today: string, yearsBack = 2, opts: TaxOptions = {}): TaxCountryResult {
   const rule = TAX_RULES[country] ?? null;
   const counting: DayCounting = rule?.counting ?? 'any_part';
   const yearStart = rule?.yearStart ?? { month: 1, day: 1 };
-  const { days, assumed } = taxDays(stays, country, today, counting);
+  const { days, assumed } = taxDays(stays, country, today, counting, opts);
   const anyDays = stayDays(stays, today, () => true, 'any_part');
   const t = dayNum(today);
   const currentStartYear = Number(taxYearStart(yearStart, today).slice(0, 4));
@@ -739,6 +765,26 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
           break;
         }
         case 'nz_rolling': {
+          if (opts.nz_visitor) {
+            // Non-resident visitor: more than 275 days in any 18-month period, counting from 1 April 2026.
+            const floor = dayNum(NZ_VISITOR_FROM);
+            let best = 0;
+            let bestEnd: number | null = null;
+            for (let d = Math.max(from, floor); d <= to; d++) {
+              const windowStart = Math.max(floor, dayNum(addMonthsClamped(isoOf(d), -18)) + 1);
+              const c = countIn(days, windowStart, d);
+              if (c > best) {
+                best = c;
+                bestEnd = d;
+              }
+            }
+            status = statusFor(best > NZ_VISITOR_MAX_DAYS, best > NZ_VISITOR_MAX_DAYS - NEAR_MARGIN);
+            need = Math.max(0, NZ_VISITOR_MAX_DAYS + 1 - best);
+            detail.visitor = 1;
+            detail.best_18_months = best;
+            detail.best_18_months_end = bestEnd == null ? null : isoOf(bestEnd);
+            break;
+          }
           let best = 0;
           let bestEnd: number | null = null;
           for (let d = from; d <= to; d++) {

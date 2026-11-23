@@ -106,8 +106,9 @@ export const TAX_RULES: Record<string, TaxRule> = {
     yearStart: { month: 4, day: 1 }, // 1 April to 31 March
     counting: 'any_part', // IRD: part days count as whole days towards the 183
     test: { type: 'nz_rolling' },
-    // Income Tax Act 2007 s YD 1(3), (4), (8). Non-resident visitors (s YD 1B, from 1 April 2026) are not modelled.
-    note: 'More than 183 days in New Zealand in any 12-month period makes you tax resident from the first of those days. A permanent place of abode in New Zealand makes you resident whatever the days. Some short-term visitors who do not work for New Zealand businesses are exempt from 1 April 2026.',
+    // Income Tax Act 2007 s YD 1(3), (4), (8). Non-resident visitors (s YD 1(13), YD 1B, from 1 April 2026; IR292): when the
+    // user switches it on (tax_options.nz_visitor), more than 275 days in any 18 months instead (presence.ts).
+    note: 'More than 183 days in New Zealand in any 12-month period makes you tax resident from the first of those days. A permanent place of abode in New Zealand makes you resident whatever the days. From 1 April 2026 some short-term visitors are treated as non-resident for up to 275 days in any 18 months: switch it on below if you qualify.',
     sources: [
       'https://www.ird.govt.nz/international-tax/individuals/tax-residency-status-for-individuals',
       'https://www.legislation.govt.nz/act/public/2007/0097/latest/DLM1520575.html',

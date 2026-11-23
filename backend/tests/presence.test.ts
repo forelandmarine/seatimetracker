@@ -347,6 +347,33 @@ describe("tax: days away and days with nothing logged, per country (2026-11-23)"
   });
 });
 
+describe("tax options: Spain certificate, New Zealand visitor (2026-11-23)", () => {
+  test("Spain: a certificate for the year stops trips away being added; unlogged days still count", () => {
+    const trip = [stay("ES", "2026-01-01", "2026-03-31"), stay("FR", "2026-04-01", "2026-04-30"), stay("ES", "2026-05-01", "2026-07-31")];
+    expect(rawTaxSummary(trip, "ES", TODAY, 2, { es_certificate_years: [2026] }).years[0].assumed_days).toBe(0);
+    expect(rawTaxSummary(trip, "ES", TODAY, 2, { es_certificate_years: [2025] }).years[0].assumed_days).toBe(30);
+    const gap = [stay("ES", "2026-01-01", "2026-03-31"), stay("ES", "2026-05-01", "2026-07-31")];
+    expect(rawTaxSummary(gap, "ES", TODAY, 2, { es_certificate_years: [2026] }).years[0].assumed_days).toBe(30);
+  });
+
+  test("New Zealand visitor: 275 days in any 18 months instead of 183 in 12", () => {
+    // 1 May 2026 to 30 Nov 2026 = 214 days: resident under the 183-day rule, not as a visitor.
+    const s = [stay("NZ", "2026-05-01", "2026-11-30")];
+    expect(rawTaxSummary(s, "NZ", "2026-12-31").years[0].status).toBe("met");
+    const v = rawTaxSummary(s, "NZ", "2026-12-31", 2, { nz_visitor: true }).years[0];
+    expect(v.status).toBe("under");
+    expect(v.detail.best_18_months).toBe(214);
+    expect(v.days_to_test).toBe(276 - 214);
+    // 1 May 2026 to 31 Jan 2027 = 276 days: resident as a visitor (tax year 2026/27).
+    const long = rawTaxSummary([stay("NZ", "2026-05-01", "2027-01-31")], "NZ", "2027-02-28", 2, { nz_visitor: true }).years[0];
+    expect(long.detail.best_18_months).toBe(276);
+    expect(long.status).toBe("met");
+    // Days before 1 April 2026 are not part of the visitor count.
+    const early = rawTaxSummary([stay("NZ", "2026-03-01", "2026-04-30")], "NZ", "2026-12-31", 2, { nz_visitor: true }).years[0];
+    expect(early.detail.best_18_months).toBe(30);
+  });
+});
+
 describe("tax years", () => {
   test("tax year start dates", () => {
     expect(taxYearStart({ month: 4, day: 6 }, "2026-04-05")).toBe("2025-04-06");

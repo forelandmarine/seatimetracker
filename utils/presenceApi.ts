@@ -110,6 +110,14 @@ export interface SedPeriod {
   eligible: boolean;
 }
 
+/** Per-country tax options. */
+export interface TaxOptions {
+  /** Calendar years with a tax residence certificate from another country (Spain). */
+  es_certificate_years?: number[];
+  /** Meets New Zealand's non-resident visitor conditions. */
+  nz_visitor?: boolean;
+}
+
 export interface PresenceSummary {
   today: string;
   open_stay: PresenceStay | null;
@@ -117,7 +125,7 @@ export interface PresenceSummary {
   tax: TaxCountry[];
   sed: { periods: SedPeriod[]; current: (SedPeriod & { days_to_365: number; uk_days_since: number; broken: boolean }) | null } | null;
   countries: Array<{ country: string; days: number; stays: number }>;
-  settings: { tax_countries: string[]; home_country: string | null; saved: boolean };
+  settings: { tax_countries: string[]; home_country: string | null; saved: boolean; tax_options?: TaxOptions };
   rules: { tax_countries: string[]; no_day_test: string[]; schengen_members: string[]; schengen_microstates: string[] };
 }
 
@@ -160,6 +168,11 @@ export const getPresenceSummary = async (plan?: { start_date: string; end_date: 
 
 export const savePresenceSettings = async (taxCountries: string[]) => {
   const res = await authFetch('/api/presence/settings', { method: 'PUT', body: { tax_countries: taxCountries } });
+  return res.json();
+};
+
+export const saveTaxOptions = async (opts: TaxOptions) => {
+  const res = await authFetch('/api/presence/tax-options', { method: 'PUT', body: opts });
   return res.json();
 };
 
