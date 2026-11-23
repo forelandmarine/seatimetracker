@@ -7,7 +7,7 @@
  * overlapping records, open stays to today, leap years (29 Feb 2028), window
  * edges, planned future trips (including ones more than a year ahead), and
  * on-board stays with the Schengen toggle on and off, at-sea stays (counted
- * after a counted stay unless switched off) and unlogged gaps between stays.
+ * after a counted stay unless switched off; unlogged days are outside the area).
  *
  * Compared: the set of counted days, days used on any date, days left today,
  * the latest day you can stay (from today and from a trip's first day), the
@@ -367,8 +367,8 @@ describe("Schengen 90/180: hand-worked cases", () => {
 describe("Schengen 90/180: Commission calculator results", () => {
   const F = (a: string, b: string) => S("FR", a, b);
   // The calculator takes separate trips: between them you were outside the
-  // area. In the app you log that (unlogged days between Schengen stays now
-  // count, caution rule 2026-11-22), so these cases log the gaps as GB.
+  // area. Unlogged days are outside the area in the app too (2026-11-23);
+  // these cases also log the gaps as GB, which must give the same answer.
   const outside = (stays: Stay[]): Stay[] => {
     const out = [...stays];
     for (let i = 1; i < stays.length; i++) {
@@ -438,7 +438,8 @@ describe("Schengen caution rules: oracle and app agree on hand-made logs", () =>
     expect(both([S("ES", "2026-06-01", "2026-06-10"), sea("2026-06-10", "2026-06-20", false)], "2026-06-30")).toBe(10);
   });
   test("gap of unlogged days before the passage; Gibraltar before 15 July 2026", () => {
-    expect(both([S("ES", "2026-06-01", "2026-06-05"), sea("2026-06-10", "2026-06-15")], "2026-06-30")).toBe(15);
+    expect(both([S("ES", "2026-06-01", "2026-06-05"), sea("2026-06-10", "2026-06-15")], "2026-06-30")).toBe(5);
+    expect(both([S("ES", "2026-06-01", "2026-06-05"), sea("2026-06-06", "2026-06-15")], "2026-06-30")).toBe(15);
     const days = oracleDays([S("GI", "2026-07-01", "2026-07-05"), sea("2026-07-05", "2026-07-25")], "2026-08-01");
     expect(days.size).toBe(11);
     expect(days.has(D("2026-07-14"))).toBe(false);

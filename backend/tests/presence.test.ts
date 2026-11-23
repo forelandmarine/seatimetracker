@@ -215,7 +215,7 @@ describe("Schengen caution rules (2026-11-22)", () => {
     const r = schengenSummary(s, "2026-06-30");
     expect(r.used).toBe(20);
     expect(r.at_sea_days).toBe(3); // 11 to 13 June
-    expect(r.assumed_days).toBe(0);
+    expect(r.unlogged_days).toBe(0);
   });
 
   test("at sea after a Schengen port with nothing logged after still counts", () => {
@@ -235,12 +235,13 @@ describe("Schengen caution rules (2026-11-22)", () => {
     expect(schengenSummary(s, "2026-06-30").at_sea_days).toBe(0);
   });
 
-  test("a gap of unlogged days does not break the chain, and the gap counts too", () => {
+  test("unlogged days before the passage are outside the area, so the passage does not count", () => {
     const s = [stay("ES", "2026-06-01", "2026-06-05"), sea("2026-06-10", "2026-06-15")];
     const r = schengenSummary(s, "2026-06-30");
-    expect(r.used).toBe(15);
-    expect(r.at_sea_days).toBe(6);
-    expect(r.assumed_days).toBe(4); // 6 to 9 June
+    expect(r.used).toBe(5);
+    expect(r.at_sea_days).toBe(0);
+    // Sailing the day after the port stay ends still joins.
+    expect(used([stay("ES", "2026-06-01", "2026-06-05"), sea("2026-06-06", "2026-06-15")], "2026-06-30")).toBe(15);
   });
 
   test("at sea from Gibraltar counts only from 15 July 2026", () => {
@@ -270,14 +271,13 @@ describe("Schengen caution rules (2026-11-22)", () => {
     expect(schengenSummary(s, "2026-06-30").at_sea_counted_ids).toEqual(["b"]);
   });
 
-  test("unlogged days between two Schengen stays count; not next to a non-Schengen stay or a planned one", () => {
-    expect(schengenSummary([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-06-11", "2026-06-15")], "2026-06-30").assumed_days).toBe(5);
-    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(15);
-    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("GB", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(5);
-    expect(used([stay("GB", "2026-06-01", "2026-06-05"), stay("FR", "2026-06-11", "2026-06-15")], "2026-06-30")).toBe(5);
-    // On board in a Schengen port with the switch off does not count, so it does not bridge.
-    expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("FR", "2026-06-11", "2026-06-15", { kind: "on_board", counts_schengen: false })], "2026-06-30")).toBe(5);
-    // The next stay is planned (starts after today): the days in between are plans, not unknowns.
+  test("unlogged days between two Schengen stays are outside the area (2026-11-23) and are reported", () => {
+    const r = schengenSummary([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-06-11", "2026-06-15")], "2026-06-30");
+    expect(r.used).toBe(10);
+    expect(r.unlogged_days).toBe(5); // 6 to 10 June, shown on the card
+    // Next to a non-Schengen stay or before a planned stay: not reported.
+    expect(schengenSummary([stay("FR", "2026-06-01", "2026-06-05"), stay("GB", "2026-06-11", "2026-06-15")], "2026-06-30").unlogged_days).toBe(0);
+    expect(schengenSummary([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-07-11", "2026-07-15")], "2026-06-30").unlogged_days).toBe(0);
     expect(used([stay("FR", "2026-06-01", "2026-06-05"), stay("IT", "2026-07-11", "2026-07-15")], "2026-06-30")).toBe(5);
   });
 });

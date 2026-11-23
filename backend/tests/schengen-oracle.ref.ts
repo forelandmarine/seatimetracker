@@ -142,15 +142,13 @@ export function tripVerdict(
 //      is never checked out of the area (Borders Code art. 6; Annex VI
 //      3.2.4 to 3.2.6), and the app cannot know whether an exit check was
 //      done before an ocean passage. So a log entry at sea counts when the
-//      entry immediately before it in time counts, however many unlogged
-//      days lie between them, unless the crew member marked it "cleared out
-//      with an exit check". It counts only from the day the place it sailed
-//      from counts (Gibraltar from 15 July 2026, late joiners).
-//  (b) Unknown days. A day with nothing logged, after the last entry that
-//      ended before it and before the first entry that starts after it, is a
-//      day in the area when either neighbour counts on that day and the
-//      other neighbour counts too, and the later entry has already begun.
-//      Days after today are plans and are never filled.
+//      entry immediately before it in time counts and no unlogged day lies
+//      between the earlier entries and the passage, unless the crew member
+//      marked it "cleared out with an exit check". It counts only from the
+//      day the place it sailed from counts (Gibraltar from 15 July 2026, late
+//      joiners).
+//  (b) Unknown days (owner's rule, 2026-11-23). A day with nothing logged is
+//      time outside the area and never counts.
 //
 // "Immediately before in time": entries are ranked by first day, then last
 // day, then the order they were written down; the one ranked just below.
@@ -188,7 +186,10 @@ export function daysFromLog(log: RefLogEntry[], today: number): Set<number> {
         if (j === i || !rankBelow(key(j), key(i))) continue;
         if (before < 0 || rankBelow(key(before), key(j))) before = j;
       }
-      if (before >= 0) v = countsFrom(before);
+      // Joined: some earlier-ranked entry reaches the day before the passage.
+      let reach = -Infinity;
+      for (let j = 0; j < log.length; j++) if (j !== i && rankBelow(key(j), key(i))) reach = Math.max(reach, lastOf(log[j]));
+      if (before >= 0 && reach >= e.first - 1) v = countsFrom(before);
     }
     memo.set(i, v);
     return v;
@@ -208,20 +209,7 @@ export function daysFromLog(log: RefLogEntry[], today: number): Set<number> {
       if (covering.some((i) => d >= countsFrom(i))) days.add(d);
       continue;
     }
-    if (d > today) continue;
-    // Unlogged day: neighbours either side.
-    let prevEnd = -Infinity;
-    let nextStart = Infinity;
-    for (let i = 0; i < log.length; i++) {
-      if (lastOf(log[i]) < d) prevEnd = Math.max(prevEnd, lastOf(log[i]));
-      if (log[i].first > d) nextStart = Math.min(nextStart, log[i].first);
-    }
-    if (prevEnd === -Infinity || nextStart === Infinity || nextStart > today) continue;
-    const prev = log.map((_, i) => i).filter((i) => lastOf(log[i]) === prevEnd);
-    const next = log.map((_, i) => i).filter((i) => log[i].first === nextStart);
-    const prevCounts = prev.some((i) => countsFrom(i) !== Infinity);
-    const nextCounts = next.some((i) => countsFrom(i) !== Infinity);
-    if (prevCounts && nextCounts && [...prev, ...next].some((i) => d >= countsFrom(i))) days.add(d);
+    // Unlogged day: outside the area (rule b).
   }
   return days;
 }

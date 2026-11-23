@@ -514,7 +514,7 @@ export function register(app: App, fastify: FastifyInstance) {
     push([]);
     const sch = schengenSummary(stays, today);
     push(['SCHENGEN 90/180', `Days used in the 180 days to ${today}`, sch.used, 'Days left', sch.remaining, 'Latest day if staying from today', sch.latest_stay_date ?? 'none']);
-    push(['Of those, days at sea after a Schengen port', sch.at_sea_days, 'Days with nothing logged between Schengen stays, counted to be safe', sch.assumed_days]);
+    push(['Of those, days at sea after a Schengen port', sch.at_sea_days, 'Days with nothing logged between Schengen stays, treated as outside the area (not counted)', sch.unlogged_days]);
     if (settings.tax_countries.length) {
       push([]);
       push(['TAX DAYS']);

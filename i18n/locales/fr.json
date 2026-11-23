@@ -548,10 +548,10 @@
       "release_other": "Si vous ne passez plus de jours dans l'espace, des jours reviennent à partir du {{date}} ({{count}} jours restants alors).",
       "atSea_one": "Dont {{count}} jour en mer après un port Schengen.",
       "atSea_other": "Dont {{count}} jours en mer après un port Schengen.",
-      "assumed_one": "Dont {{count}} jour sans rien de noté entre deux séjours Schengen, compté par précaution. Notez où vous étiez pour le retirer.",
-      "assumed_other": "Dont {{count}} jours sans rien de noté entre deux séjours Schengen, comptés par précaution. Notez où vous étiez pour les retirer.",
+      "unlogged_one": "{{count}} jour sans rien de noté entre deux séjours Schengen est considéré comme passé hors de l'espace. Si vous étiez dans l'espace, notez-le.",
+      "unlogged_other": "{{count}} jours sans rien de noté entre deux séjours Schengen sont considérés comme passés hors de l'espace. Si vous étiez dans l'espace, notez-les.",
       "today": "Aujourd'hui",
-      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Les jours à Monaco, Saint-Marin, au Vatican et en Andorre sont comptés, ainsi que les jours à Gibraltar depuis le 15 juillet 2026. Les jours en mer après un port Schengen comptent sauf si vous désactivez ce séjour, de même que les jours sans rien de noté entre deux séjours Schengen. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
+      "disclaimer": "À titre indicatif, pas un avis juridique. Les jours d'entrée et de sortie comptent. Les jours à Monaco, Saint-Marin, au Vatican et en Andorre sont comptés, ainsi que les jours à Gibraltar depuis le 15 juillet 2026. Les jours en mer juste après un port Schengen comptent sauf si vous désactivez ce séjour. Les jours sans rien de noté sont considérés comme passés hors de l'espace : notez donc tous vos séjours dans l'espace. Le temps sous titre de séjour ou visa long séjour ne compte pas, ne le notez donc pas ici. En cas de doute, renseignez-vous auprès de la police aux frontières."
     },
     "plan": {
       "button": "Tester un voyage",

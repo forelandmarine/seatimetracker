@@ -268,26 +268,31 @@ function countsFromDay(code: string): number {
  * Schengen ports never leaves the area (there is no exit check, Borders Code
  * art. 6 and Annex VI 3.2.4 to 3.2.6), and the app cannot know whether a crew
  * member did exit formalities before an ocean passage. So an at-sea stay
- * counts when the stay just before it in time counts (a gap of unlogged days
- * between them does not matter), unless the user switched the at-sea stay's
- * "counts for Schengen" off, which means "I cleared out with an exit check
- * before sailing". It takes the start date of the place it sailed from, so
- * days before Gibraltar began to count (15 July 2026) still never count. An
- * at-sea stay with nothing logged before it does not count.
+ * counts when the stay just before it in time counts and runs up to it (ends
+ * on the day the passage starts or the day before), unless the user switched
+ * the at-sea stay's "counts for Schengen" off, which means "I cleared out with
+ * an exit check before sailing". It takes the start date of the place it
+ * sailed from, so days before Gibraltar began to count (15 July 2026) still
+ * never count. Unlogged days are time outside the area (owner's rule,
+ * 2026-11-23), so an at-sea stay after a gap, or with nothing logged before
+ * it, does not count.
  */
 export function schengenStayStatus(stays: Stay[], today: string): Array<{ counts: boolean; from: number }> {
   const items = placed(stays, today);
   const out: Array<{ counts: boolean; from: number }> = new Array(stays.length);
   let prev: { counts: boolean; from: number } | null = null;
+  let maxEnd = -Infinity;
   for (const it of items) {
     let st: { counts: boolean; from: number };
     if (it.s.country_code.toUpperCase() === AT_SEA_CODE) {
-      st = it.s.counts_schengen && prev ? { counts: prev.counts, from: prev.from } : { counts: false, from: -Infinity };
+      const joined = prev && it.start <= maxEnd + 1; // no unlogged day before the passage
+      st = it.s.counts_schengen && prev && joined ? { counts: prev.counts, from: prev.from } : { counts: false, from: -Infinity };
     } else {
       st = { counts: countsForSchengen(it.s), from: countsFromDay(it.s.country_code) };
     }
     out[it.idx] = st;
     prev = st;
+    if (it.end > maxEnd) maxEnd = it.end;
   }
   return out;
 }
@@ -297,19 +302,18 @@ export interface SchengenDayDetail {
   days: Set<number>;
   /** Counted days covered only by at-sea stays. */
   at_sea: Set<number>;
-  /** Counted days with nothing logged, between two stays that count. */
-  assumed: Set<number>;
+  /** Days with nothing logged between two stays that count. Not counted (treated as outside the area); shown so the user can log them. */
+  unlogged: Set<number>;
 }
 
 /**
- * The days that count towards the 90, with the at-sea and unlogged days the
- * caution rules add.
+ * The days that count towards the 90, with the at-sea days the caution rule
+ * adds.
  *
- * Unlogged days: a run of days with nothing logged, between a stay that counts
- * and a later stay that counts (and has begun), is counted. Where you were is
- * unknown, and the safe side is that you did not leave. Log where you were to
- * take them out. Days after today and days before the first or after the last
- * stay are not filled.
+ * Unlogged days (owner's rule, 2026-11-23): a run of days with nothing logged
+ * is time outside the Schengen area and is not counted. Runs between two
+ * stays that count (the later one begun) are returned as `unlogged` so the
+ * card can ask the user to log them if they were in the area.
  */
 export function schengenDayDetail(stays: Stay[], today: string): SchengenDayDetail {
   const status = schengenStayStatus(stays, today);
@@ -327,18 +331,13 @@ export function schengenDayDetail(stays: Stay[], today: string): SchengenDayDeta
       (atSea ? seaDays : onLand).add(d);
     }
   }
-  const assumed = new Set<number>();
+  const unlogged = new Set<number>();
   for (const g of boundedGaps(items, today)) {
-    const counting = [...g.before, ...g.after].filter((p) => status[p.idx].counts);
     if (!g.before.some((p) => status[p.idx].counts) || !g.after.some((p) => status[p.idx].counts)) continue;
-    const first = Math.min(...counting.map((p) => status[p.idx].from));
-    for (let d = Math.max(g.from, first); d <= g.to; d++) {
-      days.add(d);
-      assumed.add(d);
-    }
+    for (let d = g.from; d <= g.to; d++) unlogged.add(d);
   }
   const atSeaOnly = new Set([...seaDays].filter((d) => !onLand.has(d)));
-  return { days, at_sea: atSeaOnly, assumed };
+  return { days, at_sea: atSeaOnly, unlogged };
 }
 
 export function schengenDays(stays: Stay[], today: string): Set<number> {
@@ -416,8 +415,8 @@ export interface SchengenSummary {
   next_release: { date: string; remaining: number } | null;
   /** Of `used`, days at sea counted because you sailed from a Schengen port. */
   at_sea_days: number;
-  /** Of `used`, days with nothing logged, counted because the stays either side count. */
-  assumed_days: number;
+  /** Days in the window with nothing logged between two Schengen stays. Not in `used` (treated as outside the area). */
+  unlogged_days: number;
   /** Ids of at-sea stays that count (to label them in the list). */
   at_sea_counted_ids: string[];
   plan: SchengenPlanResult | null;
@@ -499,7 +498,7 @@ export function schengenSummary(
     future_segments: futureSegments,
     next_release: nextRelease,
     at_sea_days: windowCount(detail.at_sea, t),
-    assumed_days: windowCount(detail.assumed, t),
+    unlogged_days: windowCount(detail.unlogged, t),
     at_sea_counted_ids: stays
       .filter((st, i) => st.id && st.country_code.toUpperCase() === AT_SEA_CODE && status[i].counts)
       .map((st) => st.id as string),

@@ -53,9 +53,11 @@
  * Caution policy (owner's rule, 2026-11-22: err on the side of caution with
  * any unknown or ambiguous day count). Where a day is unknown the app counts
  * it: microstates and Gibraltar as above; on-board days in a Schengen port
- * (switch on by default); days at sea after a Schengen port (unless switched
- * off: cleared out with an exit check); unlogged days between two stays that
- * count. See schengenDayDetail in presence.ts and the research doc.
+ * (switch on by default); days at sea straight after a Schengen port (unless
+ * switched off: cleared out with an exit check). Exception (owner's rule,
+ * 2026-11-23): days with nothing logged are time outside the area and are not
+ * counted; the card shows how many lie between two Schengen stays so the user
+ * can log them. See schengenDayDetail in presence.ts and the research doc.
  *
  * Outermost regions: the Canary Islands (ES), Azores and Madeira (PT) are in
  * the area and use their country's code. French territories outside Europe

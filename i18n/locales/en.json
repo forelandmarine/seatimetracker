@@ -550,10 +550,10 @@
       "release_other": "If you spend no more days in the area, days start coming back from {{date}} ({{count}} days left then).",
       "atSea_one": "Includes {{count}} day at sea after a Schengen port.",
       "atSea_other": "Includes {{count}} days at sea after a Schengen port.",
-      "assumed_one": "Includes {{count}} day with nothing logged between two Schengen stays, counted to be safe. Log where you were to take it out.",
-      "assumed_other": "Includes {{count}} days with nothing logged between two Schengen stays, counted to be safe. Log where you were to take them out.",
+      "unlogged_one": "{{count}} day with nothing logged between two Schengen stays is treated as outside the area. If you were in the area, log it.",
+      "unlogged_other": "{{count}} days with nothing logged between two Schengen stays are treated as outside the area. If you were in the area, log them.",
       "today": "Today",
-      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Days in Monaco, San Marino, the Vatican and Andorra are counted, and days in Gibraltar from 15 July 2026. Days at sea after a Schengen port count unless you turn that stay off, and days with nothing logged between two Schengen stays count too. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
+      "disclaimer": "Guidance, not legal advice. Entry and exit days both count. Days in Monaco, San Marino, the Vatican and Andorra are counted, and days in Gibraltar from 15 July 2026. Days at sea straight after a Schengen port count unless you turn that stay off. Days with nothing logged are treated as outside the area, so log every stay in the area. Time on a residence permit or long-stay visa does not count, so do not log it here. Check with the border authority if unsure."
     },
     "plan": {
       "button": "Try a trip",

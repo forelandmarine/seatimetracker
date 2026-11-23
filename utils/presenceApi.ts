@@ -66,8 +66,8 @@ export interface SchengenSummary {
   next_release: { date: string; remaining: number } | null;
   /** Of `used`, days at sea counted because you sailed from a Schengen port (older backends omit it). */
   at_sea_days?: number;
-  /** Of `used`, unlogged days counted because the stays either side count. */
-  assumed_days?: number;
+  /** Days with nothing logged between two Schengen stays; not in `used` (treated as outside the area). */
+  unlogged_days?: number;
   /** Ids of at-sea stays that count for Schengen. */
   at_sea_counted_ids?: string[];
   plan: SchengenPlan | null;

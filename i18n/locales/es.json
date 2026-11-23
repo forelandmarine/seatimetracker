@@ -548,10 +548,10 @@
       "release_other": "Si no pasas más días en el espacio, desde el {{date}} empiezas a recuperar días (te quedarán {{count}} días).",
       "atSea_one": "Incluye {{count}} día en el mar después de un puerto Schengen.",
       "atSea_other": "Incluye {{count}} días en el mar después de un puerto Schengen.",
-      "assumed_one": "Incluye {{count}} día sin nada anotado entre dos estancias Schengen, que se cuenta por precaución. Anota dónde estuviste para quitarlo.",
-      "assumed_other": "Incluye {{count}} días sin nada anotado entre dos estancias Schengen, que se cuentan por precaución. Anota dónde estuviste para quitarlos.",
+      "unlogged_one": "{{count}} día sin nada anotado entre dos estancias Schengen se trata como fuera del espacio. Si estuviste dentro, anótalo.",
+      "unlogged_other": "{{count}} días sin nada anotado entre dos estancias Schengen se tratan como fuera del espacio. Si estuviste dentro, anótalos.",
       "today": "Hoy",
-      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. Se cuentan los días en Mónaco, San Marino, el Vaticano y Andorra, y los días en Gibraltar desde el 15 de julio de 2026. Los días en el mar después de un puerto Schengen cuentan salvo que desactives esa estancia, y también cuentan los días sin nada anotado entre dos estancias Schengen. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
+      "disclaimer": "Orientación, no asesoramiento legal. Cuentan los días de entrada y de salida. Se cuentan los días en Mónaco, San Marino, el Vaticano y Andorra, y los días en Gibraltar desde el 15 de julio de 2026. Los días en el mar justo después de un puerto Schengen cuentan salvo que desactives esa estancia. Los días sin nada anotado se tratan como fuera del espacio, así que anota todas tus estancias dentro. El tiempo con permiso de residencia o visado de larga duración no cuenta, así que no lo anotes aquí. Consulta con la autoridad fronteriza si tienes dudas."
     },
     "plan": {
       "button": "Probar un viaje",

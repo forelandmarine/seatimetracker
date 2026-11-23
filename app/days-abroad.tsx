@@ -343,7 +343,7 @@ function SchengenCard({ summary, styles, fmt, onPlan }: { summary: PresenceSumma
         ) : null}
         {s.future_breach && <Text style={styles.warning}>{t('daysAbroad.schengen.futureBreach', { date: fmt(s.future_breach) })}</Text>}
         {!!s.at_sea_days && <Text style={styles.small}>{t('daysAbroad.schengen.atSea', { count: s.at_sea_days })}</Text>}
-        {!!s.assumed_days && <Text style={styles.warning}>{t('daysAbroad.schengen.assumed', { count: s.assumed_days })}</Text>}
+        {!!s.unlogged_days && <Text style={styles.warning}>{t('daysAbroad.schengen.unlogged', { count: s.unlogged_days })}</Text>}
         {s.next_release && s.used > 0 && (
           <Text style={styles.small}>{t('daysAbroad.schengen.release', { date: fmt(s.next_release.date), count: s.next_release.remaining })}</Text>
         )}
