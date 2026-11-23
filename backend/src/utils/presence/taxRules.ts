@@ -65,7 +65,18 @@ export type TaxTest =
    * whether the break days count towards the length (Sweden, Denmark) or only
    * days present do (Croatia).
    */
-  | { type: 'continuous'; months?: number; days?: number; cmp: 'gt' | 'gte'; breakDays: number; countBreaks: boolean }
+  | {
+      type: 'continuous';
+      months?: number;
+      days?: number;
+      cmp: 'gt' | 'gte';
+      breakDays: number;
+      countBreaks: boolean;
+      /** 'adjacent_stay': a break joins when no longer than the stay before or after it (max 183 days); breakDays is then unused. */
+      breakRule?: 'adjacent_stay';
+      /** A break with time on board outside the country (work abroad) ends the stay. */
+      workBreaksEnd?: boolean;
+    }
   /** Gibraltar: at least `days` in the tax year, or more than `total` over `years` consecutive tax years. */
   | { type: 'year_or_multi'; days: number; cmp: 'gt' | 'gte'; years: number; total: number };
 
@@ -222,14 +233,16 @@ export const TAX_RULES: Record<string, TaxRule> = {
     country: 'HR',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
-    // Opci porezni zakon art. 43(5) (NN 115/16, same wording to NN 114/22): habitual residence = a continuous or
+    // Opci porezni zakon art. 43(5) (unchanged by NN 152/24 and 151/25): habitual residence = a permanent or
     // connected stay of at least 183 days in one or two calendar years; short breaks of up to a year are disregarded.
-    // The law does not say how arrival and departure days count; any part of a day is the cautious reading.
+    // The law does not say whether break days count (the app counts only days present) or how arrival and departure
+    // days count (any part of a day). Domicile (art. 43(1)): an owned or used home for 183 days, no stay needed.
     test: { type: 'continuous', days: 183, cmp: 'gte', breakDays: 365, countBreaks: false },
-    note: 'A stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Breaks of up to a year do not end the stay, but only days in Croatia count towards the 183. A home in Croatia that you own or have use of for at least 183 days also makes you resident. The seafarer income exemption (183 days sailing in international traffic) is a separate rule.',
+    note: 'A permanent or connected stay of at least 183 days in Croatia, in one calendar year or across two, makes it your habitual residence. Short breaks of up to a year do not end the stay. The law does not say whether break days count, so the app counts only your days in Croatia towards the 183. A home in Croatia that you own or have use of for at least 183 days makes you resident whatever your days abroad. The seafarer income exemption (183 days on ships in international traffic) is a separate rule.',
     sources: [
       'https://narodne-novine.nn.hr/clanci/sluzbeni/2016_12_115_2519.html',
       'https://porezna-uprava.gov.hr/hr/opcenito-o-dohotku/4774',
+      'https://www.zakon.hr/z/100/Op%C4%87i-porezni-zakon',
     ],
   },
   PL: {
@@ -258,10 +271,12 @@ export const TAX_RULES: Record<string, TaxRule> = {
     country: 'GR',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part', // AADE circular E.2064/2023 s. 7: any day present, however short
-    // Income Tax Code (law 4172/2013) art. 4(2): more than 183 days in total in any 12-month period.
+    // Income Tax Code (law 4172/2013) art. 4(2): more than 183 days in total in any 12-month period. Stays only for
+    // tourism or medical reasons up to 365 days are left out (not built: rare for crew; the note says so).
     test: { type: 'rolling', tests: [{ days: 183, cmp: 'gt', months: 12 }], window: 'end' },
-    note: 'More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Any part of a day counts. Your permanent home or centre of vital interests in Greece also makes you resident.',
+    note: 'More than 183 days in Greece in total in any 12 months makes you resident from your first day there, for the year the 183 days are passed. Any part of a day counts, including the days you arrive and leave; days abroad do not. Days spent only on holiday or for medical treatment are left out, unless such a stay passes 365 days. Your permanent home or centre of vital interests in Greece also makes you resident.',
     sources: [
+      'https://www.aade.gr/sites/default/files/2023-10/e_2064_2023.pdf',
       'https://www.taxheaven.gr/circulars/45169/e-2064-2023',
     ],
   },
@@ -269,24 +284,28 @@ export const TAX_RULES: Record<string, TaxRule> = {
     country: 'MT',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part', // not set by law; any part of a day is the cautious reading
-    // Income Tax Act Cap. 123 art. 2 has no day number. Malta's OECD residency sheet: more than six months
-    // (more than 183 days) in a calendar year makes residence likely. Shown as a guide.
+    // Income Tax Act Cap. 123 art. 2 has no day number (consolidated 10/03/2026). MTCA tax residence page (updated
+    // 29/08/2025): more than 183 days in any particular year = resident for that year; settlers resident from arrival.
+    // Shown as a guide. No seafarer residence rule found (art. 56(17) 15% rate excludes ship service).
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'Malta has no day test in law: residence depends on all the facts. Malta\'s guidance says more than six months (183 days) in a calendar year makes you likely to be resident, so the app uses that as a guide. Your home, ties and how often you visit also count.',
+    note: 'Malta has no day test in law: residence depends on all the facts. The tax authority says more than 183 days in Malta in a year makes you resident for that year, so the app uses that as a guide. If you move to Malta to settle, you are resident from the day you arrive. Your home, ties and how often you visit also count.',
     sources: [
       'https://legislation.mt/eli/cap/123/eng',
+      'https://mtca.gov.mt/personal-tax/individual/tax-residence',
       'https://www.oecd.org/tax/automatic-exchange/crs-implementation-and-assistance/tax-residency/Malta-Residency.pdf',
     ],
   },
   CY: {
     country: 'CY',
     yearStart: { month: 1, day: 1 },
-    counting: 'departure_out', // Income Tax Law 118(I)/2002 s. 2, as set out in Cyprus's OECD residency sheet
-    // More than 183 days in the tax year. 60-day rule (user switch tax_options.cy_60_day): at least 60 days, plus
-    // not resident elsewhere, not more than 183 days in another state, work or business in Cyprus, a home in Cyprus.
+    counting: 'departure_out', // Income Tax Law 118(I)/2002 s. 2 (consolidated text, CyLaw)
+    // More than 183 days in the tax year. 60-day rule (user switch tax_options.cy_60_day): at least 60 days, not
+    // more than 183 days in any one other state, work/business/office in Cyprus not ended in the year, a home in
+    // Cyprus. The 2025 reform (gazetted 31 Dec 2025, from tax year 2026) dropped "not resident in another state".
     test: { type: 'threshold', days: 183, cmp: 'gt' },
-    note: 'More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you are not tax resident anywhere else, spent no more than 183 days in any other country, work or run a business in Cyprus and have a home there: switch it on below if that is you.',
+    note: 'More than 183 days in Cyprus in a calendar year. The day you leave counts as a day outside Cyprus and the day you arrive as a day in. Under the 60-day rule, 60 days can be enough if you spent no more than 183 days in any one other country, work, run a business or hold an office in Cyprus all year and have a home there: switch it on below if that is you. Until 2025 you also had to be tax resident nowhere else.',
     sources: [
+      'https://www.cylaw.org/nomoi/enop/non-ind/2002_1_118/full.html',
       'https://www.oecd.org/tax/automatic-exchange/crs-implementation-and-assistance/tax-residency/Cyprus-Tax-Residency.pdf',
     ],
   },
@@ -321,13 +340,17 @@ export const TAX_RULES: Record<string, TaxRule> = {
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
     // Inkomstskattelagen 3 kap. 3 s: stadigvarande vistelse. Skatteverket: at least six months in a row; shorter
-    // breaks do not interrupt the stay (no number given; the app uses six weeks, as for Germany).
+    // breaks (e.g. visits home) do not interrupt it; HFD 2018 ref. 30 / RA 1997 ref. 25: temporary breaks carry no
+    // weight. No number in law or guidance. Skatteverket's 2005 position (dnr 130 92654-05/111, seen only in
+    // secondary sources): a break is temporary if no longer than the stay before or after it; over six months abroad
+    // always ends it. The app uses that, and counts the break days.
     // Prop. 2025/26:306 (vote planned 25 Nov 2026) would replace this from 1 Jan 2027 with more than 160 days in the
     // year (120 if the year before was over 120). Not built until passed.
-    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 42, countBreaks: true },
-    note: 'A stay in Sweden of at least six months in a row makes you resident. Shorter breaks do not end the stay; the law gives no limit, and the app joins stays across breaks of up to six weeks. A home in Sweden, or close ties after you leave, can also make you resident. A new rule (more than 160 days in a year) is planned from 2027.',
+    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 0, countBreaks: true, breakRule: 'adjacent_stay' },
+    note: 'A stay in Sweden of at least six months in a row makes you resident. Temporary breaks, such as visits home, do not end the stay and count towards the six months. The law gives no limit; the app treats a break as temporary when it is no longer than your stay in Sweden before or after it, and never over six months. A home in Sweden, or close ties after you leave, can also make you resident. A new rule (more than 160 days in a year) is planned from 2027.',
     sources: [
-      'https://www.skatteverket.se/privat/skatter/arbeteochinkomst/sabeskattasdinlon/skattskyldighet',
+      'https://www.skatteverket.se/privat/skatter/arbeteochinkomst/sabeskattasdinlon/skattskyldighet.4.65fc817e1077c25b8328000206.html',
+      'https://lagen.nu/dom/hfd/2018:30',
     ],
   },
   NO: {
@@ -353,11 +376,13 @@ export const TAX_RULES: Record<string, TaxRule> = {
     country: 'DK',
     yearStart: { month: 1, day: 1 },
     counting: 'any_part',
-    // Kildeskatteloven s. 1(1)(2): a stay of at least 6 months, including short holiday trips abroad. Den juridiske
-    // vejledning C.F.1.3: the stay must be unbroken; work abroad breaks it. The app cannot tell holiday from work,
-    // so it joins breaks of up to six weeks (cautious) and the note says work abroad ends the stay.
-    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 42, countBreaks: true },
-    note: 'A stay in Denmark of at least six months in a row makes you resident. Short holiday trips abroad do not end the stay, but working abroad does. The app joins stays across breaks of up to six weeks, so check any break when you worked abroad yourself. A home in Denmark makes you resident whatever the days, and Danish citizens on ships with a Danish home port usually stay resident.',
+    // Kildeskatteloven s. 1(1)(2): a stay of at least 6 months, including short stays abroad for holiday or similar.
+    // Den juridiske vejledning C.F.1.3: holiday trips count towards the 6 months; work abroad breaks the stay;
+    // frequent breaks can too (SKM2021.217.SR: business trips are not holiday). No number of days is given (the
+    // 42 days in LL s. 33 A is a different rule). The app joins a break no longer than the stay before or after it
+    // (max six months) unless it has time on board outside Denmark, which it treats as work abroad.
+    test: { type: 'continuous', months: 6, cmp: 'gte', breakDays: 0, countBreaks: true, breakRule: 'adjacent_stay', workBreaksEnd: true },
+    note: 'A stay in Denmark of at least six months in a row makes you resident. Short holiday trips abroad do not end the stay and count towards the six months, but working abroad ends it, and so can frequent breaks. The law gives no limit; the app joins a break that is no longer than your stay before or after it, unless you logged time on board outside Denmark in it. A home in Denmark makes you resident whatever the days, and Danish citizens on ships with a Danish home port usually stay resident.',
     sources: [
       'https://www.retsinformation.dk/eli/lta/2024/460/pdf',
     ],

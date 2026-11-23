@@ -581,6 +581,7 @@ function bestRunTouching(
   breakDays = 0,
   neededFor: (start: number) => number = (start) => deSixMonthsPassed(start) - start + 1,
   countBreaks = true,
+  joinBreak?: (gapFrom: number, gapTo: number, before: number, after: number) => boolean,
 ): { length: number; start: number | null; end: number | null; needed: number } {
   let best = { length: 0, start: null as number | null, end: null as number | null, needed: 183 };
   let bestMargin = -Infinity;
@@ -588,7 +589,14 @@ function bestRunTouching(
   const joined: Array<{ start: number; end: number }> = [];
   for (const r of runsOf(days)) {
     const last = joined[joined.length - 1];
-    if (last && r.start - last.end - 1 <= breakDays) last.end = r.end;
+    const gapFrom = last ? last.end + 1 : 0;
+    const gapTo = r.start - 1;
+    const join = last
+      ? joinBreak
+        ? joinBreak(gapFrom, gapTo, countIn(days, last.start, last.end), r.end - r.start + 1)
+        : gapTo - gapFrom + 1 <= breakDays
+      : false;
+    if (join) last!.end = r.end;
     else joined.push({ ...r });
   }
   for (const r of joined) {
@@ -702,6 +710,13 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
   const yearStart = rule?.yearStart ?? { month: 1, day: 1 };
   const { days, assumed } = taxDays(stays, country, today, counting, opts);
   const anyDays = stayDays(stays, today, () => true, 'any_part');
+  // Days working abroad: on board, at sea or in another country's waters (Denmark's break rule).
+  const workAbroad = stayDays(
+    stays,
+    today,
+    (s) => s.country_code !== country && (s.kind === 'on_board' || s.country_code.toUpperCase() === AT_SEA_CODE),
+    'any_part',
+  );
   const t = dayNum(today);
   const currentStartYear = Number(taxYearStart(yearStart, today).slice(0, 4));
 
@@ -832,7 +847,18 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
             const over = Number(isoOf(target).slice(8, 10)) === Number(iso.slice(8, 10)) ? target : target + 1;
             return (test.cmp === 'gte' ? over - 1 : over) - start + 1;
           };
-          const run = bestRunTouching(days, from, to, test.breakDays, neededFor, test.countBreaks);
+          // Sweden/Denmark give no number for a short break: it may be no longer than the stay before or after it,
+          // and never more than six months. Denmark: work abroad (time on board outside Denmark) ends the stay.
+          const joinBreak =
+            test.breakRule === 'adjacent_stay'
+              ? (gf: number, gt: number, before: number, after: number) => {
+                  const len = gt - gf + 1;
+                  if (len > 183 || len > Math.max(before, after)) return false;
+                  if (test.workBreaksEnd) for (let d = gf; d <= gt; d++) if (workAbroad.has(d)) return false;
+                  return true;
+                }
+              : undefined;
+          const run = bestRunTouching(days, from, to, test.breakDays, neededFor, test.countBreaks, joinBreak);
           status = statusFor(run.start != null && run.length >= run.needed, run.start != null && run.length >= run.needed - NEAR_MARGIN);
           need = Math.max(0, run.needed - run.length);
           detail.threshold = run.needed;

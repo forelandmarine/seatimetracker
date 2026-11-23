@@ -431,15 +431,30 @@ describe("tax rules added 2026-11-23", () => {
     expect(m.status).toBe("met");
   });
 
-  test("Sweden and Denmark: six months in a row, breaks of up to six weeks joined", () => {
+  test("Sweden and Denmark: six months in a row; a break joins when no longer than the stay either side", () => {
     for (const c of ["SE", "DK"]) {
       // 1 Jan to 30 Jun = six months (at least six months: met).
       expect(y(rawTaxSummary([stay(c, "2026-01-01", "2026-06-30")], c, T)).status).toBe("met");
       expect(y(rawTaxSummary([stay(c, "2026-01-01", "2026-06-29")], c, T)).status).toBe("near");
-      // A three-week trip away joins.
+      // A three-week holiday ashore joins.
       const trip = [stay(c, "2026-01-01", "2026-03-31"), stay("GB", "2026-04-01", "2026-04-21"), stay(c, "2026-04-22", "2026-07-15")];
       expect(y(rawTaxSummary(trip, c, T)).status).toBe("met");
+      // A 60-day break between a 90-day and a 40-day stay joins (shorter than the 90 days before it).
+      const long = [stay(c, "2026-01-01", "2026-03-31"), stay("GB", "2026-04-01", "2026-05-30"), stay(c, "2026-05-31", "2026-07-09")];
+      expect(y(rawTaxSummary(long, c, T)).detail.longest_stay).toBe(190);
+      // A 50-day break between two 30-day stays does not (longer than both).
+      const short = [stay(c, "2026-01-01", "2026-01-30"), stay("GB", "2026-01-31", "2026-03-21"), stay(c, "2026-03-22", "2026-04-20")];
+      expect(y(rawTaxSummary(short, c, T)).detail.longest_stay).toBe(30);
     }
+  });
+
+  test("Denmark: time on board outside Denmark (work abroad) ends the stay; Sweden ignores it", () => {
+    const work = [stay("DK", "2026-01-01", "2026-03-31"), stay("NO", "2026-04-01", "2026-04-21", { kind: "on_board" }), stay("DK", "2026-04-22", "2026-07-15")];
+    expect(y(rawTaxSummary(work, "DK", T)).status).not.toBe("met");
+    const se = work.map((s) => (s.country_code === "DK" ? { ...s, country_code: "SE" } : s));
+    expect(y(rawTaxSummary(se, "SE", T)).status).toBe("met");
+    const atSea = [stay("DK", "2026-01-01", "2026-03-31"), stay("ZZ", "2026-04-01", "2026-04-10"), stay("DK", "2026-04-11", "2026-07-15")];
+    expect(y(rawTaxSummary(atSea, "DK", T)).status).not.toBe("met");
   });
 
   test("Croatia: 183 days present in one connected stay, breaks up to a year, across the year end", () => {
