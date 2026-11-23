@@ -154,7 +154,10 @@ beforeEach(() => {
   calls = [];
   resetPreviewBudgets();
   resetCreditCache();
+  // These tests cover the 10-day history check; the default info mode has its own block below.
+  process.env.VESSEL_PREVIEW_MODE = "history";
 });
+afterAll(() => { delete process.env.VESSEL_PREVIEW_MODE; });
 
 describe("previewVessel", () => {
   test("one vessel_history call confirms the boat and gives days underway", async () => {
@@ -257,5 +260,48 @@ describe("previewVessel", () => {
     const h = calls.filter((c) => c.kind === "history");
     expect(h).toHaveLength(1);
     expect(h[0]).toMatchObject({ from: "2026-11-17", to: "2026-11-22" });
+  });
+});
+
+describe("previewVessel, default mode (fewest credits)", () => {
+  beforeEach(() => { delete process.env.VESSEL_PREVIEW_MODE; });
+
+  test("one vessel_info call (1 credit), no history call, stat only from cache", async () => {
+    const f = fakeApp();
+    f.only(BOAT);
+    mockDatalastic({ [`mmsi:${BOAT}`]: { positions: boatTrack } }, 15_000, {
+      [BOAT]: { mmsi: BOAT, name: "CALAMITY", country_iso: "GB" },
+    });
+    const r = await previewVessel(f.app, "u1", { mmsi: BOAT }, { subscribed: false, today: TODAY });
+    expect(r.status).toBe("live");
+    expect(r.source).toBe("info");
+    expect(r.activity).toBeNull();
+    expect(calls.filter((c) => c.kind === "history")).toHaveLength(0);
+    expect(paid()).toHaveLength(1);
+  });
+
+  test("an old MMSI answers 404 and the alternate MMSI is the one found", async () => {
+    const f = fakeApp();
+    f.only(BOAT);
+    mockDatalastic({}, 15_000, { [OTHER]: { mmsi: OTHER, name: "CALAMITY", country_iso: "CK" } });
+    const r = await previewVessel(f.app, "u1", { mmsi: BOAT, alt_mmsis: [OTHER] }, { subscribed: false, today: TODAY });
+    expect(r.status).toBe("live");
+    expect(r.vessel?.mmsi).toBe(OTHER);
+    expect(r.note).toBe(`Formerly MMSI ${BOAT}`);
+    expect(paid()).toHaveLength(1);
+  });
+
+  test("a crewmate's cached days still give the activity line for free", async () => {
+    process.env.VESSEL_PREVIEW_MODE = "history";
+    const f = fakeApp();
+    f.only(BOAT);
+    mockDatalastic({ [`mmsi:${BOAT}`]: { positions: boatTrack } });
+    await previewVessel(f.app, "crewmate", { mmsi: BOAT }, { subscribed: true, today: TODAY });
+    delete process.env.VESSEL_PREVIEW_MODE;
+    calls = [];
+    const r = await previewVessel(f.app, "u2", { mmsi: BOAT }, { subscribed: false, today: TODAY });
+    expect(r.source).toBe("cache");
+    expect(r.activity?.days_underway).toBe(3);
+    expect(paid()).toHaveLength(0);
   });
 });

@@ -461,7 +461,8 @@ export default function PaywallScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Image
-              source={require('@/assets/images/8331a0b9-33c9-4ff2-93d0-772c257bd0c9.png')}
+              // White mark in dark mode, the blue one on the light background (as on the sign-in screen).
+              source={isDark ? require('@/assets/images/8331a0b9-33c9-4ff2-93d0-772c257bd0c9.png') : require('@/assets/images/8044436c-d8cf-489e-bf5f-7a7114b33cc0.png')}
               style={styles.logo}
               resizeMode="contain"
             />
