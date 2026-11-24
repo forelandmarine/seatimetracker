@@ -215,3 +215,59 @@ export async function resolveDestinationPort(
   });
   return value;
 }
+
+/** The fields of a sea time entry the live-passage helpers below need. */
+export interface EntrySpan {
+  start_time: Date;
+  end_time: Date | null;
+}
+
+/**
+ * The open entry a new movement window may extend: the one on the window's
+ * calendar day that ends latest. When a stop ends a passage and a new entry is
+ * started on the same day, the day holds two open entries; picking the latest
+ * keeps later checks extending the new passage instead of re-testing the old
+ * one, which ended before the stop and so started yet another entry each time.
+ */
+export function latestEntryOnDay<E extends EntrySpan>(
+  entries: E[],
+  calendarDay: string,
+  dayOf: (d: Date) => string
+): E | undefined {
+  let best: E | undefined;
+  for (const e of entries) {
+    if (dayOf(e.start_time) !== calendarDay) continue;
+    const end = (e.end_time ?? e.start_time).getTime();
+    const bestEnd = best ? (best.end_time ?? best.start_time).getTime() : -Infinity;
+    if (!best || end > bestEnd || (end === bestEnd && e.start_time > best.start_time)) best = e;
+  }
+  return best;
+}
+
+/**
+ * Where a new live entry for the window [windowStart, windowEnd] may start
+ * without overlapping time already logged on the vessel. The window starts at
+ * the check from about two hours ago, so it often reaches back into the
+ * previous entry (that entry was extended to a check after windowStart, for
+ * example just after midnight, or after a long gap between checks).
+ *
+ * Returns the entry, already running at windowStart, that the new one must
+ * start after (null when there is none), or 'covered' when that entry already
+ * reaches windowEnd.
+ */
+export function overlappingPredecessor<E extends EntrySpan>(
+  entries: E[],
+  windowStart: Date,
+  windowEnd: Date
+): E | null | 'covered' {
+  let latest: E | null = null;
+  for (const e of entries) {
+    if (!e.end_time) continue;
+    // Only entries already under way when the window opens: one that starts
+    // inside the window is left alone (clamping to it would drop the time before it).
+    if (e.start_time > windowStart || e.end_time <= windowStart) continue;
+    if (!latest || e.end_time > (latest.end_time as Date)) latest = e;
+  }
+  if (!latest) return null;
+  return (latest.end_time as Date) >= windowEnd ? 'covered' : latest;
+}

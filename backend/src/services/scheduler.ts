@@ -1,4 +1,4 @@
-import { eq, and, desc, isNotNull, lte, gte, isNull, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, isNotNull, lte, gte, isNull, sql, inArray, ne } from 'drizzle-orm';
 import { formatHoursMinutes } from '../utils/duration.js';
 import * as schema from '../db/schema.js';
 import * as authSchema from '../db/auth-schema.js';
@@ -10,7 +10,7 @@ import { fetchRevenueCatSubscription } from '../routes/subscription.js';
 import { sendDay3Email, sendDay7Email } from '../utils/welcomeEmail.js';
 import { classifyFixForStorage } from '../utils/seaAreas/classifyFix.js';
 import { enrichEntryClassification } from '../utils/seaAreas/enrichEntry.js';
-import { classifyActivity, hasArrivedAtDestination, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
+import { classifyActivity, hasArrivedAtDestination, latestEntryOnDay, overlappingPredecessor, resolveDestinationPort, shouldCloseVoyageAtStop } from '../utils/voyageState.js';
 import { sendPushToUser } from '../utils/push.js';
 import { processHistoryImports } from './historyImport.js';
 import { processPassageRefinements } from './passageRefinement.js';
@@ -1052,7 +1052,7 @@ async function handleSeaTimeEntries(
 
   const latDiff = Math.abs(currentLat - oldLat);
   const lngDiff = Math.abs(currentLng - oldLng);
-  const maxDiff = Math.max(latDiff, lngDiff);
+  let maxDiff = Math.max(latDiff, lngDiff);
 
   app.logger.info(
     {
@@ -1083,10 +1083,10 @@ async function handleSeaTimeEntries(
 
   // Calculate duration of this 2-hour window
   const durationMs = currentCheck.check_time.getTime() - oldCheck.check_time.getTime();
-  const durationHours = Math.round((durationMs / (1000 * 60 * 60)) * 100) / 100;
+  let durationHours = Math.round((durationMs / (1000 * 60 * 60)) * 100) / 100;
 
   // Calculate distance in Nautical Miles using Haversine formula
-  const distanceNm = calculateDistanceNauticalMiles(oldLat, oldLng, currentLat, currentLng);
+  let distanceNm = calculateDistanceNauticalMiles(oldLat, oldLng, currentLat, currentLng);
 
   app.logger.info(
     {
@@ -1140,11 +1140,11 @@ async function handleSeaTimeEntries(
       )
     );
 
-  // Filter for entries on the same calendar day
-  const sameDayEntry = existingEntries.find(entry => {
-    const entryDay = getCalendarDay(entry.start_time);
-    return entryDay === calendarDay;
-  });
+  // The open entry on the same calendar day that ends latest. A day can hold two
+  // (a stop ended one passage and a new one began), and the earlier one must not
+  // be picked: the stop rule below would close it again on every check and a new
+  // entry would be created each time instead of the new passage being extended.
+  const sameDayEntry = latestEntryOnDay(existingEntries, calendarDay, getCalendarDay);
 
   // Anchor rules. If the vessel lay stopped between the end of that entry and
   // the start of this movement window, the stop may have ended the passage:
@@ -1293,6 +1293,48 @@ async function handleSeaTimeEntries(
       return;
     }
 
+    // The window opens at the check from about two hours ago, which can sit
+    // inside an entry that was extended past it (the previous day's passage runs
+    // on past midnight, or checks were hours apart). Start after that entry so
+    // the same hours are never logged twice, and add nothing if it already
+    // covers the whole window.
+    const loggedEntries = await app.db
+      .select()
+      .from(schema.sea_time_entries)
+      .where(
+        and(
+          eq(schema.sea_time_entries.vessel_id, vesselId),
+          ne(schema.sea_time_entries.status, 'rejected')
+        )
+      );
+    const predecessor = overlappingPredecessor(loggedEntries, oldCheck.check_time, currentCheck.check_time);
+    if (predecessor === 'covered') {
+      app.logger.debug(
+        { vesselId, mmsi, userId, windowStart: oldCheck.check_time.toISOString(), windowEnd: currentCheck.check_time.toISOString() },
+        `Skipping entry creation: an existing entry already covers this window`
+      );
+      return;
+    }
+
+    let startTime = oldCheck.check_time;
+    let startLat = oldLat;
+    let startLng = oldLng;
+    if (predecessor?.end_time) {
+      startTime = predecessor.end_time;
+      if (predecessor.end_latitude != null && predecessor.end_longitude != null) {
+        startLat = parseFloat(String(predecessor.end_latitude));
+        startLng = parseFloat(String(predecessor.end_longitude));
+      }
+      durationHours = Math.round(((currentCheck.check_time.getTime() - startTime.getTime()) / (1000 * 60 * 60)) * 100) / 100;
+      distanceNm = calculateDistanceNauticalMiles(startLat, startLng, currentLat, currentLng);
+      maxDiff = Math.max(Math.abs(currentLat - startLat), Math.abs(currentLng - startLng));
+      app.logger.info(
+        { vesselId, mmsi, userId, predecessorId: predecessor.id, windowStart: oldCheck.check_time.toISOString(), startTime: startTime.toISOString() },
+        `New entry for ${vessel_name} starts at the end of entry [${predecessor.id}] instead of overlapping it`
+      );
+      if (durationHours === 0) return;
+    }
+
     // CREATE a new pending sea time entry
     const notes = `Movement detected: vessel moved ${distanceNm} nm (${Math.round(maxDiff * 10000) / 10000}°) over ${formatHoursMinutes(durationHours)}`;
 
@@ -1308,11 +1350,11 @@ async function handleSeaTimeEntries(
         .values({
           user_id: vessel.user_id,
           vessel_id: vesselId,
-          start_time: oldCheck.check_time,
+          start_time: startTime,
           end_time: currentCheck.check_time,
           duration_hours: String(durationHours),
-          start_latitude: String(oldLat),
-          start_longitude: String(oldLng),
+          start_latitude: String(startLat),
+          start_longitude: String(startLng),
           end_latitude: String(currentLat),
           end_longitude: String(currentLng),
           status: newLiveEntryStatus(entryStatus, commercial),
@@ -1332,8 +1374,8 @@ async function handleSeaTimeEntries(
           mmsi,
           userId,
           entryId: new_entry.id,
-          startTime: oldCheck.check_time.toISOString(),
-          startPosition: `(${oldLat}, ${oldLng})`,
+          startTime: startTime.toISOString(),
+          startPosition: `(${startLat}, ${startLng})`,
           endTime: currentCheck.check_time.toISOString(),
           endPosition: `(${currentLat}, ${currentLng})`,
           durationHours,
@@ -1342,7 +1384,7 @@ async function handleSeaTimeEntries(
           positionChangeDegrees: Math.round(maxDiff * 10000) / 10000,
           calendarDay,
         },
-        `Created entry [${new_entry.id}] for vessel ${vessel_name}: ${durationHours} hours (MCA compliant: ${isMCACompliant}). Start position: (${oldLat}, ${oldLng}) from ${oldCheck.check_time.toISOString()}`
+        `Created entry [${new_entry.id}] for vessel ${vessel_name}: ${durationHours} hours (MCA compliant: ${isMCACompliant}). Start position: (${startLat}, ${startLng}) from ${startTime.toISOString()}`
       );
     } catch (error) {
       app.logger.error(
