@@ -371,6 +371,13 @@ describe("tax options: Spain certificate, New Zealand visitor (2026-11-23)", () 
     // Days before 1 April 2026 are not part of the visitor count.
     const early = rawTaxSummary([stay("NZ", "2026-03-01", "2026-04-30")], "NZ", "2026-12-31", 2, { nz_visitor: true }).years[0];
     expect(early.detail.best_18_months).toBe(30);
+    // Tax years ending before 1 April 2026 stay on the 183-day rule with the switch on.
+    // 1 Jun 2025 to 31 Jan 2026 = 245 days in tax year 2025/26.
+    const before = rawTaxSummary([stay("NZ", "2025-06-01", "2026-01-31")], "NZ", "2026-12-31", 2, { nz_visitor: true });
+    const y2526 = before.years.find((y) => y.start_date === "2025-04-01")!;
+    expect(y2526.status).toBe("met");
+    expect(y2526.detail.visitor).toBeUndefined();
+    expect(y2526.detail.best_12_months).toBe(245);
   });
 });
 

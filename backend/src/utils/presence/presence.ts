@@ -790,8 +790,9 @@ export function taxCountrySummary(stays: Stay[], country: string, today: string,
           break;
         }
         case 'nz_rolling': {
-          if (opts.nz_visitor) {
+          if (opts.nz_visitor && to >= dayNum(NZ_VISITOR_FROM)) {
             // Non-resident visitor: more than 275 days in any 18-month period, counting from 1 April 2026.
+            // Tax years that end before then stay on the 183-day rule (the visitor rule did not exist).
             const floor = dayNum(NZ_VISITOR_FROM);
             let best = 0;
             let bestEnd: number | null = null;
