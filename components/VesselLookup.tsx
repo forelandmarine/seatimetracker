@@ -83,6 +83,8 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
   const s = createStyles(isDark);
   const { user } = useAuth();
   const [state, setState] = useState<State>({ kind: 'idle' });
+  // The last search found the name but nothing near the typed length: offer the MMSI.
+  const [noLengthMatch, setNoLengthMatch] = useState(false);
   const [unit, setUnit] = useState<Unit>(() => (phoneRegion() === 'US' ? 'ft' : 'm'));
   const unitTouched = useRef(false);
   // What the user typed, in their unit. The parent only ever sees metres.
@@ -180,9 +182,11 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
     if (!canSearch) return;
     setState({ kind: 'searching' });
     try {
-      const { candidates, source } = await lookupVessel(name, typedLength ? String(typedLength) : '', unit);
+      const { candidates, source, lengthMatch } = await lookupVessel(name, typedLength ? String(typedLength) : '', unit);
       trackEvent('vessel_lookup', candidates.length);
       if (source === 'web') trackEvent('vessel_lookup_web', candidates.length);
+      if (lengthMatch === false) trackEvent('vessel_lookup_no_length_match', candidates.length);
+      setNoLengthMatch(lengthMatch === false);
       if (candidates.length) {
         setState({ kind: 'results', candidates });
       } else {
@@ -316,6 +320,21 @@ export default function VesselLookup({ name, onNameChange, length, onLengthChang
           <Text style={s.resultsTitle}>{state.candidates.length === 1 ? 'Is this your vessel?' : 'Which is your vessel?'}</Text>
           {typedLength != null && state.candidates.length > 1 && (
             <Text style={s.resultsSub}>Closest to {typed.trim()} {unit} first</Text>
+          )}
+          {noLengthMatch && typedLength != null && (
+            <View style={s.mmsiPrompt}>
+              <Text style={s.mmsiPromptText}>
+                None of these is close to {typed.trim()} {unit}. If yours isn't listed, enter the MMSI instead. It's on the VHF or AIS unit and the ship's radio licence.
+              </Text>
+              <View style={s.mmsiPromptRow}>
+                <TouchableOpacity onPress={enterMmsi} accessibilityRole="button">
+                  <Text style={s.change}>Enter MMSI</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={openRenamedMail} accessibilityRole="button">
+                  <Text style={s.change}>My vessel was renamed</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
           {state.candidates.map((c) => (
             <TouchableOpacity
@@ -478,6 +497,12 @@ function createStyles(isDark: boolean) {
     results: { marginBottom: 8 },
     resultsTitle: { fontSize: 17, fontWeight: '700', color: text, marginBottom: 4 },
     resultsSub: { fontSize: 13, color: text2, marginBottom: 10 },
+    mmsiPrompt: {
+      borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 6,
+      backgroundColor: withOpacity(colors.primary, 0.08),
+    },
+    mmsiPromptText: { fontSize: 14, color: text, lineHeight: 19 },
+    mmsiPromptRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 10 },
     card: {
       borderWidth: 1, borderColor: border, borderRadius: 10, padding: 14, marginBottom: 10, marginTop: 6,
       backgroundColor: field,

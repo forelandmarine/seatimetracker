@@ -20,6 +20,7 @@ export type AppEvent =
   | 'vessel_lookup'
   | 'vessel_confirmed'
   | 'vessel_lookup_web'
+  | 'vessel_lookup_no_length_match'
   | 'vessel_check'
   | 'vessel_renamed_mail'
   | 'vessel_added'

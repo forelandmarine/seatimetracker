@@ -169,15 +169,19 @@ export async function searchOwnData(db: Db, raw: string, logger: Logger): Promis
  * never overwrite what a user's vessel or Datalastic told us. 'datalastic' rows
  * overwrite and mark the row confirmed; an old name is kept as a former name.
  * 'vessels' rows (seed script) only fill gaps. Returns false if not saved.
+ * opts.confirmed=false saves a Datalastic vessel_find row (registry data, not
+ * an AIS check) without stamping last_confirmed_at.
  */
-export async function upsertVesselIndex(db: Db, row: RawCandidate, source: CandidateSource, logger: Logger): Promise<boolean> {
+export async function upsertVesselIndex(
+  db: Db, row: RawCandidate, source: CandidateSource, logger: Logger, opts: { confirmed?: boolean } = {},
+): Promise<boolean> {
   if (indexMissing) return false;
   const mmsi = String(row.mmsi || '').replace(/\D/g, '');
   const name = cleanVesselName(row.name || '');
   if (!isShipMmsi(mmsi) || !name) return false;
   const imo = row.imo && isImo(String(row.imo)) ? String(row.imo) : null;
   const former = Array.from(new Set((row.former_names || []).map((f) => cleanVesselName(f)).filter((f) => f && f !== name))).slice(0, 20);
-  const confirmed = source === 'datalastic';
+  const confirmed = source === 'datalastic' && opts.confirmed !== false;
 
   const onConflict = source === 'datalastic'
     ? sql`
@@ -197,7 +201,7 @@ export async function upsertVesselIndex(db: Db, row: RawCandidate, source: Candi
         ) AS f WHERE f <> EXCLUDED.name
       ),
       source = 'datalastic',
-      last_confirmed_at = now(),
+      last_confirmed_at = ${confirmed ? sql`now()` : sql`vessel_index.last_confirmed_at`},
       updated_at = now()`
     : sql`
       name = CASE WHEN vessel_index.source = 'web' AND ${source} = 'vessels' THEN EXCLUDED.name ELSE vessel_index.name END,
