@@ -4,9 +4,14 @@
  * checked on AIS before the MMSI is used.
  *
  * GET  /api/vessels/lookup?name=&length=&unit=m|ft
- *   Never calls Datalastic. Searches our own vessel_index and the vessels table
- *   (fuzzy name match, former names, length only ranks). If nothing matches by
- *   name, falls back to a web search (Claude Haiku 5.5, daily cap per user).
+ *   Searches our own vessel_index and the vessels table (fuzzy name match,
+ *   former names, length ranks). If nothing matches by name, falls back to a
+ *   web search (Claude Haiku 5.5, daily cap per user). If a length was typed
+ *   and still nothing is within 10% of it, ONE Datalastic vessel_find by name
+ *   and length window (a few credits at most; cached a day; daily caps per user
+ *   and overall). See services/vesselLookupSearch.ts.
+ *   Returns length_match (false = nothing near the typed length) and
+ *   suggest_mmsi so the app can steer the user to the MMSI field.
  *   No unit = metres (the 2.4 app sends name and length only).
  *
  * POST /api/vessels/lookup/confirm { mmsi, imo?, alt_mmsis? }
@@ -19,11 +24,13 @@ import type { FastifyInstance } from "fastify";
 import type { App } from "../index.js";
 import { extractUserIdFromRequest } from "../middleware/auth.js";
 import {
-  cleanVesselName, normaliseVesselName, parseLength, rankVesselCandidates, vesselFromInfo,
+  cleanVesselName, normaliseVesselName, parseLength, vesselFromInfo, findLengthWindow,
   isShipMmsi, isImo, type LengthUnit, type RawCandidate, type ConfirmedVessel,
 } from "../utils/vesselLookup.js";
 import { searchOwnData, upsertVesselIndex, logLookupMiss } from "../services/vesselIndex.js";
 import { searchVesselOnWeb, webSearchConfigured } from "../services/vesselWebSearch.js";
+import { findVesselsByNameAndLength, vesselFindConfigured } from "../services/vesselFind.js";
+import { runVesselLookup } from "../services/vesselLookupSearch.js";
 import { fetchVesselInfo } from "./ais.js";
 
 const SEARCH_DAILY_LIMIT = Number(process.env.VESSEL_LOOKUP_DAILY_LIMIT || 30);
@@ -32,11 +39,27 @@ const CONFIRM_DAILY_LIMIT = Number(process.env.VESSEL_CONFIRM_DAILY_LIMIT || 10)
 const CACHE_MS = 24 * 60 * 60 * 1000;
 const MAX_CANDIDATES = 5;
 
-const webCache = new Map<string, { at: number; rows: RawCandidate[] }>();
+const FIND_DAILY_LIMIT = Number(process.env.VESSEL_FIND_DAILY_LIMIT || 5);
+// All users together: a ceiling on Datalastic vessel_find calls a day (each costs ~0-5 credits).
+const FIND_GLOBAL_DAILY_LIMIT = Number(process.env.VESSEL_FIND_GLOBAL_DAILY_LIMIT || 200);
+
+type CacheMap = Map<string, { at: number; rows: RawCandidate[] }>;
+const webCache: CacheMap = new Map();
+const findCache: CacheMap = new Map();
 type Counter = Map<string, { day: string; count: number }>;
 const searches: Counter = new Map();
 const webSearches: Counter = new Map();
 const confirms: Counter = new Map();
+const finds: Counter = new Map();
+const findsToday = { day: "", count: 0 };
+
+function underGlobalFindLimit(): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  if (findsToday.day !== day) { findsToday.day = day; findsToday.count = 0; }
+  if (findsToday.count >= FIND_GLOBAL_DAILY_LIMIT) return false;
+  findsToday.count++;
+  return true;
+}
 
 function underDailyLimit(counter: Counter, userId: string, limit: number): boolean {
   const day = new Date().toISOString().slice(0, 10);
@@ -47,10 +70,10 @@ function underDailyLimit(counter: Counter, userId: string, limit: number): boole
   return true;
 }
 
-function pruneCache() {
-  if (webCache.size < 500) return;
+function pruneCache(cache: CacheMap) {
+  if (cache.size < 500) return;
   const now = Date.now();
-  for (const [k, v] of webCache) if (now - v.at > CACHE_MS) webCache.delete(k);
+  for (const [k, v] of cache) if (now - v.at > CACHE_MS) cache.delete(k);
 }
 
 const nullable = (type: string) => ({ type: [type, "null"] });
@@ -103,7 +126,9 @@ export function register(app: App, fastify: FastifyInstance) {
                 length_metres: nullable("number"),
               },
             },
-            source: { type: "string" }, // 'index' | 'web' | 'none'
+            source: { type: "string" }, // 'index' | 'web' | 'datalastic' | 'none'
+            length_match: nullable("boolean"),
+            suggest_mmsi: { type: "boolean" },
             candidates: { type: "array", items: candidateSchema },
           },
         },
@@ -131,50 +156,50 @@ export function register(app: App, fastify: FastifyInstance) {
     }
     const echo = { name, length, unit, length_metres: lengthMetres };
 
-    const own = await searchOwnData(app.db as any, typedName, app.logger);
-    const ranked = rankVesselCandidates(own, typedName, length, unit, MAX_CANDIDATES);
-    if (ranked.strong) {
-      app.logger.info({ userId, name, length, unit, rows: own.length, shown: ranked.candidates.length }, "Vessel lookup (index)");
-      return reply.send({ query: echo, source: "index", candidates: ranked.candidates });
-    }
+    const started = Date.now();
+    const result = await runVesselLookup({ typedName, length, unit, lengthMetres, limit: MAX_CANDIDATES }, {
+      searchOwn: () => searchOwnData(app.db as any, typedName, app.logger),
+      searchWeb: async () => {
+        const key = `${query}|${length ?? ""}|${unit}`;
+        const hit = webCache.get(key);
+        if (hit && Date.now() - hit.at < CACHE_MS) return { status: "yes", rows: hit.rows, fresh: false };
+        if (!webSearchConfigured()) return { status: "off", rows: [], fresh: false };
+        if (!underDailyLimit(webSearches, userId, WEB_DAILY_LIMIT)) return { status: "capped", rows: [], fresh: false };
+        const t = Date.now();
+        const rows = await searchVesselOnWeb(name, length, unit, app.logger);
+        pruneCache(webCache);
+        webCache.set(key, { at: Date.now(), rows });
+        app.logger.info({ userId, name, length, unit, found: rows.length, ms: Date.now() - t }, "Vessel lookup (web)");
+        return { status: "yes", rows, fresh: true };
+      },
+      findByLength: async () => {
+        // At most one Datalastic call per search; cached a day, empty answers included.
+        const w = findLengthWindow(lengthMetres!);
+        const key = `${name}|${w.min}|${w.max}`;
+        const hit = findCache.get(key);
+        if (hit && Date.now() - hit.at < CACHE_MS) return { status: "cached", rows: hit.rows };
+        if (!vesselFindConfigured()) return { status: "off", rows: [] };
+        if (!underDailyLimit(finds, userId, FIND_DAILY_LIMIT) || !underGlobalFindLimit()) return { status: "capped", rows: [] };
+        const res = await findVesselsByNameAndLength(name, lengthMetres!, app.logger);
+        if (res.status !== "ok") return { status: res.status, rows: [] };
+        pruneCache(findCache);
+        findCache.set(key, { at: Date.now(), rows: res.rows });
+        app.logger.info({ userId, name, lengthMetres, window: res.window, found: res.rows.length }, "Vessel lookup (datalastic length fallback)");
+        return { status: "yes", rows: res.rows };
+      },
+      // vessel_find rows are Datalastic's registry, not an AIS check: saved as datalastic, not confirmed.
+      save: (row, source) => upsertVesselIndex(app.db as any, row, source, app.logger, { confirmed: false }),
+    });
 
-    // Nothing in our data matches by name: try the web.
-    let webSearched: "yes" | "no" | "capped" | "off" = "no";
-    let webRows: RawCandidate[] = [];
-    const key = `${query}|${length ?? ""}|${unit}`;
-    const hit = webCache.get(key);
-    if (hit && Date.now() - hit.at < CACHE_MS) {
-      webRows = hit.rows;
-      webSearched = "yes";
-    } else if (!webSearchConfigured()) {
-      webSearched = "off";
-    } else if (!underDailyLimit(webSearches, userId, WEB_DAILY_LIMIT)) {
-      webSearched = "capped";
-    } else {
-      webSearched = "yes";
-      const started = Date.now();
-      webRows = await searchVesselOnWeb(name, length, unit, app.logger);
-      pruneCache();
-      webCache.set(key, { at: Date.now(), rows: webRows });
-      app.logger.info({ userId, name, length, unit, found: webRows.length, ms: Date.now() - started }, "Vessel lookup (web)");
-      // Saved unconfirmed, so the next person searching finds it without a web search.
-      for (const r of webRows) await upsertVesselIndex(app.db as any, r, "web", app.logger);
+    const { candidates, source, length_match } = result;
+    app.logger.info({
+      userId, name, length, unit, rows: result.ownRows, shown: candidates.length, source,
+      length_match, web: result.web, find: result.find, ms: Date.now() - started,
+    }, `Vessel lookup (${source})`);
+    if (!candidates.length || length_match === false) {
+      await logLookupMiss(app.db as any, { userId, name: typedName, length, unit, webSearched: result.web }, app.logger);
     }
-
-    // Weak fuzzy matches from our own data still show, after the web results.
-    const merged = rankVesselCandidates([...webRows, ...own], typedName, length, unit, MAX_CANDIDATES);
-    const candidates = webRows.length
-      ? [
-          ...rankVesselCandidates(webRows, typedName, length, unit, MAX_CANDIDATES).candidates,
-          ...merged.candidates,
-        ].filter((c, i, all) => all.findIndex((x) => x.mmsi === c.mmsi || (c.imo && x.imo === c.imo)) === i).slice(0, MAX_CANDIDATES)
-      : merged.candidates;
-
-    if (!candidates.length) {
-      app.logger.info({ userId, name, length, unit, webSearched }, "Vessel lookup found nothing");
-      await logLookupMiss(app.db as any, { userId, name: typedName, length, unit, webSearched }, app.logger);
-    }
-    return reply.send({ query: echo, source: webRows.length ? "web" : candidates.length ? "index" : "none", candidates });
+    return reply.send({ query: echo, source, length_match, suggest_mmsi: !candidates.length || length_match === false, candidates });
   });
 
   fastify.post<{ Body: { mmsi?: string; imo?: string | null; alt_mmsis?: string[] | null } }>("/api/vessels/lookup/confirm", {

@@ -5,8 +5,11 @@
  * reply. The database search lives in services/vesselIndex.ts, the web
  * fallback in services/vesselWebSearch.ts and the route in routes/vessel-lookup.ts.
  *
- * Searching never calls Datalastic (it bills per row returned). Only the
- * confirm step makes one Datalastic call, for the vessel the user picked.
+ * Datalastic bills per row returned, so searching normally never calls it.
+ * The one exception: when nothing we hold (or the web found) is near the typed
+ * length, one vessel_find call filtered by name AND a narrow length window
+ * (findLengthWindow), which returns a handful of rows at most. The confirm step
+ * makes one vessel_info call for the vessel the user picked.
  */
 
 // Prefixes people type that AIS names never carry ("M/Y Christopher" is
@@ -383,4 +386,90 @@ export function parseWebReply(text: string): RawCandidate[] {
     });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Length fallback (Datalastic vessel_find, name + length window)
+// ---------------------------------------------------------------------------
+
+/**
+ * How close a candidate must be to the typed length, read as typed (no
+ * feet-for-metres reading here), for the search to count as having found a
+ * length match. Same width as the Datalastic window, so a row the fallback
+ * returns always counts as a fit next time.
+ */
+export const LENGTH_FIT = 0.1;
+const MIN_WINDOW_M = 1.5;
+
+/**
+ * Length window for vessel_find: +/-10%, at least +/-1.5 m. Datalastic bills a
+ * credit per row, and name + this window usually returns 0 to 3 rows.
+ */
+export function findLengthWindow(lengthMetres: number): { min: number; max: number } {
+  const half = Math.max(lengthMetres * LENGTH_FIT, MIN_WINDOW_M);
+  const r = (n: number) => Math.round(n * 10) / 10;
+  return { min: r(Math.max(1, lengthMetres - half)), max: r(lengthMetres + half) };
+}
+
+/** True when the candidate's known length is within LENGTH_FIT of the typed length (in metres). */
+export function fitsLength(candidateMetres: number | null | undefined, typedMetres: number | null): boolean {
+  if (typedMetres == null || candidateMetres == null || !(Number(candidateMetres) > 0)) return false;
+  return Math.abs(Number(candidateMetres) - typedMetres) / typedMetres <= LENGTH_FIT + 1e-9;
+}
+
+/** Datalastic vessel_find rows -> checked candidates (source 'datalastic', not AIS-confirmed). */
+export function rowsFromVesselFind(data: unknown): RawCandidate[] {
+  const list: any[] = Array.isArray(data) ? data : [];
+  const out: RawCandidate[] = [];
+  const seen = new Set<string>();
+  for (const r of list) {
+    if (!r || typeof r !== 'object') continue;
+    const mmsi = String(r.mmsi ?? '').replace(/\D/g, '');
+    const name = cleanVesselName(String(r.name || r.name_ais || ''));
+    if (!isShipMmsi(mmsi) || !name || seen.has(mmsi)) continue;
+    seen.add(mmsi);
+    const imo = String(r.imo ?? '').replace(/\D/g, '');
+    const iso = r.country_iso ? String(r.country_iso).toUpperCase() : null;
+    const len = parseLength(r.length);
+    out.push({
+      mmsi,
+      name,
+      imo: isImo(imo) ? imo : null,
+      call_sign: r.callsign ? String(r.callsign).trim().toUpperCase() : null,
+      flag: r.country_name ? String(r.country_name) : countryName(iso),
+      flag_iso: iso,
+      type: r.type_specific || r.type || null,
+      length_m: len != null && len <= 500 ? len : null,
+      year_built: r.year_built != null && r.year_built !== '' ? String(r.year_built) : null,
+      former_names: [],
+      source: 'datalastic',
+    });
+  }
+  return out;
+}
+
+/** Candidates from `first` (in order), then `rest`, without repeating an MMSI or IMO. */
+export function mergeCandidateLists(first: VesselCandidate[], rest: VesselCandidate[], limit: number): VesselCandidate[] {
+  const out: VesselCandidate[] = [];
+  for (const c of [...first, ...rest]) {
+    if (out.some((x) => x.mmsi === c.mmsi || (!!c.imo && x.imo === c.imo))) continue;
+    out.push(c);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/**
+ * True when some row is a real name match (STRONG_NAME_MATCH, former names
+ * included) AND fits the typed length. Only then is the search done without
+ * the Datalastic length fallback.
+ */
+export function hasLengthMatch(rows: RawCandidate[], rawQuery: string, typedMetres: number | null): boolean {
+  if (typedMetres == null) return false;
+  const query = normaliseVesselName(rawQuery);
+  return rows.some((r) => {
+    if (!fitsLength(r.length_m, typedMetres)) return false;
+    const former = Math.max(0, ...(r.former_names || []).map((f) => nameMatchScore(f, query) - 0.1));
+    return Math.max(nameMatchScore(r.name, query), former) >= STRONG_NAME_MATCH;
+  });
 }
