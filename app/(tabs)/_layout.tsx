@@ -123,6 +123,10 @@ export default function TabLayout() {
         name="days-abroad"
         options={{
           title: t('settings.daysAbroad'),
+          headerShown: true,
+          headerTitle: t('daysAbroad.title'),
+          headerStyle: { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
+          headerTintColor: isDark ? '#FFFFFF' : '#000000',
           tabBarIcon: ({ color }) => (
             <IconSymbol
               ios_icon_name="globe.europe.africa"
@@ -131,13 +135,6 @@ export default function TabLayout() {
               color={color}
             />
           ),
-        }}
-        listeners={{
-          // Open the full Days abroad screen (with its header and back button) instead of a tab page.
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push('/days-abroad' as any);
-          },
         }}
       />
       <Tabs.Screen
