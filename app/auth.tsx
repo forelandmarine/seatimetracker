@@ -292,7 +292,25 @@ export default function AuthScreen() {
         ? 'Having trouble connecting. Please check your connection and try again.'
         : rawMsg;
 
-      if (isConnectionError) {
+      const socialOnly = !isConnectionError && /linked to (an? )?(apple|google)/i.test(rawMsg);
+      if (socialOnly) {
+        // Account was created with Google or Apple and has no password.
+        trackEvent('auth_failed', 'social_only');
+        const mentionsGoogle = /google/i.test(rawMsg);
+        const mentionsApple = /apple/i.test(rawMsg);
+        if (Platform.OS === 'ios' && mentionsApple) {
+          showErrorWithAction(rawMsg, 'Sign in with Apple', () => handleAppleSignIn());
+        } else if (Platform.OS === 'android' && mentionsGoogle && googleAvailable) {
+          showErrorWithAction(rawMsg, 'Continue with Google', () => handleGoogleSignIn());
+        } else {
+          // That sign-in method is not offered here: setting a password via reset works on any platform.
+          showErrorWithAction(
+            `${rawMsg} If that option isn't available on this device, reset your password to add one to your account. Your sea time is safe.`,
+            'Reset password',
+            openForgotPassword,
+          );
+        }
+      } else if (isConnectionError) {
         trackEvent('auth_failed', 'network');
         showError(errorMsg, () => handleEmailAuth());
       } else if (!isSignUp && /invalid email or password/i.test(rawMsg) && returningDevice) {

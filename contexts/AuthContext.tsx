@@ -358,6 +358,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       persist: rememberMe,
       mapError: (status, msg) => {
         const lower = msg.toLowerCase();
+        // Google-only or Apple-only account: keep the server's hint.
+        if (/\b(google|apple)\b/.test(lower)) return msg;
         if (lower.includes('invalid email or password') || lower.includes('invalid credentials') || status === 401) {
           return 'Invalid email or password. Please check your credentials and try again.';
         }
@@ -380,6 +382,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       persist: true,
       mapError: (status, msg) => {
         const lower = msg.toLowerCase();
+        // Google-only or Apple-only account: keep the server's hint.
+        if (/\b(google|apple)\b/.test(lower)) return msg;
         if (lower.includes('email already') || lower.includes('already registered') ||
             lower.includes('user already exists') || lower.includes('already in use') || status === 409) {
           return 'An account with this email already exists. Please sign in instead.';
