@@ -120,6 +120,27 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="days-abroad"
+        options={{
+          title: t('settings.daysAbroad'),
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              ios_icon_name="globe.europe.africa"
+              android_material_icon_name="public"
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+        listeners={{
+          // Open the full Days abroad screen (with its header and back button) instead of a tab page.
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push('/days-abroad' as any);
+          },
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: t('tabs.profile'),
