@@ -188,7 +188,7 @@
     "signOut": "Cerrar sesión",
     "seaService": "SERVICIO EN EL MAR",
     "soleWatchkeeping": "Guardia única",
-    "daysAbroad": "Días en el extranjero"
+    "daysAbroad": "Schengen Tracker"
   },
   "navigation": {
     "vesselDetails": "Detalles del buque",
@@ -470,7 +470,7 @@
     }
   },
   "daysAbroad": {
-    "title": "Días en el extranjero",
+    "title": "Schengen Tracker",
     "intro": "Anota dónde estás y cuándo: en tierra en un país o enrolado en un barco. Solo tú sabes cuándo embarcas y desembarcas, así que se introduce a mano.",
     "now": "Dónde estás ahora",
     "nowAshore": "En tierra en {{country}} desde el {{date}}",

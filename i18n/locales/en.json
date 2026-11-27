@@ -189,7 +189,7 @@
     "signOut": "Sign out",
     "seaService": "SEA SERVICE",
     "soleWatchkeeping": "Sole watchkeeping",
-    "daysAbroad": "Days abroad"
+    "daysAbroad": "Schengen Tracker"
   },
   "navigation": {
     "vesselDetails": "Vessel Details",
@@ -472,7 +472,7 @@
     }
   },
   "daysAbroad": {
-    "title": "Days abroad",
+    "title": "Schengen Tracker",
     "intro": "Log where you are and when: ashore in a country, or signed on a vessel. Only you know when you sign on and off, so this is entered by hand.",
     "now": "Where you are now",
     "nowAshore": "Ashore in {{country}} since {{date}}",

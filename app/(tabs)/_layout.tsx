@@ -122,7 +122,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="days-abroad"
         options={{
-          title: t('settings.daysAbroad'),
+          title: 'Schengen',
           headerShown: true,
           headerTitle: t('daysAbroad.title'),
           headerStyle: { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },

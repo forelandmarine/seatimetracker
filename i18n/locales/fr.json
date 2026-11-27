@@ -188,7 +188,7 @@
     "signOut": "Se déconnecter",
     "seaService": "SERVICE EN MER",
     "soleWatchkeeping": "Quart unique",
-    "daysAbroad": "Jours à l'étranger"
+    "daysAbroad": "Schengen Tracker"
   },
   "navigation": {
     "vesselDetails": "Détails du navire",
@@ -470,7 +470,7 @@
     }
   },
   "daysAbroad": {
-    "title": "Jours à l'étranger",
+    "title": "Schengen Tracker",
     "intro": "Notez où vous êtes et quand : à terre dans un pays, ou embarqué sur un navire. Vous seul savez quand vous embarquez et débarquez, donc la saisie est manuelle.",
     "now": "Où vous êtes maintenant",
     "nowAshore": "À terre en {{country}} depuis le {{date}}",
