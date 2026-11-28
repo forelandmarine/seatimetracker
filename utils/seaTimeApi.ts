@@ -355,8 +355,10 @@ export interface VesselCandidate {
 
 export interface VesselLookupResult {
   candidates: VesselCandidate[];
-  /** 'index' = our own data, 'web' = web search fallback, 'none' = nothing found. */
-  source: 'index' | 'web' | 'none';
+  /** 'index' = our own data, 'web' = web search fallback, 'datalastic' = AIS registry by name + length, 'none' = nothing found. */
+  source: 'index' | 'web' | 'datalastic' | 'none';
+  /** false = none of the matches is near the typed length (suggest the MMSI); null = no length typed or older backend. */
+  lengthMatch: boolean | null;
 }
 
 // Find a vessel's MMSI from its name, with the length overall as a ranking hint
@@ -370,7 +372,8 @@ export const lookupVessel = async (name: string, length: string, unit: 'm' | 'ft
   const data = await res.json();
   return {
     candidates: Array.isArray(data?.candidates) ? data.candidates : [],
-    source: data?.source === 'web' ? 'web' : data?.source === 'index' ? 'index' : 'none',
+    source: data?.source === 'web' || data?.source === 'index' || data?.source === 'datalastic' ? data.source : 'none',
+    lengthMatch: typeof data?.length_match === 'boolean' ? data.length_match : null,
   };
 };
 
